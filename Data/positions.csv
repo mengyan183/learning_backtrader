@@ -1,0 +1,7 @@
+date,account,symbol,name,qty,price,cost,market_value,notional,margin,bucket,currency
+2026-09-22,stock,AXTX,2倍做多AXTI,195,9.410,21.923,1834.95,1834.95,,system,USD
+2026-09-22,stock,CONL,2倍做多COIN,600,6.370,5.458,3822.00,3822.00,,system,USD
+2026-09-22,stock,CRCG,2倍做多CRCL,180,14.840,18.822,2671.20,2671.20,,system,USD
+2026-09-22,stock,GDXU,三倍做多黄金矿业,42,133.060,111.190,5588.52,5588.52,,system,USD
+2026-09-22,stock,YINN,三倍做多富时中国,157,27.200,27.376,4270.40,4270.40,,system,USD
+2026-09-22,crypto,BTC,BTC现货杠杆(借USDT买入),0.0299,85419.2,62500.0,2554.03,2554.03,,system,USDT

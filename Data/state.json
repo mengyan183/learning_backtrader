@@ -1,0 +1,33 @@
+{
+  "portfolio": {
+    "ammo_released": [
+      0,
+      1,
+      2
+    ],
+    "market_batches": {
+      "crypto": 2,
+      "us_equity": 1
+    },
+    "last_rebalance_date": null,
+    "last_extreme_fear_date": null
+  },
+  "us_equity": {
+    "market": "us_equity",
+    "circuit_breaker": false,
+    "cb_trigger_index": 85.02292768959435,
+    "cb_trigger_date": "2023-12-13",
+    "cb_low_price": {},
+    "greed_tier": 0,
+    "last_extreme_fear_date": null
+  },
+  "crypto": {
+    "market": "crypto",
+    "circuit_breaker": false,
+    "cb_trigger_index": null,
+    "cb_trigger_date": null,
+    "cb_low_price": {},
+    "greed_tier": 0,
+    "last_extreme_fear_date": null
+  }
+}

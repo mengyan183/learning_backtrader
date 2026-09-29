@@ -1,0 +1,9 @@
+{
+  "market": "crypto",
+  "circuit_breaker": false,
+  "cb_trigger_index": null,
+  "cb_trigger_date": null,
+  "cb_low_price": {},
+  "greed_tier": 0,
+  "last_extreme_fear_date": null
+}
