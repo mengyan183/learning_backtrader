@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# 系统
+.DS_Store
+
+# IDE
+.idea/
+
+# 凭据 —— 绝不允许入库（tests/data/test_shoutu_record.py 会守护这条规则）
+Data/shoutu_token
+Data/tstoken
+
+# 传输中间产物
+*.tar.xz

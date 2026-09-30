@@ -98,20 +98,28 @@ def _transfer_verdict(total):
 
 
 def show_irreplaceable():
-    print("必须从**公司电脑**手动拷过来的东西（Mac 造不出来）：")
+    print("以下文件由**公司电脑**手工维护（Mac 无法自动生成）：")
     print()
     total = 0
+    missing = []
     for rel, why in IRREPLACEABLE:
         p = os.path.join(config.ROOT, rel)
         if os.path.isfile(p):
             size = os.path.getsize(p)
             total += size
             mark = _human(size)
+            status = "✓"
         else:
             mark = "（本机没有）"
-        print("    %-28s %9s   %s" % (rel, mark, why))
+            status = "✗"
+            missing.append(rel)
+        print("    %s  %-28s %9s   %s" % (status, rel, mark, why))
     print()
-    print("    合计约 %s —— %s" % (_human(total), _transfer_verdict(total)))
+    if missing:
+        print("    ⚠️ **%d 项本机缺失**，需从公司电脑补拷：%s" % (len(missing), "、".join(missing)))
+        print("      已就位合计约 %s —— %s" % (_human(total), _transfer_verdict(total)))
+    else:
+        print("    ✅ 全部 %d 项已在本机就位，无需传输。" % len(IRREPLACEABLE))
     print()
     print("    ⚠️ 其中 `Data/raw/shoutu_fng.csv` 最要紧：它是**逐日累积**的，")
     print("       API 查不了历史，丢了永远补不回来。建议另存一份备份。")

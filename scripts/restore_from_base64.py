@@ -118,6 +118,11 @@ def extract_marked(text):
     #    `###FG:keep:1/28###` 在 .md 里是 `\#\#\#FG:keep:1/28\#\#\#`（防被当成标题）。
     #    不还原 ⇒ 一个标记都匹配不到。base64 正文不含 `#`/`\` ⇒ 替换不会伤到数据。
     text = text.replace("\\#", "#")
+    # ⚠️ **飞书「下载为 Markdown」还会把 `+` 转义**（2026-09-29 实测）：
+    #    base64 正文里的 `+` 在 .md 里是 `\+`（防被当成列表项）。
+    #    不还原 ⇒ `+` 前多出的 `\` 会让 `_B64_CHARS` 检查报「混入非法字符」、
+    #    解码报 `Non-base64 digit`。base64 正文不含 `\` ⇒ 这个替换不会伤到数据。
+    text = text.replace("\\+", "+")
 
     found = {}
     for name, idx, total, body in MARK_RE.findall(text):
