@@ -122,6 +122,9 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             if path == "/apk":
                 self._serve_apk()
                 return
+            if path.startswith("/static/"):
+                self._serve_static(path[len("/static/"):])
+                return
             if path not in ("/", "/index.html"):
                 self.send_error(404, "Not Found")
                 return
@@ -135,6 +138,24 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")   # 刷新必须拿新的
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _serve_static(self, rel):
+            """提供本地静态资源（echarts.min.js 等）——离线可用、不经第三方。"""
+            base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+            target = os.path.normpath(os.path.join(base, rel))
+            if not target.startswith(base) or not os.path.isfile(target):
+                self.send_error(404, "Not Found")
+                return
+            ctype = ("application/javascript" if target.endswith(".js")
+                     else "text/plain")
+            with open(target, "rb") as f:
+                body = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "public, max-age=86400")
             self.end_headers()
             self.wfile.write(body)
 

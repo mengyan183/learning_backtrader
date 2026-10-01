@@ -281,15 +281,12 @@ def _factors_block(valid):
         pts = [(d.strftime("%Y-%m-%d"), float(v))
                for d, v in valid[k].items() if not pd.isna(v)]
         cur = pts[-1][1] if pts else float("nan")
-        mini = _svg_line(pts, width=300, height=76, pad=18, color=colors[i % 4],
-                         y_min=min(pts, key=lambda p: p[1])[1] if pts else 0,
-                         y_max=max(pts, key=lambda p: p[1])[1] if pts else 1)
         out.append("<div class='f-card'><div class='f-head'>"
                    "<span class='f-name'>%s</span>"
                    "<span class='f-val' style='color:%s'>%s</span></div>"
-                   "<div class='f-chart'>%s</div></div>"
+                   "<div class='f-chart' id='chartF%d'></div></div>"
                    % (labels.get(k, k), colors[i % 4],
-                      ("%.2f" % cur) if cur == cur else "—", mini))
+                      ("%.2f" % cur) if cur == cur else "—", i))
     out.append("</div>")
     return "".join(out)
 
@@ -301,8 +298,6 @@ def _position_block(valid):
     if pos.empty:
         return "<p>目标仓位数据不足</p>"
     latest = float(pos.iloc[-1])
-    pts = [(d.strftime("%Y-%m-%d"), float(v)) for d, v in pos.items()]
-    svg = _svg_line(pts, height=200, y_min=0.0, y_max=1.0, color="#d29922")
     # 买卖点：信号档位发生变化的日期
     changes = pos.diff().fillna(0.0)
     events = changes[changes.abs() >= config.REBALANCE_THRESHOLD].tail(20)
@@ -313,8 +308,9 @@ def _position_block(valid):
     bar = ("<div class='pos-cap'>%.1f%%</div>"
            "<div class='pos-bar'><div class='pos-fill' style='width:%.1f%%'></div></div>"
            % (latest * 100, min(latest * 100, 100.0)))
-    return bar + svg + ("<table class='card'><tr><th>日期</th><th>方向</th><th>调整幅度</th></tr>%s"
-                        "</table>" % rows if rows else "<p>区间内无调仓事件</p>")
+    return bar + "<div id='chartPos' class='echart'></div>" + (
+        "<table class='card'><tr><th>日期</th><th>方向</th><th>调整幅度</th></tr>%s"
+        "</table>" % rows if rows else "<p>区间内无调仓事件</p>")
 
 
 def _buy_and_hold_block(features, prices):
@@ -381,6 +377,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>%(title)s</title>
 %(pwa_head)s
+<script src="/static/echarts.min.js"></script>
 <style>
 :root{{
   --bg:#0b0e14;--card:rgba(22,27,38,.72);--border:rgba(255,255,255,.07);
@@ -446,6 +443,9 @@ svg.chart text{{fill:var(--sub)}}
 svg.chart .grid{{stroke:rgba(255,255,255,.06)}}
 svg.chart .frame{{stroke:rgba(255,255,255,.1)}}
 /* 四因子卡 */
+.echart-main{{height:280px;width:100%%}}
+.echart{{height:220px;width:100%%}}
+.f-chart{{height:64px;width:100%%}}
 .f-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}}
 .f-card{{background:var(--chip);border:1px solid var(--border);border-radius:12px;padding:10px 14px}}
 .f-head{{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}}
@@ -495,7 +495,7 @@ body{{padding-bottom:64px}}
 <h2>市场温度</h2>
 <div class="sec">%(card)s</div>
 <h2>指数曲线与档位带</h2>
-<div class="sec">%(index_svg)s</div>
+<div class="sec"><div id="chartIndex" class="echart-main"></div></div>
 <h2>四因子分解</h2>
 <div class="sec">%(factors)s</div>
 </div>
@@ -539,11 +539,112 @@ const EXTERNAL = %(external_json)s;
     for (var j = 0; j < tabs.length; j++) {
       tabs[j].className = "tab-btn" + (j === n ? " on" : "");
     }
+    var charts = window.__charts || [];
+    for (var c = 0; c < charts.length; c++) { charts[c].resize(); }
   }
   for (var k = 0; k < tabs.length; k++) {
     (function (idx) {
       tabs[k].addEventListener("click", function () { show(idx); });
     })(k);
+  }
+
+  window.__charts = [];
+  var SUB = "#8b949e", TEXT = "#e6edf3", BORDER = "rgba(255,255,255,.1)";
+  var SPLIT = "rgba(255,255,255,.06)";
+  var tip = { backgroundColor: "rgba(22,27,38,.96)", borderColor: BORDER,
+              textStyle: { color: TEXT, fontSize: 12 } };
+  var ZONES = [[0,20,"#8b0000"],[20,40,"#d9534f"],[40,60,"#f0ad4e"],
+               [60,80,"#5cb85c"],[80,100,"#006400"]];
+
+  if (document.getElementById("chartIndex")) {
+    var idx = echarts.init(document.getElementById("chartIndex"));
+    window.__charts.push(idx);
+    idx.setOption({
+      backgroundColor: "transparent",
+      grid: { left: 6, right: 12, top: 30, bottom: 6, containLabel: true },
+      tooltip: Object.assign({ trigger: "axis" }, tip),
+      xAxis: { type: "category", boundaryGap: false,
+        data: INDEX.map(function (p) { return p[0]; }),
+        axisLine: { lineStyle: { color: BORDER } },
+        axisLabel: { color: SUB, fontSize: 10 } },
+      yAxis: { type: "value", min: 0, max: 100,
+        axisLabel: { color: SUB, fontSize: 10 },
+        splitLine: { lineStyle: { color: SPLIT } } },
+      series: [{
+        type: "line", data: INDEX.map(function (p) { return p[1]; }),
+        smooth: true, symbol: "none",
+        lineStyle: { width: 2, color: "#58a6ff" },
+        areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [{ offset: 0, color: "rgba(88,166,255,.30)" },
+                       { offset: 1, color: "rgba(88,166,255,0)" }] } },
+        markArea: { silent: true,
+          data: ZONES.map(function (z) {
+            return [{ yAxis: z[0], itemStyle: { color: z[2] + "1a" } },
+                    { yAxis: z[1] }];
+          }) }
+      }]
+    });
+  }
+
+  var FKEYS = ["vix", "term", "price", "breadth"];
+  var FCOLORS = ["#58a6ff", "#d29922", "#7ee787", "#f85149"];
+  for (var fi = 0; fi < FKEYS.length; fi++) {
+    (function (i) {
+      var el = document.getElementById("chartF" + i);
+      if (!el || !FACTORS[FKEYS[i]]) { return; }
+      var ch = echarts.init(el);
+      window.__charts.push(ch);
+      var data = FACTORS[FKEYS[i]];
+      ch.setOption({
+        backgroundColor: "transparent",
+        grid: { left: 2, right: 2, top: 6, bottom: 2 },
+        xAxis: { type: "category", show: false, boundaryGap: false,
+                 data: data.map(function (p) { return p[0]; }) },
+        yAxis: { type: "value", show: false,
+                 splitLine: { show: false } },
+        series: [{ type: "line", data: data.map(function (p) { return p[1]; }),
+          smooth: true, symbol: "none",
+          lineStyle: { width: 1.6, color: FCOLORS[i] },
+          areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [{ offset: 0, color: FCOLORS[i] + "40" },
+                         { offset: 1, color: FCOLORS[i] + "00" }] } } }]
+      });
+    })(fi);
+  }
+
+  if (document.getElementById("chartPos")) {
+    var pos = echarts.init(document.getElementById("chartPos"));
+    window.__charts.push(pos);
+    pos.setOption({
+      backgroundColor: "transparent",
+      grid: { left: 6, right: 10, top: 18, bottom: 6, containLabel: true },
+      tooltip: Object.assign({ trigger: "axis",
+        valueFormatter: function (v) { return (v * 100).toFixed(1) + "%%"; } }, tip),
+      xAxis: { type: "category", boundaryGap: false,
+        data: POSITION.map(function (p) { return p[0]; }),
+        axisLine: { lineStyle: { color: BORDER } },
+        axisLabel: { color: SUB, fontSize: 10 } },
+      yAxis: { type: "value", min: 0, max: 1,
+        axisLabel: { color: SUB, fontSize: 10,
+          formatter: function (v) { return (v * 100) + "%%"; } },
+        splitLine: { lineStyle: { color: SPLIT } } },
+      series: [{
+        type: "line", data: POSITION.map(function (p) { return p[1]; }),
+        smooth: true, symbol: "none",
+        lineStyle: { width: 2, color: "#d29922" },
+        areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [{ offset: 0, color: "rgba(210,153,34,.30)" },
+                       { offset: 1, color: "rgba(210,153,34,0)" }] } }
+      }]
+    });
+  }
+
+  if (typeof window.addEventListener === "function") {
+    var rz = function () {
+      var charts = window.__charts || [];
+      for (var r = 0; r < charts.length; r++) { charts[r].resize(); }
+    };
+    window.addEventListener("resize", rz);
   }
 })();
 </script>
