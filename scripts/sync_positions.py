@@ -40,6 +40,15 @@ def today():
     return dt.date.today().isoformat()
 
 
+def _f(x, default=0.0):
+    """安全转 float：'N/A'/空/None 等异常值 → default。"""
+    try:
+        v = float(x)
+        return v
+    except (TypeError, ValueError):
+        return default
+
+
 def load_existing():
     """读取现有快照；文件缺失时返回空 DataFrame（带表头）。"""
     a = pd.read_csv(config.ACCOUNTS_PATH) if os.path.exists(config.ACCOUNTS_PATH) \
@@ -91,50 +100,62 @@ def sync_futu(accounts, positions, date):
         return accounts, positions
 
     ret, accs = ctx.get_acc_list()
-    if ret != futu.RET_OK or not accs:
+    if ret != futu.RET_OK or (hasattr(accs, "empty") and accs.empty):
         print(f"[futu] get_acc_list 失败: {accs}")
         return accounts, positions
-    # 富途返回 acc_list 为 dict；取 account_id
-    acc_id = accs.get("account_id") if isinstance(accs, dict) else accs[0].get("account_id")
-    if acc_id is None:
-        # 兼容 list[dict] 形态
-        acc_id = accs[0]["account_id"] if isinstance(accs, list) else None
-    if acc_id is None:
-        print(f"[futu] 未取得 account_id: {accs}")
-        return accounts, positions
+    # futu 10.x 返回 DataFrame；优先取 REAL + ACTIVE 的保证金账户
+    if hasattr(accs, "iloc"):
+        df = accs
+        if "trd_env" in df.columns and "acc_status" in df.columns:
+            df = df[(df["trd_env"] == "REAL") & (df["acc_status"] == "ACTIVE")]
+            if df.empty:
+                df = accs[accs["trd_env"] == "REAL"]
+        if df.empty:
+            print(f"[futu] 无可用真实账户: {accs}")
+            return accounts, positions
+        acc_id = int(df.iloc[0]["acc_id"])
+    else:
+        acc_id = int(accs[0]["acc_id"])
+    print(f"[futu] 使用账户 acc_id={acc_id}")
 
-    # 资产（净值/现金/市值）
+    # 资产（净值/现金/市值）——DataFrame 单行
     ret, info = ctx.accinfo_query(acc_id=acc_id, currency="USD")
     if ret != futu.RET_OK:
         print(f"[futu] accinfo_query 失败: {info}")
         return accounts, positions
-    net = float(info.get("net_assets", 0) or 0)
-    cash = float(info.get("cash", 0) or 0)
-    mv = float(info.get("market_val", 0) or 0)
-    unrealized = float(info.get("unrealized_pl", 0) or 0) if "unrealized_pl" in info else ""
-    note = "富途动态同步"
-    if "power" in info:
-        note += f"；购买力={info.get('power')}"
-    accounts.loc[len(accounts)] = [date, "stock", round(net, 2), round(mv, 2),
-                                   round(cash, 2), unrealized, "", "USD", note]
+    if hasattr(info, "iloc") and not info.empty:
+        r = info.iloc[0]
+        net = _f(r.get("total_assets", 0))
+        cash = _f(r.get("cash", 0))
+        mv = _f(r.get("market_val", 0))
+        unrealized = _f(r.get("unrealized_pl", 0))
+        note = "富途动态同步"
+        if "net_cash_power" in info.columns:
+            note += f"；净购买力={r.get('net_cash_power')}"
+        accounts.loc[len(accounts)] = [date, "stock", round(net, 2), round(mv, 2),
+                                       round(cash, 2), round(unrealized, 2), "", "USD", note]
+    else:
+        print(f"[futu] accinfo 返回异常: {info}")
+        return accounts, positions
 
-    # 持仓
+    # 持仓——DataFrame 多行；code 去除 "US." 前缀
     ret, poss = ctx.position_list_query(acc_id=acc_id, currency="USD")
     if ret != futu.RET_OK:
         print(f"[futu] position_list_query 失败: {poss}")
         return accounts, positions
-    for pos in poss:
-        code = pos.get("code", "")
-        qty = float(pos.get("qty", 0) or 0)
-        if qty == 0:
-            continue
-        cost = float(pos.get("cost_price", 0) or 0)
-        price = float(pos.get("market_val", 0) or 0) / qty if qty else 0
-        notional = float(pos.get("nominal_value", 0) or 0) or round(qty * price, 2)
-        name = pos.get("stock_name", "") or code
-        positions.loc[len(positions)] = [date, "stock", code, name, qty, round(price, 4),
-                                         round(cost, 4), round(notional, 2), round(notional, 2),
-                                         "", "system", "USD"]
+    if hasattr(poss, "iterrows"):
+        for _, pos in poss.iterrows():
+            code = str(pos.get("code", "") or "").replace("US.", "", 1)
+            qty = _f(pos.get("qty", 0))
+            if qty == 0:
+                continue
+            cost = _f(pos.get("cost_price", 0))
+            price = _f(pos.get("nominal_price", 0))
+            notional = _f(pos.get("market_val", 0)) or round(qty * price, 2)
+            name = str(pos.get("stock_name", "") or "") or code
+            positions.loc[len(positions)] = [date, "stock", code, name, qty, round(price, 4),
+                                             round(cost, 4), round(notional, 2), round(notional, 2),
+                                             "", "system", "USD"]
     ctx.close()
     return accounts, positions
 
@@ -192,8 +213,8 @@ def sync_okx(accounts, positions, date):
         print(f"[okx] get_balance 错误: code={bal.get('code')} msg={bal.get('msg')}")
         return accounts, positions
     data = (bal.get("data") or [{}])[0]
-    total_eq = float(data.get("totalEq", 0) or 0)
-    cash = float(data.get("cash", 0) or 0)
+    total_eq = _f(data.get("totalEq", 0))
+    cash = _f(data.get("cash", 0))
     accounts.loc[len(accounts)] = [date, "crypto", round(total_eq, 2), "", round(cash, 2),
                                    "", "", "USDT", "OKX 动态同步"]
 
@@ -207,12 +228,12 @@ def sync_okx(accounts, positions, date):
         return accounts, positions
     for pos in poss.get("data") or []:
         inst = pos.get("instId", "")
-        qty = float(pos.get("pos", 0) or 0)
+        qty = _f(pos.get("pos", 0))
         if qty == 0:
             continue
-        cost = float(pos.get("avgPx", 0) or 0)
-        price = float(pos.get("markPx", 0) or 0)
-        notional = float(pos.get("notionalUsd", 0) or 0) or round(qty * price, 2)
+        cost = _f(pos.get("avgPx", 0))
+        price = _f(pos.get("markPx", 0))
+        notional = _f(pos.get("notionalUsd", 0)) or round(qty * price, 2)
         name = {"BTC-USDT": "BTC现货杠杆(借USDT买入)", "BTC-USDT-SWAP": "BTC永续"}.get(inst, inst)
         positions.loc[len(positions)] = [date, "crypto", inst, name, qty, round(price, 4),
                                          round(cost, 4), round(notional, 2), round(notional, 2),
