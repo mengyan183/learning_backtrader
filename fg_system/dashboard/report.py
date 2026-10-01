@@ -22,7 +22,7 @@ ZONE_COLORS = ["#8b0000", "#d9534f", "#f0ad4e", "#5cb85c", "#006400"]
 ZONE_NAMES = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"]
 
 
-def _holdings_block(features, shoutu=None, sys_sym=None):
+def _holdings_block(features, shoutu=None):
     """持仓标的看板：我的持仓 × 市场贪恐环境 × 系统覆盖与指令（只读快照）。
 
     数据口径：
@@ -33,9 +33,11 @@ def _holdings_block(features, shoutu=None, sys_sym=None):
     - 系统覆盖 = config.SYMBOLS ∪ CRYPTO_FLAT_SYMBOLS（与 portfolio_check 同口径）
     """
     out = ["<p style='font-size:12px;color:#8b949e'>每标的展示<b>双系统贪恐系数</b>："
-           "系统 = 标的级信号指数（守猪待兔历史&lt;756日，分位数未启动，暂按固定阈值口径）；"
-           "守猪待兔 = 原始系数转系统刻度。系统覆盖标的按守猪待兔信号显示指令，"
-           "其余标的不在系统跟踪范围。持仓来自实盘快照，只读；浮盈亏按红涨绿跌着色。</p>"]
+           "系统 = 市场级贪恐指数（系统为市场级模型，个股共用同一指数，即上方市场温度）；"
+           "守猪待兔 = 该标的个股系数（原始值转系统刻度）。"
+           "系统标的级分位数口径待守猪待兔历史≥756日后启用。"
+           "系统覆盖标的按守猪待兔信号显示指令，其余标的不在系统跟踪范围。"
+           "持仓来自实盘快照，只读；浮盈亏按红涨绿跌着色。</p>"]
     try:
         pos = pd.read_csv(config.POSITIONS_PATH)
     except (FileNotFoundError, pd.errors.EmptyDataError):
@@ -92,17 +94,9 @@ def _holdings_block(features, shoutu=None, sys_sym=None):
             advise = "系统未跟踪该标的"
         pnl_cls = ("up" if pnl and pnl >= 0 else "down") if pnl is not None else ""
         pnl_txt = ("%+.1f%%" % pnl) if pnl is not None else "—"
-        # 该标的的系统信号指数（0~100，pipeline.shoutu_symbol_index）
-        sys_v = (sys_sym or {}).get(sym)
-        if sys_v is None and "-" in sym:
-            sys_v = (sys_sym or {}).get(sym.split("-")[0])   # BTC-USDT → BTC
-        if sys_v is not None:
-            zz = int(np.clip(np.searchsorted([20, 40, 60, 80], sys_v,
-                                             side="right"), 0, 4))
-            sys_txt = "系统 %.0f %s" % (sys_v, ZONE_NAMES[zz])
-            sys_bg = ZONE_COLORS[zz]
-        else:
-            sys_txt, sys_bg = "系统 —", "#3a4a63"
+        # 系统列 = 系统市场级贪恐指数（系统为市场级模型，个股共用同一指数）
+        sys_txt = "系统 %.0f %s" % (fg, zone)
+        sys_bg = ZONE_COLORS[zi]
         # 该标的的守猪待兔系数（0~100 + 档位色）
         if shoutu_last is not None and sym in shoutu_last.index:
             sh_raw = shoutu_last[sym]
@@ -445,15 +439,6 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         if len(_last):
             shoutu_mkt = (float(_last.mean()) + 100.0) / 2.0
     shoutu = _shoutu
-    sys_sym = {}
-    if not _shoutu.empty:
-        from fg_system import pipeline as _pl
-        _syms = (set(config.SYMBOLS) | set(config.CRYPTO_FLAT_SYMBOLS)
-                 | set(_shoutu.columns))
-        _sidx = _pl.shoutu_symbol_index(features, _shoutu, symbols=list(_syms))
-        if not _sidx.empty:
-            _slast = _sidx.iloc[-1].dropna()
-            sys_sym = {c: float(v) for c, v in _slast.items()}
 
     bands = []
     edges = [-1e9] + list(config.ZONE_EDGES) + [1e9]
@@ -472,7 +457,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         span=("%s ~ %s" % (valid.index[0].strftime("%Y-%m-%d"),
                            valid.index[-1].strftime("%Y-%m-%d")) if len(valid) else "无"),
         card=_state_card(features, shoutu_mkt=shoutu_mkt),
-        holdings=_holdings_block(features, shoutu=shoutu, sys_sym=sys_sym),
+        holdings=_holdings_block(features, shoutu=shoutu),
         factors=_factors_block(valid),
         position=_position_block(valid),
         nav=_buy_and_hold_block(features, prices),
