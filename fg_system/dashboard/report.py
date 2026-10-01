@@ -32,9 +32,10 @@ def _holdings_block(features):
       szdt.tech/universe 未覆盖 GDXU/YINN/CONL/CRCG/AXTX，故不虚造标的级系数）
     - 系统覆盖 = config.SYMBOLS ∪ CRYPTO_FLAT_SYMBOLS（与 portfolio_check 同口径）
     """
-    out = ["<p style='font-size:12px;color:#8b949e'>贪恐系数为<b>市场级 fg_index</b>"
-           "（标的级系数数据源未覆盖下列持仓 ETF，不虚造）；持仓来自实盘快照，只读；"
-           "浮盈亏按红涨绿跌着色。</p>"]
+    out = ["<p style='font-size:12px;color:#8b949e'>守猪待兔系统输出的是<b>市场级贪恐系数"
+           "（fg_index）</b>——标的级系数数据源未覆盖下列持仓 ETF，不虚造；"
+           "系统覆盖标的按守猪待兔信号显示指令，其余标的不在系统跟踪范围。"
+           "持仓来自实盘快照，只读；浮盈亏按红涨绿跌着色。</p>"]
     try:
         pos = pd.read_csv(config.POSITIONS_PATH)
     except (FileNotFoundError, pd.errors.EmptyDataError):
@@ -49,13 +50,24 @@ def _holdings_block(features):
     except Exception:
         net = None
 
-    # 市场贪恐环境（最新）
+    # 市场贪恐环境（最新）+ 系统信号（最新目标仓位与变化方向）
     fg, zone = None, "—"
     valid = features.dropna(subset=["fg_index"])
+    sig = "持有"
+    target_txt = "—"
     if not valid.empty:
         fg = float(valid.iloc[-1]["fg_index"])
         zi = int(np.clip(np.searchsorted([20, 40, 60, 80], fg, side="right"), 0, 4))
         zone = ZONE_NAMES[zi]
+        tp = valid["target_position"].dropna()
+        if not tp.empty:
+            target_txt = "%.1f%%" % (float(tp.iloc[-1]) * 100)
+            if len(tp) >= 2:
+                d = float(tp.iloc[-1]) - float(tp.iloc[-2])
+                if d >= config.REBALANCE_THRESHOLD:
+                    sig = "加仓"
+                elif d <= -config.REBALANCE_THRESHOLD:
+                    sig = "减仓"
     env_cell = ("%s %s" % (("%.0f" % fg), zone)) if fg is not None else "—"
 
     in_system = set(config.SYMBOLS) | set(config.CRYPTO_FLAT_SYMBOLS)
@@ -71,9 +83,9 @@ def _holdings_block(features):
         ratio = (mv / net * 100.0) if net and mv is not None else None
         in_s = sym in in_system
         if in_s:
-            advise = "系统可给指令（目标见区块5）"
+            advise = "守猪待兔：%s · 目标仓位 %s" % (sig, target_txt)
         else:
-            advise = "系统无指令（覆盖范围外）"
+            advise = "系统未跟踪该标的"
         pnl_cls = ("up" if pnl and pnl >= 0 else "down") if pnl is not None else ""
         pnl_txt = ("%+.1f%%" % pnl) if pnl is not None else "—"
         cards.append(
@@ -83,7 +95,7 @@ def _holdings_block(features):
             "<div class='h-name'>%s</div>"
             "<div class='h-mid'>市值 %s · 占净值 %s · 数量 %s</div>"
             "<div class='h-tags'>"
-            "<span class='tag tag-zone' style='background:%s'>贪恐 %s</span>"
+            "<span class='tag tag-zone' style='background:%s'>守猪待兔 %s</span>"
             "<span class='tag %s'>%s</span>"
             "<span class='tag tag-adv'>%s</span>"
             "</div></div>"
@@ -254,13 +266,23 @@ def _factors_block(valid):
     keys = [k for k in ["vix", "term", "price", "breadth"] if k in valid.columns]
     if not keys:
         return "<p>因子数据不可用</p>"
-    out = []
-    colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
+    colors = ["#58a6ff", "#d29922", "#7ee787", "#f85149"]
+    labels = {"vix": "波动率 VIX", "term": "期限利差", "price": "价格动量", "breadth": "市场广度"}
+    out = ["<div class='f-grid'>"]
     for i, k in enumerate(keys):
         pts = [(d.strftime("%Y-%m-%d"), float(v))
                for d, v in valid[k].items() if not pd.isna(v)]
-        out.append("<h3 style='font-size:13px;margin:10px 0 2px'>%s</h3>" % k)
-        out.append(_svg_line(pts, height=140, color=colors[i % len(colors)]))
+        cur = pts[-1][1] if pts else float("nan")
+        mini = _svg_line(pts, width=300, height=76, pad=18, color=colors[i % 4],
+                         y_min=min(pts, key=lambda p: p[1])[1] if pts else 0,
+                         y_max=max(pts, key=lambda p: p[1])[1] if pts else 1)
+        out.append("<div class='f-card'><div class='f-head'>"
+                   "<span class='f-name'>%s</span>"
+                   "<span class='f-val' style='color:%s'>%s</span></div>"
+                   "<div class='f-chart'>%s</div></div>"
+                   % (labels.get(k, k), colors[i % 4],
+                      ("%.2f" % cur) if cur == cur else "—", mini))
+    out.append("</div>")
     return "".join(out)
 
 
@@ -270,8 +292,9 @@ def _position_block(valid):
     pos = valid["target_position"].dropna()
     if pos.empty:
         return "<p>目标仓位数据不足</p>"
+    latest = float(pos.iloc[-1])
     pts = [(d.strftime("%Y-%m-%d"), float(v)) for d, v in pos.items()]
-    svg = _svg_line(pts, height=200, y_min=0.0, y_max=1.0, color="#d62728")
+    svg = _svg_line(pts, height=200, y_min=0.0, y_max=1.0, color="#d29922")
     # 买卖点：信号档位发生变化的日期
     changes = pos.diff().fillna(0.0)
     events = changes[changes.abs() >= config.REBALANCE_THRESHOLD].tail(20)
@@ -279,12 +302,15 @@ def _position_block(valid):
                    % (d.strftime("%Y-%m-%d"),
                       "加仓" if v > 0 else "减仓", abs(v) * 100)
                    for d, v in events.items())
-    return svg + ("<table class='card'><tr><th>日期</th><th>方向</th><th>调整幅度</th></tr>%s"
-                  "</table>" % rows if rows else "<p>区间内无调仓事件</p>")
+    bar = ("<div class='pos-cap'>%.1f%%</div>"
+           "<div class='pos-bar'><div class='pos-fill' style='width:%.1f%%'></div></div>"
+           % (latest * 100, min(latest * 100, 100.0)))
+    return bar + svg + ("<table class='card'><tr><th>日期</th><th>方向</th><th>调整幅度</th></tr>%s"
+                        "</table>" % rows if rows else "<p>区间内无调仓事件</p>")
 
 
 def _buy_and_hold_block(features, prices):
-    """净值对比表：策略（目标仓位拟合）vs 买入持有。"""
+    """净值对比：策略（目标仓位拟合）vs 买入持有，横向柱状对比。"""
     if prices is None or prices.empty:
         return "<p>数据不可用</p>"
     valid = features.dropna(subset=["fg_index", "target_position"])
@@ -303,12 +329,17 @@ def _buy_and_hold_block(features, prices):
             "strat_total": float((1.0 + strat_ret).prod() - 1.0),
             "bh_total": float((1.0 + bh).prod() - 1.0),
         })
-    html = ["<table class='card'><tr><th>标的</th><th>策略累计收益（目标仓位拟合）</th>"
-            "<th>买入持有累计收益</th></tr>"]
+    html = ["<div class='cmp'>"]
     for r in rows:
-        html.append("<tr><td>%s</td><td>%.1f%%</td><td>%.1f%%</td></tr>"
-                    % (r["symbol"], r["strat_total"] * 100, r["bh_total"] * 100))
-    html.append("</table>")
+        s, b = r["strat_total"] * 100, r["bh_total"] * 100
+        s_w = max(min(abs(s) * 2.5, 100), 4.0) if abs(s) > 0.01 else 4.0
+        b_w = max(min(abs(b) * 2.5, 100), 4.0) if abs(b) > 0.01 else 4.0
+        html.append("<div class='cmp-row'>"
+                    "<span class='cmp-lb'>%s</span>"
+                    "<div class='cmp-bar cmp-s' style='width:%.0f%%'>%.1f%%</div>"
+                    "<div class='cmp-bar cmp-b' style='width:%.0f%%'>%.1f%%</div>"
+                    "</div>" % (r["symbol"], s_w, s, b_w, b))
+    html.append("</div><p class='cmp-note'>左=策略（目标仓位拟合）　右=买入持有</p>")
     return "".join(html)
 
 
@@ -398,6 +429,25 @@ svg.chart{{display:block;max-width:100%%;height:auto;background:transparent;bord
 svg.chart text{{fill:var(--sub)}}
 svg.chart .grid{{stroke:rgba(255,255,255,.06)}}
 svg.chart .frame{{stroke:rgba(255,255,255,.1)}}
+/* 四因子卡 */
+.f-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}}
+.f-card{{background:var(--chip);border:1px solid var(--border);border-radius:12px;padding:10px 14px}}
+.f-head{{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}}
+.f-name{{font-size:12px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.4px}}
+.f-val{{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}}
+.f-chart svg{{width:100%%;height:auto;display:block}}
+/* 目标仓位进度条 */
+.pos-cap{{font-size:26px;font-weight:800;margin:2px 0 10px;font-variant-numeric:tabular-nums}}
+.pos-bar{{height:14px;background:var(--chip);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px}}
+.pos-fill{{height:100%%;background:linear-gradient(90deg,#1f6feb,#7ee787);border-radius:8px;transition:width .3s}}
+/* 净值对比柱 */
+.cmp{{display:flex;flex-direction:column;gap:12px}}
+.cmp-row{{display:grid;grid-template-columns:64px 1fr 1fr;gap:8px;align-items:center;font-size:12px}}
+.cmp-lb{{color:var(--sub);font-weight:600}}
+.cmp-bar{{height:22px;border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff;min-width:24px;white-space:nowrap;overflow:hidden}}
+.cmp-s{{background:linear-gradient(90deg,#1f6feb,#58a6ff)}}
+.cmp-b{{background:rgba(139,148,158,.35);color:var(--text)}}
+.cmp-note{{color:var(--sub);font-size:11px;margin-top:8px}}
 /* 其它区块内表格间距 */
 .sec table.card{{margin:4px 0 0}}
 @media (max-width:780px){{
@@ -409,6 +459,7 @@ svg.chart .frame{{stroke:rgba(255,255,255,.1)}}
   .hero-num{{font-size:38px}}
   .stat-grid{{grid-template-columns:repeat(2,1fr)}}
   .h-grid{{grid-template-columns:1fr}}
+  .f-grid{{grid-template-columns:1fr}}
   table.card th,table.card td{{padding:6px 10px;font-size:12px}}
 }}
 </style></head><body>
