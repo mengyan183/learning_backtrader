@@ -147,6 +147,33 @@ def _okx_creds():
         return json.load(f)
 
 
+def _okx_request(creds, path):
+    """OKX V5 REST 请求（curl 签名，与 scripts/okx_monitor.py 同法；走代理）。"""
+    import base64
+    import hashlib
+    import hmac
+    import subprocess
+    import datetime
+
+    ts = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    sig = base64.b64encode(
+        hmac.new(creds["secret"].encode(),
+                 (ts + "GET" + path).encode(), hashlib.sha256).digest()
+    ).decode()
+    cmd = ["curl", "-s", "-m", "30", "https://www.okx.com" + path,
+           "-H", "OK-ACCESS-KEY: " + creds["api_key"],
+           "-H", "OK-ACCESS-SIGN: " + sig,
+           "-H", "OK-ACCESS-TIMESTAMP: " + ts,
+           "-H", "OK-ACCESS-PASSPHRASE: " + creds["passphrase"],
+           "-H", "Content-Type: application/json"]
+    if creds.get("proxy"):
+        cmd[1:1] = ["-x", creds["proxy"]]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=35)
+    if r.returncode != 0:
+        raise RuntimeError(f"curl 失败: {r.stderr[:150]}")
+    return json.loads(r.stdout or "{}")
+
+
 def sync_okx(accounts, positions, date):
     """OKX REST → 加密账户快照行。凭据缺失/网络失败时打印提示并跳过。"""
     creds = _okx_creds()
@@ -155,27 +182,9 @@ def sync_okx(accounts, positions, date):
               f"       格式: {{\"api_key\":\"..\",\"secret\":\"..\",\"passphrase\":\"..\","
               f"\"proxy\":\"http://127.0.0.1:7890\"(可选)}}，chmod 600")
         return accounts, positions
-    try:
-        from okx.api.account import Account
-    except ImportError:
-        print("[okx] 未安装 okx 包，跳过加密账户（pip install okx）")
-        return accounts, positions
-
-    proxies = {}
-    proxy_host = None
-    if creds.get("proxy"):
-        proxies = {"http": creds["proxy"], "https": creds["proxy"]}
-        proxy_host = creds["proxy"]
-    try:
-        api = Account(key=creds["api_key"], secret=creds["secret"],
-                      passphrase=creds["passphrase"], flag="0",
-                      proxies=proxies, proxy_host=proxy_host)
-    except Exception as e:
-        print(f"[okx] Account 初始化失败: {e}")
-        return accounts, positions
 
     try:
-        bal = api.get_balance()
+        bal = _okx_request(creds, "/api/v5/account/balance")
     except Exception as e:
         print(f"[okx] get_balance 失败: {e}")
         return accounts, positions
@@ -189,7 +198,7 @@ def sync_okx(accounts, positions, date):
                                    "", "", "USDT", "OKX 动态同步"]
 
     try:
-        poss = api.get_positions()
+        poss = _okx_request(creds, "/api/v5/account/positions")
     except Exception as e:
         print(f"[okx] get_positions 失败: {e}")
         return accounts, positions
