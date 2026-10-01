@@ -22,7 +22,7 @@ ZONE_COLORS = ["#8b0000", "#d9534f", "#f0ad4e", "#5cb85c", "#006400"]
 ZONE_NAMES = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"]
 
 
-def _holdings_block(features):
+def _holdings_block(features, shoutu=None):
     """持仓标的看板：我的持仓 × 市场贪恐环境 × 系统覆盖与指令（只读快照）。
 
     数据口径：
@@ -70,6 +70,10 @@ def _holdings_block(features):
                     sig = "减仓"
     env_cell = ("%s %s" % (("%.0f" % fg), zone)) if fg is not None else "—"
 
+    # 守猪待兔标的级系数：shoutu 宽表最新日（-100~100 → 0~100 系统口径）
+    shoutu_last = shoutu.iloc[-1] if (shoutu is not None
+                                      and not shoutu.empty) else None
+
     in_system = set(config.SYMBOLS) | set(config.CRYPTO_FLAT_SYMBOLS)
     cards = []
     for _, r in latest.iterrows():
@@ -88,20 +92,36 @@ def _holdings_block(features):
             advise = "系统未跟踪该标的"
         pnl_cls = ("up" if pnl and pnl >= 0 else "down") if pnl is not None else ""
         pnl_txt = ("%+.1f%%" % pnl) if pnl is not None else "—"
+        # 该标的的守猪待兔系数（0~100 + 档位色）
+        if shoutu_last is not None and sym in shoutu_last.index:
+            sh_raw = shoutu_last[sym]
+            if sh_raw == sh_raw:   # 非 NaN
+                sv = (float(sh_raw) + 100.0) / 2.0
+                szi = int(np.clip(np.searchsorted([20, 40, 60, 80], sv,
+                                                  side="right"), 0, 4))
+                s_txt = "守猪待兔 %.0f %s" % (sv, ZONE_NAMES[szi])
+                s_bg = ZONE_COLORS[szi]
+            else:
+                s_txt, s_bg = "守猪待兔 —", "#3a4a63"
+        else:
+            s_txt, s_bg = "守猪待兔 —", "#3a4a63"
         cards.append(
             "<div class='h-card'>"
             "<div class='h-top'><span class='h-sym'>%s</span>"
             "<span class='h-pnl %s'>%s</span></div>"
             "<div class='h-name'>%s</div>"
-            "<div class='h-mid'>市值 %s · 占净值 %s · 数量 %s</div>"
+            "<div class='h-mid'>成本 %s · 现价 %s</div>"
+            "<div class='h-mid2'>市值 %s · 占净值 %s · 数量 %s</div>"
             "<div class='h-tags'>"
-            "<span class='tag tag-zone' style='background:%s'>守猪待兔 %s</span>"
+            "<span class='tag tag-zone' style='background:%s'>%s</span>"
             "<span class='tag %s'>%s</span>"
             "<span class='tag tag-adv'>%s</span>"
             "</div></div>"
-            % (sym, pnl_cls, pnl_txt, name, _fmt(mv),
-               ("%.1f%%" % ratio) if ratio is not None else "—", _fmt(qty),
-               ZONE_COLORS[zi], env_cell,
+            % (sym, pnl_cls, pnl_txt, name,
+               _fmt(cost) if cost is not None else "—",
+               _fmt(price) if price is not None else "—",
+               _fmt(mv), ("%.1f%%" % ratio) if ratio is not None else "—",
+               _fmt(qty), s_bg, s_txt,
                ("tag-in" if in_s else "tag-out"), ("✅ 系统覆盖" if in_s else "❌ 范围外"),
                advise))
     if not cards:
@@ -124,7 +144,7 @@ def _fmt(v):
 
 
 # ------------------------------------------------------------------ 区块
-def _state_card(features):
+def _state_card(features, shoutu_mkt=None):
     valid = features.dropna(subset=["fg_index"])
     if valid.empty:
         return "<p>指数无效（warmup 未完成）</p>"
@@ -149,16 +169,31 @@ def _state_card(features):
             "<div class='temp-dot' style='left:%.1f%%'></div></div>"
             "<div class='temp-ticks'><span>0 冷清</span><span>25</span>"
             "<span>50</span><span>75</span><span>100 火爆</span></div></div>" % (pct, pct))
+    if shoutu_mkt is not None:
+        s_zone = int(np.clip(np.searchsorted([20, 40, 60, 80], shoutu_mkt,
+                                             side="right"), 0, 4))
+        shoutu_html = ("<div class='hero-fg'>"
+                       "<span class='hero-num sm'>%.1f</span>"
+                       "<span class='hero-unit'>守猪待兔市场温度</span>"
+                       "<span class='zone' style='background:%s'>%s</span></div>"
+                       % (shoutu_mkt, ZONE_COLORS[s_zone], ZONE_NAMES[s_zone]))
+    else:
+        shoutu_html = ("<div class='hero-fg muted'>"
+                       "<span class='hero-num sm'>—</span>"
+                       "<span class='hero-unit'>守猪待兔未接入</span></div>")
     return """
     <div class="hero">
       <div class="hero-top"><span class="hero-date">信号日 %s</span>
         <span class="zone" style="background:%s">%s</span></div>
-      <div class="hero-fg"><span class="hero-num">%.1f</span>
-        <span class="hero-unit">贪恐系数（守猪待兔）</span></div>
+      <div class="hero-duo">
+        <div class="hero-fg"><span class="hero-num">%.1f</span>
+          <span class="hero-unit">贪恐系数（当前系统）</span></div>
+        %s
+      </div>
       %s
       <div class="stat-grid">%s</div>
     </div>""" % (valid.index[-1].strftime("%Y-%m-%d"), ZONE_COLORS[zone],
-                 ZONE_NAMES[zone], fg, temp, stat)
+                 ZONE_NAMES[zone], fg, shoutu_html, temp, stat)
 
 
 def _loss_block(prices):
@@ -364,6 +399,14 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
     valid = features.dropna(subset=["fg_index"])
     index_points = [(d.strftime("%Y-%m-%d"), float(v)) for d, v in valid["fg_index"].items()]
     external = _load_external_index()
+    from fg_system.data import loader as _shoutu_loader
+    _shoutu = _shoutu_loader.load_shoutu_fng()
+    shoutu_mkt = None
+    if not _shoutu.empty:
+        _last = _shoutu.iloc[-1].dropna()
+        if len(_last):
+            shoutu_mkt = (float(_last.mean()) + 100.0) / 2.0
+    shoutu = _shoutu
 
     bands = []
     edges = [-1e9] + list(config.ZONE_EDGES) + [1e9]
@@ -381,8 +424,8 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         valid_days=len(valid),
         span=("%s ~ %s" % (valid.index[0].strftime("%Y-%m-%d"),
                            valid.index[-1].strftime("%Y-%m-%d")) if len(valid) else "无"),
-        card=_state_card(features),
-        holdings=_holdings_block(features),
+        card=_state_card(features, shoutu_mkt=shoutu_mkt),
+        holdings=_holdings_block(features, shoutu=shoutu),
         factors=_factors_block(valid),
         position=_position_block(valid),
         nav=_buy_and_hold_block(features, prices),
