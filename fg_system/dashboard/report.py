@@ -22,7 +22,7 @@ ZONE_COLORS = ["#8b0000", "#d9534f", "#f0ad4e", "#5cb85c", "#006400"]
 ZONE_NAMES = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"]
 
 
-def _holdings_block(features, shoutu=None):
+def _holdings_block(features, shoutu=None, prices=None):
     """持仓标的看板：我的持仓 × 市场贪恐环境 × 系统覆盖与指令（只读快照）。
 
     数据口径：
@@ -33,9 +33,9 @@ def _holdings_block(features, shoutu=None):
     - 系统覆盖 = config.SYMBOLS ∪ CRYPTO_FLAT_SYMBOLS（与 portfolio_check 同口径）
     """
     out = ["<p style='font-size:12px;color:#8b949e'>每标的展示<b>双系统贪恐系数</b>："
-           "系统 = 市场级贪恐指数（系统为市场级模型，个股共用同一指数，即上方市场温度）；"
+           "系统 = 个股系统指数（无杠杆底层动量+波动率滚动分位，路径B）；"
            "守猪待兔 = 该标的个股系数（原始值转系统刻度）。"
-           "系统标的级分位数口径待守猪待兔历史≥756日后启用。"
+           "CRCG/CONL 底层数据不足时系统列回退市场指数。"
            "系统覆盖标的按守猪待兔信号显示指令，其余标的不在系统跟踪范围。"
            "持仓来自实盘快照，只读；浮盈亏按红涨绿跌着色。</p>"]
     try:
@@ -94,9 +94,25 @@ def _holdings_block(features, shoutu=None):
             advise = "系统未跟踪该标的"
         pnl_cls = ("up" if pnl and pnl >= 0 else "down") if pnl is not None else ""
         pnl_txt = ("%+.1f%%" % pnl) if pnl is not None else "—"
-        # 系统列 = 系统市场级贪恐指数（系统为市场级模型，个股共用同一指数）
-        sys_txt = "系统 %.0f %s" % (fg, zone)
-        sys_bg = ZONE_COLORS[zi]
+        # 系统列 = 个股系统指数（路径 B：无杠杆底层动量+波动率，滚动分位）
+        _sv = None
+        if prices is not None:
+            try:
+                from fg_system.factors import symbol as _sym
+                _sidx = _sym.symbol_fg_index(sym, prices=prices)
+                if _sidx is not None and not _sidx.dropna().empty:
+                    _sv = float(_sidx.dropna().iloc[-1])
+            except Exception:
+                _sv = None
+        if _sv is not None:
+            _zz = int(np.clip(np.searchsorted([20, 40, 60, 80], _sv,
+                                              side="right"), 0, 4))
+            sys_txt = "系统 %.0f %s" % (_sv, ZONE_NAMES[_zz])
+            sys_bg = ZONE_COLORS[_zz]
+        else:
+            # 底层数据不足（CRCG/CONL）→ 回退系统市场级指数
+            sys_txt = "系统 %.0f %s" % (fg, zone)
+            sys_bg = ZONE_COLORS[zi]
         # 该标的的守猪待兔系数（0~100 + 档位色）
         if shoutu_last is not None and sym in shoutu_last.index:
             sh_raw = shoutu_last[sym]
@@ -439,6 +455,12 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         if len(_last):
             shoutu_mkt = (float(_last.mean()) + 100.0) / 2.0
     shoutu = _shoutu
+    _px = None
+    try:
+        from fg_system.factors import symbol as _sym
+        _px = _sym._read_prices()
+    except Exception:
+        _px = None
 
     bands = []
     edges = [-1e9] + list(config.ZONE_EDGES) + [1e9]
@@ -457,7 +479,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         span=("%s ~ %s" % (valid.index[0].strftime("%Y-%m-%d"),
                            valid.index[-1].strftime("%Y-%m-%d")) if len(valid) else "无"),
         card=_state_card(features, shoutu_mkt=shoutu_mkt),
-        holdings=_holdings_block(features, shoutu=shoutu),
+        holdings=_holdings_block(features, shoutu=shoutu, prices=_px),
         factors=_factors_block(valid),
         position=_position_block(valid),
         nav=_buy_and_hold_block(features, prices),
