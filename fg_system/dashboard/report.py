@@ -22,6 +22,85 @@ ZONE_COLORS = ["#8b0000", "#d9534f", "#f0ad4e", "#5cb85c", "#006400"]
 ZONE_NAMES = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"]
 
 
+def _holdings_block(features):
+    """持仓标的看板：我的持仓 × 市场贪恐环境 × 系统覆盖与指令（只读快照）。
+
+    数据口径：
+    - 持仓 = Data/positions.csv 最新日期行（sync_positions.py 产出）
+    - 净值 = Data/accounts.csv 最新 stock 行
+    - 市场贪恐 = features 最新 fg_index（**市场级**；标的级系数数据源
+      szdt.tech/universe 未覆盖 GDXU/YINN/CONL/CRCG/AXTX，故不虚造标的级系数）
+    - 系统覆盖 = config.SYMBOLS ∪ CRYPTO_FLAT_SYMBOLS（与 portfolio_check 同口径）
+    """
+    out = ["<p style='font-size:12px;color:#666'>贪恐系数为<b>市场级 fg_index</b>"
+           "（标的级系数数据源未覆盖下列持仓 ETF，不虚造）；持仓来自实盘快照，只读。</p>"]
+    try:
+        pos = pd.read_csv(config.POSITIONS_PATH)
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        return "".join(out) + "<p>持仓快照不可用（Data/positions.csv 缺失）</p>"
+    if pos.empty:
+        return "".join(out) + "<p>持仓快照为空</p>"
+    latest = pos[pos["date"] == pos["date"].max()]
+    try:
+        acc = pd.read_csv(config.ACCOUNTS_PATH)
+        acc = acc[(acc["account"] == "stock") & (acc["date"] == acc["date"].max())]
+        net = float(acc.iloc[-1]["net_value"]) if not acc.empty else None
+    except Exception:
+        net = None
+
+    # 市场贪恐环境（最新）
+    fg, zone = None, "—"
+    valid = features.dropna(subset=["fg_index"])
+    if not valid.empty:
+        fg = float(valid.iloc[-1]["fg_index"])
+        zi = int(np.clip(np.searchsorted([20, 40, 60, 80], fg, side="right"), 0, 4))
+        zone = ZONE_NAMES[zi]
+    env_cell = ("%s %s" % (("%.0f" % fg), zone)) if fg is not None else "—"
+
+    in_system = set(config.SYMBOLS) | set(config.CRYPTO_FLAT_SYMBOLS)
+    rows = []
+    for _, r in latest.iterrows():
+        sym = str(r.get("symbol", "")).strip()
+        name = str(r.get("name", "")).strip()
+        mv = _num(r.get("market_value"))
+        qty = _num(r.get("qty"))
+        price = _num(r.get("price"))
+        cost = _num(r.get("cost"))
+        pnl = ((price - cost) / cost * 100.0) if cost and cost > 0 and price else None
+        ratio = (mv / net * 100.0) if net and mv is not None else None
+        in_s = sym in in_system
+        if in_s:
+            advise = "系统可给指令（组合目标仓位见区块 5）"
+        else:
+            advise = "系统无指令（覆盖范围外，纪律上系统不管）"
+        rows.append(
+            "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>"
+            "<td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
+            % (sym, name, _fmt(qty), _fmt(mv), ("%.1f%%" % ratio) if ratio is not None else "—",
+               ("%.1f%%" % pnl) if pnl is not None else "—",
+               env_cell, ("✅ 是" if in_s else "❌ 否"), advise))
+    if not rows:
+        return "".join(out) + "<p>无持仓记录</p>"
+    head = ("<div class='scroll'><table class='card'><tr><th>标的</th><th>名称</th>"
+            "<th>数量</th><th>市值</th><th>占净值</th><th>浮盈亏</th>"
+            "<th>市场贪恐</th><th>系统覆盖</th><th>建议</th></tr>")
+    return "".join(out) + head + "".join(rows) + "</table></div>"
+
+
+def _num(v):
+    try:
+        f = float(v)
+        return f if np.isfinite(f) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _fmt(v):
+    if v is None:
+        return "—"
+    return ("%d" % v) if float(v).is_integer() else ("%.2f" % v)
+
+
 # ------------------------------------------------------------------ 区块
 def _state_card(features):
     valid = features.dropna(subset=["fg_index"])
@@ -256,25 +335,28 @@ svg.chart{{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08);display:block;ma
 <h2>1. 当前状态卡</h2>
 %(card)s
 
-<h2>2. 指数曲线与档位带（fg_index）</h2>
+<h2>2. 持仓标的看板（持仓 × 市场贪恐 × 系统指令）</h2>
+%(holdings)s
+
+<h2>3. 指数曲线与档位带（fg_index）</h2>
 %(index_svg)s
 
-<h2>3. 四因子分解</h2>
+<h2>4. 四因子分解</h2>
 %(factors)s
 
-<h2>4. 目标仓位与买卖点</h2>
+<h2>5. 目标仓位与买卖点</h2>
 %(position)s
 
-<h2>5. 净值对比（策略 vs 买入持有）</h2>
+<h2>6. 净值对比（策略 vs 买入持有）</h2>
 %(nav)s
 
-<h2>6. 损耗监控（§4.5 约束 4）</h2>
+<h2>7. 损耗监控（§4.5 约束 4）</h2>
 %(decay)s
 
-<h2>7. 损耗归因（§11.6 强制输出）</h2>
+<h2>8. 损耗归因（§11.6 强制输出）</h2>
 %(loss)s
 
-<h2>8. 外部指数对照（人工录入，可留空，§15.3）</h2>
+<h2>9. 外部指数对照（人工录入，可留空，§15.3）</h2>
 <p>%(external_note)s</p>
 
 <script>
@@ -291,6 +373,7 @@ const EXTERNAL = %(external_json)s;
         "span": ("%s ~ %s" % (valid.index[0].strftime("%Y-%m-%d"),
                               valid.index[-1].strftime("%Y-%m-%d")) if len(valid) else "无"),
         "card": _state_card(features),
+        "holdings": _holdings_block(features),
         "index_svg": index_svg,
         "factors": _factors_block(valid),
         "position": _position_block(valid),
