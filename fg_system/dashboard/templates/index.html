@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>{{ title }}</title>
+{{ pwa_head }}
+<script src="/static/echarts.min.js"></script>
+<style>
+:root{
+  --bg:#0b0e14;--card:rgba(22,27,38,.72);--border:rgba(255,255,255,.07);
+  --text:#e6edf3;--sub:#8b949e;--accent:#58a6ff;--up:#f85149;--down:#3fb950;
+  --chip:rgba(255,255,255,.06);--radius:14px;
+}
+*{box-sizing:border-box}
+body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+  margin:0;padding:18px;background:radial-gradient(1200px 600px at 20% -10%,#16202e 0%,var(--bg) 55%) fixed;
+  color:var(--text);-webkit-text-size-adjust:100%;font-variant-numeric:tabular-nums}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font-size:21px;font-weight:700;margin:2px 0 4px;letter-spacing:.3px}
+.sub{color:var(--sub);font-size:12px;margin:0 0 18px}
+h2{font-size:14px;margin:22px 0 10px;padding:10px 14px;background:var(--card);
+  border:1px solid var(--border);border-radius:var(--radius);border-left:3px solid var(--accent);
+  display:flex;align-items:center;gap:8px}
+h2 .no{background:var(--chip);border:1px solid var(--border);border-radius:6px;
+  padding:0 7px;font-size:11px;color:var(--sub);font-weight:600}
+.sec{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px;margin:0 0 12px}
+table.card{border-collapse:collapse;width:100%;background:transparent;border-radius:10px;overflow:hidden}
+table.card th,table.card td{border-bottom:1px solid var(--border);padding:8px 12px;font-size:13px;text-align:left}
+table.card th{background:var(--chip);color:var(--sub);font-weight:600;font-size:12px}
+table.card tr:last-child td{border-bottom:none}
+div.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+.zone{display:inline-block;padding:3px 10px;border-radius:20px;color:#fff;font-size:12px;font-weight:600}
+/* 状态卡 hero */
+.hero{display:flex;flex-direction:column;gap:12px}
+.hero-top{display:flex;justify-content:space-between;align-items:center}
+.hero-date{color:var(--sub);font-size:12px}
+.hero-fg{display:flex;flex-direction:column;gap:2px}
+.hero-num{font-size:52px;font-weight:800;line-height:1;letter-spacing:-1px}
+.hero-unit{color:var(--sub);font-size:12px}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{background:var(--chip);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+.stat-label{color:var(--sub);font-size:11px;margin-bottom:4px}
+.stat-value{font-size:17px;font-weight:700}
+.stat-value.bad{color:var(--up)}
+/* 温度刻度条（参考 szdt.tech 市场温度） */
+.temp{margin:2px 0 4px}
+.temp-track{height:10px;border-radius:6px;background:linear-gradient(90deg,#8b0000,#d9534f,#f0ad4e,#5cb85c,#006400);position:relative;margin-bottom:6px}
+.temp-fill{position:absolute;inset:0 auto 0 0;border-radius:6px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
+.temp-dot{position:absolute;top:-4px;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #d29922;transform:translateX(-50%);box-shadow:0 1px 4px rgba(0,0,0,.5)}
+.temp-ticks{display:flex;justify-content:space-between;color:var(--sub);font-size:11px}
+/* 持仓卡片网格 */
+.h-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.h-card{background:var(--chip);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.h-top{display:flex;justify-content:space-between;align-items:center}
+.h-sym{font-size:16px;font-weight:800;letter-spacing:.3px}
+.h-pnl{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.h-pnl.up{color:var(--up)} .h-pnl.down{color:var(--down)}
+.h-name{color:var(--sub);font-size:12px;margin:2px 0 8px}
+.h-mid{font-size:12px;color:var(--text);margin-bottom:10px}
+.h-tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;color:#fff}
+.tag-zone{opacity:.95}
+.tag-in{background:rgba(63,185,80,.25);color:var(--down);border:1px solid rgba(63,185,80,.4)}
+.tag-out{background:rgba(139,148,158,.2);color:var(--sub);border:1px solid var(--border)}
+.tag-adv{background:var(--chip);color:var(--text);border:1px solid var(--border)}
+/* 图表 */
+svg.chart{display:block;max-width:100%;height:auto;background:transparent;border-radius:10px}
+svg.chart text{fill:var(--sub)}
+svg.chart .grid{stroke:rgba(255,255,255,.06)}
+svg.chart .frame{stroke:rgba(255,255,255,.1)}
+/* 四因子卡 */
+.echart-main{height:280px;width:100%}
+.echart{height:220px;width:100%}
+.f-chart{height:64px;width:100%}
+.f-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.f-card{background:var(--chip);border:1px solid var(--border);border-radius:12px;padding:10px 14px}
+.f-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.f-name{font-size:12px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.f-val{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.f-chart svg{width:100%;height:auto;display:block}
+/* 目标仓位进度条 */
+.pos-cap{font-size:26px;font-weight:800;margin:2px 0 10px;font-variant-numeric:tabular-nums}
+.pos-bar{height:14px;background:var(--chip);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px}
+.pos-fill{height:100%;background:linear-gradient(90deg,#1f6feb,#7ee787);border-radius:8px;transition:width .3s}
+/* 净值对比柱 */
+.cmp{display:flex;flex-direction:column;gap:12px}
+.cmp-row{display:grid;grid-template-columns:64px 1fr 1fr;gap:8px;align-items:center;font-size:12px}
+.cmp-lb{color:var(--sub);font-weight:600}
+.cmp-bar{height:22px;border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff;min-width:24px;white-space:nowrap;overflow:hidden}
+.cmp-s{background:linear-gradient(90deg,#1f6feb,#58a6ff)}
+.cmp-b{background:rgba(139,148,158,.35);color:var(--text)}
+.cmp-note{color:var(--sub);font-size:11px;margin-top:8px}
+/* 其它区块内表格间距 */
+.sec table.card{margin:4px 0 0}
+/* Tab 导航（参考 szdt.tech 底部导航） */
+.sec-wrap{display:none}
+.sec-wrap.on{display:block}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;background:rgba(11,14,20,.92);backdrop-filter:blur(12px);border-top:1px solid var(--border)}
+.tab-btn{flex:1;padding:12px 0 14px;text-align:center;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;-webkit-tap-highlight-color:transparent}
+.tab-btn.on{color:var(--accent)}
+.tab-btn.on::after{content:"";display:block;width:24px;height:3px;border-radius:2px;background:var(--accent);margin:4px auto 0}
+body{padding-bottom:64px}
+@media (max-width:780px){
+  .h-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:600px){
+  body{padding:12px;padding-bottom:64px}
+  h1{font-size:18px}
+  .hero-num{font-size:44px}
+  .stat-grid{grid-template-columns:repeat(2,1fr)}
+  .h-grid{grid-template-columns:1fr}
+  .f-grid{grid-template-columns:1fr}
+  table.card th,table.card td{padding:6px 10px;font-size:12px}
+}
+</style></head><body>
+<div class="wrap">
+<h1>{{ title }}</h1>
+<p class="sub">{{ now }} · 有效指数 {{ valid_days }} 天 · {{ span }}</p>
+
+<div class="sec-wrap on" data-name="市场">
+<h2>市场温度</h2>
+<div class="sec">{{ card }}</div>
+<h2>指数曲线与档位带</h2>
+<div class="sec"><div id="chartIndex" class="echart-main"></div></div>
+<h2>四因子分解</h2>
+<div class="sec">{{ factors }}</div>
+</div>
+
+<div class="sec-wrap" data-name="持仓">
+<h2>持仓标的看板</h2>
+<div class="sec">{{ holdings }}</div>
+</div>
+
+<div class="sec-wrap" data-name="系统">
+<h2>目标仓位与买卖点</h2>
+<div class="sec">{{ position }}</div>
+<h2>净值对比（策略 vs 买入持有）</h2>
+<div class="sec">{{ nav }}</div>
+<h2>损耗监控</h2>
+<div class="sec">{{ decay }}</div>
+<h2>损耗归因</h2>
+<div class="sec">{{ loss }}</div>
+<h2>外部指数对照</h2>
+<div class="sec"><p>{{ external_note }}</p></div>
+</div>
+
+<nav class="tabbar">
+<button class="tab-btn on" data-tab="0">市场</button>
+<button class="tab-btn" data-tab="1">持仓</button>
+<button class="tab-btn" data-tab="2">系统</button>
+</nav>
+
+<script>
+const INDEX = {{ index_json }};
+const FACTORS = {{ factors_json }};
+const POSITION = {{ position_json }};
+const EXTERNAL = {{ external_json }};
+(function () {
+  var tabs = document.querySelectorAll(".tab-btn");
+  var wraps = document.querySelectorAll(".sec-wrap");
+  function show(n) {
+    for (var i = 0; i < wraps.length; i++) {
+      wraps[i].className = "sec-wrap" + (i === n ? " on" : "");
+    }
+    for (var j = 0; j < tabs.length; j++) {
+      tabs[j].className = "tab-btn" + (j === n ? " on" : "");
+    }
+    var charts = window.__charts || [];
+    for (var c = 0; c < charts.length; c++) { charts[c].resize(); }
+  }
+  for (var k = 0; k < tabs.length; k++) {
+    (function (idx) {
+      tabs[k].addEventListener("click", function () { show(idx); });
+    })(k);
+  }
+
+  window.__charts = [];
+  var SUB = "#8b949e", TEXT = "#e6edf3", BORDER = "rgba(255,255,255,.1)";
+  var SPLIT = "rgba(255,255,255,.06)";
+  var tip = { backgroundColor: "rgba(22,27,38,.96)", borderColor: BORDER,
+              textStyle: { color: TEXT, fontSize: 12 } };
+  var ZONES = [[0,20,"#8b0000"],[20,40,"#d9534f"],[40,60,"#f0ad4e"],
+               [60,80,"#5cb85c"],[80,100,"#006400"]];
+
+  if (document.getElementById("chartIndex")) {
+    var idx = echarts.init(document.getElementById("chartIndex"));
+    window.__charts.push(idx);
+    idx.setOption({
+      backgroundColor: "transparent",
+      grid: { left: 6, right: 12, top: 30, bottom: 6, containLabel: true },
+      tooltip: Object.assign({ trigger: "axis" }, tip),
+      xAxis: { type: "category", boundaryGap: false,
+        data: INDEX.map(function (p) { return p[0]; }),
+        axisLine: { lineStyle: { color: BORDER } },
+        axisLabel: { color: SUB, fontSize: 10 } },
+      yAxis: { type: "value", min: 0, max: 100,
+        axisLabel: { color: SUB, fontSize: 10 },
+        splitLine: { lineStyle: { color: SPLIT } } },
+      series: [{
+        type: "line", data: INDEX.map(function (p) { return p[1]; }),
+        smooth: true, symbol: "none",
+        lineStyle: { width: 2, color: "#58a6ff" },
+        areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [{ offset: 0, color: "rgba(88,166,255,.30)" },
+                       { offset: 1, color: "rgba(88,166,255,0)" }] } },
+        markArea: { silent: true,
+          data: ZONES.map(function (z) {
+            return [{ yAxis: z[0], itemStyle: { color: z[2] + "1a" } },
+                    { yAxis: z[1] }];
+          }) }
+      }]
+    });
+  }
+
+  var FKEYS = ["vix", "term", "price", "breadth"];
+  var FCOLORS = ["#58a6ff", "#d29922", "#7ee787", "#f85149"];
+  for (var fi = 0; fi < FKEYS.length; fi++) {
+    (function (i) {
+      var el = document.getElementById("chartF" + i);
+      if (!el || !FACTORS[FKEYS[i]]) { return; }
+      var ch = echarts.init(el);
+      window.__charts.push(ch);
+      var data = FACTORS[FKEYS[i]];
+      ch.setOption({
+        backgroundColor: "transparent",
+        grid: { left: 2, right: 2, top: 6, bottom: 2 },
+        xAxis: { type: "category", show: false, boundaryGap: false,
+                 data: data.map(function (p) { return p[0]; }) },
+        yAxis: { type: "value", show: false,
+                 splitLine: { show: false } },
+        series: [{ type: "line", data: data.map(function (p) { return p[1]; }),
+          smooth: true, symbol: "none",
+          lineStyle: { width: 1.6, color: FCOLORS[i] },
+          areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [{ offset: 0, color: FCOLORS[i] + "40" },
+                         { offset: 1, color: FCOLORS[i] + "00" }] } } }]
+      });
+    })(fi);
+  }
+
+  if (document.getElementById("chartPos")) {
+    var pos = echarts.init(document.getElementById("chartPos"));
+    window.__charts.push(pos);
+    pos.setOption({
+      backgroundColor: "transparent",
+      grid: { left: 6, right: 10, top: 18, bottom: 6, containLabel: true },
+      tooltip: Object.assign({ trigger: "axis",
+        valueFormatter: function (v) { return (v * 100).toFixed(1) + "%"; } }, tip),
+      xAxis: { type: "category", boundaryGap: false,
+        data: POSITION.map(function (p) { return p[0]; }),
+        axisLine: { lineStyle: { color: BORDER } },
+        axisLabel: { color: SUB, fontSize: 10 } },
+      yAxis: { type: "value", min: 0, max: 1,
+        axisLabel: { color: SUB, fontSize: 10,
+          formatter: function (v) { return (v * 100) + "%"; } },
+        splitLine: { lineStyle: { color: SPLIT } } },
+      series: [{
+        type: "line", data: POSITION.map(function (p) { return p[1]; }),
+        smooth: true, symbol: "none",
+        lineStyle: { width: 2, color: "#d29922" },
+        areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [{ offset: 0, color: "rgba(210,153,34,.30)" },
+                       { offset: 1, color: "rgba(210,153,34,0)" }] } }
+      }]
+    });
+  }
+
+  if (typeof window.addEventListener === "function") {
+    var rz = function () {
+      var charts = window.__charts || [];
+      for (var r = 0; r < charts.length; r++) { charts[r].resize(); }
+    };
+    window.addEventListener("resize", rz);
+  }
+})();
+</script>
+</div>
+</body></html>

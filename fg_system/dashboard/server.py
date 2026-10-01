@@ -7,9 +7,11 @@
 ⇒ 架构：Mac 上起一个只读 HTTP 服务；**每次请求**重跑 pipeline 并渲染 HTML；
 手机浏览器打开/刷新即得最新状态。**手机侧不装任何东西、不跑后台进程。**
 
-【为什么用标准库 `http.server` 而不是 Flask】
-本服务只做「GET / → 渲染 HTML」，没有路由 / 模板 / 中间件需求。
-引入 Flask 会给 `requirements.txt` 加一个**生产依赖**，收益为零。
+【为什么改用 Flask + Jinja2（2026-10-02）】
+页面已演进为多路由（PWA manifest / 图标 / APK / 静态资源）和多区块模板，
+并持续打磨手机端 UI。Flask 提供路由、静态文件与 WSGI 服务一体化，
+Jinja2 让模板独立成文件、不再需要 `%%` 转义。`make_server` 接口保持兼容，
+`scripts/serve_dashboard.py` 与既有测试无需改动。
 
 【⚠️ 本服务**绝不**抓取守猪待兔】见 `tests/dashboard/test_server.py` 的
 `test_server_never_fetches_from_api`。两条理由，任一条都足以禁止：
@@ -32,7 +34,6 @@
 """
 import base64
 import hmac
-import http.server
 import os
 import re
 import socket
@@ -82,7 +83,7 @@ def parse_auth(spec):
 
 
 def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
-    """构造请求处理器。
+    """构造 Flask 应用（WSGI callable）。
 
     `get_features()` 在**每次请求**时调用 —— 这正是「打开/刷新即最新」的实现，
     也是用户明确要求的行为（而不是启动时算一次后缓存）。
@@ -92,156 +93,103 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
       `GET /manifest.json`  PWA manifest —— 「添加到主屏幕」用
       `GET /icon-N.png`     PWA 图标（N=192/512，**手绘生成，不落盘**）
       `GET /apk`            Android 客户端安装包（**不触发计算**）
+      `GET /static/*`       本地静态资源（echarts.min.js 等，离线可用）
 
     `auth` 为 `(user, password)` 时，**所有路由**都要求 HTTP Basic 认证。
     不设则完全不校验（只适合**可信局域网**）—— 见模块 docstring 的安全说明。
     """
+    from flask import Flask, Response, request, send_file
 
-    class Handler(http.server.BaseHTTPRequestHandler):
-        def do_GET(self):
-            # 鉴权放在**最前面**：任何路由（含 manifest/图标）都不能绕过，
+    app = Flask(__name__, static_folder=None)
+    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+
+    if auth:
+        @app.before_request
+        def _guard():
+            # 鉴权放在**最前面**：任何路由（含静态资源）都不能绕过，
             # 未通过时**不返回任何仪表盘内容**。
-            if auth and not check_basic_auth(
-                    self.headers.get("Authorization"), auth[0], auth[1]):
-                self._unauthorized()
-                return
+            if not check_basic_auth(request.headers.get("Authorization"),
+                                    auth[0], auth[1]):
+                return Response(
+                    "需要登录。\n", status=401,
+                    headers={
+                        "WWW-Authenticate":
+                            'Basic realm="fg-dashboard", charset="UTF-8"',
+                        "Cache-Control": "no-store",
+                    })
 
-            path = self.path.split("?")[0]
+    @app.route("/manifest.json")
+    def _manifest():
+        resp = Response(pwa.manifest_json(), mimetype=MANIFEST_MIME)
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+        return resp
 
-            # 「添加到主屏幕」——让手机**不需要 APK** 也有独立图标。
-            # 静态且不变，故可缓存；**不触发 pipeline**。
-            if path == "/manifest.json":
-                self._serve_bytes(pwa.manifest_json(), MANIFEST_MIME, cache=True)
-                return
-            m = _ICON_RE.match(path)
-            if m and int(m.group(1)) in _ICON_SIZES:
-                self._serve_bytes(pwa.icon_png(int(m.group(1))), "image/png",
-                                  cache=True)
-                return
+    _icon_sizes = set(_ICON_SIZES)
 
-            if path == "/apk":
-                self._serve_apk()
-                return
-            if path.startswith("/static/"):
-                self._serve_static(path[len("/static/"):])
-                return
-            if path not in ("/", "/index.html"):
-                self.send_error(404, "Not Found")
-                return
-            try:
-                html = render_dashboard(get_features(), prices_path=prices_path)
-            except Exception as exc:      # 渲染失败不能把服务搞挂
-                self._plain(500, "渲染失败：%s: %s" % (type(exc).__name__, exc))
-                return
-            body = html.encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")   # 刷新必须拿新的
-            self.end_headers()
-            self.wfile.write(body)
+    @app.route("/icon-<int:size>.png")
+    def _icon(size):
+        if size not in _icon_sizes:
+            return Response("Not Found", status=404)
+        resp = Response(pwa.icon_png(size), mimetype="image/png")
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+        return resp
 
-        def _serve_static(self, rel):
-            """提供本地静态资源（echarts.min.js 等）——离线可用、不经第三方。"""
-            base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
-            target = os.path.normpath(os.path.join(base, rel))
-            if not target.startswith(base) or not os.path.isfile(target):
-                self.send_error(404, "Not Found")
-                return
-            ctype = ("application/javascript" if target.endswith(".js")
-                     else "text/plain")
-            with open(target, "rb") as f:
-                body = f.read()
-            self.send_response(200)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "public, max-age=86400")
-            self.end_headers()
-            self.wfile.write(body)
+    @app.route("/apk")
+    def _apk():
+        p = apk_path or config.APK_PATH
+        if not os.path.isfile(p):
+            return Response(
+                "APK 尚未构建。\n\n在开发机上运行：\n"
+                "    bash mobile/build_apk.sh\n\n产物路径：\n    %s\n\n"
+                "（本服务只负责分发；构建需要 JDK 21 + Android SDK，"
+                "见 mobile/README.md）" % p,
+                status=404, mimetype="text/plain; charset=utf-8")
+        resp = send_file(p, mimetype=APK_MIME, as_attachment=True,
+                         download_name="fg-dashboard.apk")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
 
-        def _serve_apk(self):
-            """分发 APK —— **公司有安全下载限制，APK 传不出公司网络**。
+    @app.route("/static/<path:filename>")
+    def _static(filename):
+        # 只允许 static/ 目录内的文件，防路径穿越
+        base = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+        target = os.path.normpath(os.path.join(base, filename))
+        if not target.startswith(base) or not os.path.isfile(target):
+            return Response("Not Found", status=404)
+        resp = send_file(target, conditional=True, max_age=86400)
+        resp.headers["Cache-Control"] = "public, max-age=86400"
+        return resp
 
-            手机与 Mac 本就要在同一 Wi-Fi，故让 Mac 当分发点：
-            手机浏览器打开 `http://<mac>:8000/apk` 即可下载，不经任何第三方。
+    @app.route("/")
+    @app.route("/index.html")
+    def _index():
+        try:
+            html = render_dashboard(get_features(), prices_path=prices_path)
+        except Exception as exc:      # 渲染失败不能把服务搞挂
+            return Response("渲染失败：%s: %s" % (type(exc).__name__, exc),
+                            status=500, mimetype="text/plain; charset=utf-8")
+        resp = Response(html, mimetype="text/html; charset=utf-8")
+        resp.headers["Cache-Control"] = "no-store"   # 刷新必须拿新的
+        return resp
 
-            **不触发 pipeline**（下载安装包没必要重算仪表盘）。
-            """
-            p = apk_path or config.APK_PATH
-            if not os.path.isfile(p):
-                self._plain(404,
-                            "APK 尚未构建。\n\n"
-                            "在开发机上运行：\n"
-                            "    bash mobile/build_apk.sh\n\n"
-                            "产物路径：\n"
-                            "    %s\n\n"
-                            "（本服务只负责分发；构建需要 JDK 21 + Android SDK，"
-                            "见 mobile/README.md）" % p)
-                return
-            with open(p, "rb") as fh:
-                body = fh.read()
-            self.send_response(200)
-            self.send_header("Content-Type", APK_MIME)
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Content-Disposition",
-                             'attachment; filename="fg-dashboard.apk"')
-            self.end_headers()
-            self.wfile.write(body)
-
-        def _serve_bytes(self, body, ctype, cache=False):
-            """发送一段内存里的内容（manifest / 图标）。"""
-            self.send_response(200)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Content-Length", str(len(body)))
-            # 内容固定不变：允许浏览器缓存，省掉每次重新生成图标
-            self.send_header("Cache-Control",
-                             "public, max-age=86400" if cache else "no-store")
-            self.end_headers()
-            self.wfile.write(body)
-
-        def _unauthorized(self):
-            """401 + `WWW-Authenticate` —— 浏览器据此弹出账号密码框。
-
-            **不回显任何仪表盘内容**（连标题都不给），避免未授权泄露。
-            """
-            body = "需要登录。\n".encode("utf-8")
-            self.send_response(401)
-            self.send_header("WWW-Authenticate",
-                             'Basic realm="fg-dashboard", charset="UTF-8"')
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            self.wfile.write(body)
-
-        def _plain(self, code, text):
-            body = text.encode("utf-8")
-            self.send_response(code)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-
-        def log_message(self, fmt, *args):
-            sys.stderr.write("[dashboard] %s %s\n" % (self.address_string(), fmt % args))
-
-    return Handler
+    return app
 
 
 def make_server(host="0.0.0.0", port=8000, get_features=None, prices_path=None,
                 apk_path=None, auth=None):
-    """创建（**未启动**的）HTTP 服务。`port=0` 表示随机端口（测试用）。
+    """创建（**未启动**的）WSGI HTTP 服务。`port=0` 表示随机端口（测试用）。
 
+    返回对象兼容旧接口：`serve_forever()` / `server_close()` / `server_address`。
     `auth` 为 `(user, password)` 时要求 HTTP Basic 认证，见 `make_handler`。
     """
     if get_features is None:
         def get_features():
             from fg_system import pipeline
             return pipeline.run(write=False)
-    return http.server.ThreadingHTTPServer(
-        (host, port),
-        make_handler(get_features, prices_path=prices_path, apk_path=apk_path,
-                     auth=auth))
+    from werkzeug.serving import make_server as wsgi_server
+    return wsgi_server(host, port, make_handler(
+        get_features, prices_path=prices_path, apk_path=apk_path, auth=auth),
+        threaded=True)
 
 
 # ============================================================ 手机该访问哪个地址
