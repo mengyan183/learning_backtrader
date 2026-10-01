@@ -59,8 +59,23 @@ def write_snapshot(accounts, positions):
 
 
 # ---------------------------------------------------------------- 富途
+def _opend_alive(host="127.0.0.1", port=11111, timeout=2.0):
+    """快速探测 FutuOpenD 是否可达（避免无 OpenD 时连接挂起数十秒）。"""
+    import socket
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
 def sync_futu(accounts, positions, date):
     """富途(FutuOpenD) → 股票账户快照行。OpenD 不可达时打印提示并跳过（不崩溃）。"""
+    if not _opend_alive():
+        print("[futu] FutuOpenD 未运行（127.0.0.1:11111 不可达），跳过股票账户。\n"
+              "       家里 Mac 首次使用：下载 FutuOpenD 并开通 API 权限后重试；"
+              "公司电脑用 static 模式")
+        return accounts, positions
     try:
         import futu
     except ImportError:
