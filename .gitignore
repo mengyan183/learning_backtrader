@@ -14,5 +14,11 @@ __pycache__/
 Data/shoutu_token
 Data/tstoken
 
+# 实盘账户/持仓快照 —— 运行时由 scripts/sync_positions.py 动态生成，不入库
+# （历史提交过的版本需后续用 git rm --cached 处理；新写入一律拦截）
+Data/accounts.csv
+Data/positions.csv
+~/.okx_credentials.json
+
 # 传输中间产物
 *.tar.xz
