@@ -1,3 +1,0 @@
-date,account,net_value,securities_mv,cash,unrealized_pnl,day_pnl,currency,note
-2026-09-22,stock,17202.17,18183.83,-981.66,-1722.05,-586.94,USD,富途保证金账户6508；融资使用中；风控状态=安全
-2026-09-22,crypto,3012.19,,1831.89,669.42,,USDT,本币USDT(法币入金换U)；现货杠杆账户；唯一持仓=BTC现货杠杆；负债1891.05；当前杠杆0.63x；维持保证金率4046.92%
