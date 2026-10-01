@@ -1,33 +1,17 @@
 {
-  "portfolio": {
-    "ammo_released": [
-      0,
-      1,
-      2
-    ],
-    "market_batches": {
-      "crypto": 2,
-      "us_equity": 1
-    },
-    "last_rebalance_date": null,
-    "last_extreme_fear_date": null
+  "ammo_released": [
+    0,
+    1,
+    2
+  ],
+  "last_rebalance_date": null,
+  "circuit_breaker": false,
+  "cb_trigger_index": 86.69720017636683,
+  "cb_trigger_date": "2023-12-28",
+  "cb_low_price": {
+    "TQQQ": 23.295,
+    "SOXL": 26.25,
+    "UPRO": 52.45
   },
-  "us_equity": {
-    "market": "us_equity",
-    "circuit_breaker": false,
-    "cb_trigger_index": 85.02292768959435,
-    "cb_trigger_date": "2023-12-13",
-    "cb_low_price": {},
-    "greed_tier": 0,
-    "last_extreme_fear_date": null
-  },
-  "crypto": {
-    "market": "crypto",
-    "circuit_breaker": false,
-    "cb_trigger_index": null,
-    "cb_trigger_date": null,
-    "cb_low_price": {},
-    "greed_tier": 0,
-    "last_extreme_fear_date": null
-  }
+  "last_extreme_fear_date": "2025-04-04"
 }
