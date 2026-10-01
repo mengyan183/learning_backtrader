@@ -22,7 +22,7 @@ ZONE_COLORS = ["#8b0000", "#d9534f", "#f0ad4e", "#5cb85c", "#006400"]
 ZONE_NAMES = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"]
 
 
-def _holdings_block(features, shoutu=None):
+def _holdings_block(features, shoutu=None, duo=None):
     """持仓标的看板：我的持仓 × 市场贪恐环境 × 系统覆盖与指令（只读快照）。
 
     数据口径：
@@ -124,9 +124,12 @@ def _holdings_block(features, shoutu=None):
                _fmt(qty), s_bg, s_txt,
                ("tag-in" if in_s else "tag-out"), ("✅ 系统覆盖" if in_s else "❌ 范围外"),
                advise))
+    body = "".join(out)
+    if duo:
+        body += duo
     if not cards:
-        return "".join(out) + "<p>无持仓记录</p>"
-    return "".join(out) + "<div class='h-grid'>" + "".join(cards) + "</div>"
+        return body + "<p>无持仓记录</p>"
+    return body + "<div class='h-grid'>" + "".join(cards) + "</div>"
 
 
 def _num(v):
@@ -141,6 +144,31 @@ def _fmt(v):
     if v is None:
         return "—"
     return ("%d" % v) if float(v).is_integer() else ("%.2f" % v)
+
+
+
+def _duo_strip(features, shoutu_mkt=None):
+    """紧凑双系数条：当前系统 + 守猪待兔（持仓页/其他区块顶部用）。"""
+    valid = features.dropna(subset=["fg_index"])
+    if valid.empty:
+        return ""
+    fg = float(valid.iloc[-1]["fg_index"])
+    zi = int(np.clip(np.searchsorted([20, 40, 60, 80], fg, side="right"), 0, 4))
+    part1 = ("<div class='duo-item'><span class='l'>当前系统</span>"
+             "<span class='v'>%.1f</span>"
+             "<span class='zone' style='background:%s'>%s</span></div>"
+             % (fg, ZONE_COLORS[zi], ZONE_NAMES[zi]))
+    if shoutu_mkt is not None:
+        szi = int(np.clip(np.searchsorted([20, 40, 60, 80], shoutu_mkt,
+                                          side="right"), 0, 4))
+        part2 = ("<div class='duo-item'><span class='l'>守猪待兔</span>"
+                 "<span class='v'>%.1f</span>"
+                 "<span class='zone' style='background:%s'>%s</span></div>"
+                 % (shoutu_mkt, ZONE_COLORS[szi], ZONE_NAMES[szi]))
+    else:
+        part2 = ("<div class='duo-item'><span class='l'>守猪待兔</span>"
+                 "<span class='v'>—</span></div>")
+    return "<div class='duo-strip'>%s%s</div>" % (part1, part2)
 
 
 # ------------------------------------------------------------------ 区块
@@ -425,7 +453,8 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         span=("%s ~ %s" % (valid.index[0].strftime("%Y-%m-%d"),
                            valid.index[-1].strftime("%Y-%m-%d")) if len(valid) else "无"),
         card=_state_card(features, shoutu_mkt=shoutu_mkt),
-        holdings=_holdings_block(features, shoutu=shoutu),
+        holdings=_holdings_block(features, shoutu=shoutu,
+                          duo=_duo_strip(features, shoutu_mkt)),
         factors=_factors_block(valid),
         position=_position_block(valid),
         nav=_buy_and_hold_block(features, prices),
