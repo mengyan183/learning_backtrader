@@ -276,6 +276,9 @@ def main():
 
     print(f"[sync] FG_SYNC_MODE=live：动态同步 {today()}")
     accounts, positions = load_existing()
+    # 当日覆盖写：同一交易日已有快照行时先剔除，避免重复追加导致下游重复计入
+    accounts = accounts[accounts["date"] != today()].reset_index(drop=True)
+    positions = positions[positions["date"] != today()].reset_index(drop=True)
     accounts, positions = sync_futu(accounts, positions, today())
     accounts, positions = sync_okx(accounts, positions, today())
     write_snapshot(accounts, positions)
