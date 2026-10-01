@@ -32,8 +32,9 @@ def _holdings_block(features):
       szdt.tech/universe 未覆盖 GDXU/YINN/CONL/CRCG/AXTX，故不虚造标的级系数）
     - 系统覆盖 = config.SYMBOLS ∪ CRYPTO_FLAT_SYMBOLS（与 portfolio_check 同口径）
     """
-    out = ["<p style='font-size:12px;color:#666'>贪恐系数为<b>市场级 fg_index</b>"
-           "（标的级系数数据源未覆盖下列持仓 ETF，不虚造）；持仓来自实盘快照，只读。</p>"]
+    out = ["<p style='font-size:12px;color:#8b949e'>贪恐系数为<b>市场级 fg_index</b>"
+           "（标的级系数数据源未覆盖下列持仓 ETF，不虚造）；持仓来自实盘快照，只读；"
+           "浮盈亏按红涨绿跌着色。</p>"]
     try:
         pos = pd.read_csv(config.POSITIONS_PATH)
     except (FileNotFoundError, pd.errors.EmptyDataError):
@@ -58,7 +59,7 @@ def _holdings_block(features):
     env_cell = ("%s %s" % (("%.0f" % fg), zone)) if fg is not None else "—"
 
     in_system = set(config.SYMBOLS) | set(config.CRYPTO_FLAT_SYMBOLS)
-    rows = []
+    cards = []
     for _, r in latest.iterrows():
         sym = str(r.get("symbol", "")).strip()
         name = str(r.get("name", "")).strip()
@@ -70,21 +71,30 @@ def _holdings_block(features):
         ratio = (mv / net * 100.0) if net and mv is not None else None
         in_s = sym in in_system
         if in_s:
-            advise = "系统可给指令（组合目标仓位见区块 5）"
+            advise = "系统可给指令（目标见区块5）"
         else:
-            advise = "系统无指令（覆盖范围外，纪律上系统不管）"
-        rows.append(
-            "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>"
-            "<td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
-            % (sym, name, _fmt(qty), _fmt(mv), ("%.1f%%" % ratio) if ratio is not None else "—",
-               ("%.1f%%" % pnl) if pnl is not None else "—",
-               env_cell, ("✅ 是" if in_s else "❌ 否"), advise))
-    if not rows:
+            advise = "系统无指令（覆盖范围外）"
+        pnl_cls = ("up" if pnl and pnl >= 0 else "down") if pnl is not None else ""
+        pnl_txt = ("%+.1f%%" % pnl) if pnl is not None else "—"
+        cards.append(
+            "<div class='h-card'>"
+            "<div class='h-top'><span class='h-sym'>%s</span>"
+            "<span class='h-pnl %s'>%s</span></div>"
+            "<div class='h-name'>%s</div>"
+            "<div class='h-mid'>市值 %s · 占净值 %s · 数量 %s</div>"
+            "<div class='h-tags'>"
+            "<span class='tag tag-zone' style='background:%s'>贪恐 %s</span>"
+            "<span class='tag %s'>%s</span>"
+            "<span class='tag tag-adv'>%s</span>"
+            "</div></div>"
+            % (sym, pnl_cls, pnl_txt, name, _fmt(mv),
+               ("%.1f%%" % ratio) if ratio is not None else "—", _fmt(qty),
+               ZONE_COLORS[zi], env_cell,
+               ("tag-in" if in_s else "tag-out"), ("✅ 系统覆盖" if in_s else "❌ 范围外"),
+               advise))
+    if not cards:
         return "".join(out) + "<p>无持仓记录</p>"
-    head = ("<div class='scroll'><table class='card'><tr><th>标的</th><th>名称</th>"
-            "<th>数量</th><th>市值</th><th>占净值</th><th>浮盈亏</th>"
-            "<th>市场贪恐</th><th>系统覆盖</th><th>建议</th></tr>")
-    return "".join(out) + head + "".join(rows) + "</table></div>"
+    return "".join(out) + "<div class='h-grid'>" + "".join(cards) + "</div>"
 
 
 def _num(v):
@@ -110,19 +120,25 @@ def _state_card(features):
     zone = int(row["zone"]) if not pd.isna(row.get("zone")) else 2
     target = row.get("target_position")
     cb = bool(row.get("circuit_breaker", False))
+    fg = float(row["fg_index"])
+    items = [
+        ("核心仓", "%.1f%%" % ((row.get("core_position") or 0) * 100)),
+        ("弹药仓", "%.1f%%" % ((row.get("ammo_position") or 0) * 100)),
+        ("目标总仓位", "%.1f%%" % ((target or 0) * 100)),
+        ("熔断状态", "熔断中" if cb else "正常"),
+    ]
+    stat = "".join(
+        "<div class='stat'><div class='stat-label'>%s</div><div class='stat-value%s'>%s</div></div>"
+        % (k, " bad" if (k == "熔断状态" and v == "熔断中") else "", v)
+        for k, v in items)
     return """
-    <table class="card">
-      <tr><th>日期</th><td>%s</td></tr>
-      <tr><th>fg_index</th><td><b>%.1f</b>（<span class="zone" style="background:%s">%s</span>）</td></tr>
-      <tr><th>核心仓</th><td>%.1f%%</td></tr>
-      <tr><th>弹药仓</th><td>%.1f%%</td></tr>
-      <tr><th>目标总仓位</th><td><b>%.1f%%</b></td></tr>
-      <tr><th>熔断状态</th><td>%s</td></tr>
-    </table>""" % (
-        valid.index[-1].strftime("%Y-%m-%d"), row["fg_index"],
-        ZONE_COLORS[zone], ZONE_NAMES[zone],
-        (row.get("core_position") or 0) * 100, (row.get("ammo_position") or 0) * 100,
-        (target or 0) * 100, "熔断中" if cb else "正常")
+    <div class="hero">
+      <div class="hero-date">信号日 %s</div>
+      <div class="hero-fg"><span class="hero-num">%.1f</span>
+        <span class="zone" style="background:%s">%s</span></div>
+      <div class="stat-grid">%s</div>
+    </div>""" % (valid.index[-1].strftime("%Y-%m-%d"), fg, ZONE_COLORS[zone],
+                 ZONE_NAMES[zone], stat)
 
 
 def _loss_block(prices):
@@ -195,28 +211,40 @@ def _svg_line(points, width=900, height=260, pad=36, y_min=None, y_max=None,
             bot = sy(max(lo, y_min))
             if bot > top:
                 parts.append('<rect x="%d" y="%.1f" width="%d" height="%.1f" fill="%s" '
-                             'opacity="0.10"/>' % (pad, top, width - 2 * pad, bot - top, col))
+                             'opacity="0.13"/>' % (pad, top, width - 2 * pad, bot - top, col))
 
-    # 边框 + 网格
-    parts.append('<rect x="%d" y="%d" width="%d" height="%d" fill="none" '
-                 'stroke="#ccc"/>' % (pad, pad, width - 2 * pad, height - 2 * pad))
-    parts.append('<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" stroke="#eee" '
-                 'stroke-dasharray="3,3"/>' % (pad, sy(50.0), width - pad, sy(50.0)))
+    # 边框 + 网格（深色主题：细半透明）
+    parts.append('<rect class="frame" x="%d" y="%d" width="%d" height="%d" fill="none" '
+                 'stroke="rgba(255,255,255,0.1)"/>' % (pad, pad, width - 2 * pad, height - 2 * pad))
+    for gy in (0.25, 0.5, 0.75):
+        parts.append('<line class="grid" x1="%d" y1="%.1f" x2="%d" y2="%.1f" '
+                     'stroke-dasharray="3,3"/>'
+                     % (pad, pad + gy * (height - 2 * pad), width - pad,
+                        pad + gy * (height - 2 * pad)))
 
-    # 折线
+    # 面积渐变 + 折线
+    area = ("%s%.1f,%.1f " % ("M", sx(0), sy(vals[0]))
+            + " ".join("L%.1f,%.1f" % (sx(i), sy(v)) for i, v in enumerate(vals))
+            + " L%.1f,%.1f Z" % (sx(len(vals) - 1), sy(vals[-1])))
+    parts.append(
+        '<defs><linearGradient id="grad%s" x1="0" y1="0" x2="0" y2="1">'
+        '<stop offset="0%%" stop-color="%s" stop-opacity="0.28"/>'
+        '<stop offset="100%%" stop-color="%s" stop-opacity="0.0"/>'
+        '</linearGradient></defs>'
+        '<path d="%s" fill="url(#grad%s)" stroke="none"/>' % (color.replace("#", "c"), color, color, area, color.replace("#", "c")))
     d = " ".join("%s%.1f,%.1f" % ("M" if i == 0 else "L", sx(i), sy(v))
                  for i, (_, v) in enumerate(pts))
-    parts.append('<path d="%s" fill="none" stroke="%s" stroke-width="1.5"/>'
-                 % (d, color))
+    parts.append('<path d="%s" fill="none" stroke="%s" stroke-width="2" stroke-linejoin="round" '
+                 'stroke-linecap="round"/>' % (d, color))
 
     # 轴标签
-    parts.append('<text x="%d" y="%d" font-size="11" fill="#666">%s</text>'
+    parts.append('<text x="%d" y="%d" font-size="11">%s</text>'
                  % (pad, height - 12, pts[0][0]))
-    parts.append('<text x="%d" y="%d" font-size="11" fill="#666" text-anchor="end">%s</text>'
+    parts.append('<text x="%d" y="%d" font-size="11" text-anchor="end">%s</text>'
                  % (width - pad, height - 12, pts[-1][0]))
-    parts.append('<text x="%d" y="%d" font-size="11" fill="#666">%.1f</text>'
+    parts.append('<text x="%d" y="%d" font-size="11">%.1f</text>'
                  % (pad - 6, pad + 4, y_max))
-    parts.append('<text x="%d" y="%d" font-size="11" fill="#666">%.1f</text>'
+    parts.append('<text x="%d" y="%d" font-size="11" fill="#8b949e">%.1f</text>'
                  % (pad - 6, height - pad + 4, y_min))
     return '<svg class="chart" viewBox="0 0 %d %d" preserveAspectRatio="xMidYMid meet">%s</svg>' % (
         width, height, "".join(parts))
@@ -315,49 +343,105 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
 <title>%(title)s</title>
 %(pwa_head)s
 <style>
-body{{font-family:-apple-system,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif;margin:16px;background:#fafafa;color:#222;-webkit-text-size-adjust:100%%}}
+:root{{
+  --bg:#0b0e14;--card:rgba(22,27,38,.72);--border:rgba(255,255,255,.07);
+  --text:#e6edf3;--sub:#8b949e;--accent:#58a6ff;--up:#f85149;--down:#3fb950;
+  --chip:rgba(255,255,255,.06);--radius:14px;
+}}
+*{{box-sizing:border-box}}
+body{{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+  margin:0;padding:18px;background:radial-gradient(1200px 600px at 20%% -10%%,#16202e 0%%,var(--bg) 55%%) fixed;
+  color:var(--text);-webkit-text-size-adjust:100%%;font-variant-numeric:tabular-nums}}
+.wrap{{max-width:1080px;margin:0 auto}}
+h1{{font-size:21px;font-weight:700;margin:2px 0 4px;letter-spacing:.3px}}
+.sub{{color:var(--sub);font-size:12px;margin:0 0 18px}}
+h2{{font-size:14px;margin:22px 0 10px;padding:10px 14px;background:var(--card);
+  border:1px solid var(--border);border-radius:var(--radius);border-left:3px solid var(--accent);
+  display:flex;align-items:center;gap:8px}}
+h2 .no{{background:var(--chip);border:1px solid var(--border);border-radius:6px;
+  padding:0 7px;font-size:11px;color:var(--sub);font-weight:600}}
+.sec{{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px;margin:0 0 12px}}
+table.card{{border-collapse:collapse;width:100%%;background:transparent;border-radius:10px;overflow:hidden}}
+table.card th,table.card td{{border-bottom:1px solid var(--border);padding:8px 12px;font-size:13px;text-align:left}}
+table.card th{{background:var(--chip);color:var(--sub);font-weight:600;font-size:12px}}
+table.card tr:last-child td{{border-bottom:none}}
 div.scroll{{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%%}}
-h1{{font-size:20px}} h2{{font-size:15px;margin-top:28px;border-left:3px solid #444;padding-left:8px}}
-table.card{{border-collapse:collapse;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08);margin:8px 0}}
-table.card th,table.card td{{border:1px solid #e6e6e6;padding:6px 12px;font-size:13px;text-align:left}}
-table.card th{{background:#f4f4f4}}
-.zone{{display:inline-block;padding:2px 8px;border-radius:3px;color:#fff;font-size:12px}}
-svg.chart{{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08);display:block;max-width:100%%;margin:8px 0}}
+.zone{{display:inline-block;padding:3px 10px;border-radius:20px;color:#fff;font-size:12px;font-weight:600}}
+/* 状态卡 hero */
+.hero{{display:flex;flex-direction:column;gap:12px}}
+.hero-date{{color:var(--sub);font-size:12px}}
+.hero-fg{{display:flex;align-items:baseline;gap:12px}}
+.hero-num{{font-size:44px;font-weight:800;line-height:1}}
+.stat-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}}
+.stat{{background:var(--chip);border:1px solid var(--border);border-radius:10px;padding:10px 12px}}
+.stat-label{{color:var(--sub);font-size:11px;margin-bottom:4px}}
+.stat-value{{font-size:17px;font-weight:700}}
+.stat-value.bad{{color:var(--up)}}
+/* 持仓卡片网格 */
+.h-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}}
+.h-card{{background:var(--chip);border:1px solid var(--border);border-radius:12px;padding:12px 14px}}
+.h-top{{display:flex;justify-content:space-between;align-items:center}}
+.h-sym{{font-size:16px;font-weight:800;letter-spacing:.3px}}
+.h-pnl{{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}}
+.h-pnl.up{{color:var(--up)}} .h-pnl.down{{color:var(--down)}}
+.h-name{{color:var(--sub);font-size:12px;margin:2px 0 8px}}
+.h-mid{{font-size:12px;color:var(--text);margin-bottom:10px}}
+.h-tags{{display:flex;flex-wrap:wrap;gap:6px}}
+.tag{{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;color:#fff}}
+.tag-zone{{opacity:.95}}
+.tag-in{{background:rgba(63,185,80,.25);color:var(--down);border:1px solid rgba(63,185,80,.4)}}
+.tag-out{{background:rgba(139,148,158,.2);color:var(--sub);border:1px solid var(--border)}}
+.tag-adv{{background:var(--chip);color:var(--text);border:1px solid var(--border)}}
+/* 图表 */
+svg.chart{{display:block;max-width:100%%;height:auto;background:transparent;border-radius:10px}}
+svg.chart text{{fill:var(--sub)}}
+svg.chart .grid{{stroke:rgba(255,255,255,.06)}}
+svg.chart .frame{{stroke:rgba(255,255,255,.1)}}
+/* 其它区块内表格间距 */
+.sec table.card{{margin:4px 0 0}}
+@media (max-width:780px){{
+  .h-grid{{grid-template-columns:repeat(2,1fr)}}
+}}
 @media (max-width:600px){{
-  body{{margin:8px}}
-  h1{{font-size:17px}} h2{{font-size:14px;margin-top:20px}}
-  table.card th,table.card td{{padding:5px 8px;font-size:12px}}
+  body{{padding:12px}}
+  h1{{font-size:18px}}
+  .hero-num{{font-size:38px}}
+  .stat-grid{{grid-template-columns:repeat(2,1fr)}}
+  .h-grid{{grid-template-columns:1fr}}
+  table.card th,table.card td{{padding:6px 10px;font-size:12px}}
 }}
 </style></head><body>
+<div class="wrap">
 <h1>%(title)s</h1>
-<p>生成时间：%(now)s　　有效指数天数：%(valid_days)d　　区间：%(span)s</p>
+<p class="sub">生成 %(now)s · 有效指数 %(valid_days)d 天 · 区间 %(span)s</p>
 
-<h2>1. 当前状态卡</h2>
-%(card)s
+<h2><span class="no">1</span>当前状态卡</h2>
+<div class="sec">%(card)s</div>
 
-<h2>2. 持仓标的看板（持仓 × 市场贪恐 × 系统指令）</h2>
-%(holdings)s
+<h2><span class="no">2</span>持仓标的看板</h2>
+<div class="sec">%(holdings)s</div>
 
-<h2>3. 指数曲线与档位带（fg_index）</h2>
-%(index_svg)s
+<h2><span class="no">3</span>指数曲线与档位带（fg_index）</h2>
+<div class="sec">%(index_svg)s</div>
 
-<h2>4. 四因子分解</h2>
-%(factors)s
+<h2><span class="no">4</span>四因子分解</h2>
+<div class="sec">%(factors)s</div>
 
-<h2>5. 目标仓位与买卖点</h2>
-%(position)s
+<h2><span class="no">5</span>目标仓位与买卖点</h2>
+<div class="sec">%(position)s</div>
 
-<h2>6. 净值对比（策略 vs 买入持有）</h2>
-%(nav)s
+<h2><span class="no">6</span>净值对比（策略 vs 买入持有）</h2>
+<div class="sec">%(nav)s</div>
 
-<h2>7. 损耗监控（§4.5 约束 4）</h2>
-%(decay)s
+<h2><span class="no">7</span>损耗监控（§4.5 约束 4）</h2>
+<div class="sec">%(decay)s</div>
 
-<h2>8. 损耗归因（§11.6 强制输出）</h2>
-%(loss)s
+<h2><span class="no">8</span>损耗归因（§11.6 强制输出）</h2>
+<div class="sec">%(loss)s</div>
 
-<h2>9. 外部指数对照（人工录入，可留空，§15.3）</h2>
-<p>%(external_note)s</p>
+<h2><span class="no">9</span>外部指数对照（人工录入，可留空，§15.3）</h2>
+<div class="sec"><p>%(external_note)s</p></div>
 
 <script>
 const INDEX = %(index_json)s;
@@ -365,6 +449,7 @@ const FACTORS = %(factors_json)s;
 const POSITION = %(position_json)s;
 const EXTERNAL = %(external_json)s;
 </script>
+</div>
 </body></html>
 """ % {
         "title": title,
