@@ -133,6 +133,7 @@ def _state_card(features):
     target = row.get("target_position")
     cb = bool(row.get("circuit_breaker", False))
     fg = float(row["fg_index"])
+    pct = max(0.0, min(fg, 100.0))
     items = [
         ("核心仓", "%.1f%%" % ((row.get("core_position") or 0) * 100)),
         ("弹药仓", "%.1f%%" % ((row.get("ammo_position") or 0) * 100)),
@@ -143,14 +144,21 @@ def _state_card(features):
         "<div class='stat'><div class='stat-label'>%s</div><div class='stat-value%s'>%s</div></div>"
         % (k, " bad" if (k == "熔断状态" and v == "熔断中") else "", v)
         for k, v in items)
+    temp = ("<div class='temp'><div class='temp-track'>"
+            "<div class='temp-fill' style='width:%.1f%%'></div>"
+            "<div class='temp-dot' style='left:%.1f%%'></div></div>"
+            "<div class='temp-ticks'><span>0 冷清</span><span>25</span>"
+            "<span>50</span><span>75</span><span>100 火爆</span></div></div>" % (pct, pct))
     return """
     <div class="hero">
-      <div class="hero-date">信号日 %s</div>
-      <div class="hero-fg"><span class="hero-num">%.1f</span>
+      <div class="hero-top"><span class="hero-date">信号日 %s</span>
         <span class="zone" style="background:%s">%s</span></div>
+      <div class="hero-fg"><span class="hero-num">%.1f</span>
+        <span class="hero-unit">贪恐系数（守猪待兔）</span></div>
+      %s
       <div class="stat-grid">%s</div>
-    </div>""" % (valid.index[-1].strftime("%Y-%m-%d"), fg, ZONE_COLORS[zone],
-                 ZONE_NAMES[zone], stat)
+    </div>""" % (valid.index[-1].strftime("%Y-%m-%d"), ZONE_COLORS[zone],
+                 ZONE_NAMES[zone], fg, temp, stat)
 
 
 def _loss_block(prices):
@@ -401,14 +409,22 @@ div.scroll{{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%%}}
 .zone{{display:inline-block;padding:3px 10px;border-radius:20px;color:#fff;font-size:12px;font-weight:600}}
 /* 状态卡 hero */
 .hero{{display:flex;flex-direction:column;gap:12px}}
+.hero-top{{display:flex;justify-content:space-between;align-items:center}}
 .hero-date{{color:var(--sub);font-size:12px}}
-.hero-fg{{display:flex;align-items:baseline;gap:12px}}
-.hero-num{{font-size:44px;font-weight:800;line-height:1}}
+.hero-fg{{display:flex;flex-direction:column;gap:2px}}
+.hero-num{{font-size:52px;font-weight:800;line-height:1;letter-spacing:-1px}}
+.hero-unit{{color:var(--sub);font-size:12px}}
 .stat-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}}
 .stat{{background:var(--chip);border:1px solid var(--border);border-radius:10px;padding:10px 12px}}
 .stat-label{{color:var(--sub);font-size:11px;margin-bottom:4px}}
 .stat-value{{font-size:17px;font-weight:700}}
 .stat-value.bad{{color:var(--up)}}
+/* 温度刻度条（参考 szdt.tech 市场温度） */
+.temp{{margin:2px 0 4px}}
+.temp-track{{height:10px;border-radius:6px;background:linear-gradient(90deg,#8b0000,#d9534f,#f0ad4e,#5cb85c,#006400);position:relative;margin-bottom:6px}}
+.temp-fill{{position:absolute;inset:0 auto 0 0;border-radius:6px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}}
+.temp-dot{{position:absolute;top:-4px;width:18px;height:18px;border-radius:50%%;background:#fff;border:3px solid #d29922;transform:translateX(-50%%);box-shadow:0 1px 4px rgba(0,0,0,.5)}}
+.temp-ticks{{display:flex;justify-content:space-between;color:var(--sub);font-size:11px}}
 /* 持仓卡片网格 */
 .h-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}}
 .h-card{{background:var(--chip);border:1px solid var(--border);border-radius:12px;padding:12px 14px}}
@@ -450,13 +466,21 @@ svg.chart .frame{{stroke:rgba(255,255,255,.1)}}
 .cmp-note{{color:var(--sub);font-size:11px;margin-top:8px}}
 /* 其它区块内表格间距 */
 .sec table.card{{margin:4px 0 0}}
+/* Tab 导航（参考 szdt.tech 底部导航） */
+.sec-wrap{{display:none}}
+.sec-wrap.on{{display:block}}
+.tabbar{{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;background:rgba(11,14,20,.92);backdrop-filter:blur(12px);border-top:1px solid var(--border)}}
+.tab-btn{{flex:1;padding:12px 0 14px;text-align:center;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;-webkit-tap-highlight-color:transparent}}
+.tab-btn.on{{color:var(--accent)}}
+.tab-btn.on::after{{content:"";display:block;width:24px;height:3px;border-radius:2px;background:var(--accent);margin:4px auto 0}}
+body{{padding-bottom:64px}}
 @media (max-width:780px){{
   .h-grid{{grid-template-columns:repeat(2,1fr)}}
 }}
 @media (max-width:600px){{
-  body{{padding:12px}}
+  body{{padding:12px;padding-bottom:64px}}
   h1{{font-size:18px}}
-  .hero-num{{font-size:38px}}
+  .hero-num{{font-size:44px}}
   .stat-grid{{grid-template-columns:repeat(2,1fr)}}
   .h-grid{{grid-template-columns:1fr}}
   .f-grid{{grid-template-columns:1fr}}
@@ -465,40 +489,63 @@ svg.chart .frame{{stroke:rgba(255,255,255,.1)}}
 </style></head><body>
 <div class="wrap">
 <h1>%(title)s</h1>
-<p class="sub">生成 %(now)s · 有效指数 %(valid_days)d 天 · 区间 %(span)s</p>
+<p class="sub">%(now)s · 有效指数 %(valid_days)d 天 · %(span)s</p>
 
-<h2><span class="no">1</span>当前状态卡</h2>
+<div class="sec-wrap on" data-name="市场">
+<h2>市场温度</h2>
 <div class="sec">%(card)s</div>
-
-<h2><span class="no">2</span>持仓标的看板</h2>
-<div class="sec">%(holdings)s</div>
-
-<h2><span class="no">3</span>指数曲线与档位带（fg_index）</h2>
+<h2>指数曲线与档位带</h2>
 <div class="sec">%(index_svg)s</div>
-
-<h2><span class="no">4</span>四因子分解</h2>
+<h2>四因子分解</h2>
 <div class="sec">%(factors)s</div>
+</div>
 
-<h2><span class="no">5</span>目标仓位与买卖点</h2>
+<div class="sec-wrap" data-name="持仓">
+<h2>持仓标的看板</h2>
+<div class="sec">%(holdings)s</div>
+</div>
+
+<div class="sec-wrap" data-name="系统">
+<h2>目标仓位与买卖点</h2>
 <div class="sec">%(position)s</div>
-
-<h2><span class="no">6</span>净值对比（策略 vs 买入持有）</h2>
+<h2>净值对比（策略 vs 买入持有）</h2>
 <div class="sec">%(nav)s</div>
-
-<h2><span class="no">7</span>损耗监控（§4.5 约束 4）</h2>
+<h2>损耗监控</h2>
 <div class="sec">%(decay)s</div>
-
-<h2><span class="no">8</span>损耗归因（§11.6 强制输出）</h2>
+<h2>损耗归因</h2>
 <div class="sec">%(loss)s</div>
-
-<h2><span class="no">9</span>外部指数对照（人工录入，可留空，§15.3）</h2>
+<h2>外部指数对照</h2>
 <div class="sec"><p>%(external_note)s</p></div>
+</div>
+
+<nav class="tabbar">
+<button class="tab-btn on" data-tab="0">市场</button>
+<button class="tab-btn" data-tab="1">持仓</button>
+<button class="tab-btn" data-tab="2">系统</button>
+</nav>
 
 <script>
 const INDEX = %(index_json)s;
 const FACTORS = %(factors_json)s;
 const POSITION = %(position_json)s;
 const EXTERNAL = %(external_json)s;
+(function () {
+  var tabs = document.querySelectorAll(".tab-btn");
+  var wraps = document.querySelectorAll(".sec-wrap");
+  function show(n) {
+    for (var i = 0; i < wraps.length; i++) {
+      wraps[i].className = "sec-wrap" + (i === n ? " on" : "");
+    }
+    for (var j = 0; j < tabs.length; j++) {
+      tabs[j].className = "tab-btn" + (j === n ? " on" : "");
+    }
+  }
+  for (var k = 0; k < tabs.length; k++) {
+    (function (idx) {
+      tabs[k].addEventListener("click", function () { show(idx); });
+    })(k);
+  }
+})();
 </script>
 </div>
 </body></html>
