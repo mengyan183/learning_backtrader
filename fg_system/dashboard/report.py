@@ -33,8 +33,8 @@ def _holdings_block(features, shoutu=None, prices=None):
     - 系统覆盖 = config.SYMBOLS ∪ CRYPTO_FLAT_SYMBOLS（与 portfolio_check 同口径）
     """
     out = ["<p style='font-size:12px;color:#8b949e'>每标的展示<b>双系统贪恐系数</b>："
-           "系统 = 个股系统指数（无杠杆底层动量+波动率滚动分位，路径B）；"
-           "守猪待兔 = 该标的个股系数（原始值转系统刻度）。"
+           "系统 = 个股系统指数（0-100，五档）；"
+           "守猪待兔 = 官方原始系数（-100~100，官方三档：恐慌≤-60 / 中性 / 贪婪≥60）。"
            "覆盖分三态：<b>系统覆盖</b>（系统信号指令）/ <b>守猪待兔覆盖</b>"
            "（守猪待兔系数）/ 其余<b>不在跟踪范围</b>。"
            "CRCG/CONL 底层数据不足时系统列回退市场指数。"
@@ -125,11 +125,16 @@ def _holdings_block(features, shoutu=None, prices=None):
         if shoutu_last is not None and sym in shoutu_last.index:
             sh_raw = shoutu_last[sym]
             if sh_raw == sh_raw:   # 非 NaN
-                sv = (float(sh_raw) + 100.0) / 2.0
-                szi = int(np.clip(np.searchsorted([20, 40, 60, 80], sv,
-                                                  side="right"), 0, 4))
-                s_txt = "守猪待兔 %.0f %s" % (sv, ZONE_NAMES[szi])
-                s_bg = ZONE_COLORS[szi]
+                # 守猪待兔官方原始口径（-100~100）+ 官方三档（docs/shoutu-zones.md）：
+                # 恐慌 ≤-60 / 中性 (-60,60) / 贪婪 ≥60（与 SHOUTU_GREED_LINE/FEAR_LINE 一致）
+                raw = float(sh_raw)
+                if raw <= config.SHOUTU_FEAR_LINE:
+                    s_lbl, s_bg = "恐慌", "#e5534b"
+                elif raw >= config.SHOUTU_GREED_LINE:
+                    s_lbl, s_bg = "贪婪", "#3fb950"
+                else:
+                    s_lbl, s_bg = "中性", "#57606a"
+                s_txt = "守猪待兔 %.0f %s" % (raw, s_lbl)
             else:
                 s_txt, s_bg = "守猪待兔 —", "#3a4a63"
         else:
