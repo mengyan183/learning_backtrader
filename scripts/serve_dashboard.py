@@ -32,6 +32,11 @@
 
 【⚠️ 不会抓取数据】见 fg_system/dashboard/server.py 的模块 docstring：
 每次刷新都抓会覆盖当天 06:30 的快照，且消耗额度。
+
+【⚠️ 开发注意】本服务由 launchd 常驻（com.xingguo.fg-dashboard，端口 8000）。
+**改 dashboard 代码后必须重启服务才生效**（Python 进程不热加载）：
+    launchctl kickstart -k "gui/$(id -u)/com.xingguo.fg-dashboard"
+详见 docs/dashboard-ops.md。
 """
 import argparse
 import os
