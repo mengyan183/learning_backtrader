@@ -54,4 +54,5 @@ EOF
 ## 四、记录
 
 - 2026-10-02：官网 ETF 页实测锚点 -100/-60/60/100 + 三档计数 → 首次固化官方档位表。
+- 2026-10-02（服务端核验）：**partner API（POST /api/partner/invest/stock/scan）不下发 zone 字段**——实测响应仅 `query/query_api/name/price/score/time`；档位由前端按 ±60 锚点渲染。即守猪待兔**无更细的服务端枚举**，官方三档即全部档位；网页端旧版 query_one 的 zone 文本（如"中性区间"）为页面抓取字段，非服务端口径。
 - 边界区间为锚点语义近似；如官网改版或 API 下发更细枚举，更新本表并同步 `config.py` 注释。
