@@ -85,3 +85,5 @@ open('/tmp/dash.html','w').write(report.render_html(f))"
 - `evolution/baseline.json`：骨架（回测恢复后由 evolve_baseline.py 填充）
 - `tests/factors/test_symbol.py`：新增 CONL 有底层用例（11 passed）
 - `scripts/evolve_verify.py`：H-003 支持 CONL 以 2×COIN 近似
+
+- `Data/raw/prices.csv`：补录 CONL 真实行情 690 行（FutuOpenD US.CONL 前复权，2024-01-02→2026-10-01，权威源，与持仓同源富途；与守猪待兔 shoutu_history 交叉验证量级一致）→ H-003 的 CONL 项升级为真实波动 5.82%（替代 2×COIN 近似 2.8%）；CONL 个股系统指数仍用底层 COIN（路径 B 设计不变）
