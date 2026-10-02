@@ -397,6 +397,37 @@ def _factors_block(valid):
     return "".join(out)
 
 
+def _sentiment_block():
+    """情绪子信号（E1）：最新 VIX 水平/变化率 + 加密资金费率（来自 sentiment.csv）。"""
+    try:
+        import pandas as _pd
+        s = _pd.read_csv(os.path.join(config.RAW_DIR, "sentiment.csv"),
+                         parse_dates=["date"]).dropna(subset=["vix"]).tail(5)
+    except (FileNotFoundError, _pd.errors.EmptyDataError):
+        return "<p>情绪子信号数据不可用（运行 scripts/fetch_sentiment.py）</p>"
+    if s.empty:
+        return "<p>情绪子信号数据不可用</p>"
+    last = s.iloc[-1]
+    def _chg_cls(v):
+        # VIX 上升=情绪恶化(红 up)，下降=情绪改善(绿 down)
+        return "up" if (v or 0) > 0 else "down"
+    def _fr_cls(v):
+        if v is None or (isinstance(v, float) and v != v):
+            return "flat", "—"
+        return ("hot" if v > 0.01 else "cold" if v < 0.0 else "flat"), ("%.4f%%" % v)
+    vix = float(last["vix"]); chg = float(last["vix_chg"]) if not _pd.isna(last.get("vix_chg")) else 0.0
+    btc_c, btc_t = _fr_cls(last.get("funding_btc"))
+    eth_c, eth_t = _fr_cls(last.get("funding_eth"))
+    html = ["<div class='sent'>",
+            "<span class='sent-t'>情绪子信号</span>",
+            "<span class='sent-k'>VIX</span><span class='sent-v %s'>%.2f <small>(%+.1f%%)</small></span>"
+            % (_chg_cls(chg), vix, chg),
+            "<span class='sent-k'>BTC 资金费率</span><span class='sent-v %s'>%s</span>" % (btc_c, btc_t),
+            "<span class='sent-k'>ETH 资金费率</span><span class='sent-v %s'>%s</span>" % (eth_c, eth_t),
+            "<span class='sent-d'>%s</span>" % last["date"].strftime("%Y-%m-%d")]
+    return "".join(html) + "</div>"
+
+
 def _position_block(valid):
     if "target_position" not in valid.columns:
         return "<p>仓位数据不可用</p>"
@@ -499,6 +530,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         card=_state_card(features, shoutu_mkt=shoutu_mkt),
         holdings=_holdings_block(features, shoutu=shoutu, prices=prices),
         factors=_factors_block(valid),
+        sentiment=_sentiment_block(),
         position=_position_block(valid),
         nav=_buy_and_hold_block(features, prices),
         decay=_decay_rate_block(features, prices),

@@ -132,6 +132,17 @@ svg.chart .frame{stroke:rgba(255,255,255,.1)}
 .f-name{font-size:11px;color:var(--fg-muted);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
 .f-val{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;font-family:var(--font-num)}
 .f-chart svg{width:100%;height:auto;display:block}
+/* 情绪子信号条（E1） */
+.sent{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
+  padding:10px 14px;font-size:12px}
+.sent-t{font-size:11px;color:var(--fg-muted);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-right:2px}
+.sent-k{color:var(--fg-muted);font-weight:600}
+.sent-v{font-weight:800;font-variant-numeric:tabular-nums;font-family:var(--font-num)}
+.sent-v.up{color:#f85149}.sent-v.down{color:#7ee787}
+.sent-v.hot{color:#f85149}.sent-v.cold{color:#58a6ff}.sent-v.flat{color:var(--fg-muted)}
+.sent-v small{font-weight:600;opacity:.85}
+.sent-d{color:var(--fg-muted);font-size:11px;margin-left:auto}
 /* 目标仓位进度条 */
 .pos-cap{font-size:26px;font-weight:800;margin:2px 0 10px;font-variant-numeric:tabular-nums;font-family:var(--font-num)}
 .pos-bar{height:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px}
