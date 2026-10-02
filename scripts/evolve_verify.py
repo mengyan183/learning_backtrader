@@ -89,6 +89,15 @@ def check_h003():
     btc_mean = float(btc.mean())
     rows = []
     for s in LEVER_ETF:
+        if s == "CONL":
+            # CONL 自身价格缺失（2026-10-02 补 COIN 底层后仍无 CONL 行情）；
+            # 口径近似：CONL 为 2x Coinbase ETN，以 2×COIN 日收益近似其波动。
+            base = _close("COIN")
+            if base.empty:
+                rows.append((s, None)); continue
+            m = float((2.0 * base).pct_change(fill_method=None).abs().loc[start:end].mean())
+            rows.append((s, m))
+            continue
         close = _close(s)
         if close.empty:
             rows.append((s, None)); continue

@@ -70,6 +70,20 @@ def test_conl_missing_underlying_returns_none():
     assert symbol.underlying_close("CONL", prices=px) is None
 
 
+def test_conl_with_coin_underlying_returns_index():
+    """CONL 映射 COIN；构造数据含 COIN（≥61 行）→ 个股指数非 None。
+
+    2026-10-02 真实 prices.csv 已补录 COIN 日线（Yahoo 来源，2021-10 起），
+    本用例用构造数据复现该路径，不依赖真实文件。
+    """
+    n = 900   # > 756+60，保证滚动分位可用（与趋势方向用例同约定）
+    px = _prices({"COIN": _trend(n, 0.0015, seed=21)})
+    close = symbol.underlying_close("CONL", prices=px)
+    assert close is not None and len(close) == n
+    fg = symbol.symbol_fg_index("CONL", prices=px)
+    assert fg is not None and 0 <= float(fg.iloc[-1]) <= 100
+
+
 def test_unknown_symbol_returns_none():
     idx = pd.date_range("2020-01-01", periods=100, freq="B")
     px = _prices({"QQQ": pd.Series(np.linspace(1, 2, 100), index=idx)})

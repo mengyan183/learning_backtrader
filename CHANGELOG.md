@@ -78,3 +78,10 @@ from fg_system.dashboard import report; import pandas as pd
 f = pd.read_csv('Data/features.csv', parse_dates=['date']).set_index('date')
 open('/tmp/dash.html','w').write(report.render_html(f))"
 ```
+
+## 2026-10-02（进化闭环⑤收尾）
+- `Data/raw/prices.csv`：补录 COIN 日线 1254 行（Yahoo Finance，2021-10-04→2026-10-01，代理下载，已去重）→ 解锁 CONL 个股系统指数（55.5，不再回退市场）与 H-003 的 CONL 波动项
+- `evolution/LESSONS.md`：归档 L-001（杠杆波动放大，H-003 adopted）/L-002（信号回落期浮亏扩大，H-004 adopted）/L-003（数据源缺口污染验证结论）
+- `evolution/baseline.json`：骨架（回测恢复后由 evolve_baseline.py 填充）
+- `tests/factors/test_symbol.py`：新增 CONL 有底层用例（11 passed）
+- `scripts/evolve_verify.py`：H-003 支持 CONL 以 2×COIN 近似

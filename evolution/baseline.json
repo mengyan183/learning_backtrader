@@ -1,0 +1,8 @@
+{
+  "schema": "基准绩效（evolution 环节②输出）。依赖 fg_system/backtest/* 恢复后由 scripts/evolve_baseline.py 生成。",
+  "status": "pending-backtest-restore",
+  "created": "2026-10-02",
+  "metrics": null,
+  "oos": null,
+  "attribution": null
+}
