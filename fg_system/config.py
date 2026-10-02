@@ -53,6 +53,19 @@ RESEARCH_SYMBOLS = ["GLD", "GDX", "GDXJ", "GDXU", "SLV",
 FETCH_SYMBOLS = ["TQQQ", "SOXL", "UPRO", "QQQ", "SOXX", "SMH", "SPY", "RSP",
                  "IWM"] + RESEARCH_SYMBOLS
 
+# ---------------------------------------------------------------- 观察池（扩池-数据侧，第 E 层）
+# **不参与生产**：不进 SYMBOLS / UNDERLYING_MAP / 因子输入 / 仓位计算。
+# 用途：为个股指数扩池（第三层迭代）做数据侧储备——候选标的先入库，
+# 待有回测基准后经变体+审批才能纳入白名单。**无基准前禁止读入策略。**
+OBSERVE_SYMBOLS = [
+    "NVDL",   # 英伟达 2×
+    "TSLL",   # 特斯拉 2×
+    "FNGU",   # FANG 科技巨头 3×
+    "FAS",    # 金融 3×
+    "TNA",    # 罗素 2000 3×
+    "SQQQ",   # 纳指 -3×（反向，情绪极端反向候选）
+]
+
 # 产品损耗率（费用+融资+跟踪误差），2016-2026 实测标定，须定期重标定（§17 风险 12）
 PRODUCT_COST_RATE = {"TQQQ": 0.0822, "SOXL": 0.0895, "UPRO": 0.0395}
 
