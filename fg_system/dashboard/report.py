@@ -35,8 +35,9 @@ def _holdings_block(features, shoutu=None, prices=None):
     out = ["<p style='font-size:12px;color:#8b949e'>每标的展示<b>双系统贪恐系数</b>："
            "系统 = 个股系统指数（无杠杆底层动量+波动率滚动分位，路径B）；"
            "守猪待兔 = 该标的个股系数（原始值转系统刻度）。"
+           "覆盖分三态：<b>系统覆盖</b>（系统信号指令）/ <b>守猪待兔覆盖</b>"
+           "（守猪待兔系数）/ 其余<b>不在跟踪范围</b>。"
            "CRCG/CONL 底层数据不足时系统列回退市场指数。"
-           "系统覆盖标的按守猪待兔信号显示指令，其余标的不在系统跟踪范围。"
            "持仓来自实盘快照，只读；浮盈亏按红涨绿跌着色。</p>"]
     try:
         pos = pd.read_csv(config.POSITIONS_PATH)
@@ -77,6 +78,16 @@ def _holdings_block(features, shoutu=None, prices=None):
                                       and not shoutu.empty) else None
 
     in_system = set(config.SYMBOLS) | set(config.CRYPTO_FLAT_SYMBOLS)
+    in_shoutu = set(config.SHOUTU_SYMBOLS)
+    spot = set(config.CRYPTO_SPOT_SYMBOLS)
+
+    def _covered(sym):
+        """系统信号覆盖判定。positions.csv 用 'BTC-USDT'、config 用 'BTC'，
+        加密现货做前缀归一；其余符号精确匹配。"""
+        if sym in in_system:
+            return True
+        return any(sym == b or sym.startswith(b + "-") for b in spot)
+
     cards = []
     for _, r in latest.iterrows():
         sym = str(r.get("symbol", "")).strip()
@@ -87,11 +98,8 @@ def _holdings_block(features, shoutu=None, prices=None):
         cost = _num(r.get("cost"))
         pnl = ((price - cost) / cost * 100.0) if cost and cost > 0 and price else None
         ratio = (mv / net * 100.0) if net and mv is not None else None
-        in_s = sym in in_system
-        if in_s:
-            advise = "守猪待兔：%s · 目标仓位 %s" % (sig, target_txt)
-        else:
-            advise = "系统未跟踪该标的"
+        in_s = _covered(sym)
+        in_sh = sym in in_shoutu
         pnl_cls = ("up" if pnl and pnl >= 0 else "down") if pnl is not None else ""
         pnl_txt = ("%+.1f%%" % pnl) if pnl is not None else "—"
         # 系统列 = 个股系统指数（路径 B：无杠杆底层动量+波动率，滚动分位）
@@ -126,6 +134,16 @@ def _holdings_block(features, shoutu=None, prices=None):
                 s_txt, s_bg = "守猪待兔 —", "#3a4a63"
         else:
             s_txt, s_bg = "守猪待兔 —", "#3a4a63"
+        # 覆盖三态：系统信号 / 守猪待兔系数 / 不在跟踪范围
+        if in_s:
+            cov_cls, cov_txt = "tag-in", "✅ 系统覆盖"
+            advise = "系统信号：%s · 目标仓位 %s" % (sig, target_txt)
+        elif in_sh:
+            cov_cls, cov_txt = "tag-shoutu", "🐰 守猪待兔覆盖"
+            advise = (s_txt if s_txt != "守猪待兔 —" else "守猪待兔覆盖（系数待更新）")
+        else:
+            cov_cls, cov_txt = "tag-out", "❌ 范围外"
+            advise = "系统未跟踪该标的"
         cards.append(
             "<div class='h-card'>"
             "<div class='h-top'><span class='h-sym'>%s</span>"
@@ -144,7 +162,7 @@ def _holdings_block(features, shoutu=None, prices=None):
                _fmt(price) if price is not None else "—",
                _fmt(mv), ("%.1f%%" % ratio) if ratio is not None else "—",
                _fmt(qty), sys_bg, sys_txt, s_bg, s_txt,
-               ("tag-in" if in_s else "tag-out"), ("✅ 系统覆盖" if in_s else "❌ 范围外"),
+               cov_cls, cov_txt,
                advise))
     body = "".join(out)
     if not cards:
