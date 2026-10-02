@@ -455,12 +455,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         if len(_last):
             shoutu_mkt = (float(_last.mean()) + 100.0) / 2.0
     shoutu = _shoutu
-    _px = None
-    try:
-        from fg_system.factors import symbol as _sym
-        _px = _sym._read_prices()
-    except Exception:
-        _px = None
+    # 个股系统指数输入复用 prices（尊重 prices_path：文件缺失时为空表 → 自动回退市场）
 
     bands = []
     edges = [-1e9] + list(config.ZONE_EDGES) + [1e9]
@@ -479,7 +474,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         span=("%s ~ %s" % (valid.index[0].strftime("%Y-%m-%d"),
                            valid.index[-1].strftime("%Y-%m-%d")) if len(valid) else "无"),
         card=_state_card(features, shoutu_mkt=shoutu_mkt),
-        holdings=_holdings_block(features, shoutu=shoutu, prices=_px),
+        holdings=_holdings_block(features, shoutu=shoutu, prices=prices),
         factors=_factors_block(valid),
         position=_position_block(valid),
         nav=_buy_and_hold_block(features, prices),

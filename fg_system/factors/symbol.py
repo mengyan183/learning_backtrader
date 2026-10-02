@@ -73,9 +73,9 @@ def symbol_fg_index(symbol, window=None, prices=None, crypto_close=None):
     close = underlying_close(symbol, prices, crypto_close)
     if close is None or len(close) < 61:
         return None
-    ret = close.pct_change()
-    mom60 = close.pct_change(60)
-    mom20 = close.pct_change(20)
+    ret = close.pct_change(fill_method=None)
+    mom60 = close.pct_change(60, fill_method=None)
+    mom20 = close.pct_change(20, fill_method=None)
     vol20 = ret.rolling(20).std() * (252.0 ** 0.5)
     out = (_SYMBOL_WEIGHTS["mom60"] * pct_score(mom60, window)
            + _SYMBOL_WEIGHTS["mom20"] * pct_score(mom20, window)

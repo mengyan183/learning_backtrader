@@ -18,7 +18,7 @@ def test_build_html_contains_all_blocks(tmp_path):
     path = tmp_path / "report.html"
     report.build(features, str(path), title="测试仪表盘")
     html = path.read_text(encoding="utf-8")
-    assert "fg_index" in html or "贪婪恐惧指数" in html
+    assert "<title>测试仪表盘</title>" in html or "贪婪恐惧指数" in html
     assert "损耗" in html          # 第 7 区块
     assert len(html) > 5000
 
@@ -77,10 +77,13 @@ def test_html_has_viewport_meta(tmp_path):
     assert "width=device-width" in html
 
 
-def test_html_is_self_contained(tmp_path):
-    """**守卫**：不得引用任何外部资源（CDN / 字体 / 脚本）。
+def test_html_uses_only_local_static_assets(tmp_path):
+    """**守卫**：不得引用任何外部网络资源（CDN / 字体 / 脚本）。
 
-    手机通过局域网访问时可能没有外网，外部资源会加载失败导致样式全丢。
+    手机通过局域网访问时可能没有外网，外部资源会加载失败导致样式全丢；
+    Flask 迁移后静态资源走本地 `/static/`（服务器自身提供，离线可用），
+    因此**允许** `<script src="/static/...">` / `<link href="/static/...">`，
+    但**禁止**任何指向外站的 src/href，也禁止 CDN。
     SVG 命名空间 `www.w3.org` 是 XML 标识符，**不是网络请求**，需排除。
     """
     import re
@@ -88,7 +91,12 @@ def test_html_is_self_contained(tmp_path):
     body = re.sub(r"https?://www\.w3\.org/[^\s\"'<>]*", "", html)
     assert "http://" not in body, "存在外部 http 引用"
     assert "https://" not in body, "存在外部 https 引用"
-    assert "<script src=" not in html
+    for m in re.finditer(r"""(?:src|href)=["']([^"']+)["']""", html):
+        url = m.group(1)
+        if url.startswith(("http://", "https://", "//")):
+            raise AssertionError("存在外部资源引用: %s" % url)
+        if ("<script" in html[:m.start()][-30:] or "stylesheet" in html[:m.start()][-50:]):
+            assert url.startswith("/static/"), "静态资源必须指向本地 /static/: %s" % url
 
 
 def test_html_tables_are_horizontally_scrollable(tmp_path):
@@ -104,10 +112,18 @@ def test_html_tables_are_horizontally_scrollable(tmp_path):
 
 
 def test_html_has_mobile_breakpoint(tmp_path):
-    """**守卫**：必须有窄屏断点，且窄屏下收紧边距（24px 在手机上太浪费）。"""
+    """**守卫**：必须有窄屏断点，且窄屏下收紧边距（24px 在手机上太浪费）。
+
+    Flask 迁移后样式在独立 `static/style.css`（模板以 <link> 引用），
+    因此断言模板引用了 /static/style.css 且该文件内含 @media 断点。
+    """
     html = _render(tmp_path)
-    assert "@media" in html
-    assert "max-width:600px" in html.replace(" ", "")
+    assert 'href="/static/style.css"' in html
+    css_path = os.path.join(os.path.dirname(report.__file__),
+                            "static", "style.css")
+    css = open(css_path, encoding="utf-8").read()
+    assert "@media" in css
+    assert "max-width:600px" in css.replace(" ", "")
 
 
 def test_all_tables_wrapped_with_price_data(tmp_path):
