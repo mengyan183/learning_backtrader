@@ -231,23 +231,54 @@ def stage_judge(snap, sentiment, attribution):
 
 
 # ---------------------------------------------------------------- 简报与推送
+def build_snapshot_lines(snap):
+    """简报用紧凑快照行（区别于喂给 LLM 的完整 snapshot_text）。"""
+    out = []
+    if snap.get("fg"):
+        f = snap["fg"]
+        out.append(f"系统贪恐指数 {f['fg_index']} [{f['zone']}] · 目标仓位 {f['target_position']} · 回撤 {f['drawdown']:.2%} · 熔断{'已触发' if f['circuit_breaker'] else '未触发'}")
+    if snap.get("shoutu"):
+        pairs = " / ".join(f"{k} {v}" for k, v in list(snap["shoutu"].items())[:6])
+        out.append(f"守猪待兔({snap['shoutu_date']}): {pairs}")
+    out.append("持仓:")
+    for r in snap["positions"]:
+        pnl = f"{r['pnl']} ({r['pnl_pct']}%)" if r["pnl"] is not None else "无行情"
+        flag = "🔺" if (r["pnl"] or 0) > 0 else ("🔻" if (r["pnl"] or 0) < 0 else "▪️")
+        out.append(f"{flag} {r['symbol']} {r['name']} · 成本 {r['cost']} · 现价 {r['last_close'] or '—'} · 浮盈亏 {pnl}")
+    out.append(f"账户净值: " + " / ".join(f"{k} {v}" for k, v in (snap.get('accounts') or {}).items()))
+    return "\n".join(out)
+
+
+def build_brief_sections(snap, sentiment, attribution, judge):
+    """结构化简报（飞书富文本 post 用）：[ ("标题", "正文"), "hr", ... ]"""
+    secs = []
+    secs.append(("市场快照", build_snapshot_lines(snap)))
+    secs.append("hr")
+    secs.append(("📰 情绪面 · Hermes(GLM)", (sentiment or "（不可用）").strip()[:300]))
+    secs.append("hr")
+    secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)", (attribution or "（不可用）").strip()[:300]))
+    secs.append("hr")
+    secs.append(("⚖️ 裁判裁决 · OpenClaw(本地)", (judge or "（不可用）").strip()[:300]))
+    return secs
+
+
 def build_brief(snap, sentiment, attribution, judge):
     lines = [
         f"# 多智能体投研简报 {snap['date']}",
         "",
         "## 市场快照",
         "```",
-        snapshot_text(snap),
+        build_snapshot_lines(snap),
         "```",
         "",
         "## 情绪面分析（Hermes / GLM）",
-        sentiment.strip() if sentiment else "（跳过：Hermes 不可用）",
+        (sentiment or "（跳过：Hermes 不可用）").strip()[:300],
         "",
         "## 深度归因（Harness 后端 deepseek-v4.1-flash / NVIDIA NIM）",
-        attribution.strip() if attribution else "（跳过：NIM 不可用）",
+        (attribution or "（跳过：NIM 不可用）").strip()[:300],
         "",
         "## 裁判裁决（OpenClaw / 本地 qwen2.5-coder:3b）",
-        judge.strip() if judge else "（跳过：OpenClaw 不可用）",
+        (judge or "（跳过：OpenClaw 不可用）").strip()[:300],
         "",
         "> 由 scripts/invest_research.py 自动生成 · 仅供个人研究，不构成投资建议",
     ]
@@ -255,6 +286,27 @@ def build_brief(snap, sentiment, attribution, judge):
 
 
 def push_feishu(text):
+    return _send_feishu("text", {"text": text})
+
+
+def push_feishu_rich(title, sections):
+    """飞书富文本 post：标题 + 分区（加粗标题行 / 分隔行 / 正文行）。
+    post 消息仅支持 text/a/at/img 元素（不支持 hr），用分隔文本行代替。"""
+    content = []
+    for sec in sections:
+        if sec == "hr":
+            content.append([{"tag": "text", "text": "——————" * 4}])
+            continue
+        head, body = sec
+        content.append([{"tag": "text", "text": head, "style": ["bold"]}])
+        for line in (body or "").splitlines():
+            if line.strip():
+                content.append([{"tag": "text", "text": line.strip()}])
+    payload = {"post": {"zh_cn": {"title": title, "content": content}}}
+    return _send_feishu("post", payload)
+
+
+def _send_feishu(msg_type, content_obj):
     app_id, app_secret = _read_feishu_creds()
     token_req = urllib.request.Request(
         "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
@@ -262,10 +314,11 @@ def push_feishu(text):
         headers={"Content-Type": "application/json"}, method="POST",
     )
     token = json.loads(urllib.request.urlopen(token_req, timeout=15).read())["tenant_access_token"]
-    msg_url = f"https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id"
-    body = {"receive_id": FEISHU_OPEN_ID, "msg_type": "text", "content": json.dumps({"text": text})}
+    msg_url = "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id"
+    body = {"receive_id": FEISHU_OPEN_ID, "msg_type": msg_type,
+            "content": json.dumps(content_obj, ensure_ascii=False)}
     msg_req = urllib.request.Request(
-        msg_url, data=json.dumps(body).encode(),
+        msg_url, data=json.dumps(body, ensure_ascii=False).encode(),
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         method="POST",
     )
@@ -305,8 +358,9 @@ def main():
     if not (sentiment and attribution and judge):
         print("存在缺失阶段，跳过飞书推送（dry-run 模式已可查看简报）")
         return
-    ok, msg = push_feishu(brief)
-    print(f"飞书推送: {'成功' if ok else f'失败 {msg}'}")
+    ok, msg = push_feishu_rich(f"📊 多智能体投研简报 {snap['date']}",
+                               build_brief_sections(snap, sentiment, attribution, judge))
+    print(f"飞书富文本推送: {'成功' if ok else f'失败 {msg}'}")
     return 0 if ok else 1
 
 
