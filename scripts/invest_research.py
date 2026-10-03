@@ -230,6 +230,63 @@ def stage_judge(snap, sentiment, attribution):
         return "裁判超时(本地3b模型较慢)，本次由归因结论直接驱动评级。"
 
 
+# ---------------------------------------------------------------- 新闻抓取（Google News RSS，免 key）
+def _rss_titles(url, limit, timeout=20):
+    """拉取 RSS 返回标题列表；失败返回 []。"""
+    import xml.etree.ElementTree as ET
+    import html
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({"http": PROXY, "https": PROXY}))
+    opener.addheaders = [("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)")]
+    try:
+        data = opener.open(url, timeout=timeout).read().decode("utf-8", "ignore")
+        root = ET.fromstring(data)
+        titles = []
+        for item in root.iter("item"):
+            t = item.findtext("title")
+            if t:
+                t = html.unescape(t).strip()
+                if t and t not in titles:
+                    titles.append(t)
+            if len(titles) >= limit:
+                break
+        return titles
+    except Exception:
+        return []
+
+
+def fetch_news(snap):
+    """大盘 + 持仓标的相关新闻。返回 {"_market": [...], "SYM": [...], ...}；全部失败时为空 dict。"""
+    out = {}
+    mkt = _rss_titles("https://news.google.com/rss/search?q=US+stock+market+today&hl=en-US&gl=US&ceid=US:en", 3)
+    if mkt:
+        out["_market"] = mkt
+    for r in snap["positions"]:
+        sym = r["symbol"].replace("-USDT", "")
+        q = {"BTC": "bitcoin price", "ETH": "ethereum price"}.get(sym, f"{sym} stock")
+        t = _rss_titles(f"https://news.google.com/rss/search?q={urllib.parse.quote(q)}&hl=en-US&gl=US&ceid=US:en", 2)
+        if t:
+            out[sym] = t
+    return out
+
+
+def news_text(news):
+    """简报用新闻文本：市场区 + 标的分区。"""
+    if not news:
+        return "（新闻源不可用或为空）"
+    lines = []
+    if news.get("_market"):
+        lines.append("大盘快讯:")
+        for t in news["_market"][:3]:
+            lines.append(f"· {t[:90]}")
+    for sym, titles in news.items():
+        if sym == "_market":
+            continue
+        lines.append(f"{sym}:")
+        for t in titles[:2]:
+            lines.append(f"· {t[:80]}")
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------- 简报与推送
 def build_snapshot_lines(snap):
     """简报用紧凑快照行（区别于喂给 LLM 的完整 snapshot_text）。"""
@@ -249,10 +306,12 @@ def build_snapshot_lines(snap):
     return "\n".join(out)
 
 
-def build_brief_sections(snap, sentiment, attribution, judge):
+def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     """结构化简报（飞书富文本 post 用）：[ ("标题", "正文"), "hr", ... ]"""
     secs = []
     secs.append(("市场快照", build_snapshot_lines(snap)))
+    secs.append("hr")
+    secs.append(("📰 市场快讯", news_text(news) if news else "（新闻源不可用）"))
     secs.append("hr")
     secs.append(("📰 情绪面 · Hermes(GLM)", (sentiment or "（不可用）").strip()[:300]))
     secs.append("hr")
@@ -262,7 +321,7 @@ def build_brief_sections(snap, sentiment, attribution, judge):
     return secs
 
 
-def build_brief(snap, sentiment, attribution, judge):
+def build_brief(snap, sentiment, attribution, judge, news=None):
     lines = [
         f"# 多智能体投研简报 {snap['date']}",
         "",
@@ -270,6 +329,9 @@ def build_brief(snap, sentiment, attribution, judge):
         "```",
         build_snapshot_lines(snap),
         "```",
+        "",
+        "## 市场快讯",
+        news_text(news) if news else "（新闻源不可用）",
         "",
         "## 情绪面分析（Hermes / GLM）",
         (sentiment or "（跳过：Hermes 不可用）").strip()[:300],
@@ -335,6 +397,11 @@ def main():
     brief_path = REPO / "Data" / f"invest_brief_{snap['date']}.md"
 
     sentiment = attribution = judge = None
+    news = None
+    try:
+        news = fetch_news(snap)
+    except Exception as e:
+        print("新闻抓取失败:", e)
     try:
         sentiment = stage_sentiment(_read_hermes_key(), snap)
     except Exception as e:
@@ -348,7 +415,7 @@ def main():
     except Exception as e:
         print("OpenClaw 阶段失败:", e)
 
-    brief = build_brief(snap, sentiment, attribution, judge)
+    brief = build_brief(snap, sentiment, attribution, judge, news)
     brief_path.write_text(brief, encoding="utf-8")
     print(f"简报已写入: {brief_path}")
 
@@ -359,7 +426,7 @@ def main():
         print("存在缺失阶段，跳过飞书推送（dry-run 模式已可查看简报）")
         return
     ok, msg = push_feishu_rich(f"📊 多智能体投研简报 {snap['date']}",
-                               build_brief_sections(snap, sentiment, attribution, judge))
+                               build_brief_sections(snap, sentiment, attribution, judge, news))
     print(f"飞书富文本推送: {'成功' if ok else f'失败 {msg}'}")
     return 0 if ok else 1
 
