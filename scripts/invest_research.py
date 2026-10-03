@@ -255,17 +255,47 @@ def _rss_titles(url, limit, timeout=20):
 
 
 def fetch_news(snap):
-    """大盘 + 持仓标的相关新闻。返回 {"_market": [...], "SYM": [...], ...}；全部失败时为空 dict。"""
+    """大盘 + 持仓标的相关新闻。
+    主源: 富途 OpenAPI GetSearchNews(本地 OpenD, 中文资讯, 无需代理)
+    兜底: Google News RSS(免 key, 走 7890 代理)。全部失败时为空 dict。"""
     out = {}
-    mkt = _rss_titles("https://news.google.com/rss/search?q=US+stock+market+today&hl=en-US&gl=US&ceid=US:en", 3)
-    if mkt:
-        out["_market"] = mkt
+    # --- 富途主源 ---
+    try:
+        from futu import OpenQuoteContext
+        q = OpenQuoteContext(host="127.0.0.1", port=11111)
+        mkt_ret, mkt = q.get_search_news("US stock market", max_count=3)
+        if mkt_ret == 0 and len(mkt):
+            out["_market"] = [str(t).strip() for t in mkt["title"].tolist()[:3]]
+        for r in snap["positions"]:
+            sym = r["symbol"].replace("-USDT", "")
+            kw = {"BTC": "比特币", "ETH": "以太坊"}.get(sym, sym)
+            ret, data = q.get_search_news(kw, max_count=2)
+            if ret == 0 and len(data):
+                out[sym] = [str(t).strip() for t in data["title"].tolist()[:2]]
+        q.close()
+    except Exception as e:
+        print("富途新闻源不可用:", e)
+
+    # --- Google News 兜底（补富途缺失的区） ---
+    gnews = {}
+    if not out.get("_market"):
+        t = _rss_titles("https://news.google.com/rss/search?q=US+stock+market+today&hl=en-US&gl=US&ceid=US:en", 3)
+        if t:
+            gnews["_market"] = t
     for r in snap["positions"]:
         sym = r["symbol"].replace("-USDT", "")
+        if sym in out:
+            continue
         q = {"BTC": "bitcoin price", "ETH": "ethereum price"}.get(sym, f"{sym} stock")
         t = _rss_titles(f"https://news.google.com/rss/search?q={urllib.parse.quote(q)}&hl=en-US&gl=US&ceid=US:en", 2)
         if t:
-            out[sym] = t
+            gnews[sym] = t
+    # 富途完全失败时整体用 gnews；否则仅补缺失
+    if not out:
+        out = gnews
+    else:
+        for k, v in gnews.items():
+            out.setdefault(k, v)
     return out
 
 
