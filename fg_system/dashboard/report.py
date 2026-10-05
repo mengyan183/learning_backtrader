@@ -172,10 +172,11 @@ def _holdings_block(features, shoutu=None, prices=None):
             advise = "系统未跟踪该标的"
         cards.append(
             "<div class='h-card'>"
-            "<div class='h-top'><span class='h-left'><span class='h-sym'>%s</span>"
-            "<span class='h-act %s'>%s</span></span>"
+            "<div class='h-top'><div class='h-left'>"
+            "<div class='h-line1'><span class='h-sym'>%s</span>"
+            "<span class='h-act %s'>%s</span></div>"
+            "<div class='h-line2'>%s</div></div>"
             "<span class='h-pnl %s'>%s</span></div>"
-            "<div class='h-name'>%s</div>"
             "<div class='h-mid'>成本 %s · 现价 %s</div>"
             "<div class='h-mid2'>市值 %s · 占净值 %s · 数量 %s</div>"
             "<div class='h-tags'>"
@@ -184,7 +185,7 @@ def _holdings_block(features, shoutu=None, prices=None):
             "<span class='tag %s'>%s</span>"
             "<span class='tag tag-adv'>%s</span>"
             "</div></div>"
-            % (sym, act_cls, act, pnl_cls, pnl_txt, name,
+            % (sym, act_cls, act, name, pnl_cls, pnl_txt,
                _fmt(cost) if cost is not None else "—",
                _fmt(price) if price is not None else "—",
                _fmt(mv), ("%.1f%%" % ratio) if ratio is not None else "—",
