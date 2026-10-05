@@ -36,11 +36,13 @@ def build_factors_for(market):
         return [CryptoFngFactor(), CryptoPriceFactor()]
 
     from fg_system.factors.breadth import BreadthFactor
+    from fg_system.factors.fed import FedPolicyFactor
     from fg_system.factors.price import PriceFactor
     from fg_system.factors.term import TermStructureFactor
     from fg_system.factors.vix import VixFactor
 
-    return [VixFactor(), TermStructureFactor(), PriceFactor(), BreadthFactor()]
+    return [VixFactor(), TermStructureFactor(), PriceFactor(), BreadthFactor(),
+            FedPolicyFactor()]
 
 
 def weights_for(market):

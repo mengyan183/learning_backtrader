@@ -433,11 +433,12 @@ def _svg_line(points, width=900, height=260, pad=36, y_min=None, y_max=None,
 
 
 def _factors_block(valid):
-    keys = [k for k in ["vix", "term", "price", "breadth"] if k in valid.columns]
+    keys = [k for k in ["vix", "term", "price", "breadth", "fed"] if k in valid.columns]
     if not keys:
         return "<p>因子数据不可用</p>"
-    colors = ["#58a6ff", "#d29922", "#7ee787", "#f85149"]
-    labels = {"vix": "波动率 VIX", "term": "期限利差", "price": "价格动量", "breadth": "市场广度"}
+    colors = ["#58a6ff", "#d29922", "#7ee787", "#f85149", "#bc8cff"]
+    labels = {"vix": "波动率 VIX", "term": "期限利差", "price": "价格动量",
+              "breadth": "市场广度", "fed": "美联储政策"}
     out = ["<div class='f-grid'>"]
     for i, k in enumerate(keys):
         pts = [(d.strftime("%Y-%m-%d"), float(v))
@@ -597,7 +598,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         index_json=_json(index_points),
         factors_json=_json({
             k: [(d.strftime("%Y-%m-%d"), float(v)) for d, v in valid[k].items()]
-            for k in ["vix", "term", "price", "breadth"] if k in valid.columns
+            for k in ["vix", "term", "price", "breadth", "fed"] if k in valid.columns
         }),
         position_json=_json([
             (d.strftime("%Y-%m-%d"), float(v))

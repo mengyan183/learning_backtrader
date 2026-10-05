@@ -110,8 +110,8 @@ const EXTERNAL = {{ external_json }};
     });
   }
 
-  var FKEYS = ["vix", "term", "price", "breadth"];
-  var FCOLORS = ["#58a6ff", "#d29922", "#7ee787", "#f85149"];
+  var FKEYS = ["vix", "term", "price", "breadth", "fed"];
+  var FCOLORS = ["#58a6ff", "#d29922", "#7ee787", "#f85149", "#bc8cff"];
   for (var fi = 0; fi < FKEYS.length; fi++) {
     (function (i) {
       var el = document.getElementById("chartF" + i);
@@ -166,10 +166,10 @@ const EXTERNAL = {{ external_json }};
   if (document.getElementById("weightLab")) {
     (function () {
       var lab = document.getElementById("weightLab");
-      var FKEYS = ["vix", "term", "price", "breadth"];
+      var FKEYS = ["vix", "term", "price", "breadth", "fed"];
       var FNAMES = { vix: "VIX 波动率", term: "期限结构",
-                     price: "价格动量", breadth: "市场广度" };
-      var DEF_W = { vix: 0.30, term: 0.20, price: 0.30, breadth: 0.20 };
+                     price: "价格动量", breadth: "市场广度", fed: "美联储政策" };
+      var DEF_W = { vix: 0.25, term: 0.15, price: 0.25, breadth: 0.15, fed: 0.20 };
       var ZONE_TXT = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"];
       var last = {};
       var any = false;
