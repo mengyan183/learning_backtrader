@@ -256,7 +256,7 @@ const EXTERNAL = {{ external_json }};
       var cards = document.querySelectorAll(".h-card[data-sym]");
       for (var i = 0; i < cards.length; i++) {
         var sym = cards[i].getAttribute("data-sym");
-        var rt = prices[sym];
+        var rt = prices[sym] || prices[sym.replace("-USDT", "")];
         if (!rt || rt.price == null) { continue; }
         var mid = cards[i].querySelector(".h-mid");
         if (mid) {
