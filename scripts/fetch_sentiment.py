@@ -68,7 +68,7 @@ def sync_funding(proxy: bool = True):
     hist = pd.read_csv(RAW / "funding_rate.csv", parse_dates=["date"]) if (RAW / "funding_rate.csv").exists() else pd.DataFrame(columns=["date", "funding_btc", "funding_eth"])
     for col in ("funding_btc", "funding_eth"):
         hist.loc[hist["date"].astype(str) == str(today), col] = rows.get(col)
-    new = pd.DataFrame({"date": [today], **{c: [rows.get(c)] for c in rows}})
+    new = pd.DataFrame({"date": [pd.Timestamp(today)], **{c: [rows.get(c)] for c in rows}})
     hist = pd.concat([hist, new]).drop_duplicates(subset=["date"], keep="last").sort_values("date")
     hist.to_csv(RAW / "funding_rate.csv", index=False)
     print(f"资金费率更新: {today} BTC {rows.get('funding_btc')}% ETH {rows.get('funding_eth')}%")
