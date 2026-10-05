@@ -303,6 +303,27 @@ SHOUTU_HISTORY_PATH = os.path.join(RAW_DIR, "shoutu_history.csv")
 SHOUTU_FNG_MIN, SHOUTU_FNG_MAX = -100.0, 100.0
 # 用户定义的贪婪/恐惧线，**必须与 ZONE_EDGES 的两端边界对应**（见 loader 的映射函数）。
 SHOUTU_GREED_LINE, SHOUTU_FEAR_LINE = 60.0, -60.0
+# ── 守猪待兔个性化买卖线（buy_line, sell_line）：该标的的恐慌/贪婪分界 ──
+# 全标的共用 ±60 一刀切不合理：3x 杠杆 ETF 下跌杀伤大数倍，
+# 买入应更苛刻（更负才买）、卖出应更敏感（更早减仓）；
+# 1x/现货可承受更深恐慌，无需过早止盈。按杠杆/风险分层：
+#   3x 组（TQQQ/SOXL/UPRO/YINN/GDXU）  ：买入 ≤-70 / 卖出 ≥+50
+#   2x 组（CONL/BITX/BITU/MSTX/MSTU）  ：买入 ≤-65 / 卖出 ≥+55
+#   1x/现货组（AXTX/CRCG/BTC）         ：买入 ≤-50 / 卖出 ≥+70
+# 未配置标的回退全局 ±60。60 交易日后可升级为标的自身历史分位数（<20%=恐慌、>80%=贪婪）。
+SHOUTU_LINES_3X = {"TQQQ", "SOXL", "UPRO", "YINN", "GDXU"}
+SHOUTU_LINES_2X = {"CONL", "BITX", "BITU", "MSTX", "MSTU"}
+SHOUTU_LINES_1X = {"AXTX", "CRCG", "BTC"}
+
+def shoutu_lines(sym):
+    """标的的守猪待兔个性化 (buy_line, sell_line)；未配置回退全局 ±60。"""
+    if sym in SHOUTU_LINES_3X:
+        return -70.0, 50.0
+    if sym in SHOUTU_LINES_2X:
+        return -65.0, 55.0
+    if sym in SHOUTU_LINES_1X:
+        return -50.0, 70.0
+    return SHOUTU_FEAR_LINE, SHOUTU_GREED_LINE
 # ── 守猪待兔官方档位表（2026-10-02 官网 fe.szdt.tech/invest/#/etf 页面实测，见 docs/shoutu-zones.md）──
 # 官方**三档**，锚点刻度 -100 / -60 / 60 / 100：
 #   恐慌  ≈ [-100, -60]      （页面锚点 -100 标"恐慌"、-60 标"中性"）

@@ -122,16 +122,17 @@ def _holdings_block(features, shoutu=None, prices=None):
             # 底层数据不足（CRCG/CONL）→ 回退系统市场级指数
             sys_txt = "系统 %.0f %s" % (fg, zone)
             sys_bg = ZONE_COLORS[zi]
-        # 该标的的守猪待兔系数（0~100 + 档位色）
+        # 该标的的守猪待兔系数（-100~100 + 档位色）。
+        # 档位线 = 标的个性化买卖线（config.shoutu_lines），
+        # 按杠杆/风险分层：恐慌 ≤ buy_line / 中性 (buy_line, sell_line) / 贪婪 ≥ sell_line。
         if shoutu_last is not None and sym in shoutu_last.index:
             sh_raw = shoutu_last[sym]
             if sh_raw == sh_raw:   # 非 NaN
-                # 守猪待兔官方原始口径（-100~100）+ 官方三档（docs/shoutu-zones.md）：
-                # 恐慌 ≤-60 / 中性 (-60,60) / 贪婪 ≥60（与 SHOUTU_GREED_LINE/FEAR_LINE 一致）
+                buy_line, sell_line = config.shoutu_lines(sym)
                 raw = float(sh_raw)
-                if raw <= config.SHOUTU_FEAR_LINE:
+                if raw <= buy_line:
                     s_lbl, s_bg = "恐慌", "#e5534b"
-                elif raw >= config.SHOUTU_GREED_LINE:
+                elif raw >= sell_line:
                     s_lbl, s_bg = "贪婪", "#3fb950"
                 else:
                     s_lbl, s_bg = "中性", "#57606a"
@@ -141,13 +142,14 @@ def _holdings_block(features, shoutu=None, prices=None):
         else:
             s_txt, s_bg = "守猪待兔 —", "#3a4a63"
         # 推荐动作：优先守猪待兔标的级情绪（与卡片展示口径一致，
-        # 恐慌→买入 / 中性→观望 / 贪婪→卖出）；无守猪待兔数据时，
-        # 系统覆盖标的跟随系统信号（加仓→买入 / 减仓→卖出 / 持有→观望），
-        # 其余一律观望。
+        # 用同一组个性化线：恐慌→买入 / 中性→观望 / 贪婪→卖出）；
+        # 无守猪待兔数据时，系统覆盖标的跟随系统信号
+        # （加仓→买入 / 减仓→卖出 / 持有→观望），其余一律观望。
         if in_sh and raw is not None:
-            if raw <= config.SHOUTU_FEAR_LINE:
+            buy_line, sell_line = config.shoutu_lines(sym)
+            if raw <= buy_line:
                 act, act_cls = "买入", "act-buy"
-            elif raw >= config.SHOUTU_GREED_LINE:
+            elif raw >= sell_line:
                 act, act_cls = "卖出", "act-sell"
             else:
                 act, act_cls = "观望", "act-hold"
