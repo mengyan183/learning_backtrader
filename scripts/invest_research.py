@@ -374,10 +374,11 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
 
 def _source_footnote(snap):
     """简报脚注：关键数字一律可指回来源文件与日期。"""
+    fg_date = (snap.get("fg") or {}).get("date", "—")
     parts = [
-        f"指数/因子: features.csv(数据日 {snap.get('date', '—')})",
+        f"指数/因子: features.csv(数据日 {fg_date})",
         "熔断/弹药: state.json",
-        f"持仓: positions.csv(快照 {snap.get('positions_date') or '—'})",
+        f"持仓: positions.csv(快照 {snap.get('date', '—')})",
         "守猪待兔: shoutu_fng.csv",
         "美联储: federalreserve.gov + fedwatch.csv",
         "情绪: vix_history/funding_rate.csv",
