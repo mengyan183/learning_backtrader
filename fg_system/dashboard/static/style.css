@@ -189,3 +189,21 @@ body{padding-bottom:64px}
   .f-grid{grid-template-columns:1fr}
   table.card th,table.card td{padding:6px 10px;font-size:12px}
 }
+
+/* 四因子权重调节预览 */
+.w-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.w-row label{width:86px;font-size:12px;color:var(--fg);flex-shrink:0}
+.w-slider{-webkit-appearance:none;appearance:none;flex:1;height:4px;border-radius:2px;
+  background:linear-gradient(90deg,#58a6ff,#d29922);outline:none;cursor:pointer}
+.w-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
+  border-radius:50%;background:#58a6ff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.w-val{width:34px;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
+  color:var(--fg);font-family:var(--font-num)}
+.w-result{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--surface-3);
+  border:1px solid var(--border);font-size:14px;color:var(--fg)}
+.w-result b{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#58a6ff;
+  font-family:var(--font-num);margin:0 4px}
+.w-zone{font-size:14px;font-weight:800;padding:2px 10px;border-radius:16px;background:rgba(139,148,158,.2);
+  border:1px solid var(--border)}
+.w-note{display:block;margin-top:6px;font-size:11px;color:var(--fg-muted)}
+.w-hint{color:var(--fg-muted);font-size:12px}

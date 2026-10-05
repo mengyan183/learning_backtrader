@@ -16,6 +16,8 @@
 <div class="sec"><div id="chartIndex" class="echart-main"></div></div>
 <h2>四因子分解</h2>
 <div class="sec">{{ factors }}</div>
+<h2>四因子权重调节（预览）</h2>
+<div class="sec" id="weightLab"></div>
 <h2>情绪子信号（E1）</h2>
 <div class="sec">{{ sentiment }}</div>
 </div>
@@ -157,6 +159,75 @@ const EXTERNAL = {{ external_json }};
                        { offset: 1, color: "rgba(210,153,34,0)" }] } }
       }]
     });
+  }
+
+  if (document.getElementById("weightLab")) {
+    (function () {
+      var lab = document.getElementById("weightLab");
+      var FKEYS = ["vix", "term", "price", "breadth"];
+      var FNAMES = { vix: "VIX 波动率", term: "期限结构",
+                     price: "价格动量", breadth: "市场广度" };
+      var DEF_W = { vix: 0.30, term: 0.20, price: 0.30, breadth: 0.20 };
+      var ZONE_TXT = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"];
+      var last = {};
+      var any = false;
+      FKEYS.forEach(function (k) {
+        var arr = FACTORS[k];
+        last[k] = (arr && arr.length) ? arr[arr.length - 1][1] : null;
+        if (last[k] !== null) { any = true; }
+      });
+      if (!any) {
+        lab.innerHTML = "<p class='w-hint'>因子数据不足，暂无法预览。</p>";
+        return;
+      }
+      var rows = "";
+      FKEYS.forEach(function (k) {
+        rows += "<div class='w-row'><label>" + FNAMES[k] + "</label>" +
+          "<input type='range' min='0' max='100' step='5' value='" +
+          Math.round(DEF_W[k] * 100) + "' data-k='" + k + "' class='w-slider'>" +
+          "<span class='w-val' data-k='" + k + "'>" +
+          Math.round(DEF_W[k] * 100) + "</span></div>";
+      });
+      lab.innerHTML = rows +
+        "<div class='w-result'>预览指数 <b id='wIdx'>--</b> " +
+        "<span id='wZone' class='w-zone'>--</span>" +
+        "<span class='w-note'>（拖动滑块预览，仅前端计算，不落盘）</span></div>";
+      var idxEl = document.getElementById("wIdx");
+      var zoneEl = document.getElementById("wZone");
+      function zoneOf(v) {
+        var i = 0;
+        while (i < 4 && v >= [20, 40, 60, 80][i]) { i++; }
+        return i;
+      }
+      function calc() {
+        var sw = 0, sws = 0;
+        FKEYS.forEach(function (k) {
+          var w = parseFloat(document.querySelector(
+            ".w-slider[data-k='" + k + "']").value) / 100;
+          sw += w;
+          if (last[k] !== null) { sws += w * last[k]; }
+        });
+        if (sw <= 0) { return; }
+        var v = sws / sw;
+        idxEl.textContent = v.toFixed(1);
+        var zi = zoneOf(v);
+        zoneEl.textContent = ZONE_TXT[zi];
+        zoneEl.style.color = ["#e5534b", "#d9534f", "#f0ad4e",
+                              "#5cb85c", "#3fb950"][zi];
+      }
+      var sliders = document.querySelectorAll(".w-slider");
+      for (var s = 0; s < sliders.length; s++) {
+        (function (sl) {
+          sl.addEventListener("input", function () {
+            var v = sl.value;
+            document.querySelector(".w-val[data-k='" +
+              sl.getAttribute("data-k") + "']").textContent = v;
+            calc();
+          });
+        })(sliders[s]);
+      }
+      calc();
+    })();
   }
 
   if (typeof window.addEventListener === "function") {
