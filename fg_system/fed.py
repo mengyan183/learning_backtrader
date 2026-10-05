@@ -11,8 +11,24 @@
 - 事件窗口：FOMC 前 7 天（config.FED_EVENT_WINDOW_DAYS）标记，提示谨慎
 """
 import datetime as dt
+import os
+
+import pandas as pd
 
 from fg_system import config
+
+
+def _load_fedwatch():
+    """读 CME FedWatch 市场预期 CSV（scripts/fetch_fedwatch.py 产出）。
+    返回最新一行 dict；无数据返回 None。"""
+    p = os.path.join(config.RAW_DIR, "fedwatch.csv")
+    try:
+        df = pd.read_csv(p)
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        return None
+    if df.empty:
+        return None
+    return df.iloc[-1].to_dict()
 
 
 def _parse(d):
@@ -56,7 +72,22 @@ def fed_context(today=None):
         "next_minutes": None,
         "days_to_minutes": None,
         "sentiment_tone": None,   # 环境温度修正提示
+        # 市场预期（CME FedWatch，可缺失）
+        "fw_meeting": None, "fw_hold": None, "fw_hike": None, "fw_ease": None,
+        "fw_delta_1w": None, "fw_date": None,
     }
+    fw = _load_fedwatch()
+    if fw is not None:
+        try:
+            ctx["fw_meeting"] = str(fw.get("meeting") or "")
+            ctx["fw_hold"] = float(fw.get("hold_pct") or float("nan"))
+            ctx["fw_hike"] = float(fw.get("hike_pct") or float("nan"))
+            ctx["fw_ease"] = float(fw.get("ease_pct") or float("nan"))
+            wk = fw.get("wk_hike_pct")
+            ctx["fw_delta_1w"] = (ctx["fw_hike"] - float(wk)) if wk == wk else None
+            ctx["fw_date"] = str(fw.get("date") or "")
+        except (TypeError, ValueError):
+            pass
     if next_meeting is not None:
         d = (next_meeting - today).days
         ctx["next_meeting"] = next_meeting.isoformat()
@@ -95,6 +126,15 @@ def fed_brief_text(ctx):
         parts.append(w)
     if ctx["next_minutes"]:
         parts.append("纪要发布：%s（%d 天后）" % (ctx["next_minutes"], ctx["days_to_minutes"]))
+    if ctx["fw_meeting"]:
+        fw = "市场预期（CME FedWatch %s）：维持 %.1f%% / 加息25bp %.1f%% / 降息 %.1f%%"
+        fw = fw % (ctx["fw_date"], ctx["fw_hold"], ctx["fw_hike"], ctx["fw_ease"])
+        if ctx["fw_delta_1w"] is not None:
+            d = ctx["fw_delta_1w"]
+            arrow = "↑" if d > 0.05 else ("↓" if d < -0.05 else "→")
+            fw += "（加息概率 %s，一周%s%.1fpp）" % (
+                "回升" if d > 0.05 else ("回落" if d < -0.05 else "持平"), arrow, abs(d))
+        parts.append(fw)
     parts.append(ctx["sentiment_tone"])
     return "；".join(parts)
 
@@ -110,14 +150,28 @@ def fed_card_html(ctx):
     mn = ("<span class='tag tag-zone' style='background:#3a4a63'>纪要 %s"
           "（%d 天后）</span>" % (ctx["next_minutes"], ctx["days_to_minutes"])
           if ctx["next_minutes"] else "")
+    fw = ""
+    if ctx["fw_meeting"]:
+        fw = ("<div class='fed-row'><b>市场预期（CME FedWatch）</b>"
+              "维持 <b>%.1f%%</b> · 加息25bp <b>%.1f%%</b> · 降息 <b>%.1f%%</b>"
+              % (ctx["fw_hold"], ctx["fw_hike"], ctx["fw_ease"]))
+        if ctx["fw_delta_1w"] is not None:
+            d = ctx["fw_delta_1w"]
+            color = "#7ee787" if d < -0.05 else ("#f85149" if d > 0.05 else "#d29922")
+            fw += ("<span class='tag tag-zone' style='background:%s'>加息概率"
+                   "%s（一周%s %.1fpp）</span>"
+                   % (color, "回升" if d > 0.05 else ("回落" if d < -0.05 else "持平"),
+                      "↑" if d > 0.05 else ("↓" if d < -0.05 else "→"), abs(d)))
+        fw += "</div>"
     return (
         "<div class='fed-card'>"
         "<div class='fed-row'><b>美联储政策环境</b>"
         "<span class='tag tag-zone' style='background:#8b0000'>%s</span></div>"
         "<div class='fed-row'>目标利率区间 <b>%s</b> · 最近决议：%s</div>"
         "<div class='fed-row fed-muted'>%s</div>"
+        "%s"
         "<div class='fed-row'>%s %s %s</div>"
         "<div class='fed-row fed-tone'>%s</div>"
         "</div>"
     ) % (ctx["stance"], ctx["range_txt"], ctx["last_decision_txt"],
-         ctx["outlook_txt"], ev, mt, mn, ctx["sentiment_tone"])
+         ctx["outlook_txt"], fw, ev, mt, mn, ctx["sentiment_tone"])
