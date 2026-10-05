@@ -143,8 +143,10 @@ def _holdings_block(features, shoutu=None, prices=None):
             s_txt, s_bg = "守猪待兔 —", "#3a4a63"
         # 推荐动作：优先守猪待兔标的级情绪（与卡片展示口径一致，
         # 用同一组个性化线：恐慌→买入 / 中性→观望 / 贪婪→卖出）；
-        # 无守猪待兔数据时，系统覆盖标的跟随系统信号
-        # （加仓→买入 / 减仓→卖出 / 持有→观望），其余一律观望。
+        # 无守猪待兔数据时，系统覆盖标的按【其系统列指数档位】映射
+        # （≤40 恐惧区→买入 / 40-60 中性→观望 / ≥60 贪婪区→卖出），
+        # 与该卡系统列展示的指数同源，避免"显示贪婪却推荐买入"的错位；
+        # 其余一律观望。
         if in_sh and raw is not None:
             buy_line, sell_line = config.shoutu_lines(sym)
             if raw <= buy_line:
@@ -154,9 +156,10 @@ def _holdings_block(features, shoutu=None, prices=None):
             else:
                 act, act_cls = "观望", "act-hold"
         elif in_s:
-            if sig == "加仓":
+            sv_for_act = _sv if _sv is not None else fg
+            if sv_for_act is not None and sv_for_act <= 40:
                 act, act_cls = "买入", "act-buy"
-            elif sig == "减仓":
+            elif sv_for_act is not None and sv_for_act >= 60:
                 act, act_cls = "卖出", "act-sell"
             else:
                 act, act_cls = "观望", "act-hold"
@@ -165,7 +168,11 @@ def _holdings_block(features, shoutu=None, prices=None):
         # 覆盖三态：系统信号 / 守猪待兔系数 / 不在跟踪范围
         if in_s:
             cov_cls, cov_txt = "tag-in", "✅ 系统覆盖"
-            advise = "系统信号：%s · 目标仓位 %s" % (sig, target_txt)
+            sv_txt = ("%.0f %s" % (_sv, ZONE_NAMES[int(np.clip(
+                np.searchsorted([20, 40, 60, 80], _sv, side="right"), 0, 4))])
+                      if _sv is not None
+                      else ("%.0f %s（市场回退）" % (fg, zone)))
+            advise = "系统指数 %s · 目标仓位 %s" % (sv_txt, target_txt)
         elif in_sh:
             cov_cls, cov_txt = "tag-shoutu", "🐰 守猪待兔覆盖"
             advise = (s_txt if s_txt != "守猪待兔 —" else "守猪待兔覆盖（系数待更新）")
