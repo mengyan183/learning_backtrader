@@ -140,22 +140,22 @@ def _holdings_block(features, shoutu=None, prices=None):
                 s_txt, s_bg = "守猪待兔 —", "#3a4a63"
         else:
             s_txt, s_bg = "守猪待兔 —", "#3a4a63"
-        # 推荐动作：系统覆盖 → 跟随系统信号；守猪待兔覆盖 → 逆向情绪；其余观望
-        if in_s:
+        # 推荐动作：优先守猪待兔标的级情绪（与卡片展示口径一致，
+        # 恐慌→买入 / 中性→观望 / 贪婪→卖出）；无守猪待兔数据时，
+        # 系统覆盖标的跟随系统信号（加仓→买入 / 减仓→卖出 / 持有→观望），
+        # 其余一律观望。
+        if in_sh and raw is not None:
+            if raw <= config.SHOUTU_FEAR_LINE:
+                act, act_cls = "买入", "act-buy"
+            elif raw >= config.SHOUTU_GREED_LINE:
+                act, act_cls = "卖出", "act-sell"
+            else:
+                act, act_cls = "观望", "act-hold"
+        elif in_s:
             if sig == "加仓":
                 act, act_cls = "买入", "act-buy"
             elif sig == "减仓":
                 act, act_cls = "卖出", "act-sell"
-            else:
-                act, act_cls = "观望", "act-hold"
-        elif in_sh:
-            if raw is not None:
-                if raw <= config.SHOUTU_FEAR_LINE:
-                    act, act_cls = "买入", "act-buy"
-                elif raw >= config.SHOUTU_GREED_LINE:
-                    act, act_cls = "卖出", "act-sell"
-                else:
-                    act, act_cls = "观望", "act-hold"
             else:
                 act, act_cls = "观望", "act-hold"
         else:
