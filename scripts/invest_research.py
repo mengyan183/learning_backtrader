@@ -338,8 +338,12 @@ def build_snapshot_lines(snap):
 
 def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     """结构化简报（飞书富文本 post 用）：[ ("标题", "正文"), "hr", ... ]"""
+    from fg_system import fed as _fed
+    _fctx = _fed.fed_context()
     secs = []
     secs.append(("市场快照", build_snapshot_lines(snap)))
+    secs.append("hr")
+    secs.append(("🏛️ 美联储动态", _fed.fed_brief_text(_fctx)))
     secs.append("hr")
     secs.append(("📰 市场快讯", news_text(news) if news else "（新闻源不可用）"))
     secs.append("hr")
@@ -352,6 +356,8 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
 
 
 def build_brief(snap, sentiment, attribution, judge, news=None):
+    from fg_system import fed as _fed
+    _fctx = _fed.fed_context()
     lines = [
         f"# 多智能体投研简报 {snap['date']}",
         "",
@@ -359,6 +365,9 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         "```",
         build_snapshot_lines(snap),
         "```",
+        "",
+        "## 🏛️ 美联储动态",
+        _fed.fed_brief_text(_fctx),
         "",
         "## 市场快讯",
         news_text(news) if news else "（新闻源不可用）",

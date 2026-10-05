@@ -16,6 +16,7 @@ import pandas as pd
 
 from fg_system import config
 from fg_system import leverage
+from fg_system import fed
 from fg_system.dashboard import pwa
 
 ZONE_COLORS = ["#8b0000", "#d9534f", "#f0ad4e", "#5cb85c", "#006400"]
@@ -583,6 +584,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         span=("%s ~ %s" % (valid.index[0].strftime("%Y-%m-%d"),
                            valid.index[-1].strftime("%Y-%m-%d")) if len(valid) else "无"),
         card=_state_card(features, shoutu_mkt=shoutu_mkt),
+        fed_card=fed.fed_card_html(fed.fed_context()),
         holdings=_holdings_block(features, shoutu=shoutu, prices=prices),
         factors=_factors_block(valid),
         sentiment=_sentiment_block(),
