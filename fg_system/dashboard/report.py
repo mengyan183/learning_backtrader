@@ -203,6 +203,23 @@ def _holdings_block(features, shoutu=None, prices=None):
         else:
             cov_cls, cov_txt = "tag-out", "❌ 范围外"
             advise = "系统未跟踪该标的"
+        # 过程成本行（借鉴 HowToLiveBetter 治理规则：只写结果不写过程等于把胜率当收益）
+        cost_adv = None
+        if pnl is not None:
+            if pnl <= -30:
+                cost_adv = "深度浮亏 %+.1f%%：回撤是过程成本，建议分批减仓/不加仓，保留弹药" % pnl
+            elif pnl <= -10:
+                cost_adv = "浮亏 %+.1f%%：先评估基本面与系数，避免单笔加仓摊平" % pnl
+            elif pnl >= 30:
+                cost_adv = "浮盈 %+.1f%%：分批止盈落袋，保留部分仓位跟踪趋势" % pnl
+            elif pnl >= 10:
+                cost_adv = "浮盈 %+.1f%%：可考虑分批止盈，注意波动放大" % pnl
+        if act == "买入" and cost_adv is None:
+            cost_adv = "买入信号：建议分批建仓，保留弹药应对回撤"
+        elif act == "卖出" and cost_adv is None:
+            cost_adv = "卖出信号：注意滑点与税（资本利得），分批执行"
+        elif act == "观望" and cost_adv is None:
+            cost_adv = "观望：等待系数进入买卖区间，避免在区间内追涨杀跌"
         cards.append(
             "<div class='h-card'>"
             "<div class='h-top'><div class='h-left'>"
@@ -212,6 +229,7 @@ def _holdings_block(features, shoutu=None, prices=None):
             "<span class='h-pnl %s'>%s</span></div>"
             "<div class='h-mid'>成本 %s · 现价 %s</div>"
             "<div class='h-mid2'>市值 %s · 占净值 %s · 数量 %s</div>"
+            "<div class='h-cost'>%s</div>"
             "<div class='h-tags'>"
             "<span class='tag tag-zone' style='background:%s'>%s</span>"
             "<span class='tag tag-zone' style='background:%s'>%s</span>"
@@ -222,9 +240,9 @@ def _holdings_block(features, shoutu=None, prices=None):
                _fmt(cost) if cost is not None else "—",
                _fmt(price) if price is not None else "—",
                _fmt(mv), ("%.1f%%" % ratio) if ratio is not None else "—",
-               _fmt(qty), sys_bg, sys_txt, s_bg, s_txt,
-               cov_cls, cov_txt,
-               advise))
+               _fmt(qty), cost_adv or "",
+               sys_bg, sys_txt, s_bg, s_txt,
+               cov_cls, cov_txt, advise))
     body = "".join(out)
     if not cards:
         return body + "<p>无持仓记录</p>"

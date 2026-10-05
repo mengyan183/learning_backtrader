@@ -336,11 +336,26 @@ def build_snapshot_lines(snap):
     return "\n".join(out)
 
 
+def _freshness_block():
+    """读 Data/freshness_warning.txt（scripts/check_freshness.py 每日链写入）。
+    有风险则返回告警文本，正常返回 None。"""
+    p = REPO / "Data" / "freshness_warning.txt"
+    if p.exists():
+        txt = p.read_text(encoding="utf-8").strip()
+        if txt and not txt.startswith("数据新鲜"):
+            return txt
+    return None
+
+
 def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     """结构化简报（飞书富文本 post 用）：[ ("标题", "正文"), "hr", ... ]"""
     from fg_system import fed as _fed
     _fctx = _fed.fed_context()
     secs = []
+    _warn = _freshness_block()
+    if _warn:
+        secs.append(("⚠️ 数据新鲜度", _warn))
+        secs.append("hr")
     secs.append(("市场快照", build_snapshot_lines(snap)))
     secs.append("hr")
     secs.append(("🏛️ 美联储动态", _fed.fed_brief_text(_fctx)))
@@ -351,16 +366,36 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     secs.append("hr")
     secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)", (attribution or "（不可用）").strip()[:300]))
     secs.append("hr")
-    secs.append(("⚖️ 裁判裁决 · OpenClaw(本地)", (judge or "（不可用）").strip()[:300]))
+    secs.append(("⚖️ 裁判裁决 · OpenClaw(本地)【研究参考】", (judge or "（不可用）").strip()[:300]))
+    secs.append("hr")
+    secs.append(("📎 数据来源", _source_footnote(snap)))
     return secs
+
+
+def _source_footnote(snap):
+    """简报脚注：关键数字一律可指回来源文件与日期。"""
+    parts = [
+        f"指数/因子: features.csv(数据日 {snap.get('date', '—')})",
+        "熔断/弹药: state.json",
+        f"持仓: positions.csv(快照 {snap.get('positions_date') or '—'})",
+        "守猪待兔: shoutu_fng.csv",
+        "美联储: federalreserve.gov + fedwatch.csv",
+        "情绪: vix_history/funding_rate.csv",
+    ]
+    return " · ".join(parts)
 
 
 def build_brief(snap, sentiment, attribution, judge, news=None):
     from fg_system import fed as _fed
     _fctx = _fed.fed_context()
+    _warn = _freshness_block()
     lines = [
         f"# 多智能体投研简报 {snap['date']}",
         "",
+    ]
+    if _warn:
+        lines += ["## ⚠️ 数据新鲜度", _warn, "", "---", ""]
+    lines += [
         "## 市场快照",
         "```",
         build_snapshot_lines(snap),
@@ -378,9 +413,13 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         "## 深度归因（Harness 后端 deepseek-v4.1-flash / NVIDIA NIM）",
         (attribution or "（跳过：NIM 不可用）").strip()[:300],
         "",
-        "## 裁判裁决（OpenClaw / 本地 qwen2.5-coder:3b）",
+        "## 裁判裁决（OpenClaw / 本地 qwen2.5-coder:3b）【研究参考，非实盘指令】",
         (judge or "（跳过：OpenClaw 不可用）").strip()[:300],
         "",
+        "## 📎 数据来源",
+        _source_footnote(snap),
+        "",
+        "> 分级：🟢实盘动作=已采纳规则执行 · 🟡研究参考=模型分析不直接执行 · ⚪待验证=假说观察中",
         "> 由 scripts/invest_research.py 自动生成 · 仅供个人研究，不构成投资建议",
     ]
     return "\n".join(lines)

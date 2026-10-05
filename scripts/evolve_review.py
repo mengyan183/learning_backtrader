@@ -71,7 +71,8 @@ SCHEMA_HINT = """输出必须是合法 JSON，结构如下（字段名勿改，�
   "candidate_hypotheses": [
     {"assumption": "可证伪的假设（单句）",
      "test_method": "检验方法（数据、区间、统计量）",
-     "falsify_criteria": "不成立判据（明确数值/条件）"}
+     "falsify_criteria": "不成立判据（明确数值/条件）",
+     "evidence_source": "现象来源（输入中的具体文件/列/日期，必须能指回输入）"}
   ]
 }"""
 
@@ -139,8 +140,10 @@ def build_prompt():
 
 任务：
 1. 体检：只陈述可核验的现象与极端标记，不给"应该怎么办"的操作建议。
-2. 从现象中提炼候选假说：每条必须三要素齐全（assumption/test_method/falsify_criteria），
-   缺任一要素的候选作废。与历史日志重复的假说不要重复提出。
+2. 从现象中提炼候选假说：每条必须四要素齐全（assumption/test_method/falsify_criteria/evidence_source），
+   缺任一要素的候选作废。evidence_source 必须写明输入中的具体文件、列与日期
+   （如"features.csv 尾行 2026-10-02 zone=2"），不能写"模型分析/经验判断"这类不可指回来源。
+   与历史日志重复的假说不要重复提出。
 3. 严格按以下 schema 输出合法 JSON，不要输出 JSON 以外的文字。
 
 {SCHEMA_HINT}"""
@@ -218,14 +221,19 @@ def register_hypotheses(cands, via):
         a = str(c.get("assumption", "")).strip()
         t = str(c.get("test_method", "")).strip()
         f = str(c.get("falsify_criteria", "")).strip()
+        e = str(c.get("evidence_source", "")).strip()
         if not (a and t and f):
             print(f"[evolve_review] 三要素不全，作废：{a[:40] or '(空假设)'}")
+            continue
+        if not e or e.lower() in ("模型分析", "经验判断", "历史经验", "常识"):
+            print(f"[evolve_review] 缺证据来源，作废：{a[:40]}")
             continue
         if a[:50] in existing:
             print(f"[evolve_review] 已登记过，跳过：{a[:40]}")
             continue
         hid = next_hyp_id()
-        row = f"| {hid} | {today} | {a} | {t} | {f} | open | 由 evolve_review 自动登记（{via}） |"
+        row = (f"| {hid} | {today} | {a} | {t} | {f} | open | "
+               f"由 evolve_review 自动登记（{via}）；证据：{e[:60]} |")
         with open(HYP, "a") as fh:
             fh.write(row + "\n")
         added.append(hid)
