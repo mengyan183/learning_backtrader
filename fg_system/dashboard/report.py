@@ -97,6 +97,7 @@ def _holdings_block(features, shoutu=None, prices=None):
         price = _num(r.get("price"))
         cost = _num(r.get("cost"))
         pnl = ((price - cost) / cost * 100.0) if cost and cost > 0 and price else None
+        raw = None
         ratio = (mv / net * 100.0) if net and mv is not None else None
         in_s = _covered(sym)
         in_sh = sym in in_shoutu
@@ -139,6 +140,26 @@ def _holdings_block(features, shoutu=None, prices=None):
                 s_txt, s_bg = "守猪待兔 —", "#3a4a63"
         else:
             s_txt, s_bg = "守猪待兔 —", "#3a4a63"
+        # 推荐动作：系统覆盖 → 跟随系统信号；守猪待兔覆盖 → 逆向情绪；其余观望
+        if in_s:
+            if sig == "加仓":
+                act, act_cls = "买入", "act-buy"
+            elif sig == "减仓":
+                act, act_cls = "卖出", "act-sell"
+            else:
+                act, act_cls = "观望", "act-hold"
+        elif in_sh:
+            if raw is not None:
+                if raw <= config.SHOUTU_FEAR_LINE:
+                    act, act_cls = "买入", "act-buy"
+                elif raw >= config.SHOUTU_GREED_LINE:
+                    act, act_cls = "卖出", "act-sell"
+                else:
+                    act, act_cls = "观望", "act-hold"
+            else:
+                act, act_cls = "观望", "act-hold"
+        else:
+            act, act_cls = "观望", "act-hold"
         # 覆盖三态：系统信号 / 守猪待兔系数 / 不在跟踪范围
         if in_s:
             cov_cls, cov_txt = "tag-in", "✅ 系统覆盖"
@@ -151,7 +172,8 @@ def _holdings_block(features, shoutu=None, prices=None):
             advise = "系统未跟踪该标的"
         cards.append(
             "<div class='h-card'>"
-            "<div class='h-top'><span class='h-sym'>%s</span>"
+            "<div class='h-top'><span class='h-left'><span class='h-sym'>%s</span>"
+            "<span class='h-act %s'>%s</span></span>"
             "<span class='h-pnl %s'>%s</span></div>"
             "<div class='h-name'>%s</div>"
             "<div class='h-mid'>成本 %s · 现价 %s</div>"
@@ -162,7 +184,7 @@ def _holdings_block(features, shoutu=None, prices=None):
             "<span class='tag %s'>%s</span>"
             "<span class='tag tag-adv'>%s</span>"
             "</div></div>"
-            % (sym, pnl_cls, pnl_txt, name,
+            % (sym, act_cls, act, pnl_cls, pnl_txt, name,
                _fmt(cost) if cost is not None else "—",
                _fmt(price) if price is not None else "—",
                _fmt(mv), ("%.1f%%" % ratio) if ratio is not None else "—",
