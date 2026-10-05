@@ -221,7 +221,7 @@ def _holdings_block(features, shoutu=None, prices=None):
         elif act == "观望" and cost_adv is None:
             cost_adv = "观望：等待系数进入买卖区间，避免在区间内追涨杀跌"
         cards.append(
-            "<div class='h-card'>"
+            "<div class='h-card' data-sym='%s'>"
             "<div class='h-top'><div class='h-left'>"
             "<div class='h-line1'><span class='h-sym'>%s</span>"
             "<span class='h-act %s'>%s</span></div>"
@@ -236,7 +236,7 @@ def _holdings_block(features, shoutu=None, prices=None):
             "<span class='tag %s'>%s</span>"
             "<span class='tag tag-adv'>%s</span>"
             "</div></div>"
-            % (sym, act_cls, act, name, pnl_cls, pnl_txt,
+            % (sym, sym, act_cls, act, name, pnl_cls, pnl_txt,
                _fmt(cost) if cost is not None else "—",
                _fmt(price) if price is not None else "—",
                _fmt(mv), ("%.1f%%" % ratio) if ratio is not None else "—",

@@ -160,6 +160,18 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         resp.headers["Cache-Control"] = "public, max-age=86400"
         return resp
 
+    @app.route("/realtime")
+    def _realtime():
+        """富途实时行情状态（futu_realtime.py 常驻服务写入）。无服务时 404。"""
+        p = os.path.join(config.DATA_DIR, "realtime_state.json")
+        if not os.path.isfile(p):
+            return Response("{}", status=404, mimetype="application/json")
+        with open(p, encoding="utf-8") as f:
+            data = f.read()
+        resp = Response(data, mimetype="application/json")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
     @app.route("/")
     @app.route("/index.html")
     def _index():

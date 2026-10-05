@@ -239,6 +239,50 @@ const EXTERNAL = {{ external_json }};
     };
     window.addEventListener("resize", rz);
   }
+</script>
+
+<script>
+/* 富途实时行情轮询（futu_realtime.py 常驻服务 → /realtime）：
+   1) 持仓卡现价/浮盈亏实时刷新（● 实时标记）2) 盘中预览指数徽章 */
+(function () {
+  var bar = document.createElement("div");
+  bar.id = "rtBar";
+  var sub = document.querySelector(".sub");
+  if (sub && sub.parentNode) { sub.parentNode.insertBefore(bar, sub.nextSibling); }
+  function poll() {
+    fetch("/realtime").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d) { return; }
+      var prices = d.prices || {};
+      var cards = document.querySelectorAll(".h-card[data-sym]");
+      for (var i = 0; i < cards.length; i++) {
+        var sym = cards[i].getAttribute("data-sym");
+        var rt = prices[sym];
+        if (!rt || rt.price == null) { continue; }
+        var mid = cards[i].querySelector(".h-mid");
+        if (mid) {
+          mid.innerHTML = mid.innerHTML.replace(/现价[^<]*/,
+            "现价 " + rt.price.toFixed(2) + " <span class='rt-dot'>●</span>");
+          var mm = mid.textContent.match(/成本 ([\d.]+)/);
+          var pnlEl = cards[i].querySelector(".h-pnl");
+          if (pnlEl && mm) {
+            var cost = parseFloat(mm[1]);
+            var pct = (rt.price / cost - 1) * 100;
+            pnlEl.textContent = (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
+            pnlEl.className = "h-pnl " + (pct >= 0 ? "up" : "down");
+          }
+        }
+      }
+      var pi = d.preview_index;
+      if (pi) {
+        bar.innerHTML = "🟢 盘中预览：<b>" + pi.fg_index + "</b> " + pi.zone +
+          "（收盘 " + pi.closed_index + "，Δ" + (pi.delta >= 0 ? "+" : "") +
+          pi.delta + "）· 仅预览，正式信号以收盘为准";
+        bar.style.display = "block";
+      } else { bar.style.display = "none"; }
+    }).catch(function () { /* 服务未启动则静默 */ });
+  }
+  poll();
+  setInterval(poll, 10000);
 })();
 </script>
 </div>
