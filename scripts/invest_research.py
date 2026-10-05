@@ -334,13 +334,13 @@ def news_text(news):
     if news.get("_market"):
         lines.append("大盘快讯:")
         for t in news["_market"][:3]:
-            lines.append(f"· {t[:90]}")
+            lines.append(f"· {t[:150]}")
     for sym, titles in news.items():
         if sym == "_market":
             continue
         lines.append(f"{sym}:")
         for t in titles[:2]:
-            lines.append(f"· {t[:80]}")
+            lines.append(f"· {t[:120]}")
     return "\n".join(lines)
 
 
@@ -389,11 +389,11 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     secs.append("hr")
     secs.append(("📰 市场快讯", news_text(news) if news else "（新闻源不可用）"))
     secs.append("hr")
-    secs.append(("📰 情绪面 · Hermes(GLM)", (sentiment or "（不可用）").strip()[:300]))
+    secs.append(("📰 情绪面 · Hermes(GLM)", (sentiment or "（不可用）").strip()[:1200]))
     secs.append("hr")
-    secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)", (attribution or "（不可用）").strip()[:500]))
+    secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)", (attribution or "（不可用）").strip()[:2600]))
     secs.append("hr")
-    secs.append(("⚖️ 裁判裁决 · OpenClaw云端(NVIDIA NIM)【研究参考】", (judge or "（不可用）").strip()[:400]))
+    secs.append(("⚖️ 裁判裁决 · OpenClaw云端(NVIDIA NIM)【研究参考】", (judge or "（不可用）").strip()[:1200]))
     secs.append("hr")
     secs.append(("📎 数据来源", _source_footnote(snap)))
     return secs
@@ -436,13 +436,13 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         news_text(news) if news else "（新闻源不可用）",
         "",
         "## 情绪面分析（Hermes / GLM）",
-        (sentiment or "（跳过：Hermes 不可用）").strip()[:1000],
+        (sentiment or "（跳过：Hermes 不可用）").strip()[:1500],
         "",
         "## 深度归因（Harness 后端 deepseek-v4.1-flash / NVIDIA NIM）",
-        (attribution or "（跳过：NIM 不可用）").strip()[:1200],
+        (attribution or "（跳过：NIM 不可用）").strip()[:3000],
         "",
         "## 裁判裁决（OpenClaw 云端裁判 / NVIDIA NIM）【研究参考，非实盘指令】",
-        (judge or "（跳过：裁判不可用）").strip()[:800],
+        (judge or "（跳过：裁判不可用）").strip()[:1200],
         "",
         "## 📎 数据来源",
         _source_footnote(snap),
