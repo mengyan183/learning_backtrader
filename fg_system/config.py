@@ -283,14 +283,17 @@ FOMC_MEETINGS_2026 = [
 FOMC_MINUTES_2026 = [
     ("2026-10-07", "2026-09-15"), ("2026-11-18", "2026-10-27"),
 ]
-# ── CME FedWatch 市场预期（QuikStrike 会话）──────────────────
-# FEDWATCH_VIEW_URL % qsid：QuikStrike FedWatch 工具数据页（服务端渲染，可 curl）。
-# qsid 会话过期（返回 302/403）时用浏览器打开 CME FedWatch 页面获取新值：
-#   https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html
-# 抓取工具 = scripts/fetch_fedwatch.py（挂每日链 05:30，失败只告警不覆盖旧数据）
+# ── CME FedWatch 市场预期（QuikStrike 会话，全自动刷新）──────────────────
+# QuikStrike 数据页（服务端渲染 .aspx）：insid(工具实例) + qsid(会话) 均
+# 由 CME 宿主页面每次动态生成。scripts/fetch_fedwatch.py 抓取前先用
+# headless Chrome 打开 CME 页面并从网络日志提取最新 insid/qsid（无人工）。
+# 以下为默认值（首次回退），实际会话持久化在 FEDWATCH_SESSION_FILE。
+FEDWATCH_PAGE_URL = "https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html"
 FEDWATCH_VIEW_URL = ("https://cmegroup-tools.quikstrike.net/User/QuikStrikeView.aspx"
-                     "?viewitemid=IntegratedFedWatchTool&insid=249313867&qsid=%s")
+                     "?viewitemid=IntegratedFedWatchTool&insid=%s&qsid=%s")
+FEDWATCH_INSID = "249313867"
 FEDWATCH_QSID = "9495ec2d-638b-4e16-a1c5-a1bca7691d2a"
+FEDWATCH_SESSION_FILE = os.path.join(RAW_DIR, "fedwatch_session.json")
 # 产品损耗率（年化），用于合成序列。**这是实测校准值，不是费率**（§4.2）：
 # 用真实产品在重叠区间的已实现表现反推、使合成序列复现其已实现拖累。
 #   - BITX/BITU 隐含 BTC **期货展期升水**成本（模型用现货 BTC 无法捕捉）
