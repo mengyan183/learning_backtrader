@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """多智能体投研流水线原型 (E1)
-Hermes(GLM 云端) 情绪/新闻分析 → Harness 后端模型(deepseek-v4.1-flash via NVIDIA NIM) 深度归因
-→ OpenClaw(本地 qwen2.5-coder:3b) 裁判汇总 → 简报推送飞书(海外投资助手机器人)
+Hermes(GLM 云端) 情绪/新闻分析 → NVIDIA NIM(deepseek-v4.1-flash) 深度归因
+→ 裁判裁决(NVIDIA NIM 云端；弃用本地小模型——3b 倾向输出 tool_call JSON) → 简报推送飞书
+BTC 持仓现价回退源：OKX REST(走 7890 代理)；FG_STATIC_ONLY=1 时跳过外部行情。
 
 用法:
   .venv/bin/python scripts/invest_research.py          # 全流程 + 推送飞书
@@ -28,6 +29,9 @@ NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 NIM_MODEL = "deepseek-ai/deepseek-v4.1-flash"
 PROXY = "http://127.0.0.1:7890"
 FEISHU_OPEN_ID = "ou_c4f5cd25e5001a853309524e899dd6d2"
+OKX_TICKER_URL = "https://www.okx.com/api/v5/market/ticker?instId={sym}"
+# 公司电脑只跑静态数据时置 1，禁止任何外部行情 API（富途/OKX）
+STATIC_ONLY = os.environ.get("FG_STATIC_ONLY", "0") == "1"
 
 
 # ---------------------------------------------------------------- 凭据读取
@@ -64,6 +68,29 @@ def _read_feishu_creds():
     return f.get("appId"), f.get("appSecret")
 
 
+def _okx_ticker(sym):
+    """OKX 实时价回退源（BTC 无美股收盘价时用）。走 7890 代理；
+    静态模式或调用失败返回 None（不阻塞简报）。"""
+    if STATIC_ONLY:
+        return None
+    try:
+        inst_id = sym if sym.endswith("-USDT") else f"{sym}-USDT"
+        url = OKX_TICKER_URL.format(sym=inst_id)
+        req = urllib.request.Request(url, headers={"User-Agent": "fg-brief/1.0"})
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": PROXY, "https": PROXY}))
+        d = json.loads(opener.open(req, timeout=15).read())
+        data = (d.get("data") or [{}])[0]
+        last = data.get("last")
+        open24 = data.get("open24h")
+        out = {"price": float(last)} if last else None
+        if out and open24 and float(open24):
+            out["day_chg_pct"] = round((float(last) / float(open24) - 1) * 100, 2)
+        return out
+    except Exception:
+        return None
+
+
 # ---------------------------------------------------------------- 数据快照
 def build_snapshot():
     import pandas as pd
@@ -89,7 +116,21 @@ def build_snapshot():
     price_map = dict(zip(last_px["symbol"], last_px["close"]))
     for r in rows:
         sym = r["symbol"].replace("-USDT", "")
-        r["last_close"] = float(price_map[sym]) if sym in price_map else None
+        if sym in price_map:
+            r["last_close"] = float(price_map[sym])
+            r["px_source"] = "prices.csv"
+        elif sym == "BTC":
+            # BTC 现货无美股收盘价 → OKX 实时价回退（静态模式跳过）
+            okx = _okx_ticker(sym)
+            if okx:
+                r["last_close"] = okx["price"]
+                r["px_source"] = "OKX"
+            else:
+                r["last_close"] = None
+                r["px_source"] = None
+        else:
+            r["last_close"] = None
+            r["px_source"] = None
         r["pnl"] = round((r["last_close"] - r["cost"]) * r["qty"], 2) if r["last_close"] else None
         r["pnl_pct"] = round((r["last_close"] / r["cost"] - 1) * 100, 2) if r["last_close"] else None
 
@@ -183,9 +224,12 @@ def stage_attribution(nim_key, snap):
     return _chat(NIM_URL, nim_key, NIM_MODEL, system, user, max_tokens=4096, proxy=PROXY, timeout=300, retries=2)
 
 
-def stage_judge(snap, sentiment, attribution):
-    """OpenClaw(本地 qwen2.5-coder:3b) 裁判汇总——prompt 压缩，输出纯文本短裁决"""
-    # 压缩快照：只保留关键行，避免本地小模型上下文过长
+def stage_judge(nim_key, snap, sentiment, attribution):
+    """裁判汇总——NVIDIA NIM(deepseek-v4.1-flash) 云端裁决。
+    历史教训：本地 qwen2.5-coder:3b 在裁判任务上倾向输出
+    tool_call/sessions_yield 等 JSON 工具格式而非纯文本裁决，
+    已弃用本地模型，统一走 NIM 云端（与深度归因同通道）。"""
+    # 压缩快照：只保留关键行，控制输入长度
     lines = [f"系统贪恐指数 {snap['fg']['fg_index']} [{snap['fg']['zone']}] 目标仓位 {snap['fg']['target_position']} 回撤 {snap['fg']['drawdown']}"]
     if snap.get("shoutu"):
         lines.append("守猪待兔: " + " ".join(f"{k}={v}" for k, v in snap["shoutu"].items()))
@@ -195,39 +239,22 @@ def stage_judge(snap, sentiment, attribution):
     # 报告截断到各 600 字
     sent_short = (sentiment or "（无）")[:600]
     attr_short = (attribution or "（无）")[:600]
-    prompt = (
-        "你是投研裁判。数据:\n" + compact + "\n\n"
-        "情绪分析:\n" + sent_short + "\n\n"
-        "归因分析:\n" + attr_short + "\n\n"
-        "输出三行纯文本(不要json/代码块):\n"
-        "评级: (强烈减仓|减仓|持有|加仓|强烈加仓)\n"
-        "理由: (1-2句)\n"
-        "风险: (1条)"
-    )
+    system = ("你是投研裁判。你的全部输出只能是如下三行纯文本，"
+              "禁止输出JSON、代码块、Markdown标记或任何工具调用格式：\n"
+              "评级: (强烈减仓|减仓|持有|加仓|强烈加仓)\n"
+              "理由: (1-2句)\n"
+              "风险: (1条)")
+    user = (f"数据:\n{compact}\n\n情绪分析:\n{sent_short}\n\n归因分析:\n{attr_short}\n\n"
+            "请直接输出三行裁决文本。")
     try:
-        r = subprocess.run(
-            ["openclaw", "agent", "exec", "--model", "ollama/qwen2.5-coder:3b", prompt],
-            capture_output=True, text=True, timeout=420,
-        )
-        out = (r.stdout or "") + (r.stderr or "")
-        # 去掉 ANSI 转义与横幅/日志行，提取实际回答
-        import re
-        clean = re.sub(r"\x1b\[[0-9;]*m", "", out)
-        body_lines = []
-        for line in clean.splitlines():
-            s = line.strip()
-            if not s:
-                continue
-            if s.startswith(("│", "◇", "🦞", "OpenClaw", "Config", "A Gateway", "gate", "[plugins", "[skills", "[state", "[session", "[agents", "[agent", "[tool", "Retrying", "Experimental", "(node", "(Use", "node:")):
-                continue
-            if re.match(r"^\d{2}:\d{2}:\d{2}", s):
-                continue
-            body_lines.append(s)
-        if not body_lines:
-            return "裁判输出为空（本地小模型对长输入不稳定），建议以归因结论为准。"
-        return "\n".join(body_lines)[-800:]
-    except subprocess.TimeoutExpired:
-        return "裁判超时(本地3b模型较慢)，本次由归因结论直接驱动评级。"
+        out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
+                    max_tokens=400, proxy=PROXY, timeout=180, retries=1)
+        out = (out or "").strip().replace("\n\n", "\n")
+        if not out:
+            return "裁判输出为空，建议以归因结论为准。"
+        return out[:800]
+    except Exception as e:
+        return f"裁判调用失败（NIM）：{e}，本次以归因结论为准。"
 
 
 # ---------------------------------------------------------------- 新闻抓取（Google News RSS，免 key）
@@ -364,9 +391,9 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     secs.append("hr")
     secs.append(("📰 情绪面 · Hermes(GLM)", (sentiment or "（不可用）").strip()[:300]))
     secs.append("hr")
-    secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)", (attribution or "（不可用）").strip()[:300]))
+    secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)", (attribution or "（不可用）").strip()[:500]))
     secs.append("hr")
-    secs.append(("⚖️ 裁判裁决 · OpenClaw(本地)【研究参考】", (judge or "（不可用）").strip()[:300]))
+    secs.append(("⚖️ 裁判裁决 · OpenClaw云端(NVIDIA NIM)【研究参考】", (judge or "（不可用）").strip()[:400]))
     secs.append("hr")
     secs.append(("📎 数据来源", _source_footnote(snap)))
     return secs
@@ -409,13 +436,13 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         news_text(news) if news else "（新闻源不可用）",
         "",
         "## 情绪面分析（Hermes / GLM）",
-        (sentiment or "（跳过：Hermes 不可用）").strip()[:300],
+        (sentiment or "（跳过：Hermes 不可用）").strip()[:1000],
         "",
         "## 深度归因（Harness 后端 deepseek-v4.1-flash / NVIDIA NIM）",
-        (attribution or "（跳过：NIM 不可用）").strip()[:300],
+        (attribution or "（跳过：NIM 不可用）").strip()[:1200],
         "",
-        "## 裁判裁决（OpenClaw / 本地 qwen2.5-coder:3b）【研究参考，非实盘指令】",
-        (judge or "（跳过：OpenClaw 不可用）").strip()[:300],
+        "## 裁判裁决（OpenClaw 云端裁判 / NVIDIA NIM）【研究参考，非实盘指令】",
+        (judge or "（跳过：裁判不可用）").strip()[:800],
         "",
         "## 📎 数据来源",
         _source_footnote(snap),
@@ -490,7 +517,7 @@ def main():
     except Exception as e:
         print("NIM 阶段失败:", e)
     try:
-        judge = stage_judge(snap, sentiment or "（无）", attribution or "（无）")
+        judge = stage_judge(_read_nim_key(), snap, sentiment or "（无）", attribution or "（无）")
     except Exception as e:
         print("OpenClaw 阶段失败:", e)
 
