@@ -2,10 +2,13 @@
 
 > 目标：在"数据裁判 + 人工审批"的慢闭环纪律下，让系统持续产生**可验证、可追溯、可回退**的改进。
 > 状态标记：⬜ 未开始 / 🔄 进行中 / ✅ 完成
-> 最后更新：2026-10-02
+> 最后更新：2026-10-06
 
-## 当前状态基线（2026-10-02）
+## 当前状态基线（2026-10-06）
 
+- ✅ 数学模型落地（2026-10-06）：HMM 状态识别 / 档位转移马尔可夫矩阵 / EVT 阈值校准 / 贝叶斯假说信心（fg_system/models/ + scripts/model_report.py → Data/model_report_*.json；零新依赖纯 numpy）
+- ✅ 未落地/受阻塞实现统一登记：docs/blocked-registry.md（A 外部依赖 / B 数据积累 / C 回测后 / D 可先做）
+- ✅ 变更记录总索引 + 覆盖审计：docs/变更记录/README.md（89 commits vs 6 份记录，缺口已列明）
 - ✅ 数据：COIN 1254 行、CONL 690 行（FutuOpenD 真实行情）、守猪待兔历史 3606 行入库
 - ✅ 假说引擎：H-001~H-009 登记，H-003/H-004 adopted；每日 05:30（launchd）+ 18:00（OpenClaw cron，结果推飞书）自动重检
 - ✅ 记忆层：GOALS / hypotheses / LESSONS(L-001~L-004) / memory 每日日志
