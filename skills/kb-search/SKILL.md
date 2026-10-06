@@ -37,3 +37,13 @@ metadata:
 - 自动更新：`scripts/kb_update.sh`（launchd 每周日 03:00，label com.xingguo.fg-kb-update）
 - 手动更新：`scripts/kb_build.py`（幂等）
 - 数据：`Data/kb/chroma`（向量库）、`Data/kb/subtitles`（VTT 原文）、`Data/kb/yt_meta.json`（元数据）
+
+## 进阶参数（2026-10-06 新增）
+
+- `--since N`：近 N 天观点优先（有日期且在 N 天内排前，NA/超期排后，不排除内容）
+- `--channel A,B`：只检索指定频道（逗号分隔，如 `BenFelix,QuantPy`）
+
+```bash
+.venv/bin/python scripts/kb_search.py "factor investing" --channel BenFelix,QuantPy -n 3
+.venv/bin/python scripts/kb_search.py "宏观 利率" --since 90 -n 4
+```

@@ -271,6 +271,20 @@ def okx_ticker_loop():
 
 
 # ---------------------------------------------------------------- 异动告警
+_ALERT_KB_THEMES = {
+    "YINN": "china leveraged etf",
+    "GDXU": "gold miners etf",
+    "CONL": "bitcoin leveraged etf",
+    "CRCG": "crypto leveraged etf",
+    "AXTX": "leveraged etf",
+}
+
+
+def _alert_kb_query(sym):
+    """异动标的 → 知识库检索主题（未映射标的用通用个股风险）。"""
+    return _ALERT_KB_THEMES.get(sym, f"{sym} stock trading risk")
+
+
 def check_alert(sym, st):
     """盘中异动告警。**仅交易时段判定**：盘前/盘后/周末 snapshot 的
     day_chg 是上一交易日涨跌，不触发（2026-10-05 盘前误报根因）。"""
@@ -293,9 +307,12 @@ def check_alert(sym, st):
     except Exception as e:
         print(f"[rt] 告警新闻抓取失败 {sym}: {e}")
         news_txt = ""
-    from scripts.invest_research import push_feishu
+    from scripts.invest_research import push_feishu, kb_note
+    kb_txt = kb_note(_alert_kb_query(sym))
+    kb_line = (kb_txt + "\n") if kb_txt else ""
     msg = (f"⚠️ 盘中异动 {sym} {chg:+.1f}%（实时价 {st.get('price')}，"
            f"{st.get('ts', '')[:16]}）{news_txt}\n"
+           f"{kb_line}"
            f"数据源：富途实时订阅 · 仅供研究，不构成操作指令")
     ok, m = push_feishu(msg)
     print(f"[rt] 告警 {sym} {chg:+.1f}% push={ok} {m if not ok else ''}")

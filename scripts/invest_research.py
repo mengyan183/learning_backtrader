@@ -21,7 +21,7 @@ import urllib.request
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(REPO / "scripts"))
 DATA = REPO / "Data"
 
 HERMES_URL = "http://127.0.0.1:8642/v1/chat/completions"
@@ -429,7 +429,7 @@ def kb_evidence(snap, n=2):
     """简报佐证：按当日档位/因子主题检索 YouTube 知识库，取 n 条最相关观点。
     返回 list[dict(channel,title,date,score,snippet)]，失败返回 None（不阻塞简报）。"""
     try:
-        sys.path.insert(0, str(REPO))
+        sys.path.insert(0, str(REPO / "scripts"))
         from kb_search import search_results
     except Exception as e:
         print(f"[kb] 导入失败: {e}")
@@ -474,6 +474,29 @@ def kb_evidence(snap, n=2):
             hits.append(r)
     hits.sort(key=lambda x: x["score"], reverse=True)
     return hits[:n] or None
+
+
+def kb_note(query, n=1, max_len=100):
+    """通用知识库观点提取：单主题查询取最高分观点，压缩 ≤max_len。
+    返回单条文本（含来源与相关度），失败/无命中返回 ''。供异动告警等场景复用。"""
+    import re as _re
+    try:
+        sys.path.insert(0, str(REPO / "scripts"))
+        from kb_search import search_results
+    except Exception:
+        return ""
+    skip = ("react to", "tiktok", "challenge", "try not to")
+    for r in search_results(query, n=4):
+        if r["score"] < 0.45:
+            continue
+        if any(s in (r["title"] or "").lower() for s in skip):
+            continue
+        snip = (r["snippet"] or "").replace("\n", " ").strip()
+        snip = _re.sub(r"^[A-Za-z]{1,3}\s+", "", snip)
+        if len(snip) > max_len:
+            snip = snip[:max_len] + "…"
+        return f"【{r['channel']}】《{r['title']}》相关度{r['score']}：{snip}"
+    return ""
 
 
 def _kb_brief_text(hits):

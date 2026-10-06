@@ -35,15 +35,11 @@ EMBED_MODEL = os.getenv("FG_EMBED_MODEL", "bge-m3")
 
 
 def load_meta():
-    """拉取各频道最近视频 id/title/upload_date 元数据，写 yt_meta.json。"""
+    """拉取各频道最近视频 id/title/upload_date 元数据，写 yt_meta.json。
+    注意：flat-playlist 的 upload_date 常为 NA，**不得覆盖**已补拉到的日期。"""
     meta = {}
     if META.exists():
         meta = json.loads(META.read_text())
-    yt = subprocess.run(
-        [".venv/bin/yt-dlp", "--proxy", PROXY, "--flat-playlist",
-         "--print", "%(channel)s|%(id)s|%(title)s|%(upload_date)s",
-         "--playlist-end", "30", "CH_URL"],
-        capture_output=True, text=True, cwd=REPO)
     for name, url in CHANNELS.items():
         r = subprocess.run(
             [".venv/bin/yt-dlp", "--proxy", PROXY, "--flat-playlist",
@@ -56,17 +52,23 @@ def load_meta():
                 continue
             vid, title, date = parts[0], parts[1], parts[2]
             meta.setdefault(vid, {})
-            meta[vid].update({"channel": name, "title": title, "date": date})
+            meta[vid].update({"channel": name, "title": title})
+            # 已有日期（含上次逐条补拉成功）不被 flat-playlist 的 NA 覆盖
+            if meta[vid].get("date", "NA") == "NA" and date and date != "NA":
+                meta[vid]["date"] = date
     # flat-playlist 拿不到 upload_date 的视频逐条补拉（≤40 个/次）
     missing = [v for v, m in meta.items() if m.get("date", "NA") == "NA"]
     for vid in missing[:40]:
-        r = subprocess.run(
-            [".venv/bin/yt-dlp", "--proxy", PROXY, "--skip-download",
-             "--print", "%(upload_date)s", f"https://www.youtube.com/watch?v={vid}"],
-            capture_output=True, text=True, cwd=REPO)
-        d = r.stdout.strip()
-        if d and d != "NA":
-            meta[vid]["date"] = d
+        try:
+            r = subprocess.run(
+                [".venv/bin/yt-dlp", "--proxy", PROXY, "--skip-download",
+                 "--print", "%(upload_date)s", f"https://www.youtube.com/watch?v={vid}"],
+                capture_output=True, text=True, cwd=REPO, timeout=60)
+            d = r.stdout.strip()
+            if d and d != "NA":
+                meta[vid]["date"] = d
+        except subprocess.TimeoutExpired:
+            pass
     META.write_text(json.dumps(meta, ensure_ascii=False, indent=1))
     return meta
 

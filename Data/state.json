@@ -6,7 +6,7 @@
   ],
   "last_rebalance_date": null,
   "circuit_breaker": false,
-  "cb_trigger_index": 86.69720017636683,
+  "cb_trigger_index": 87.29633520074695,
   "cb_trigger_date": "2023-12-28",
   "cb_low_price": {
     "TQQQ": 23.295,
