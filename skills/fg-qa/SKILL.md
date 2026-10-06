@@ -1,6 +1,13 @@
 ---
 name: fg-qa
 description: 用贪恐系统（learning_backtrader）本地数据回答贪恐指数、档位、持仓、买卖观望、账户与熔断问题。先查本地 CSV/JSON 再答，每个数字注明日期与来源文件；查不到就直说，禁止编造。触发词：贪恐、指数、档位、持仓、买不买、观望、信号、账户、熔断、守猪待兔。
+openclaw:
+  requires:
+    bins:
+      - python3
+    env:
+      - REPO_PATH
+  activation: 仅当问题涉及贪恐指数/持仓/账户等本地数据时激活；与代码无关的通用问答不加载本 skill
 ---
 
 # 贪恐系统问答：查了数据再答

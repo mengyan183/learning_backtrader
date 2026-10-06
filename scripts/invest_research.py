@@ -738,9 +738,36 @@ def main():
     brief_path.write_text(brief, encoding="utf-8")
     print(f"简报已写入: {brief_path}")
 
+    # ---- Harness 模式落地 #1/#2/#6：外验证门（Policy-as-Code）----
+    # 阻断级失败（结构缺失/数字不可追溯/无日期）→ 跳过推送，人工核查
+    try:
+        from verify_brief import verify_and_report
+        blocked = verify_and_report(brief, snap)
+    except Exception as e:
+        print(f"[verify] 验证门异常（放行但记录）: {e}")
+        blocked = False
+
     if args.dry_run:
         print(brief[:500])
         return
+
+    # ---- #7 Agent-Maintained Memory：沉淀决策日志（人工门控）----
+    try:
+        from decision_log import append as _dl_append
+        _dl_append(snap, judge)
+    except Exception as e:
+        print(f"[decision-log] 沉淀失败: {e}")
+
+    # ---- #5 Lineage Compaction：简报轮转归档（保留 7 天）----
+    try:
+        from archive_briefs import archive as _archive
+        _archive(keep_days=7)
+    except Exception as e:
+        print(f"[archive] 归档失败: {e}")
+
+    if blocked:
+        print("[verify] 简报存在阻断级问题，跳过飞书推送（请先核查 last_brief_check.json）")
+        return 2
     if not (sentiment and attribution and judge):
         print("存在缺失阶段，跳过飞书推送（dry-run 模式已可查看简报）")
         return
