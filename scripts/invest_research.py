@@ -395,6 +395,8 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     secs.append("hr")
     secs.append(("⚖️ 裁判裁决 · OpenClaw云端(NVIDIA NIM)【研究参考】", (judge or "（不可用）").strip()[:1200]))
     secs.append("hr")
+    secs.append(("🧠 知识库观点佐证 · YouTube 9频道【研究参考】", _kb_brief_text(kb_evidence(snap))))
+    secs.append("hr")
     secs.append(("📎 数据来源", _source_footnote(snap)))
     return secs
 
@@ -411,6 +413,89 @@ def _source_footnote(snap):
         "情绪: vix_history/funding_rate.csv",
     ]
     return " · ".join(parts)
+
+
+# ---------------------------------------------------------------- 知识库观点佐证
+_KB_THEMES = {
+    "vix": "vix volatility fear option",
+    "term": "yield curve term structure bond rates",
+    "price": "price momentum trend following",
+    "breadth": "market breadth internals sentiment indicators",
+    "fed": "federal reserve monetary policy rate cuts inflation",
+}
+
+
+def kb_evidence(snap, n=2):
+    """简报佐证：按当日档位/因子主题检索 YouTube 知识库，取 n 条最相关观点。
+    返回 list[dict(channel,title,date,score,snippet)]，失败返回 None（不阻塞简报）。"""
+    try:
+        sys.path.insert(0, str(REPO))
+        from kb_search import search_results
+    except Exception as e:
+        print(f"[kb] 导入失败: {e}")
+        return None
+    fg = snap.get("fg") or {}
+    queries = []
+    # 档位：zone 数字 → 英文档位词（0极度恐惧~4极度贪婪）
+    z = fg.get("zone")
+    if isinstance(z, (int, float)):
+        zname = {0: "extremely fearful", 1: "fearful", 2: "neutral",
+                 3: "greedy", 4: "extremely greedy"}.get(int(z), "")
+        if zname:
+            queries.append(f"{zname} market sentiment psychology")
+    # 因子：features.csv 最新有效行（vix/term/price/breadth/fed）
+    try:
+        import pandas as pd
+        feat = pd.read_csv(DATA / "features.csv")
+        valid = feat.dropna(subset=["fg_index"])
+        row = valid.iloc[-1]
+        for key, q in _KB_THEMES.items():
+            if key in row.index and pd.notna(row[key]):
+                queries.append(q)
+    except Exception:
+        pass
+    # 持仓主题（首个有名字的标的，如 YINN/TQQQ 杠杆ETF）
+    for r in snap.get("positions", []):
+        name = (r.get("name") or "").lower()
+        sym = (r.get("symbol") or "").upper()
+        if "leveraged" in name or sym in ("YINN", "TQQQ", "CONL", "GDXU"):
+            queries.append("leveraged etf risk decay")
+            break
+    seen, hits = set(), []
+    skip_titles = ("react to", "tiktok", "challenge", "try not to")
+    for q in queries[:3]:
+        for r in search_results(q, n=4):
+            key = r["title"]
+            if key in seen or r["score"] < 0.45:
+                continue
+            if any(s in key.lower() for s in skip_titles):
+                continue
+            seen.add(key)
+            hits.append(r)
+    hits.sort(key=lambda x: x["score"], reverse=True)
+    return hits[:n] or None
+
+
+def _kb_brief_text(hits):
+    """佐证节正文（飞书富文本/Markdown 共用，压缩单条 ≤110 字）。
+    片段跳过开头寒暄，从首个完整句子后取信息量部分。"""
+    if not hits:
+        return "（知识库不可用或未命中）"
+    import re
+    lines = []
+    for h in hits:
+        snip = h["snippet"].replace("\n", " ").strip()
+        # 去掉开头孤立截断词（VTT 切片常以 1-3 字母开头）
+        snip = re.sub(r"^[A-Za-z]{1,3}\s+", "", snip)
+        # 跳过寒暄，定位首个完整句子边界
+        m = re.search(r"[.!?]\s+[A-Z\"'“]", snip[40:])
+        if m:
+            snip = snip[40 + m.start():]
+        if len(snip) > 110:
+            snip = snip[:110] + "…"
+        date = h["date"] if h["date"] and h["date"] != "NA" else "日期NA"
+        lines.append(f"【{h['channel']}】《{h['title']}》（{date}, 相关度{h['score']}）\n“{snip}”")
+    return "\n\n".join(lines)
 
 
 def build_brief(snap, sentiment, attribution, judge, news=None):
@@ -443,6 +528,9 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         "",
         "## 裁判裁决（OpenClaw 云端裁判 / NVIDIA NIM）【研究参考，非实盘指令】",
         (judge or "（跳过：裁判不可用）").strip()[:1200],
+        "",
+        "## 🧠 知识库观点佐证（YouTube 9频道）【研究参考，非实盘指令】",
+        _kb_brief_text(kb_evidence(snap)),
         "",
         "## 📎 数据来源",
         _source_footnote(snap),

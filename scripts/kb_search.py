@@ -16,26 +16,36 @@ OLLAMA_URL = "http://127.0.0.1:11434"
 EMBED_MODEL = "bge-m3"
 
 
-def search(query, n=4, top_only=False):
+def search_results(query, n=4):
+    """结构化检索：返回 list[dict(channel,title,date,score,snippet)]。库接口，供其他脚本 import。"""
     import chromadb
     from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
     client = chromadb.PersistentClient(path=str(DB_DIR))
     emb = OllamaEmbeddingFunction(url=OLLAMA_URL, model_name=EMBED_MODEL)
     col = client.get_or_create_collection(COLLECTION, embedding_function=emb)
     if col.count() == 0:
-        print("知识库为空，先运行 scripts/kb_build.py")
-        return
+        return []
     res = col.query(query_texts=[query], n_results=n)
+    out = []
     for doc, meta, dist in zip(res["documents"][0], res["metadatas"][0],
                                res["distances"][0]):
-        ch = meta.get("channel", "?")
-        title = meta.get("title", "?")
-        date = meta.get("date", "?")
+        out.append({
+            "channel": meta.get("channel", "?"),
+            "title": meta.get("title", "?"),
+            "date": meta.get("date", "?"),
+            "score": round(1 - dist, 3),
+            "snippet": doc.strip(),
+        })
+    return out
+
+
+def search(query, n=4, top_only=False):
+    for r in search_results(query, n=n):
         if top_only:
-            print(f"▶ [{ch}] {title} ({date})")
+            print(f"▶ [{r['channel']}] {r['title']} ({r['date']})")
         else:
-            print(f"【{ch}】{title}（{date}） 相关度 {1 - dist:.3f}")
-            print(doc[:600])
+            print(f"【{r['channel']}】{r['title']}（{r['date']}） 相关度 {r['score']:.3f}")
+            print(r["snippet"][:600])
             print("-" * 60)
 
 
