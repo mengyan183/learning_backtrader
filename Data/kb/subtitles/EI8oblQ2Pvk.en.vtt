@@ -1,0 +1,2832 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.080 --> 00:00:01.270 align:start position:0%
+ 
+today<00:00:00.320><c> we're</c><00:00:00.480><c> going</c><00:00:00.560><c> to</c><00:00:00.640><c> be</c><00:00:00.719><c> looking</c><00:00:01.040><c> at</c><00:00:01.120><c> how</c>
+
+00:00:01.270 --> 00:00:01.280 align:start position:0%
+today we're going to be looking at how
+ 
+
+00:00:01.280 --> 00:00:04.150 align:start position:0%
+today we're going to be looking at how
+you<00:00:01.439><c> can</c><00:00:01.680><c> actually</c><00:00:02.159><c> calculate</c><00:00:02.879><c> a</c><00:00:03.199><c> spread</c><00:00:03.760><c> call</c>
+
+00:00:04.150 --> 00:00:04.160 align:start position:0%
+you can actually calculate a spread call
+ 
+
+00:00:04.160 --> 00:00:06.309 align:start position:0%
+you can actually calculate a spread call
+option<00:00:04.640><c> on</c><00:00:04.880><c> two</c><00:00:05.120><c> indices</c><00:00:05.759><c> we're</c><00:00:06.000><c> going</c><00:00:06.080><c> to</c><00:00:06.160><c> be</c>
+
+00:00:06.309 --> 00:00:06.319 align:start position:0%
+option on two indices we're going to be
+ 
+
+00:00:06.319 --> 00:00:09.990 align:start position:0%
+option on two indices we're going to be
+looking<00:00:06.640><c> at</c><00:00:06.799><c> the</c><00:00:07.040><c> nasdaq</c><00:00:07.839><c> and</c><00:00:08.080><c> the</c><00:00:08.320><c> s</c><00:00:08.639><c> p</c><00:00:08.960><c> 500.</c>
+
+00:00:09.990 --> 00:00:10.000 align:start position:0%
+looking at the nasdaq and the s p 500.
+ 
+
+00:00:10.000 --> 00:00:12.070 align:start position:0%
+looking at the nasdaq and the s p 500.
+now<00:00:10.400><c> we've</c><00:00:10.719><c> actually</c><00:00:11.040><c> done</c><00:00:11.200><c> a</c><00:00:11.280><c> previous</c><00:00:11.759><c> video</c>
+
+00:00:12.070 --> 00:00:12.080 align:start position:0%
+now we've actually done a previous video
+ 
+
+00:00:12.080 --> 00:00:14.070 align:start position:0%
+now we've actually done a previous video
+on<00:00:12.160><c> this</c><00:00:12.320><c> where</c><00:00:12.480><c> we</c><00:00:12.639><c> computed</c><00:00:13.120><c> the</c><00:00:13.280><c> call</c><00:00:13.599><c> value</c>
+
+00:00:14.070 --> 00:00:14.080 align:start position:0%
+on this where we computed the call value
+ 
+
+00:00:14.080 --> 00:00:17.109 align:start position:0%
+on this where we computed the call value
+of<00:00:14.240><c> the</c><00:00:14.480><c> spread</c><00:00:15.200><c> however</c><00:00:16.160><c> we</c><00:00:16.400><c> are</c><00:00:16.560><c> now</c><00:00:16.880><c> going</c>
+
+00:00:17.109 --> 00:00:17.119 align:start position:0%
+of the spread however we are now going
+ 
+
+00:00:17.119 --> 00:00:19.349 align:start position:0%
+of the spread however we are now going
+to<00:00:17.359><c> incorporate</c><00:00:17.920><c> stochastic</c><00:00:18.560><c> volatility</c>
+
+00:00:19.349 --> 00:00:19.359 align:start position:0%
+to incorporate stochastic volatility
+ 
+
+00:00:19.359 --> 00:00:21.750 align:start position:0%
+to incorporate stochastic volatility
+into<00:00:19.600><c> our</c><00:00:19.760><c> models</c><00:00:20.400><c> so</c><00:00:20.720><c> in</c><00:00:20.880><c> previous</c><00:00:21.359><c> videos</c>
+
+00:00:21.750 --> 00:00:21.760 align:start position:0%
+into our models so in previous videos
+ 
+
+00:00:21.760 --> 00:00:23.429 align:start position:0%
+into our models so in previous videos
+we've<00:00:22.000><c> recently</c><00:00:22.480><c> been</c><00:00:22.720><c> looking</c><00:00:23.039><c> at</c><00:00:23.199><c> the</c>
+
+00:00:23.429 --> 00:00:23.439 align:start position:0%
+we've recently been looking at the
+ 
+
+00:00:23.439 --> 00:00:25.910 align:start position:0%
+we've recently been looking at the
+heston<00:00:23.920><c> model</c><00:00:24.480><c> which</c><00:00:24.720><c> uses</c><00:00:25.119><c> the</c><00:00:25.279><c> square</c><00:00:25.599><c> root</c>
+
+00:00:25.910 --> 00:00:25.920 align:start position:0%
+heston model which uses the square root
+ 
+
+00:00:25.920 --> 00:00:28.710 align:start position:0%
+heston model which uses the square root
+variance<00:00:26.480><c> process</c><00:00:26.960><c> to</c><00:00:27.119><c> get</c><00:00:27.359><c> a</c><00:00:27.920><c> stochastic</c>
+
+00:00:28.710 --> 00:00:28.720 align:start position:0%
+variance process to get a stochastic
+ 
+
+00:00:28.720 --> 00:00:30.870 align:start position:0%
+variance process to get a stochastic
+volatility<00:00:29.439><c> measure</c><00:00:30.080><c> while</c><00:00:30.320><c> computing</c>
+
+00:00:30.870 --> 00:00:30.880 align:start position:0%
+volatility measure while computing
+ 
+
+00:00:30.880 --> 00:00:33.430 align:start position:0%
+volatility measure while computing
+option<00:00:31.279><c> prices</c><00:00:32.000><c> we're</c><00:00:32.320><c> now</c><00:00:32.559><c> going</c><00:00:32.880><c> to</c><00:00:33.040><c> apply</c>
+
+00:00:33.430 --> 00:00:33.440 align:start position:0%
+option prices we're now going to apply
+ 
+
+00:00:33.440 --> 00:00:36.389 align:start position:0%
+option prices we're now going to apply
+this<00:00:34.000><c> to</c><00:00:34.399><c> our</c><00:00:34.640><c> spread</c><00:00:35.200><c> call</c><00:00:35.520><c> option</c><00:00:35.920><c> of</c><00:00:36.160><c> these</c>
+
+00:00:36.389 --> 00:00:36.399 align:start position:0%
+this to our spread call option of these
+ 
+
+00:00:36.399 --> 00:00:39.430 align:start position:0%
+this to our spread call option of these
+two<00:00:36.640><c> indices</c><00:00:37.520><c> so</c><00:00:37.920><c> without</c><00:00:38.320><c> further</c><00:00:38.640><c> ado</c><00:00:39.200><c> let's</c>
+
+00:00:39.430 --> 00:00:39.440 align:start position:0%
+two indices so without further ado let's
+ 
+
+00:00:39.440 --> 00:00:40.950 align:start position:0%
+two indices so without further ado let's
+get<00:00:39.600><c> into</c><00:00:39.840><c> it</c><00:00:40.000><c> so</c><00:00:40.239><c> let's</c><00:00:40.480><c> go</c><00:00:40.640><c> through</c><00:00:40.800><c> this</c>
+
+00:00:40.950 --> 00:00:40.960 align:start position:0%
+get into it so let's go through this
+ 
+
+00:00:40.960 --> 00:00:42.630 align:start position:0%
+get into it so let's go through this
+jupiter<00:00:41.360><c> notebook</c><00:00:41.840><c> so</c><00:00:42.079><c> one</c><00:00:42.239><c> of</c><00:00:42.320><c> the</c><00:00:42.399><c> many</c>
+
+00:00:42.630 --> 00:00:42.640 align:start position:0%
+jupiter notebook so one of the many
+ 
+
+00:00:42.640 --> 00:00:44.310 align:start position:0%
+jupiter notebook so one of the many
+benefits<00:00:43.040><c> of</c><00:00:43.120><c> the</c><00:00:43.200><c> monte</c><00:00:43.440><c> carlo</c><00:00:43.760><c> simulation</c>
+
+00:00:44.310 --> 00:00:44.320 align:start position:0%
+benefits of the monte carlo simulation
+ 
+
+00:00:44.320 --> 00:00:46.069 align:start position:0%
+benefits of the monte carlo simulation
+process<00:00:44.879><c> is</c><00:00:44.960><c> that</c><00:00:45.120><c> we</c><00:00:45.280><c> can</c><00:00:45.360><c> actually</c><00:00:45.680><c> price</c>
+
+00:00:46.069 --> 00:00:46.079 align:start position:0%
+process is that we can actually price
+ 
+
+00:00:46.079 --> 00:00:48.310 align:start position:0%
+process is that we can actually price
+under<00:00:46.320><c> different</c><00:00:46.640><c> multiple</c><00:00:47.120><c> factors</c><00:00:47.920><c> so</c><00:00:48.160><c> i</c>
+
+00:00:48.310 --> 00:00:48.320 align:start position:0%
+under different multiple factors so i
+ 
+
+00:00:48.320 --> 00:00:51.189 align:start position:0%
+under different multiple factors so i
+refer<00:00:48.640><c> to</c><00:00:48.800><c> multiple</c><00:00:49.360><c> underlyings</c><00:00:50.640><c> of</c><00:00:50.800><c> asset</c>
+
+00:00:51.189 --> 00:00:51.199 align:start position:0%
+refer to multiple underlyings of asset
+ 
+
+00:00:51.199 --> 00:00:53.590 align:start position:0%
+refer to multiple underlyings of asset
+prices<00:00:51.760><c> of</c><00:00:51.920><c> stochastic</c><00:00:52.399><c> volatility</c><00:00:53.039><c> and</c><00:00:53.199><c> even</c>
+
+00:00:53.590 --> 00:00:53.600 align:start position:0%
+prices of stochastic volatility and even
+ 
+
+00:00:53.600 --> 00:00:55.590 align:start position:0%
+prices of stochastic volatility and even
+changes<00:00:54.000><c> in</c><00:00:54.160><c> interest</c><00:00:54.480><c> rates</c><00:00:55.120><c> so</c><00:00:55.280><c> in</c><00:00:55.440><c> this</c>
+
+00:00:55.590 --> 00:00:55.600 align:start position:0%
+changes in interest rates so in this
+ 
+
+00:00:55.600 --> 00:00:57.510 align:start position:0%
+changes in interest rates so in this
+tutorial<00:00:56.239><c> we're</c><00:00:56.399><c> going</c><00:00:56.640><c> to</c><00:00:56.719><c> be</c><00:00:56.879><c> exploring</c><00:00:57.360><c> the</c>
+
+00:00:57.510 --> 00:00:57.520 align:start position:0%
+tutorial we're going to be exploring the
+ 
+
+00:00:57.520 --> 00:00:59.910 align:start position:0%
+tutorial we're going to be exploring the
+pricing<00:00:57.920><c> of</c><00:00:58.000><c> a</c><00:00:58.079><c> european</c><00:00:58.879><c> spread</c><00:00:59.280><c> call</c><00:00:59.600><c> option</c>
+
+00:00:59.910 --> 00:00:59.920 align:start position:0%
+pricing of a european spread call option
+ 
+
+00:00:59.920 --> 00:01:01.430 align:start position:0%
+pricing of a european spread call option
+on<00:01:00.000><c> the</c><00:01:00.160><c> difference</c><00:01:00.480><c> between</c><00:01:00.960><c> two</c><00:01:01.120><c> stock</c>
+
+00:01:01.430 --> 00:01:01.440 align:start position:0%
+on the difference between two stock
+ 
+
+00:01:01.440 --> 00:01:03.349 align:start position:0%
+on the difference between two stock
+indices<00:01:02.320><c> here</c><00:01:02.480><c> we'll</c><00:01:02.640><c> be</c><00:01:02.719><c> considering</c><00:01:03.199><c> the</c>
+
+00:01:03.349 --> 00:01:03.359 align:start position:0%
+indices here we'll be considering the
+ 
+
+00:01:03.359 --> 00:01:06.149 align:start position:0%
+indices here we'll be considering the
+nasdaq<00:01:04.159><c> and</c><00:01:04.239><c> the</c><00:01:04.400><c> s</c><00:01:04.640><c> p</c><00:01:04.879><c> 500</c>
+
+00:01:06.149 --> 00:01:06.159 align:start position:0%
+nasdaq and the s p 500
+ 
+
+00:01:06.159 --> 00:01:08.230 align:start position:0%
+nasdaq and the s p 500
+now<00:01:06.400><c> we're</c><00:01:06.640><c> going</c><00:01:06.880><c> to</c><00:01:07.040><c> be</c><00:01:07.280><c> looking</c><00:01:07.680><c> at</c><00:01:07.840><c> a</c><00:01:07.920><c> more</c>
+
+00:01:08.230 --> 00:01:08.240 align:start position:0%
+now we're going to be looking at a more
+ 
+
+00:01:08.240 --> 00:01:11.590 align:start position:0%
+now we're going to be looking at a more
+general<00:01:08.560><c> stochastic</c><00:01:09.200><c> process</c><00:01:10.080><c> so</c><00:01:10.400><c> the</c><00:01:10.640><c> sdes</c>
+
+00:01:11.590 --> 00:01:11.600 align:start position:0%
+general stochastic process so the sdes
+ 
+
+00:01:11.600 --> 00:01:13.590 align:start position:0%
+general stochastic process so the sdes
+will<00:01:11.840><c> have</c><00:01:12.080><c> stochastic</c><00:01:12.640><c> volatility</c><00:01:13.439><c> as</c>
+
+00:01:13.590 --> 00:01:13.600 align:start position:0%
+will have stochastic volatility as
+ 
+
+00:01:13.600 --> 00:01:15.590 align:start position:0%
+will have stochastic volatility as
+described<00:01:14.080><c> by</c><00:01:14.240><c> the</c><00:01:14.400><c> heston</c><00:01:14.880><c> model</c><00:01:15.280><c> that</c><00:01:15.439><c> was</c>
+
+00:01:15.590 --> 00:01:15.600 align:start position:0%
+described by the heston model that was
+ 
+
+00:01:15.600 --> 00:01:18.469 align:start position:0%
+described by the heston model that was
+developed<00:01:16.000><c> in</c><00:01:16.159><c> 1993.</c><00:01:17.360><c> so</c><00:01:17.600><c> our</c><00:01:17.840><c> spread</c><00:01:18.159><c> call</c>
+
+00:01:18.469 --> 00:01:18.479 align:start position:0%
+developed in 1993. so our spread call
+ 
+
+00:01:18.479 --> 00:01:21.590 align:start position:0%
+developed in 1993. so our spread call
+option<00:01:18.880><c> comes</c><00:01:19.280><c> down</c><00:01:19.600><c> to</c><00:01:19.840><c> a</c><00:01:19.920><c> few</c><00:01:20.320><c> sds</c><00:01:21.200><c> so</c><00:01:21.439><c> under</c>
+
+00:01:21.590 --> 00:01:21.600 align:start position:0%
+option comes down to a few sds so under
+ 
+
+00:01:21.600 --> 00:01:24.390 align:start position:0%
+option comes down to a few sds so under
+the<00:01:21.759><c> heston</c><00:01:22.240><c> model</c><00:01:22.720><c> we</c><00:01:22.960><c> have</c><00:01:23.360><c> two</c><00:01:23.680><c> sdes</c><00:01:24.320><c> for</c>
+
+00:01:24.390 --> 00:01:24.400 align:start position:0%
+the heston model we have two sdes for
+ 
+
+00:01:24.400 --> 00:01:27.030 align:start position:0%
+the heston model we have two sdes for
+the<00:01:24.640><c> underlying</c><00:01:25.200><c> asset</c><00:01:25.600><c> price</c><00:01:26.000><c> and</c><00:01:26.240><c> two</c><00:01:26.479><c> sdes</c>
+
+00:01:27.030 --> 00:01:27.040 align:start position:0%
+the underlying asset price and two sdes
+ 
+
+00:01:27.040 --> 00:01:29.270 align:start position:0%
+the underlying asset price and two sdes
+for<00:01:27.200><c> the</c><00:01:27.360><c> variance</c><00:01:27.840><c> process</c><00:01:28.320><c> for</c><00:01:28.640><c> the</c><00:01:28.880><c> stock</c>
+
+00:01:29.270 --> 00:01:29.280 align:start position:0%
+for the variance process for the stock
+ 
+
+00:01:29.280 --> 00:01:32.469 align:start position:0%
+for the variance process for the stock
+asset<00:01:29.759><c> prices</c><00:01:30.640><c> under</c><00:01:31.119><c> risk</c><00:01:31.439><c> neutral</c><00:01:31.920><c> measures</c>
+
+00:01:32.469 --> 00:01:32.479 align:start position:0%
+asset prices under risk neutral measures
+ 
+
+00:01:32.479 --> 00:01:34.870 align:start position:0%
+asset prices under risk neutral measures
+we<00:01:32.640><c> have</c><00:01:33.040><c> our</c><00:01:33.200><c> deterministic</c><00:01:34.000><c> component</c>
+
+00:01:34.870 --> 00:01:34.880 align:start position:0%
+we have our deterministic component
+ 
+
+00:01:34.880 --> 00:01:37.910 align:start position:0%
+we have our deterministic component
+which<00:01:35.200><c> takes</c><00:01:35.600><c> in</c><00:01:36.000><c> the</c><00:01:36.320><c> risk-free</c><00:01:37.040><c> rate</c><00:01:37.600><c> and</c>
+
+00:01:37.910 --> 00:01:37.920 align:start position:0%
+which takes in the risk-free rate and
+ 
+
+00:01:37.920 --> 00:01:39.350 align:start position:0%
+which takes in the risk-free rate and
+then<00:01:38.320><c> our</c>
+
+00:01:39.350 --> 00:01:39.360 align:start position:0%
+then our
+ 
+
+00:01:39.360 --> 00:01:41.590 align:start position:0%
+then our
+discrete<00:01:40.000><c> distributions</c><00:01:41.040><c> so</c><00:01:41.200><c> this</c><00:01:41.439><c> is</c><00:01:41.520><c> the</c>
+
+00:01:41.590 --> 00:01:41.600 align:start position:0%
+discrete distributions so this is the
+ 
+
+00:01:41.600 --> 00:01:44.630 align:start position:0%
+discrete distributions so this is the
+dividend<00:01:42.240><c> distributions</c><00:01:43.520><c> and</c><00:01:43.759><c> then</c><00:01:44.079><c> we</c><00:01:44.320><c> have</c>
+
+00:01:44.630 --> 00:01:44.640 align:start position:0%
+dividend distributions and then we have
+ 
+
+00:01:44.640 --> 00:01:46.550 align:start position:0%
+dividend distributions and then we have
+our<00:01:44.880><c> diffusion</c><00:01:45.439><c> component</c><00:01:46.079><c> which</c><00:01:46.399><c> is</c>
+
+00:01:46.550 --> 00:01:46.560 align:start position:0%
+our diffusion component which is
+ 
+
+00:01:46.560 --> 00:01:48.310 align:start position:0%
+our diffusion component which is
+dependent<00:01:47.040><c> on</c><00:01:47.200><c> this</c><00:01:47.439><c> square</c><00:01:47.759><c> root</c><00:01:48.240><c> of</c>
+
+00:01:48.310 --> 00:01:48.320 align:start position:0%
+dependent on this square root of
+ 
+
+00:01:48.320 --> 00:01:50.710 align:start position:0%
+dependent on this square root of
+variance<00:01:48.960><c> process</c><00:01:49.680><c> so</c><00:01:49.840><c> the</c><00:01:50.000><c> volatility</c><00:01:50.560><c> is</c>
+
+00:01:50.710 --> 00:01:50.720 align:start position:0%
+variance process so the volatility is
+ 
+
+00:01:50.720 --> 00:01:52.469 align:start position:0%
+variance process so the volatility is
+modeled<00:01:51.040><c> by</c><00:01:51.200><c> the</c><00:01:51.360><c> square</c><00:01:51.759><c> root</c><00:01:52.000><c> variance</c>
+
+00:01:52.469 --> 00:01:52.479 align:start position:0%
+modeled by the square root variance
+ 
+
+00:01:52.479 --> 00:01:55.749 align:start position:0%
+modeled by the square root variance
+process<00:01:53.119><c> so</c><00:01:53.439><c> variance</c><00:01:54.079><c> is</c><00:01:54.240><c> modeled</c><00:01:54.720><c> as</c><00:01:55.119><c> a</c><00:01:55.439><c> mean</c>
+
+00:01:55.749 --> 00:01:55.759 align:start position:0%
+process so variance is modeled as a mean
+ 
+
+00:01:55.759 --> 00:01:58.469 align:start position:0%
+process so variance is modeled as a mean
+reversion<00:01:56.560><c> process</c><00:01:57.439><c> so</c><00:01:57.680><c> here</c><00:01:57.920><c> we've</c><00:01:58.159><c> got</c>
+
+00:01:58.469 --> 00:01:58.479 align:start position:0%
+reversion process so here we've got
+ 
+
+00:01:58.479 --> 00:02:01.190 align:start position:0%
+reversion process so here we've got
+kappa<00:01:58.880><c> which</c><00:01:59.280><c> symbolizes</c><00:02:00.240><c> the</c><00:02:00.479><c> rate</c><00:02:00.719><c> of</c><00:02:00.880><c> mean</c>
+
+00:02:01.190 --> 00:02:01.200 align:start position:0%
+kappa which symbolizes the rate of mean
+ 
+
+00:02:01.200 --> 00:02:03.270 align:start position:0%
+kappa which symbolizes the rate of mean
+reversion<00:02:01.920><c> we've</c><00:02:02.079><c> got</c><00:02:02.320><c> theta</c><00:02:02.640><c> which</c><00:02:02.880><c> is</c><00:02:02.960><c> the</c>
+
+00:02:03.270 --> 00:02:03.280 align:start position:0%
+reversion we've got theta which is the
+ 
+
+00:02:03.280 --> 00:02:06.870 align:start position:0%
+reversion we've got theta which is the
+long<00:02:03.920><c> run</c><00:02:04.399><c> mean</c><00:02:05.040><c> of</c><00:02:05.200><c> this</c><00:02:05.439><c> variance</c><00:02:06.000><c> process</c>
+
+00:02:06.870 --> 00:02:06.880 align:start position:0%
+long run mean of this variance process
+ 
+
+00:02:06.880 --> 00:02:08.550 align:start position:0%
+long run mean of this variance process
+we've<00:02:07.119><c> got</c><00:02:07.280><c> v1</c><00:02:07.759><c> which</c><00:02:08.000><c> we're</c><00:02:08.160><c> directly</c>
+
+00:02:08.550 --> 00:02:08.560 align:start position:0%
+we've got v1 which we're directly
+ 
+
+00:02:08.560 --> 00:02:11.750 align:start position:0%
+we've got v1 which we're directly
+modeling<00:02:09.440><c> and</c><00:02:09.920><c> we've</c><00:02:10.160><c> got</c><00:02:10.560><c> our</c><00:02:11.039><c> sigma</c><00:02:11.520><c> which</c>
+
+00:02:11.750 --> 00:02:11.760 align:start position:0%
+modeling and we've got our sigma which
+ 
+
+00:02:11.760 --> 00:02:14.550 align:start position:0%
+modeling and we've got our sigma which
+is<00:02:12.000><c> like</c><00:02:12.400><c> the</c><00:02:12.800><c> volatility</c><00:02:13.599><c> of</c><00:02:13.760><c> the</c><00:02:13.920><c> variance</c>
+
+00:02:14.550 --> 00:02:14.560 align:start position:0%
+is like the volatility of the variance
+ 
+
+00:02:14.560 --> 00:02:17.350 align:start position:0%
+is like the volatility of the variance
+process<00:02:15.280><c> so</c><00:02:15.599><c> the</c><00:02:16.000><c> volatility</c><00:02:16.640><c> of</c><00:02:16.720><c> volatility</c>
+
+00:02:17.350 --> 00:02:17.360 align:start position:0%
+process so the volatility of volatility
+ 
+
+00:02:17.360 --> 00:02:18.710 align:start position:0%
+process so the volatility of volatility
+essentially
+
+00:02:18.710 --> 00:02:18.720 align:start position:0%
+essentially
+ 
+
+00:02:18.720 --> 00:02:21.510 align:start position:0%
+essentially
+now<00:02:19.040><c> you'll</c><00:02:19.280><c> notice</c><00:02:19.680><c> here</c><00:02:19.920><c> that</c><00:02:20.080><c> we</c><00:02:20.239><c> have</c>
+
+00:02:21.510 --> 00:02:21.520 align:start position:0%
+now you'll notice here that we have
+ 
+
+00:02:21.520 --> 00:02:23.510 align:start position:0%
+now you'll notice here that we have
+four<00:02:21.840><c> different</c><00:02:22.239><c> winer</c><00:02:22.720><c> processors</c><00:02:23.360><c> that</c>
+
+00:02:23.510 --> 00:02:23.520 align:start position:0%
+four different winer processors that
+ 
+
+00:02:23.520 --> 00:02:25.750 align:start position:0%
+four different winer processors that
+we're<00:02:23.760><c> trying</c><00:02:24.000><c> to</c><00:02:24.160><c> model</c><00:02:24.480><c> at</c><00:02:24.640><c> the</c><00:02:24.720><c> same</c><00:02:25.040><c> time</c>
+
+00:02:25.750 --> 00:02:25.760 align:start position:0%
+we're trying to model at the same time
+ 
+
+00:02:25.760 --> 00:02:27.910 align:start position:0%
+we're trying to model at the same time
+so<00:02:26.000><c> the</c><00:02:26.160><c> monte</c><00:02:26.480><c> carlo</c><00:02:26.879><c> procedure</c><00:02:27.440><c> is</c><00:02:27.520><c> exactly</c>
+
+00:02:27.910 --> 00:02:27.920 align:start position:0%
+so the monte carlo procedure is exactly
+ 
+
+00:02:27.920 --> 00:02:30.309 align:start position:0%
+so the monte carlo procedure is exactly
+the<00:02:28.080><c> same</c><00:02:28.480><c> as</c><00:02:28.720><c> for</c><00:02:29.040><c> a</c><00:02:29.200><c> normal</c><00:02:29.599><c> spread</c><00:02:30.000><c> call</c>
+
+00:02:30.309 --> 00:02:30.319 align:start position:0%
+the same as for a normal spread call
+ 
+
+00:02:30.319 --> 00:02:32.309 align:start position:0%
+the same as for a normal spread call
+option<00:02:30.959><c> which</c><00:02:31.200><c> we've</c><00:02:31.440><c> done</c><00:02:31.599><c> a</c><00:02:31.680><c> video</c><00:02:32.080><c> one</c>
+
+00:02:32.309 --> 00:02:32.319 align:start position:0%
+option which we've done a video one
+ 
+
+00:02:32.319 --> 00:02:35.750 align:start position:0%
+option which we've done a video one
+before<00:02:32.720><c> for</c><00:02:32.879><c> the</c><00:02:33.040><c> nasdaq</c><00:02:33.680><c> and</c><00:02:33.840><c> s</c><00:02:34.160><c> p</c><00:02:34.480><c> 500</c>
+
+00:02:35.750 --> 00:02:35.760 align:start position:0%
+before for the nasdaq and s p 500
+ 
+
+00:02:35.760 --> 00:02:37.990 align:start position:0%
+before for the nasdaq and s p 500
+except<00:02:36.319><c> here</c><00:02:36.640><c> we</c><00:02:36.800><c> have</c><00:02:36.959><c> a</c><00:02:37.040><c> more</c><00:02:37.280><c> complicated</c>
+
+00:02:37.990 --> 00:02:38.000 align:start position:0%
+except here we have a more complicated
+ 
+
+00:02:38.000 --> 00:02:40.949 align:start position:0%
+except here we have a more complicated
+correlation<00:02:38.720><c> matrix</c><00:02:39.360><c> between</c><00:02:40.080><c> these</c><00:02:40.560><c> whiner</c>
+
+00:02:40.949 --> 00:02:40.959 align:start position:0%
+correlation matrix between these whiner
+ 
+
+00:02:40.959 --> 00:02:42.229 align:start position:0%
+correlation matrix between these whiner
+processes
+
+00:02:42.229 --> 00:02:42.239 align:start position:0%
+processes
+ 
+
+00:02:42.239 --> 00:02:44.630 align:start position:0%
+processes
+so<00:02:42.560><c> we</c><00:02:42.720><c> have</c><00:02:42.879><c> to</c><00:02:43.040><c> simulate</c><00:02:43.519><c> these</c><00:02:43.920><c> four</c><00:02:44.239><c> at</c><00:02:44.400><c> the</c>
+
+00:02:44.630 --> 00:02:44.640 align:start position:0%
+so we have to simulate these four at the
+ 
+
+00:02:44.640 --> 00:02:46.390 align:start position:0%
+so we have to simulate these four at the
+same<00:02:44.959><c> time</c>
+
+00:02:46.390 --> 00:02:46.400 align:start position:0%
+same time
+ 
+
+00:02:46.400 --> 00:02:48.949 align:start position:0%
+same time
+here<00:02:46.720><c> we</c><00:02:46.959><c> have</c><00:02:47.440><c> a</c><00:02:47.920><c> special</c><00:02:48.319><c> correlation</c>
+
+00:02:48.949 --> 00:02:48.959 align:start position:0%
+here we have a special correlation
+ 
+
+00:02:48.959 --> 00:02:51.430 align:start position:0%
+here we have a special correlation
+matrix<00:02:49.519><c> which</c><00:02:49.840><c> describes</c><00:02:50.480><c> the</c><00:02:50.640><c> relationship</c>
+
+00:02:51.430 --> 00:02:51.440 align:start position:0%
+matrix which describes the relationship
+ 
+
+00:02:51.440 --> 00:02:53.270 align:start position:0%
+matrix which describes the relationship
+between<00:02:52.000><c> each</c><00:02:52.319><c> one</c><00:02:52.480><c> of</c><00:02:52.560><c> these</c><00:02:52.879><c> winer</c>
+
+00:02:53.270 --> 00:02:53.280 align:start position:0%
+between each one of these winer
+ 
+
+00:02:53.280 --> 00:02:55.990 align:start position:0%
+between each one of these winer
+processes<00:02:54.319><c> so</c><00:02:54.560><c> we</c><00:02:54.800><c> have</c><00:02:55.120><c> the</c><00:02:55.280><c> relationship</c>
+
+00:02:55.990 --> 00:02:56.000 align:start position:0%
+processes so we have the relationship
+ 
+
+00:02:56.000 --> 00:02:57.190 align:start position:0%
+processes so we have the relationship
+between
+
+00:02:57.190 --> 00:02:57.200 align:start position:0%
+between
+ 
+
+00:02:57.200 --> 00:03:00.630 align:start position:0%
+between
+the<00:02:57.440><c> nasdaq</c><00:02:58.159><c> and</c><00:02:58.400><c> then</c><00:02:58.640><c> the</c><00:02:58.879><c> s</c><00:02:59.200><c> p</c><00:02:59.519><c> 500</c><00:03:00.080><c> variance</c>
+
+00:03:00.630 --> 00:03:00.640 align:start position:0%
+the nasdaq and then the s p 500 variance
+ 
+
+00:03:00.640 --> 00:03:02.830 align:start position:0%
+the nasdaq and then the s p 500 variance
+process<00:03:01.200><c> so</c><00:03:01.360><c> the</c><00:03:01.519><c> linear</c><00:03:01.840><c> relationships</c>
+
+00:03:02.830 --> 00:03:02.840 align:start position:0%
+process so the linear relationships
+ 
+
+00:03:02.840 --> 00:03:05.270 align:start position:0%
+process so the linear relationships
+between<00:03:03.840><c> each</c><00:03:04.239><c> one</c><00:03:04.480><c> of</c><00:03:04.560><c> these</c><00:03:04.879><c> winer</c>
+
+00:03:05.270 --> 00:03:05.280 align:start position:0%
+between each one of these winer
+ 
+
+00:03:05.280 --> 00:03:06.869 align:start position:0%
+between each one of these winer
+processes<00:03:05.920><c> is</c><00:03:06.080><c> described</c><00:03:06.640><c> in</c><00:03:06.720><c> this</c>
+
+00:03:06.869 --> 00:03:06.879 align:start position:0%
+processes is described in this
+ 
+
+00:03:06.879 --> 00:03:08.869 align:start position:0%
+processes is described in this
+correlation<00:03:07.519><c> matrix</c>
+
+00:03:08.869 --> 00:03:08.879 align:start position:0%
+correlation matrix
+ 
+
+00:03:08.879 --> 00:03:10.550 align:start position:0%
+correlation matrix
+now<00:03:09.040><c> the</c><00:03:09.200><c> notation</c><00:03:09.840><c> as</c><00:03:10.000><c> we</c><00:03:10.159><c> went</c><00:03:10.400><c> through</c>
+
+00:03:10.550 --> 00:03:10.560 align:start position:0%
+now the notation as we went through
+ 
+
+00:03:10.560 --> 00:03:13.670 align:start position:0%
+now the notation as we went through
+we've<00:03:10.720><c> got</c><00:03:10.959><c> st</c><00:03:11.519><c> is</c><00:03:11.760><c> the</c><00:03:12.080><c> financial</c><00:03:12.640><c> index</c><00:03:13.360><c> so</c>
+
+00:03:13.670 --> 00:03:13.680 align:start position:0%
+we've got st is the financial index so
+ 
+
+00:03:13.680 --> 00:03:14.710 align:start position:0%
+we've got st is the financial index so
+we've<00:03:13.920><c> got</c>
+
+00:03:14.710 --> 00:03:14.720 align:start position:0%
+we've got
+ 
+
+00:03:14.720 --> 00:03:17.190 align:start position:0%
+we've got
+the<00:03:14.879><c> variance</c><00:03:15.360><c> is</c><00:03:15.519><c> vt</c><00:03:16.239><c> c</c><00:03:16.480><c> is</c><00:03:16.560><c> going</c><00:03:16.640><c> to</c><00:03:16.720><c> be</c><00:03:17.040><c> the</c>
+
+00:03:17.190 --> 00:03:17.200 align:start position:0%
+the variance is vt c is going to be the
+ 
+
+00:03:17.200 --> 00:03:19.190 align:start position:0%
+the variance is vt c is going to be the
+european<00:03:17.680><c> call</c><00:03:18.000><c> option</c><00:03:18.239><c> price</c><00:03:18.640><c> k</c><00:03:18.879><c> for</c><00:03:19.040><c> the</c>
+
+00:03:19.190 --> 00:03:19.200 align:start position:0%
+european call option price k for the
+ 
+
+00:03:19.200 --> 00:03:20.949 align:start position:0%
+european call option price k for the
+strike<00:03:19.599><c> price</c><00:03:20.080><c> which</c><00:03:20.239><c> is</c><00:03:20.400><c> actually</c><00:03:20.640><c> going</c><00:03:20.879><c> to</c>
+
+00:03:20.949 --> 00:03:20.959 align:start position:0%
+strike price which is actually going to
+ 
+
+00:03:20.959 --> 00:03:23.910 align:start position:0%
+strike price which is actually going to
+be<00:03:21.120><c> specified</c><00:03:21.680><c> as</c><00:03:21.840><c> a</c><00:03:22.000><c> difference</c><00:03:22.560><c> between</c>
+
+00:03:23.910 --> 00:03:23.920 align:start position:0%
+be specified as a difference between
+ 
+
+00:03:23.920 --> 00:03:26.710 align:start position:0%
+be specified as a difference between
+the<00:03:24.239><c> indices</c><00:03:24.799><c> in</c><00:03:24.959><c> terms</c><00:03:25.200><c> of</c><00:03:25.360><c> points</c><00:03:26.000><c> we've</c><00:03:26.319><c> got</c>
+
+00:03:26.710 --> 00:03:26.720 align:start position:0%
+the indices in terms of points we've got
+ 
+
+00:03:26.720 --> 00:03:29.830 align:start position:0%
+the indices in terms of points we've got
+uh<00:03:27.360><c> weiner</c><00:03:27.760><c> process</c><00:03:28.239><c> w</c><00:03:28.959><c> we've</c><00:03:29.200><c> got</c><00:03:29.680><c> the</c>
+
+00:03:29.830 --> 00:03:29.840 align:start position:0%
+uh weiner process w we've got the
+ 
+
+00:03:29.840 --> 00:03:31.509 align:start position:0%
+uh weiner process w we've got the
+interest<00:03:30.239><c> rate</c><00:03:30.480><c> the</c><00:03:30.560><c> discrete</c><00:03:31.040><c> dividend</c>
+
+00:03:31.509 --> 00:03:31.519 align:start position:0%
+interest rate the discrete dividend
+ 
+
+00:03:31.519 --> 00:03:32.390 align:start position:0%
+interest rate the discrete dividend
+payment
+
+00:03:32.390 --> 00:03:32.400 align:start position:0%
+payment
+ 
+
+00:03:32.400 --> 00:03:35.750 align:start position:0%
+payment
+we've<00:03:32.640><c> spoken</c><00:03:32.959><c> about</c><00:03:33.280><c> kappa</c><00:03:34.080><c> theta</c><00:03:34.720><c> and</c><00:03:35.040><c> then</c>
+
+00:03:35.750 --> 00:03:35.760 align:start position:0%
+we've spoken about kappa theta and then
+ 
+
+00:03:35.760 --> 00:03:37.670 align:start position:0%
+we've spoken about kappa theta and then
+we<00:03:35.920><c> also</c><00:03:36.319><c> need</c><00:03:36.720><c> this</c>
+
+00:03:37.670 --> 00:03:37.680 align:start position:0%
+we also need this
+ 
+
+00:03:37.680 --> 00:03:40.470 align:start position:0%
+we also need this
+v<00:03:38.080><c> for</c><00:03:38.239><c> the</c><00:03:38.799><c> initial</c><00:03:39.280><c> variance</c><00:03:40.000><c> we've</c><00:03:40.239><c> got</c>
+
+00:03:40.470 --> 00:03:40.480 align:start position:0%
+v for the initial variance we've got
+ 
+
+00:03:40.480 --> 00:03:42.630 align:start position:0%
+v for the initial variance we've got
+sigma<00:03:40.879><c> is</c><00:03:40.959><c> the</c><00:03:41.040><c> volatility</c><00:03:41.680><c> of</c><00:03:41.760><c> variance</c><00:03:42.480><c> and</c>
+
+00:03:42.630 --> 00:03:42.640 align:start position:0%
+sigma is the volatility of variance and
+ 
+
+00:03:42.640 --> 00:03:44.550 align:start position:0%
+sigma is the volatility of variance and
+then<00:03:42.959><c> our</c><00:03:43.280><c> row</c><00:03:43.599><c> is</c><00:03:43.760><c> the</c><00:03:43.920><c> correlation</c>
+
+00:03:44.550 --> 00:03:44.560 align:start position:0%
+then our row is the correlation
+ 
+
+00:03:44.560 --> 00:03:46.470 align:start position:0%
+then our row is the correlation
+parameter<00:03:45.440><c> we've</c><00:03:45.599><c> got</c><00:03:45.760><c> t</c><00:03:46.080><c> which</c><00:03:46.239><c> is</c><00:03:46.319><c> the</c>
+
+00:03:46.470 --> 00:03:46.480 align:start position:0%
+parameter we've got t which is the
+ 
+
+00:03:46.480 --> 00:03:48.869 align:start position:0%
+parameter we've got t which is the
+current<00:03:46.879><c> date</c><00:03:47.280><c> and</c><00:03:47.440><c> we've</c><00:03:47.680><c> got</c><00:03:48.080><c> t</c><00:03:48.560><c> which</c><00:03:48.799><c> is</c>
+
+00:03:48.869 --> 00:03:48.879 align:start position:0%
+current date and we've got t which is
+ 
+
+00:03:48.879 --> 00:03:50.869 align:start position:0%
+current date and we've got t which is
+the<00:03:49.040><c> maturity</c><00:03:49.599><c> date</c><00:03:49.840><c> so</c><00:03:50.000><c> a</c><00:03:50.080><c> while</c><00:03:50.400><c> back</c><00:03:50.640><c> we</c>
+
+00:03:50.869 --> 00:03:50.879 align:start position:0%
+the maturity date so a while back we
+ 
+
+00:03:50.879 --> 00:03:52.390 align:start position:0%
+the maturity date so a while back we
+actually<00:03:51.200><c> discussed</c><00:03:51.599><c> how</c><00:03:51.760><c> we</c><00:03:51.920><c> could</c><00:03:52.080><c> use</c>
+
+00:03:52.390 --> 00:03:52.400 align:start position:0%
+actually discussed how we could use
+ 
+
+00:03:52.400 --> 00:03:54.630 align:start position:0%
+actually discussed how we could use
+futures<00:03:52.879><c> eruptions</c><00:03:53.439><c> so</c><00:03:53.599><c> we</c><00:03:53.760><c> could</c><00:03:54.080><c> speculate</c>
+
+00:03:54.630 --> 00:03:54.640 align:start position:0%
+futures eruptions so we could speculate
+ 
+
+00:03:54.640 --> 00:03:56.390 align:start position:0%
+futures eruptions so we could speculate
+on<00:03:54.799><c> a</c><00:03:54.879><c> divergence</c><00:03:55.599><c> between</c><00:03:55.920><c> the</c><00:03:56.000><c> spread</c><00:03:56.319><c> of</c>
+
+00:03:56.390 --> 00:03:56.400 align:start position:0%
+on a divergence between the spread of
+ 
+
+00:03:56.400 --> 00:03:57.670 align:start position:0%
+on a divergence between the spread of
+the<00:03:56.640><c> s</c><00:03:57.040><c> p</c>
+
+00:03:57.670 --> 00:03:57.680 align:start position:0%
+the s p
+ 
+
+00:03:57.680 --> 00:03:59.830 align:start position:0%
+the s p
+and<00:03:57.920><c> the</c><00:03:58.159><c> nasdaq</c><00:03:58.720><c> indices</c><00:03:59.439><c> we're</c><00:03:59.599><c> going</c><00:03:59.760><c> to</c>
+
+00:03:59.830 --> 00:03:59.840 align:start position:0%
+and the nasdaq indices we're going to
+ 
+
+00:03:59.840 --> 00:04:01.670 align:start position:0%
+and the nasdaq indices we're going to
+follow<00:04:00.239><c> through</c><00:04:00.480><c> with</c><00:04:00.640><c> this</c><00:04:00.879><c> example</c><00:04:01.280><c> but</c><00:04:01.439><c> now</c>
+
+00:04:01.670 --> 00:04:01.680 align:start position:0%
+follow through with this example but now
+ 
+
+00:04:01.680 --> 00:04:02.869 align:start position:0%
+follow through with this example but now
+we're<00:04:01.840><c> going</c><00:04:02.080><c> to</c><00:04:02.159><c> be</c><00:04:02.239><c> incorporating</c>
+
+00:04:02.869 --> 00:04:02.879 align:start position:0%
+we're going to be incorporating
+ 
+
+00:04:02.879 --> 00:04:04.869 align:start position:0%
+we're going to be incorporating
+stochastic<00:04:03.439><c> volatility</c><00:04:04.159><c> under</c><00:04:04.319><c> the</c><00:04:04.480><c> heston</c>
+
+00:04:04.869 --> 00:04:04.879 align:start position:0%
+stochastic volatility under the heston
+ 
+
+00:04:04.879 --> 00:04:06.229 align:start position:0%
+stochastic volatility under the heston
+model
+
+00:04:06.229 --> 00:04:06.239 align:start position:0%
+model
+ 
+
+00:04:06.239 --> 00:04:07.750 align:start position:0%
+model
+so<00:04:06.640><c> we're</c><00:04:06.799><c> going</c><00:04:07.040><c> to</c><00:04:07.120><c> use</c><00:04:07.360><c> the</c><00:04:07.519><c> same</c>
+
+00:04:07.750 --> 00:04:07.760 align:start position:0%
+so we're going to use the same
+ 
+
+00:04:07.760 --> 00:04:10.149 align:start position:0%
+so we're going to use the same
+parameters<00:04:08.319><c> that</c><00:04:08.560><c> we</c><00:04:08.799><c> had</c><00:04:09.200><c> back</c><00:04:09.519><c> on</c><00:04:09.680><c> the</c><00:04:09.840><c> 1st</c>
+
+00:04:10.149 --> 00:04:10.159 align:start position:0%
+parameters that we had back on the 1st
+ 
+
+00:04:10.159 --> 00:04:12.710 align:start position:0%
+parameters that we had back on the 1st
+of<00:04:10.319><c> march</c><00:04:10.640><c> 2022</c><00:04:11.760><c> so</c><00:04:12.000><c> you're</c><00:04:12.239><c> just</c><00:04:12.480><c> going</c><00:04:12.640><c> to</c>
+
+00:04:12.710 --> 00:04:12.720 align:start position:0%
+of march 2022 so you're just going to
+ 
+
+00:04:12.720 --> 00:04:14.390 align:start position:0%
+of march 2022 so you're just going to
+copy<00:04:13.040><c> this</c><00:04:13.200><c> from</c><00:04:13.360><c> my</c><00:04:13.599><c> website</c>
+
+00:04:14.390 --> 00:04:14.400 align:start position:0%
+copy this from my website
+ 
+
+00:04:14.400 --> 00:04:15.750 align:start position:0%
+copy this from my website
+and<00:04:14.480><c> we're</c><00:04:14.640><c> going</c><00:04:14.879><c> to</c><00:04:15.040><c> import</c><00:04:15.519><c> some</c>
+
+00:04:15.750 --> 00:04:15.760 align:start position:0%
+and we're going to import some
+ 
+
+00:04:15.760 --> 00:04:18.150 align:start position:0%
+and we're going to import some
+dependencies<00:04:16.320><c> so</c><00:04:16.479><c> we've</c><00:04:16.639><c> got</c><00:04:16.880><c> numpy</c><00:04:17.519><c> time</c><00:04:18.000><c> and</c>
+
+00:04:18.150 --> 00:04:18.160 align:start position:0%
+dependencies so we've got numpy time and
+ 
+
+00:04:18.160 --> 00:04:20.229 align:start position:0%
+dependencies so we've got numpy time and
+from<00:04:18.400><c> scipy</c><00:04:18.959><c> linear</c><00:04:19.359><c> algebra</c><00:04:19.759><c> module</c><00:04:20.079><c> we're</c>
+
+00:04:20.229 --> 00:04:20.239 align:start position:0%
+from scipy linear algebra module we're
+ 
+
+00:04:20.239 --> 00:04:22.150 align:start position:0%
+from scipy linear algebra module we're
+going<00:04:20.400><c> to</c><00:04:20.560><c> take</c><00:04:20.880><c> koleski</c><00:04:21.680><c> this</c><00:04:21.840><c> is</c><00:04:21.919><c> for</c><00:04:22.079><c> the</c>
+
+00:04:22.150 --> 00:04:22.160 align:start position:0%
+going to take koleski this is for the
+ 
+
+00:04:22.160 --> 00:04:24.310 align:start position:0%
+going to take koleski this is for the
+cholesky<00:04:22.800><c> decomposition</c><00:04:23.680><c> of</c><00:04:24.000><c> that</c>
+
+00:04:24.310 --> 00:04:24.320 align:start position:0%
+cholesky decomposition of that
+ 
+
+00:04:24.320 --> 00:04:27.350 align:start position:0%
+cholesky decomposition of that
+correlation<00:04:25.040><c> matrix</c>
+
+00:04:27.350 --> 00:04:27.360 align:start position:0%
+correlation matrix
+ 
+
+00:04:27.360 --> 00:04:29.670 align:start position:0%
+correlation matrix
+so<00:04:27.520><c> here</c><00:04:27.840><c> we've</c><00:04:28.080><c> got</c><00:04:28.240><c> some</c><00:04:28.479><c> heston</c><00:04:28.960><c> specific</c>
+
+00:04:29.670 --> 00:04:29.680 align:start position:0%
+so here we've got some heston specific
+ 
+
+00:04:29.680 --> 00:04:31.990 align:start position:0%
+so here we've got some heston specific
+model<00:04:30.000><c> parameters</c><00:04:30.720><c> and</c><00:04:30.960><c> i've</c><00:04:31.199><c> just</c><00:04:31.680><c> made</c>
+
+00:04:31.990 --> 00:04:32.000 align:start position:0%
+model parameters and i've just made
+ 
+
+00:04:32.000 --> 00:04:33.990 align:start position:0%
+model parameters and i've just made
+these<00:04:32.320><c> up</c><00:04:32.400><c> for</c><00:04:32.560><c> this</c><00:04:32.800><c> example</c><00:04:33.360><c> so</c><00:04:33.520><c> if</c><00:04:33.680><c> you</c><00:04:33.840><c> want</c>
+
+00:04:33.990 --> 00:04:34.000 align:start position:0%
+these up for this example so if you want
+ 
+
+00:04:34.000 --> 00:04:35.749 align:start position:0%
+these up for this example so if you want
+to<00:04:34.080><c> know</c><00:04:34.240><c> how</c><00:04:34.400><c> you</c><00:04:34.560><c> can</c><00:04:34.800><c> actually</c><00:04:35.280><c> calibrate</c>
+
+00:04:35.749 --> 00:04:35.759 align:start position:0%
+to know how you can actually calibrate
+ 
+
+00:04:35.759 --> 00:04:37.909 align:start position:0%
+to know how you can actually calibrate
+the<00:04:35.840><c> hester</c><00:04:36.240><c> model</c><00:04:36.560><c> and</c><00:04:36.639><c> find</c><00:04:36.960><c> out</c><00:04:37.199><c> what</c><00:04:37.840><c> the</c>
+
+00:04:37.909 --> 00:04:37.919 align:start position:0%
+the hester model and find out what the
+ 
+
+00:04:37.919 --> 00:04:40.310 align:start position:0%
+the hester model and find out what the
+best<00:04:38.160><c> parameters</c><00:04:38.800><c> to</c><00:04:38.960><c> use</c><00:04:39.360><c> for</c><00:04:39.520><c> your</c><00:04:39.919><c> option</c>
+
+00:04:40.310 --> 00:04:40.320 align:start position:0%
+best parameters to use for your option
+ 
+
+00:04:40.320 --> 00:04:42.150 align:start position:0%
+best parameters to use for your option
+prices<00:04:40.960><c> you</c><00:04:41.120><c> can</c><00:04:41.360><c> we've</c><00:04:41.600><c> actually</c><00:04:41.919><c> done</c><00:04:42.080><c> a</c>
+
+00:04:42.150 --> 00:04:42.160 align:start position:0%
+prices you can we've actually done a
+ 
+
+00:04:42.160 --> 00:04:44.390 align:start position:0%
+prices you can we've actually done a
+complete<00:04:42.639><c> video</c><00:04:43.199><c> on</c><00:04:43.360><c> this</c><00:04:43.600><c> step</c><00:04:43.919><c> where</c><00:04:44.160><c> we</c>
+
+00:04:44.390 --> 00:04:44.400 align:start position:0%
+complete video on this step where we
+ 
+
+00:04:44.400 --> 00:04:46.790 align:start position:0%
+complete video on this step where we
+used<00:04:44.720><c> the</c><00:04:44.800><c> market</c><00:04:45.360><c> option</c><00:04:45.680><c> prices</c><00:04:46.400><c> and</c><00:04:46.560><c> then</c>
+
+00:04:46.790 --> 00:04:46.800 align:start position:0%
+used the market option prices and then
+ 
+
+00:04:46.800 --> 00:04:49.030 align:start position:0%
+used the market option prices and then
+calibrated<00:04:47.360><c> the</c><00:04:47.520><c> hester</c><00:04:47.919><c> model</c><00:04:48.400><c> to</c><00:04:48.560><c> find</c><00:04:48.880><c> the</c>
+
+00:04:49.030 --> 00:04:49.040 align:start position:0%
+calibrated the hester model to find the
+ 
+
+00:04:49.040 --> 00:04:52.070 align:start position:0%
+calibrated the hester model to find the
+best<00:04:49.360><c> fit</c><00:04:49.680><c> using</c><00:04:50.479><c> mse</c><00:04:51.120><c> so</c><00:04:51.280><c> we've</c><00:04:51.440><c> got</c><00:04:51.680><c> theta</c>
+
+00:04:52.070 --> 00:04:52.080 align:start position:0%
+best fit using mse so we've got theta
+ 
+
+00:04:52.080 --> 00:04:53.670 align:start position:0%
+best fit using mse so we've got theta
+kappa<00:04:52.479><c> and</c><00:04:52.639><c> sigma</c>
+
+00:04:53.670 --> 00:04:53.680 align:start position:0%
+kappa and sigma
+ 
+
+00:04:53.680 --> 00:04:56.950 align:start position:0%
+kappa and sigma
+defined<00:04:54.400><c> for</c><00:04:54.960><c> both</c><00:04:55.360><c> of</c><00:04:55.680><c> our</c><00:04:56.000><c> assets</c><00:04:56.560><c> and</c><00:04:56.800><c> we</c>
+
+00:04:56.950 --> 00:04:56.960 align:start position:0%
+defined for both of our assets and we
+ 
+
+00:04:56.960 --> 00:04:59.270 align:start position:0%
+defined for both of our assets and we
+have<00:04:57.199><c> the</c><00:04:57.360><c> initial</c><00:04:57.840><c> variances</c><00:04:58.800><c> of</c><00:04:58.960><c> both</c>
+
+00:04:59.270 --> 00:04:59.280 align:start position:0%
+have the initial variances of both
+ 
+
+00:04:59.280 --> 00:05:01.189 align:start position:0%
+have the initial variances of both
+processes
+
+00:05:01.189 --> 00:05:01.199 align:start position:0%
+processes
+ 
+
+00:05:01.199 --> 00:05:02.870 align:start position:0%
+processes
+then<00:05:01.440><c> we've</c><00:05:01.600><c> defined</c><00:05:02.080><c> our</c><00:05:02.160><c> correlation</c>
+
+00:05:02.870 --> 00:05:02.880 align:start position:0%
+then we've defined our correlation
+ 
+
+00:05:02.880 --> 00:05:05.029 align:start position:0%
+then we've defined our correlation
+matrix<00:05:03.440><c> between</c><00:05:03.759><c> the</c><00:05:03.919><c> winer</c><00:05:04.320><c> process</c><00:05:04.800><c> under</c>
+
+00:05:05.029 --> 00:05:05.039 align:start position:0%
+matrix between the winer process under
+ 
+
+00:05:05.039 --> 00:05:08.310 align:start position:0%
+matrix between the winer process under
+the<00:05:05.120><c> risk</c><00:05:05.440><c> neutral</c><00:05:06.000><c> measure</c><00:05:06.880><c> so</c><00:05:07.520><c> again</c><00:05:08.160><c> you</c>
+
+00:05:08.310 --> 00:05:08.320 align:start position:0%
+the risk neutral measure so again you
+ 
+
+00:05:08.320 --> 00:05:10.550 align:start position:0%
+the risk neutral measure so again you
+can<00:05:08.560><c> find</c><00:05:08.960><c> all</c><00:05:09.120><c> this</c><00:05:09.440><c> in</c><00:05:09.600><c> a</c><00:05:09.680><c> video</c><00:05:10.080><c> that</c><00:05:10.320><c> we've</c>
+
+00:05:10.550 --> 00:05:10.560 align:start position:0%
+can find all this in a video that we've
+ 
+
+00:05:10.560 --> 00:05:12.870 align:start position:0%
+can find all this in a video that we've
+done<00:05:11.120><c> before</c><00:05:12.000><c> so</c><00:05:12.240><c> now</c><00:05:12.400><c> for</c><00:05:12.560><c> the</c><00:05:12.639><c> slow</c>
+
+00:05:12.870 --> 00:05:12.880 align:start position:0%
+done before so now for the slow
+ 
+
+00:05:12.880 --> 00:05:15.029 align:start position:0%
+done before so now for the slow
+implementation<00:05:13.680><c> let's</c><00:05:13.919><c> take</c><00:05:14.320><c> a</c>
+
+00:05:15.029 --> 00:05:15.039 align:start position:0%
+implementation let's take a
+ 
+
+00:05:15.039 --> 00:05:16.629 align:start position:0%
+implementation let's take a
+slower<00:05:15.440><c> look</c><00:05:15.680><c> at</c><00:05:15.759><c> how</c><00:05:16.000><c> we're</c><00:05:16.160><c> actually</c><00:05:16.479><c> going</c>
+
+00:05:16.629 --> 00:05:16.639 align:start position:0%
+slower look at how we're actually going
+ 
+
+00:05:16.639 --> 00:05:18.950 align:start position:0%
+slower look at how we're actually going
+to<00:05:16.800><c> compute</c><00:05:17.280><c> this</c><00:05:17.440><c> monte</c><00:05:17.759><c> carlo</c><00:05:18.080><c> simulation</c>
+
+00:05:18.950 --> 00:05:18.960 align:start position:0%
+to compute this monte carlo simulation
+ 
+
+00:05:18.960 --> 00:05:21.430 align:start position:0%
+to compute this monte carlo simulation
+and<00:05:19.120><c> we'll</c><00:05:19.360><c> do</c><00:05:19.600><c> this</c><00:05:20.080><c> for</c><00:05:20.320><c> each</c><00:05:20.639><c> time</c><00:05:20.960><c> step</c><00:05:21.280><c> for</c>
+
+00:05:21.430 --> 00:05:21.440 align:start position:0%
+and we'll do this for each time step for
+ 
+
+00:05:21.440 --> 00:05:23.110 align:start position:0%
+and we'll do this for each time step for
+each<00:05:21.680><c> simulation</c>
+
+00:05:23.110 --> 00:05:23.120 align:start position:0%
+each simulation
+ 
+
+00:05:23.120 --> 00:05:24.950 align:start position:0%
+each simulation
+so<00:05:23.360><c> here</c><00:05:23.680><c> we're</c><00:05:23.840><c> going</c><00:05:24.080><c> to</c><00:05:24.160><c> define</c><00:05:24.479><c> the</c><00:05:24.639><c> monte</c>
+
+00:05:24.950 --> 00:05:24.960 align:start position:0%
+so here we're going to define the monte
+ 
+
+00:05:24.960 --> 00:05:27.270 align:start position:0%
+so here we're going to define the monte
+carlo<00:05:25.280><c> specific</c><00:05:25.840><c> parameters</c><00:05:26.800><c> so</c><00:05:26.960><c> here</c><00:05:27.120><c> we've</c>
+
+00:05:27.270 --> 00:05:27.280 align:start position:0%
+carlo specific parameters so here we've
+ 
+
+00:05:27.280 --> 00:05:29.189 align:start position:0%
+carlo specific parameters so here we've
+got<00:05:27.440><c> a</c><00:05:27.600><c> thousand</c><00:05:28.000><c> discrete</c><00:05:28.479><c> time</c><00:05:28.720><c> steps</c><00:05:29.120><c> and</c>
+
+00:05:29.189 --> 00:05:29.199 align:start position:0%
+got a thousand discrete time steps and
+ 
+
+00:05:29.199 --> 00:05:30.629 align:start position:0%
+got a thousand discrete time steps and
+we've<00:05:29.360><c> got</c><00:05:29.520><c> a</c><00:05:29.680><c> thousand</c><00:05:30.240><c> number</c><00:05:30.560><c> of</c>
+
+00:05:30.629 --> 00:05:30.639 align:start position:0%
+we've got a thousand number of
+ 
+
+00:05:30.639 --> 00:05:32.870 align:start position:0%
+we've got a thousand number of
+simulations<00:05:31.759><c> so</c><00:05:32.080><c> we're</c><00:05:32.240><c> just</c><00:05:32.400><c> going</c><00:05:32.479><c> to</c><00:05:32.639><c> start</c>
+
+00:05:32.870 --> 00:05:32.880 align:start position:0%
+simulations so we're just going to start
+ 
+
+00:05:32.880 --> 00:05:34.390 align:start position:0%
+simulations so we're just going to start
+the<00:05:32.960><c> timer</c><00:05:33.280><c> because</c><00:05:33.520><c> we</c><00:05:33.600><c> want</c><00:05:33.759><c> to</c><00:05:33.840><c> see</c><00:05:34.080><c> how</c>
+
+00:05:34.390 --> 00:05:34.400 align:start position:0%
+the timer because we want to see how
+ 
+
+00:05:34.400 --> 00:05:36.950 align:start position:0%
+the timer because we want to see how
+long<00:05:34.800><c> it</c><00:05:34.960><c> actually</c><00:05:35.360><c> takes</c>
+
+00:05:36.950 --> 00:05:36.960 align:start position:0%
+long it actually takes
+ 
+
+00:05:36.960 --> 00:05:39.430 align:start position:0%
+long it actually takes
+let's<00:05:37.199><c> pre-compute</c><00:05:37.680><c> the</c><00:05:37.759><c> constants</c><00:05:38.400><c> our</c><00:05:39.199><c> time</c>
+
+00:05:39.430 --> 00:05:39.440 align:start position:0%
+let's pre-compute the constants our time
+ 
+
+00:05:39.440 --> 00:05:40.710 align:start position:0%
+let's pre-compute the constants our time
+step<00:05:39.759><c> each</c><00:05:39.919><c> time</c><00:05:40.080><c> is</c><00:05:40.160><c> just</c><00:05:40.320><c> going</c><00:05:40.400><c> to</c><00:05:40.479><c> be</c><00:05:40.639><c> our</c>
+
+00:05:40.710 --> 00:05:40.720 align:start position:0%
+step each time is just going to be our
+ 
+
+00:05:40.720 --> 00:05:43.189 align:start position:0%
+step each time is just going to be our
+total<00:05:41.039><c> t</c><00:05:41.280><c> one</c><00:05:41.520><c> year</c><00:05:41.759><c> divided</c><00:05:42.160><c> by</c><00:05:42.479><c> n</c>
+
+00:05:43.189 --> 00:05:43.199 align:start position:0%
+total t one year divided by n
+ 
+
+00:05:43.199 --> 00:05:45.110 align:start position:0%
+total t one year divided by n
+and<00:05:43.360><c> then</c><00:05:43.600><c> our</c><00:05:43.840><c> lognormal</c><00:05:44.400><c> prices</c><00:05:44.800><c> are</c><00:05:44.960><c> just</c>
+
+00:05:45.110 --> 00:05:45.120 align:start position:0%
+and then our lognormal prices are just
+ 
+
+00:05:45.120 --> 00:05:47.990 align:start position:0%
+and then our lognormal prices are just
+going<00:05:45.280><c> to</c><00:05:45.360><c> be</c><00:05:45.520><c> numpy</c><00:05:46.080><c> log</c><00:05:46.400><c> of</c><00:05:46.560><c> the</c><00:05:46.720><c> nasdaq</c><00:05:47.360><c> for</c>
+
+00:05:47.990 --> 00:05:48.000 align:start position:0%
+going to be numpy log of the nasdaq for
+ 
+
+00:05:48.000 --> 00:05:49.590 align:start position:0%
+going to be numpy log of the nasdaq for
+our<00:05:48.240><c> first</c><00:05:48.560><c> asset</c><00:05:48.880><c> price</c><00:05:49.199><c> and</c><00:05:49.280><c> then</c><00:05:49.440><c> our</c>
+
+00:05:49.590 --> 00:05:49.600 align:start position:0%
+our first asset price and then our
+ 
+
+00:05:49.600 --> 00:05:52.629 align:start position:0%
+our first asset price and then our
+second<00:05:50.000><c> is</c><00:05:50.160><c> going</c><00:05:50.240><c> to</c><00:05:50.320><c> be</c><00:05:50.400><c> the</c><00:05:50.560><c> s</c><00:05:50.800><c> p</c><00:05:51.039><c> 500</c>
+
+00:05:52.629 --> 00:05:52.639 align:start position:0%
+second is going to be the s p 500
+ 
+
+00:05:52.639 --> 00:05:54.629 align:start position:0%
+second is going to be the s p 500
+so<00:05:52.880><c> for</c><00:05:53.039><c> the</c><00:05:53.120><c> hester</c><00:05:53.520><c> model</c><00:05:53.919><c> adjustments</c><00:05:54.479><c> for</c>
+
+00:05:54.629 --> 00:05:54.639 align:start position:0%
+so for the hester model adjustments for
+ 
+
+00:05:54.639 --> 00:05:56.150 align:start position:0%
+so for the hester model adjustments for
+each<00:05:54.880><c> time</c><00:05:55.120><c> step</c><00:05:55.360><c> we're</c><00:05:55.520><c> going</c><00:05:55.600><c> to</c><00:05:55.759><c> take</c><00:05:56.000><c> the</c>
+
+00:05:56.150 --> 00:05:56.160 align:start position:0%
+each time step we're going to take the
+ 
+
+00:05:56.160 --> 00:05:57.990 align:start position:0%
+each time step we're going to take the
+kappa<00:05:56.479><c> that</c><00:05:56.639><c> we've</c><00:05:56.880><c> defined</c><00:05:57.440><c> over</c><00:05:57.680><c> that</c>
+
+00:05:57.990 --> 00:05:58.000 align:start position:0%
+kappa that we've defined over that
+ 
+
+00:05:58.000 --> 00:06:00.390 align:start position:0%
+kappa that we've defined over that
+yearly<00:05:58.479><c> period</c><00:05:59.120><c> and</c><00:05:59.280><c> we're</c><00:05:59.440><c> going</c><00:05:59.759><c> to</c><00:06:00.080><c> place</c>
+
+00:06:00.390 --> 00:06:00.400 align:start position:0%
+yearly period and we're going to place
+ 
+
+00:06:00.400 --> 00:06:02.710 align:start position:0%
+yearly period and we're going to place
+that<00:06:00.560><c> in</c><00:06:00.639><c> terms</c><00:06:00.960><c> of</c><00:06:01.120><c> our</c><00:06:01.280><c> time</c><00:06:01.520><c> steps</c><00:06:01.919><c> so</c><00:06:02.479><c> let's</c>
+
+00:06:02.710 --> 00:06:02.720 align:start position:0%
+that in terms of our time steps so let's
+ 
+
+00:06:02.720 --> 00:06:04.390 align:start position:0%
+that in terms of our time steps so let's
+adjust<00:06:03.199><c> the</c><00:06:03.520><c> kappa</c>
+
+00:06:04.390 --> 00:06:04.400 align:start position:0%
+adjust the kappa
+ 
+
+00:06:04.400 --> 00:06:06.710 align:start position:0%
+adjust the kappa
+the<00:06:04.560><c> rate</c><00:06:04.800><c> of</c><00:06:04.880><c> mean</c><00:06:05.120><c> reversion</c><00:06:05.840><c> uh</c><00:06:06.080><c> just</c><00:06:06.319><c> by</c><00:06:06.639><c> a</c>
+
+00:06:06.710 --> 00:06:06.720 align:start position:0%
+the rate of mean reversion uh just by a
+ 
+
+00:06:06.720 --> 00:06:09.670 align:start position:0%
+the rate of mean reversion uh just by a
+straight<00:06:07.360><c> dt</c><00:06:08.080><c> and</c><00:06:08.319><c> then</c><00:06:08.720><c> for</c><00:06:08.880><c> our</c><00:06:09.039><c> sigma</c><00:06:09.520><c> the</c>
+
+00:06:09.670 --> 00:06:09.680 align:start position:0%
+straight dt and then for our sigma the
+ 
+
+00:06:09.680 --> 00:06:12.469 align:start position:0%
+straight dt and then for our sigma the
+volatility<00:06:10.960><c> of</c><00:06:11.199><c> variance</c><00:06:11.759><c> process</c><00:06:12.240><c> we're</c>
+
+00:06:12.469 --> 00:06:12.479 align:start position:0%
+volatility of variance process we're
+ 
+
+00:06:12.479 --> 00:06:15.670 align:start position:0%
+volatility of variance process we're
+just<00:06:12.720><c> going</c><00:06:12.960><c> to</c><00:06:13.120><c> take</c><00:06:13.440><c> the</c><00:06:13.840><c> square</c><00:06:14.319><c> root</c><00:06:14.639><c> of</c><00:06:14.880><c> dt</c>
+
+00:06:15.670 --> 00:06:15.680 align:start position:0%
+just going to take the square root of dt
+ 
+
+00:06:15.680 --> 00:06:17.909 align:start position:0%
+just going to take the square root of dt
+and<00:06:15.840><c> multiply</c><00:06:16.400><c> that</c><00:06:16.560><c> to</c><00:06:16.800><c> our</c><00:06:16.960><c> sigma</c>
+
+00:06:17.909 --> 00:06:17.919 align:start position:0%
+and multiply that to our sigma
+ 
+
+00:06:17.919 --> 00:06:20.070 align:start position:0%
+and multiply that to our sigma
+and<00:06:18.240><c> of</c><00:06:18.400><c> course</c><00:06:18.720><c> our</c><00:06:18.960><c> variance</c><00:06:19.440><c> process</c><00:06:19.840><c> we're</c>
+
+00:06:20.070 --> 00:06:20.080 align:start position:0%
+and of course our variance process we're
+ 
+
+00:06:20.080 --> 00:06:21.430 align:start position:0%
+and of course our variance process we're
+just<00:06:20.240><c> going</c><00:06:20.479><c> to</c><00:06:20.560><c> make</c><00:06:20.800><c> sure</c><00:06:20.960><c> that</c><00:06:21.120><c> that's</c>
+
+00:06:21.430 --> 00:06:21.440 align:start position:0%
+just going to make sure that that's
+ 
+
+00:06:21.440 --> 00:06:23.590 align:start position:0%
+just going to make sure that that's
+initialized<00:06:22.160><c> with</c><00:06:22.400><c> our</c><00:06:22.560><c> original</c><00:06:22.960><c> variances</c>
+
+00:06:23.590 --> 00:06:23.600 align:start position:0%
+initialized with our original variances
+ 
+
+00:06:23.600 --> 00:06:25.830 align:start position:0%
+initialized with our original variances
+for<00:06:23.759><c> each</c><00:06:24.080><c> asset</c>
+
+00:06:25.830 --> 00:06:25.840 align:start position:0%
+for each asset
+ 
+
+00:06:25.840 --> 00:06:26.870 align:start position:0%
+for each asset
+now
+
+00:06:26.870 --> 00:06:26.880 align:start position:0%
+now
+ 
+
+00:06:26.880 --> 00:06:29.510 align:start position:0%
+now
+performing<00:06:27.600><c> lower</c><00:06:27.919><c> colossal</c><00:06:28.720><c> decomposition</c>
+
+00:06:29.510 --> 00:06:29.520 align:start position:0%
+performing lower colossal decomposition
+ 
+
+00:06:29.520 --> 00:06:31.029 align:start position:0%
+performing lower colossal decomposition
+essentially<00:06:29.919><c> what</c><00:06:30.080><c> we're</c><00:06:30.240><c> doing</c><00:06:30.479><c> here</c><00:06:30.800><c> we're</c>
+
+00:06:31.029 --> 00:06:31.039 align:start position:0%
+essentially what we're doing here we're
+ 
+
+00:06:31.039 --> 00:06:34.390 align:start position:0%
+essentially what we're doing here we're
+finding<00:06:31.520><c> the</c><00:06:31.680><c> lower</c><00:06:32.160><c> triangle</c><00:06:33.120><c> of</c><00:06:33.600><c> our</c>
+
+00:06:34.390 --> 00:06:34.400 align:start position:0%
+finding the lower triangle of our
+ 
+
+00:06:34.400 --> 00:06:36.309 align:start position:0%
+finding the lower triangle of our
+correlation<00:06:35.120><c> matrix</c><00:06:35.680><c> and</c><00:06:35.759><c> we're</c><00:06:35.919><c> going</c><00:06:36.000><c> to</c><00:06:36.080><c> be</c>
+
+00:06:36.309 --> 00:06:36.319 align:start position:0%
+correlation matrix and we're going to be
+ 
+
+00:06:36.319 --> 00:06:38.870 align:start position:0%
+correlation matrix and we're going to be
+using<00:06:36.720><c> this</c><00:06:36.960><c> to</c><00:06:37.199><c> multiply</c><00:06:38.000><c> through</c>
+
+00:06:38.870 --> 00:06:38.880 align:start position:0%
+using this to multiply through
+ 
+
+00:06:38.880 --> 00:06:41.350 align:start position:0%
+using this to multiply through
+by<00:06:39.199><c> random</c><00:06:39.600><c> normal</c><00:06:39.919><c> variables</c><00:06:40.400><c> to</c><00:06:40.560><c> get</c><00:06:40.800><c> our</c>
+
+00:06:41.350 --> 00:06:41.360 align:start position:0%
+by random normal variables to get our
+ 
+
+00:06:41.360 --> 00:06:44.070 align:start position:0%
+by random normal variables to get our
+correlated<00:06:42.240><c> whiner</c><00:06:42.560><c> variables</c>
+
+00:06:44.070 --> 00:06:44.080 align:start position:0%
+correlated whiner variables
+ 
+
+00:06:44.080 --> 00:06:46.390 align:start position:0%
+correlated whiner variables
+so<00:06:44.479><c> the</c><00:06:44.720><c> standard</c><00:06:45.199><c> error</c><00:06:45.600><c> places</c>
+
+00:06:46.390 --> 00:06:46.400 align:start position:0%
+so the standard error places
+ 
+
+00:06:46.400 --> 00:06:47.830 align:start position:0%
+so the standard error places
+placeholders<00:06:47.120><c> this</c><00:06:47.280><c> is</c><00:06:47.360><c> just</c><00:06:47.520><c> going</c><00:06:47.600><c> to</c><00:06:47.680><c> be</c>
+
+00:06:47.830 --> 00:06:47.840 align:start position:0%
+placeholders this is just going to be
+ 
+
+00:06:47.840 --> 00:06:50.710 align:start position:0%
+placeholders this is just going to be
+used<00:06:48.080><c> to</c><00:06:48.240><c> actually</c><00:06:48.479><c> complete</c><00:06:49.120><c> the</c><00:06:49.440><c> error</c><00:06:50.080><c> that</c>
+
+00:06:50.710 --> 00:06:50.720 align:start position:0%
+used to actually complete the error that
+ 
+
+00:06:50.720 --> 00:06:52.870 align:start position:0%
+used to actually complete the error that
+around<00:06:51.120><c> our</c><00:06:51.280><c> calculation</c><00:06:52.319><c> so</c><00:06:52.560><c> running</c>
+
+00:06:52.870 --> 00:06:52.880 align:start position:0%
+around our calculation so running
+ 
+
+00:06:52.880 --> 00:06:55.110 align:start position:0%
+around our calculation so running
+through<00:06:53.039><c> our</c><00:06:53.199><c> monte</c><00:06:53.520><c> carlo</c><00:06:53.919><c> simulation</c><00:06:54.560><c> here</c>
+
+00:06:55.110 --> 00:06:55.120 align:start position:0%
+through our monte carlo simulation here
+ 
+
+00:06:55.120 --> 00:06:58.550 align:start position:0%
+through our monte carlo simulation here
+we've<00:06:55.360><c> got</c><00:06:55.759><c> for</c><00:06:56.160><c> each</c><00:06:56.560><c> simulation</c><00:06:57.280><c> i</c><00:06:57.599><c> and</c><00:06:57.840><c> m</c><00:06:58.319><c> we</c>
+
+00:06:58.550 --> 00:06:58.560 align:start position:0%
+we've got for each simulation i and m we
+ 
+
+00:06:58.560 --> 00:07:01.270 align:start position:0%
+we've got for each simulation i and m we
+have<00:06:58.880><c> our</c><00:06:59.280><c> log</c><00:06:59.680><c> prices</c><00:07:00.160><c> initialized</c><00:07:01.120><c> then</c>
+
+00:07:01.270 --> 00:07:01.280 align:start position:0%
+have our log prices initialized then
+ 
+
+00:07:01.280 --> 00:07:03.670 align:start position:0%
+have our log prices initialized then
+we're<00:07:01.440><c> going</c><00:07:01.599><c> to</c><00:07:01.680><c> step</c><00:07:02.000><c> through</c><00:07:02.479><c> time</c><00:07:03.120><c> so</c><00:07:03.440><c> for</c>
+
+00:07:03.670 --> 00:07:03.680 align:start position:0%
+we're going to step through time so for
+ 
+
+00:07:03.680 --> 00:07:06.710 align:start position:0%
+we're going to step through time so for
+each<00:07:04.080><c> time</c><00:07:04.400><c> step</c><00:07:04.800><c> j</c><00:07:05.360><c> we</c><00:07:05.599><c> need</c><00:07:05.840><c> to</c><00:07:06.080><c> generate</c><00:07:06.479><c> the</c>
+
+00:07:06.710 --> 00:07:06.720 align:start position:0%
+each time step j we need to generate the
+ 
+
+00:07:06.720 --> 00:07:08.629 align:start position:0%
+each time step j we need to generate the
+correlated<00:07:07.360><c> whiner</c><00:07:07.680><c> variables</c><00:07:08.319><c> so</c><00:07:08.479><c> i'm</c><00:07:08.560><c> going</c>
+
+00:07:08.629 --> 00:07:08.639 align:start position:0%
+correlated whiner variables so i'm going
+ 
+
+00:07:08.639 --> 00:07:11.189 align:start position:0%
+correlated whiner variables so i'm going
+to<00:07:08.800><c> do</c><00:07:08.960><c> this</c><00:07:09.280><c> by</c><00:07:09.440><c> actually</c><00:07:10.000><c> simulating</c>
+
+00:07:11.189 --> 00:07:11.199 align:start position:0%
+to do this by actually simulating
+ 
+
+00:07:11.199 --> 00:07:14.070 align:start position:0%
+to do this by actually simulating
+standard<00:07:11.919><c> normal</c><00:07:12.720><c> distributed</c><00:07:13.360><c> variables</c>
+
+00:07:14.070 --> 00:07:14.080 align:start position:0%
+standard normal distributed variables
+ 
+
+00:07:14.080 --> 00:07:16.550 align:start position:0%
+standard normal distributed variables
+four<00:07:14.319><c> of</c><00:07:14.400><c> them</c><00:07:14.960><c> so</c><00:07:15.120><c> with</c><00:07:15.360><c> a</c><00:07:15.440><c> mean</c><00:07:15.759><c> of</c><00:07:15.919><c> zero</c><00:07:16.400><c> and</c>
+
+00:07:16.550 --> 00:07:16.560 align:start position:0%
+four of them so with a mean of zero and
+ 
+
+00:07:16.560 --> 00:07:18.469 align:start position:0%
+four of them so with a mean of zero and
+a<00:07:16.639><c> standard</c><00:07:16.960><c> deviation</c><00:07:17.440><c> of</c><00:07:17.599><c> one</c><00:07:18.080><c> and</c><00:07:18.240><c> then</c>
+
+00:07:18.469 --> 00:07:18.479 align:start position:0%
+a standard deviation of one and then
+ 
+
+00:07:18.479 --> 00:07:20.469 align:start position:0%
+a standard deviation of one and then
+we're<00:07:18.639><c> going</c><00:07:18.880><c> to</c><00:07:19.199><c> compute</c><00:07:19.599><c> the</c><00:07:19.840><c> inner</c><00:07:20.080><c> product</c>
+
+00:07:20.469 --> 00:07:20.479 align:start position:0%
+we're going to compute the inner product
+ 
+
+00:07:20.479 --> 00:07:23.990 align:start position:0%
+we're going to compute the inner product
+so<00:07:20.800><c> do</c><00:07:21.039><c> matrix</c><00:07:21.520><c> multiplication</c><00:07:22.720><c> of</c><00:07:23.039><c> this</c><00:07:23.520><c> z</c>
+
+00:07:23.990 --> 00:07:24.000 align:start position:0%
+so do matrix multiplication of this z
+ 
+
+00:07:24.000 --> 00:07:25.430 align:start position:0%
+so do matrix multiplication of this z
+correlated
+
+00:07:25.430 --> 00:07:25.440 align:start position:0%
+correlated
+ 
+
+00:07:25.440 --> 00:07:27.909 align:start position:0%
+correlated
+of<00:07:25.599><c> these</c><00:07:25.919><c> z</c><00:07:26.319><c> uncorrelated</c><00:07:27.039><c> variables</c><00:07:27.680><c> and</c>
+
+00:07:27.909 --> 00:07:27.919 align:start position:0%
+of these z uncorrelated variables and
+ 
+
+00:07:27.919 --> 00:07:30.150 align:start position:0%
+of these z uncorrelated variables and
+multiply<00:07:28.479><c> them</c><00:07:28.720><c> through</c><00:07:29.039><c> by</c><00:07:29.360><c> our</c><00:07:29.680><c> lower</c>
+
+00:07:30.150 --> 00:07:30.160 align:start position:0%
+multiply them through by our lower
+ 
+
+00:07:30.160 --> 00:07:32.469 align:start position:0%
+multiply them through by our lower
+cholesky<00:07:30.800><c> decomposition</c><00:07:32.080><c> of</c><00:07:32.319><c> our</c>
+
+00:07:32.469 --> 00:07:32.479 align:start position:0%
+cholesky decomposition of our
+ 
+
+00:07:32.479 --> 00:07:34.790 align:start position:0%
+cholesky decomposition of our
+correlation<00:07:33.199><c> matrix</c><00:07:33.919><c> then</c><00:07:34.160><c> we're</c><00:07:34.400><c> going</c><00:07:34.639><c> to</c>
+
+00:07:34.790 --> 00:07:34.800 align:start position:0%
+correlation matrix then we're going to
+ 
+
+00:07:34.800 --> 00:07:35.589 align:start position:0%
+correlation matrix then we're going to
+get
+
+00:07:35.589 --> 00:07:35.599 align:start position:0%
+get
+ 
+
+00:07:35.599 --> 00:07:36.950 align:start position:0%
+get
+the<00:07:35.840><c> whiner</c>
+
+00:07:36.950 --> 00:07:36.960 align:start position:0%
+the whiner
+ 
+
+00:07:36.960 --> 00:07:39.110 align:start position:0%
+the whiner
+array<00:07:37.520><c> which</c><00:07:37.759><c> is</c><00:07:37.919><c> just</c><00:07:38.240><c> our</c><00:07:38.479><c> correlated</c>
+
+00:07:39.110 --> 00:07:39.120 align:start position:0%
+array which is just our correlated
+ 
+
+00:07:39.120 --> 00:07:40.870 align:start position:0%
+array which is just our correlated
+variables
+
+00:07:40.870 --> 00:07:40.880 align:start position:0%
+variables
+ 
+
+00:07:40.880 --> 00:07:43.430 align:start position:0%
+variables
+we<00:07:41.039><c> can</c><00:07:41.280><c> then</c><00:07:41.599><c> take</c><00:07:42.080><c> our</c><00:07:42.319><c> simulated</c><00:07:42.960><c> variance</c>
+
+00:07:43.430 --> 00:07:43.440 align:start position:0%
+we can then take our simulated variance
+ 
+
+00:07:43.440 --> 00:07:45.749 align:start position:0%
+we can then take our simulated variance
+processes<00:07:44.000><c> and</c><00:07:44.080><c> we</c><00:07:44.160><c> need</c><00:07:44.400><c> to</c><00:07:44.479><c> do</c><00:07:44.639><c> this</c><00:07:44.960><c> first</c>
+
+00:07:45.749 --> 00:07:45.759 align:start position:0%
+processes and we need to do this first
+ 
+
+00:07:45.759 --> 00:07:47.270 align:start position:0%
+processes and we need to do this first
+so<00:07:46.000><c> here</c><00:07:46.240><c> we</c><00:07:46.479><c> have</c>
+
+00:07:47.270 --> 00:07:47.280 align:start position:0%
+so here we have
+ 
+
+00:07:47.280 --> 00:07:49.830 align:start position:0%
+so here we have
+variance<00:07:47.919><c> which</c><00:07:48.160><c> is</c><00:07:48.400><c> equal</c><00:07:48.639><c> to</c><00:07:49.120><c> the</c><00:07:49.360><c> initial</c>
+
+00:07:49.830 --> 00:07:49.840 align:start position:0%
+variance which is equal to the initial
+ 
+
+00:07:49.840 --> 00:07:53.589 align:start position:0%
+variance which is equal to the initial
+variance<00:07:50.400><c> plus</c><00:07:51.120><c> our</c><00:07:51.840><c> mean</c><00:07:52.400><c> reversion</c><00:07:53.120><c> rate</c>
+
+00:07:53.589 --> 00:07:53.599 align:start position:0%
+variance plus our mean reversion rate
+ 
+
+00:07:53.599 --> 00:07:55.430 align:start position:0%
+variance plus our mean reversion rate
+multiplied<00:07:54.560><c> by</c>
+
+00:07:55.430 --> 00:07:55.440 align:start position:0%
+multiplied by
+ 
+
+00:07:55.440 --> 00:07:57.510 align:start position:0%
+multiplied by
+theta<00:07:55.840><c> which</c><00:07:56.080><c> is</c><00:07:56.240><c> that</c><00:07:56.479><c> long</c><00:07:56.720><c> term</c><00:07:57.039><c> variance</c>
+
+00:07:57.510 --> 00:07:57.520 align:start position:0%
+theta which is that long term variance
+ 
+
+00:07:57.520 --> 00:08:00.469 align:start position:0%
+theta which is that long term variance
+minus<00:07:57.919><c> our</c><00:07:58.080><c> current</c><00:07:58.479><c> variance</c><00:07:59.360><c> plus</c><00:08:00.080><c> our</c>
+
+00:08:00.469 --> 00:08:00.479 align:start position:0%
+minus our current variance plus our
+ 
+
+00:08:00.479 --> 00:08:02.869 align:start position:0%
+minus our current variance plus our
+volatility<00:08:01.199><c> of</c><00:08:01.360><c> variance</c><00:08:02.080><c> times</c><00:08:02.479><c> by</c><00:08:02.720><c> the</c>
+
+00:08:02.869 --> 00:08:02.879 align:start position:0%
+volatility of variance times by the
+ 
+
+00:08:02.879 --> 00:08:04.869 align:start position:0%
+volatility of variance times by the
+square<00:08:03.280><c> root</c><00:08:03.599><c> of</c><00:08:03.840><c> the</c><00:08:04.000><c> variance</c><00:08:04.639><c> at</c><00:08:04.720><c> the</c>
+
+00:08:04.869 --> 00:08:04.879 align:start position:0%
+square root of the variance at the
+ 
+
+00:08:04.879 --> 00:08:07.749 align:start position:0%
+square root of the variance at the
+current<00:08:05.360><c> time</c><00:08:05.599><c> step</c><00:08:06.160><c> we</c><00:08:06.319><c> then</c><00:08:06.639><c> multiply</c><00:08:07.440><c> this</c>
+
+00:08:07.749 --> 00:08:07.759 align:start position:0%
+current time step we then multiply this
+ 
+
+00:08:07.759 --> 00:08:10.550 align:start position:0%
+current time step we then multiply this
+diffusion<00:08:08.479><c> component</c><00:08:09.120><c> by</c><00:08:09.440><c> our</c><00:08:09.759><c> whiner</c>
+
+00:08:10.550 --> 00:08:10.560 align:start position:0%
+diffusion component by our whiner
+ 
+
+00:08:10.560 --> 00:08:12.469 align:start position:0%
+diffusion component by our whiner
+process<00:08:11.039><c> and</c><00:08:11.199><c> you</c><00:08:11.360><c> need</c><00:08:11.520><c> to</c><00:08:11.599><c> make</c><00:08:11.919><c> sure</c><00:08:12.240><c> that</c>
+
+00:08:12.469 --> 00:08:12.479 align:start position:0%
+process and you need to make sure that
+ 
+
+00:08:12.479 --> 00:08:15.350 align:start position:0%
+process and you need to make sure that
+you<00:08:12.720><c> use</c><00:08:13.120><c> the</c><00:08:13.280><c> correct</c><00:08:13.919><c> index</c><00:08:14.800><c> for</c><00:08:15.199><c> your</c>
+
+00:08:15.350 --> 00:08:15.360 align:start position:0%
+you use the correct index for your
+ 
+
+00:08:15.360 --> 00:08:18.869 align:start position:0%
+you use the correct index for your
+specific<00:08:16.160><c> term</c><00:08:16.560><c> so</c><00:08:16.800><c> here</c><00:08:17.520><c> um</c><00:08:18.000><c> we</c><00:08:18.240><c> actually</c>
+
+00:08:18.869 --> 00:08:18.879 align:start position:0%
+specific term so here um we actually
+ 
+
+00:08:18.879 --> 00:08:21.350 align:start position:0%
+specific term so here um we actually
+looked<00:08:19.120><c> at</c><00:08:19.199><c> things</c><00:08:19.520><c> in</c><00:08:19.680><c> terms</c><00:08:20.080><c> of</c><00:08:20.639><c> asset</c><00:08:21.039><c> price</c>
+
+00:08:21.350 --> 00:08:21.360 align:start position:0%
+looked at things in terms of asset price
+ 
+
+00:08:21.360 --> 00:08:23.430 align:start position:0%
+looked at things in terms of asset price
+one<00:08:21.599><c> asset</c><00:08:21.919><c> price</c><00:08:22.240><c> two</c><00:08:22.639><c> variance</c><00:08:23.120><c> one</c>
+
+00:08:23.430 --> 00:08:23.440 align:start position:0%
+one asset price two variance one
+ 
+
+00:08:23.440 --> 00:08:25.510 align:start position:0%
+one asset price two variance one
+variance<00:08:23.919><c> two</c><00:08:24.160><c> so</c><00:08:24.319><c> i</c><00:08:24.479><c> need</c><00:08:24.639><c> to</c><00:08:24.800><c> index</c><00:08:25.280><c> on</c><00:08:25.360><c> the</c>
+
+00:08:25.510 --> 00:08:25.520 align:start position:0%
+variance two so i need to index on the
+ 
+
+00:08:25.520 --> 00:08:27.749 align:start position:0%
+variance two so i need to index on the
+respective<00:08:26.240><c> indices</c><00:08:26.879><c> for</c><00:08:27.120><c> the</c><00:08:27.280><c> thing</c><00:08:27.520><c> that</c>
+
+00:08:27.749 --> 00:08:27.759 align:start position:0%
+respective indices for the thing that
+ 
+
+00:08:27.759 --> 00:08:29.670 align:start position:0%
+respective indices for the thing that
+i'm<00:08:28.000><c> trying</c><00:08:28.319><c> to</c><00:08:28.400><c> calculate</c>
+
+00:08:29.670 --> 00:08:29.680 align:start position:0%
+i'm trying to calculate
+ 
+
+00:08:29.680 --> 00:08:31.029 align:start position:0%
+i'm trying to calculate
+we<00:08:29.840><c> do</c><00:08:30.000><c> the</c><00:08:30.080><c> same</c><00:08:30.319><c> thing</c><00:08:30.479><c> for</c><00:08:30.639><c> variance</c>
+
+00:08:31.029 --> 00:08:31.039 align:start position:0%
+we do the same thing for variance
+ 
+
+00:08:31.039 --> 00:08:33.269 align:start position:0%
+we do the same thing for variance
+process<00:08:31.520><c> 2</c><00:08:31.919><c> and</c><00:08:32.159><c> now</c><00:08:32.320><c> that</c><00:08:32.479><c> we</c><00:08:32.640><c> have</c><00:08:32.880><c> those</c><00:08:33.120><c> we</c>
+
+00:08:33.269 --> 00:08:33.279 align:start position:0%
+process 2 and now that we have those we
+ 
+
+00:08:33.279 --> 00:08:35.750 align:start position:0%
+process 2 and now that we have those we
+can<00:08:33.440><c> then</c><00:08:33.680><c> use</c><00:08:34.000><c> that</c><00:08:34.159><c> to</c><00:08:34.320><c> calculate</c><00:08:35.200><c> our</c><00:08:35.440><c> log</c>
+
+00:08:35.750 --> 00:08:35.760 align:start position:0%
+can then use that to calculate our log
+ 
+
+00:08:35.760 --> 00:08:38.389 align:start position:0%
+can then use that to calculate our log
+asset<00:08:36.159><c> prices</c><00:08:36.959><c> so</c><00:08:37.200><c> first</c><00:08:37.440><c> the</c><00:08:37.599><c> deterministic</c>
+
+00:08:38.389 --> 00:08:38.399 align:start position:0%
+asset prices so first the deterministic
+ 
+
+00:08:38.399 --> 00:08:40.230 align:start position:0%
+asset prices so first the deterministic
+components<00:08:38.959><c> we've</c><00:08:39.120><c> got</c><00:08:39.360><c> the</c><00:08:39.440><c> risk-free</c><00:08:39.919><c> rate</c>
+
+00:08:40.230 --> 00:08:40.240 align:start position:0%
+components we've got the risk-free rate
+ 
+
+00:08:40.240 --> 00:08:43.430 align:start position:0%
+components we've got the risk-free rate
+minus<00:08:40.560><c> the</c><00:08:40.719><c> dividend</c><00:08:41.440><c> minus</c><00:08:41.760><c> 0.5</c><00:08:42.800><c> times</c><00:08:43.200><c> by</c>
+
+00:08:43.430 --> 00:08:43.440 align:start position:0%
+minus the dividend minus 0.5 times by
+ 
+
+00:08:43.440 --> 00:08:45.829 align:start position:0%
+minus the dividend minus 0.5 times by
+the<00:08:43.599><c> variance</c><00:08:44.240><c> and</c><00:08:44.320><c> that's</c><00:08:44.800><c> all</c><00:08:45.120><c> multiplied</c>
+
+00:08:45.829 --> 00:08:45.839 align:start position:0%
+the variance and that's all multiplied
+ 
+
+00:08:45.839 --> 00:08:48.070 align:start position:0%
+the variance and that's all multiplied
+by<00:08:46.080><c> the</c><00:08:46.240><c> time</c><00:08:46.560><c> step</c>
+
+00:08:48.070 --> 00:08:48.080 align:start position:0%
+by the time step
+ 
+
+00:08:48.080 --> 00:08:51.350 align:start position:0%
+by the time step
+we<00:08:48.320><c> then</c><00:08:48.640><c> use</c><00:08:48.959><c> that</c><00:08:49.360><c> to</c><00:08:49.600><c> compute</c><00:08:50.160><c> our</c><00:08:50.720><c> log</c>
+
+00:08:51.350 --> 00:08:51.360 align:start position:0%
+we then use that to compute our log
+ 
+
+00:08:51.360 --> 00:08:53.910 align:start position:0%
+we then use that to compute our log
+asset<00:08:51.839><c> price</c><00:08:52.240><c> in</c><00:08:52.320><c> the</c><00:08:52.399><c> next</c><00:08:52.720><c> time</c><00:08:53.040><c> step</c><00:08:53.519><c> so</c><00:08:53.680><c> we</c>
+
+00:08:53.910 --> 00:08:53.920 align:start position:0%
+asset price in the next time step so we
+ 
+
+00:08:53.920 --> 00:08:56.949 align:start position:0%
+asset price in the next time step so we
+use<00:08:54.080><c> the</c><00:08:54.240><c> log</c><00:08:54.560><c> asset</c><00:08:55.040><c> price</c><00:08:55.440><c> of</c><00:08:55.600><c> the</c><00:08:55.760><c> time</c><00:08:56.000><c> step</c>
+
+00:08:56.949 --> 00:08:56.959 align:start position:0%
+use the log asset price of the time step
+ 
+
+00:08:56.959 --> 00:09:00.230 align:start position:0%
+use the log asset price of the time step
+before<00:08:57.600><c> plus</c><00:08:58.080><c> our</c><00:08:58.560><c> deterministic</c><00:08:59.360><c> component</c>
+
+00:09:00.230 --> 00:09:00.240 align:start position:0%
+before plus our deterministic component
+ 
+
+00:09:00.240 --> 00:09:02.790 align:start position:0%
+before plus our deterministic component
+plus<00:09:00.800><c> our</c><00:09:01.120><c> diffusion</c><00:09:01.920><c> component</c><00:09:02.480><c> which</c><00:09:02.640><c> is</c>
+
+00:09:02.790 --> 00:09:02.800 align:start position:0%
+plus our diffusion component which is
+ 
+
+00:09:02.800 --> 00:09:04.310 align:start position:0%
+plus our diffusion component which is
+just<00:09:02.959><c> going</c><00:09:03.120><c> to</c><00:09:03.200><c> be</c><00:09:03.279><c> the</c><00:09:03.519><c> square</c><00:09:03.839><c> root</c><00:09:04.080><c> of</c><00:09:04.240><c> the</c>
+
+00:09:04.310 --> 00:09:04.320 align:start position:0%
+just going to be the square root of the
+ 
+
+00:09:04.320 --> 00:09:08.070 align:start position:0%
+just going to be the square root of the
+variance<00:09:05.279><c> times</c><00:09:05.760><c> by</c><00:09:06.399><c> our</c><00:09:06.720><c> time</c><00:09:07.040><c> step</c><00:09:07.600><c> we</c><00:09:07.839><c> then</c>
+
+00:09:08.070 --> 00:09:08.080 align:start position:0%
+variance times by our time step we then
+ 
+
+00:09:08.080 --> 00:09:10.949 align:start position:0%
+variance times by our time step we then
+multiply<00:09:08.640><c> that</c><00:09:08.880><c> all</c><00:09:09.120><c> through</c><00:09:09.680><c> by</c><00:09:10.160><c> our</c><00:09:10.560><c> whiner</c>
+
+00:09:10.949 --> 00:09:10.959 align:start position:0%
+multiply that all through by our whiner
+ 
+
+00:09:10.959 --> 00:09:13.190 align:start position:0%
+multiply that all through by our whiner
+process<00:09:11.519><c> of</c><00:09:11.760><c> this</c><00:09:12.000><c> specific</c><00:09:12.560><c> correlated</c>
+
+00:09:13.190 --> 00:09:13.200 align:start position:0%
+process of this specific correlated
+ 
+
+00:09:13.200 --> 00:09:14.710 align:start position:0%
+process of this specific correlated
+variable
+
+00:09:14.710 --> 00:09:14.720 align:start position:0%
+variable
+ 
+
+00:09:14.720 --> 00:09:17.350 align:start position:0%
+variable
+then<00:09:15.360><c> after</c><00:09:15.680><c> we</c><00:09:16.000><c> run</c><00:09:16.320><c> through</c><00:09:16.720><c> all</c><00:09:16.959><c> the</c><00:09:17.120><c> time</c>
+
+00:09:17.350 --> 00:09:17.360 align:start position:0%
+then after we run through all the time
+ 
+
+00:09:17.360 --> 00:09:20.550 align:start position:0%
+then after we run through all the time
+periods<00:09:17.839><c> to</c><00:09:18.080><c> time</c><00:09:18.480><c> t</c><00:09:19.040><c> then</c><00:09:19.279><c> we</c><00:09:19.440><c> get</c><00:09:19.600><c> the</c><00:09:19.920><c> last</c>
+
+00:09:20.550 --> 00:09:20.560 align:start position:0%
+periods to time t then we get the last
+ 
+
+00:09:20.560 --> 00:09:23.030 align:start position:0%
+periods to time t then we get the last
+asset<00:09:21.040><c> price</c><00:09:21.440><c> log</c><00:09:21.680><c> asset</c><00:09:22.080><c> price</c><00:09:22.480><c> and</c><00:09:22.640><c> we</c><00:09:22.800><c> take</c>
+
+00:09:23.030 --> 00:09:23.040 align:start position:0%
+asset price log asset price and we take
+ 
+
+00:09:23.040 --> 00:09:25.670 align:start position:0%
+asset price log asset price and we take
+the<00:09:23.200><c> exponential</c><00:09:24.240><c> to</c><00:09:24.399><c> get</c><00:09:24.640><c> the</c><00:09:24.800><c> correct</c><00:09:25.279><c> asset</c>
+
+00:09:25.670 --> 00:09:25.680 align:start position:0%
+the exponential to get the correct asset
+ 
+
+00:09:25.680 --> 00:09:27.430 align:start position:0%
+the exponential to get the correct asset
+price<00:09:26.000><c> and</c><00:09:26.080><c> this</c><00:09:26.320><c> is</c><00:09:26.480><c> in</c><00:09:26.640><c> terms</c><00:09:26.880><c> of</c><00:09:26.959><c> the</c><00:09:27.120><c> index</c>
+
+00:09:27.430 --> 00:09:27.440 align:start position:0%
+price and this is in terms of the index
+ 
+
+00:09:27.440 --> 00:09:29.269 align:start position:0%
+price and this is in terms of the index
+so<00:09:27.519><c> this</c><00:09:27.680><c> will</c><00:09:27.760><c> be</c><00:09:27.920><c> in</c><00:09:28.160><c> points</c><00:09:28.640><c> so</c><00:09:28.800><c> if</c><00:09:28.959><c> then</c><00:09:29.120><c> for</c>
+
+00:09:29.269 --> 00:09:29.279 align:start position:0%
+so this will be in points so if then for
+ 
+
+00:09:29.279 --> 00:09:32.070 align:start position:0%
+so this will be in points so if then for
+the<00:09:29.440><c> call</c><00:09:29.760><c> option</c><00:09:30.160><c> we</c><00:09:30.399><c> take</c><00:09:30.880><c> the</c><00:09:31.120><c> max</c><00:09:31.519><c> between</c>
+
+00:09:32.070 --> 00:09:32.080 align:start position:0%
+the call option we take the max between
+ 
+
+00:09:32.080 --> 00:09:33.030 align:start position:0%
+the call option we take the max between
+0
+
+00:09:33.030 --> 00:09:33.040 align:start position:0%
+0
+ 
+
+00:09:33.040 --> 00:09:36.389 align:start position:0%
+0
+the<00:09:33.360><c> difference</c><00:09:34.080><c> between</c><00:09:35.040><c> asset</c><00:09:35.440><c> 1</c><00:09:35.760><c> and</c><00:09:36.000><c> asset</c>
+
+00:09:36.389 --> 00:09:36.399 align:start position:0%
+the difference between asset 1 and asset
+ 
+
+00:09:36.399 --> 00:09:40.630 align:start position:0%
+the difference between asset 1 and asset
+2<00:09:36.959><c> index</c><00:09:37.360><c> price</c><00:09:38.080><c> and</c><00:09:38.240><c> then</c><00:09:38.480><c> we</c><00:09:38.800><c> minus</c><00:09:39.519><c> k</c><00:09:40.080><c> which</c>
+
+00:09:40.630 --> 00:09:40.640 align:start position:0%
+2 index price and then we minus k which
+ 
+
+00:09:40.640 --> 00:09:42.630 align:start position:0%
+2 index price and then we minus k which
+we<00:09:40.880><c> just</c><00:09:41.120><c> described</c><00:09:41.680><c> as</c><00:09:41.760><c> the</c><00:09:41.920><c> strike</c><00:09:42.320><c> which</c>
+
+00:09:42.630 --> 00:09:42.640 align:start position:0%
+we just described as the strike which
+ 
+
+00:09:42.640 --> 00:09:44.870 align:start position:0%
+we just described as the strike which
+was<00:09:42.880><c> the</c><00:09:43.200><c> difference</c><00:09:43.920><c> at</c><00:09:44.080><c> the</c><00:09:44.240><c> time</c><00:09:44.480><c> that</c><00:09:44.640><c> we</c>
+
+00:09:44.870 --> 00:09:44.880 align:start position:0%
+was the difference at the time that we
+ 
+
+00:09:44.880 --> 00:09:47.509 align:start position:0%
+was the difference at the time that we
+started<00:09:45.920><c> of</c><00:09:46.399><c> the</c><00:09:46.560><c> difference</c><00:09:47.040><c> between</c><00:09:47.360><c> the</c>
+
+00:09:47.509 --> 00:09:47.519 align:start position:0%
+started of the difference between the
+ 
+
+00:09:47.519 --> 00:09:50.230 align:start position:0%
+started of the difference between the
+indexes<00:09:48.240><c> so</c><00:09:48.399><c> then</c><00:09:48.640><c> we</c><00:09:48.800><c> complete</c><00:09:49.279><c> this</c><00:09:49.519><c> process</c>
+
+00:09:50.230 --> 00:09:50.240 align:start position:0%
+indexes so then we complete this process
+ 
+
+00:09:50.240 --> 00:09:52.710 align:start position:0%
+indexes so then we complete this process
+for<00:09:50.720><c> m</c><00:09:51.120><c> number</c><00:09:51.440><c> of</c><00:09:51.600><c> simulations</c><00:09:52.399><c> so</c><00:09:52.480><c> i</c><00:09:52.560><c> think</c>
+
+00:09:52.710 --> 00:09:52.720 align:start position:0%
+for m number of simulations so i think
+ 
+
+00:09:52.720 --> 00:09:55.350 align:start position:0%
+for m number of simulations so i think
+we<00:09:52.880><c> had</c><00:09:53.200><c> i</c><00:09:53.839><c> in</c><00:09:54.080><c> m</c><00:09:54.240><c> number</c><00:09:54.480><c> of</c><00:09:54.640><c> simulations</c><00:09:55.279><c> and</c>
+
+00:09:55.350 --> 00:09:55.360 align:start position:0%
+we had i in m number of simulations and
+ 
+
+00:09:55.360 --> 00:09:57.750 align:start position:0%
+we had i in m number of simulations and
+then<00:09:55.519><c> we</c><00:09:55.600><c> can</c><00:09:55.760><c> compute</c><00:09:56.160><c> the</c><00:09:56.399><c> expectation</c><00:09:57.680><c> and</c>
+
+00:09:57.750 --> 00:09:57.760 align:start position:0%
+then we can compute the expectation and
+ 
+
+00:09:57.760 --> 00:10:00.150 align:start position:0%
+then we can compute the expectation and
+then<00:09:57.920><c> the</c><00:09:58.080><c> standard</c><00:09:58.640><c> error</c><00:09:59.360><c> so</c><00:09:59.760><c> for</c><00:09:59.920><c> the</c>
+
+00:10:00.150 --> 00:10:00.160 align:start position:0%
+then the standard error so for the
+ 
+
+00:10:00.160 --> 00:10:03.190 align:start position:0%
+then the standard error so for the
+expectation<00:10:00.880><c> we</c><00:10:01.120><c> end</c><00:10:01.360><c> up</c><00:10:01.440><c> getting</c><00:10:01.839><c> 830</c><00:10:02.720><c> bucks</c>
+
+00:10:03.190 --> 00:10:03.200 align:start position:0%
+expectation we end up getting 830 bucks
+ 
+
+00:10:03.200 --> 00:10:06.550 align:start position:0%
+expectation we end up getting 830 bucks
+with<00:10:03.519><c> a</c><00:10:04.160><c> standard</c><00:10:04.560><c> error</c><00:10:04.880><c> of</c><00:10:05.040><c> 46</c><00:10:05.600><c> dollars</c><00:10:06.240><c> now</c>
+
+00:10:06.550 --> 00:10:06.560 align:start position:0%
+with a standard error of 46 dollars now
+ 
+
+00:10:06.560 --> 00:10:07.990 align:start position:0%
+with a standard error of 46 dollars now
+it's<00:10:06.720><c> important</c><00:10:07.040><c> to</c><00:10:07.120><c> know</c><00:10:07.279><c> that</c><00:10:07.440><c> calculation</c>
+
+00:10:07.990 --> 00:10:08.000 align:start position:0%
+it's important to know that calculation
+ 
+
+00:10:08.000 --> 00:10:09.470 align:start position:0%
+it's important to know that calculation
+time<00:10:08.240><c> here</c><00:10:08.480><c> has</c><00:10:08.640><c> taken</c>
+
+00:10:09.470 --> 00:10:09.480 align:start position:0%
+time here has taken
+ 
+
+00:10:09.480 --> 00:10:12.150 align:start position:0%
+time here has taken
+16.43<00:10:10.560><c> seconds</c><00:10:11.120><c> now</c><00:10:11.360><c> for</c><00:10:11.519><c> the</c><00:10:11.760><c> fast</c>
+
+00:10:12.150 --> 00:10:12.160 align:start position:0%
+16.43 seconds now for the fast
+ 
+
+00:10:12.160 --> 00:10:13.590 align:start position:0%
+16.43 seconds now for the fast
+implementation<00:10:12.880><c> what</c><00:10:13.040><c> we're</c><00:10:13.200><c> going</c><00:10:13.279><c> to</c><00:10:13.360><c> do</c><00:10:13.519><c> is</c>
+
+00:10:13.590 --> 00:10:13.600 align:start position:0%
+implementation what we're going to do is
+ 
+
+00:10:13.600 --> 00:10:15.350 align:start position:0%
+implementation what we're going to do is
+we're<00:10:13.760><c> going</c><00:10:13.839><c> to</c><00:10:14.000><c> vectorize</c><00:10:14.720><c> this</c><00:10:14.959><c> option</c>
+
+00:10:15.350 --> 00:10:15.360 align:start position:0%
+we're going to vectorize this option
+ 
+
+00:10:15.360 --> 00:10:17.670 align:start position:0%
+we're going to vectorize this option
+pricing<00:10:16.240><c> so</c><00:10:16.480><c> now</c><00:10:16.800><c> i'm</c><00:10:16.959><c> using</c><00:10:17.360><c> the</c><00:10:17.519><c> same</c>
+
+00:10:17.670 --> 00:10:17.680 align:start position:0%
+pricing so now i'm using the same
+ 
+
+00:10:17.680 --> 00:10:19.430 align:start position:0%
+pricing so now i'm using the same
+discrete<00:10:18.240><c> time</c><00:10:18.480><c> steps</c><00:10:18.880><c> and</c><00:10:18.959><c> the</c><00:10:19.040><c> number</c><00:10:19.279><c> of</c>
+
+00:10:19.430 --> 00:10:19.440 align:start position:0%
+discrete time steps and the number of
+ 
+
+00:10:19.440 --> 00:10:21.670 align:start position:0%
+discrete time steps and the number of
+simulations<00:10:20.399><c> now</c><00:10:20.640><c> the</c><00:10:20.800><c> only</c><00:10:21.040><c> difference</c><00:10:21.440><c> is</c>
+
+00:10:21.670 --> 00:10:21.680 align:start position:0%
+simulations now the only difference is
+ 
+
+00:10:21.680 --> 00:10:24.150 align:start position:0%
+simulations now the only difference is
+i'm<00:10:21.920><c> getting</c><00:10:22.160><c> this</c><00:10:22.480><c> generated</c><00:10:23.600><c> correlated</c>
+
+00:10:24.150 --> 00:10:24.160 align:start position:0%
+i'm getting this generated correlated
+ 
+
+00:10:24.160 --> 00:10:25.509 align:start position:0%
+i'm getting this generated correlated
+wider<00:10:24.399><c> variables</c><00:10:24.800><c> and</c><00:10:24.959><c> i'm</c><00:10:25.040><c> doing</c><00:10:25.279><c> this</c>
+
+00:10:25.509 --> 00:10:25.519 align:start position:0%
+wider variables and i'm doing this
+ 
+
+00:10:25.519 --> 00:10:28.150 align:start position:0%
+wider variables and i'm doing this
+outside<00:10:26.000><c> of</c><00:10:26.160><c> our</c><00:10:26.320><c> for</c><00:10:26.560><c> loop</c><00:10:26.880><c> so</c><00:10:27.360><c> now</c><00:10:27.680><c> we've</c><00:10:27.920><c> got</c>
+
+00:10:28.150 --> 00:10:28.160 align:start position:0%
+outside of our for loop so now we've got
+ 
+
+00:10:28.160 --> 00:10:31.110 align:start position:0%
+outside of our for loop so now we've got
+these<00:10:28.560><c> random</c><00:10:28.880><c> normal</c><00:10:29.200><c> variables</c><00:10:30.000><c> of</c><00:10:30.240><c> size</c><00:10:30.720><c> n</c>
+
+00:10:31.110 --> 00:10:31.120 align:start position:0%
+these random normal variables of size n
+ 
+
+00:10:31.120 --> 00:10:34.870 align:start position:0%
+these random normal variables of size n
+by<00:10:31.440><c> m</c><00:10:31.920><c> by</c><00:10:32.240><c> four</c><00:10:33.040><c> so</c><00:10:33.360><c> this</c><00:10:33.600><c> is</c><00:10:33.760><c> our</c><00:10:34.000><c> time</c><00:10:34.320><c> steps</c>
+
+00:10:34.870 --> 00:10:34.880 align:start position:0%
+by m by four so this is our time steps
+ 
+
+00:10:34.880 --> 00:10:37.750 align:start position:0%
+by m by four so this is our time steps
+by<00:10:35.200><c> the</c><00:10:35.279><c> number</c><00:10:35.519><c> of</c><00:10:35.680><c> simulations</c><00:10:36.800><c> by</c><00:10:37.200><c> our</c><00:10:37.519><c> four</c>
+
+00:10:37.750 --> 00:10:37.760 align:start position:0%
+by the number of simulations by our four
+ 
+
+00:10:37.760 --> 00:10:39.350 align:start position:0%
+by the number of simulations by our four
+variables<00:10:38.480><c> for</c><00:10:38.640><c> each</c><00:10:38.880><c> one</c><00:10:39.120><c> of</c><00:10:39.200><c> those</c>
+
+00:10:39.350 --> 00:10:39.360 align:start position:0%
+variables for each one of those
+ 
+
+00:10:39.360 --> 00:10:40.470 align:start position:0%
+variables for each one of those
+conditions
+
+00:10:40.470 --> 00:10:40.480 align:start position:0%
+conditions
+ 
+
+00:10:40.480 --> 00:10:43.350 align:start position:0%
+conditions
+we<00:10:40.720><c> then</c><00:10:40.959><c> can</c><00:10:41.200><c> compute</c><00:10:41.680><c> our</c><00:10:42.000><c> correlated</c><00:10:42.800><c> um</c>
+
+00:10:43.350 --> 00:10:43.360 align:start position:0%
+we then can compute our correlated um
+ 
+
+00:10:43.360 --> 00:10:45.990 align:start position:0%
+we then can compute our correlated um
+vet<00:10:43.600><c> one</c><00:10:43.839><c> of</c><00:10:43.920><c> variables</c><00:10:44.800><c> for</c><00:10:45.120><c> each</c><00:10:45.440><c> time</c><00:10:45.600><c> step</c>
+
+00:10:45.990 --> 00:10:46.000 align:start position:0%
+vet one of variables for each time step
+ 
+
+00:10:46.000 --> 00:10:48.630 align:start position:0%
+vet one of variables for each time step
+for<00:10:46.160><c> each</c><00:10:46.320><c> simulation</c><00:10:47.360><c> by</c><00:10:47.600><c> just</c><00:10:48.000><c> multiplying</c>
+
+00:10:48.630 --> 00:10:48.640 align:start position:0%
+for each simulation by just multiplying
+ 
+
+00:10:48.640 --> 00:10:50.949 align:start position:0%
+for each simulation by just multiplying
+computing<00:10:49.040><c> the</c><00:10:49.200><c> inner</c><00:10:49.519><c> product</c><00:10:49.920><c> between</c><00:10:50.560><c> zed</c>
+
+00:10:50.949 --> 00:10:50.959 align:start position:0%
+computing the inner product between zed
+ 
+
+00:10:50.959 --> 00:10:52.630 align:start position:0%
+computing the inner product between zed
+our<00:10:51.120><c> random</c><00:10:51.440><c> normal</c><00:10:51.760><c> variables</c><00:10:52.320><c> and</c><00:10:52.480><c> our</c>
+
+00:10:52.630 --> 00:10:52.640 align:start position:0%
+our random normal variables and our
+ 
+
+00:10:52.640 --> 00:10:56.310 align:start position:0%
+our random normal variables and our
+lower<00:10:52.959><c> colossky</c><00:10:53.920><c> decomposition</c>
+
+00:10:56.310 --> 00:10:56.320 align:start position:0%
+lower colossky decomposition
+ 
+
+00:10:56.320 --> 00:10:58.230 align:start position:0%
+lower colossky decomposition
+we<00:10:56.480><c> then</c><00:10:56.800><c> need</c><00:10:57.040><c> arrays</c><00:10:57.519><c> for</c><00:10:57.760><c> storing</c><00:10:58.160><c> our</c>
+
+00:10:58.230 --> 00:10:58.240 align:start position:0%
+we then need arrays for storing our
+ 
+
+00:10:58.240 --> 00:11:00.389 align:start position:0%
+we then need arrays for storing our
+prices<00:10:58.640><c> in</c><00:10:58.800><c> our</c><00:10:58.959><c> variances</c><00:10:59.839><c> and</c><00:11:00.000><c> i'm</c><00:11:00.160><c> going</c><00:11:00.240><c> to</c>
+
+00:11:00.389 --> 00:11:00.399 align:start position:0%
+prices in our variances and i'm going to
+ 
+
+00:11:00.399 --> 00:11:03.269 align:start position:0%
+prices in our variances and i'm going to
+use<00:11:00.720><c> shape</c><00:11:01.120><c> n</c><00:11:01.360><c> plus</c><00:11:01.760><c> 1</c><00:11:02.079><c> so</c><00:11:02.240><c> i</c><00:11:02.399><c> can</c><00:11:02.560><c> store</c><00:11:02.959><c> the</c>
+
+00:11:03.269 --> 00:11:03.279 align:start position:0%
+use shape n plus 1 so i can store the
+ 
+
+00:11:03.279 --> 00:11:06.630 align:start position:0%
+use shape n plus 1 so i can store the
+first<00:11:03.920><c> price</c><00:11:04.640><c> and</c><00:11:04.880><c> then</c><00:11:05.040><c> the</c><00:11:05.279><c> first</c><00:11:05.680><c> variance</c>
+
+00:11:06.630 --> 00:11:06.640 align:start position:0%
+first price and then the first variance
+ 
+
+00:11:06.640 --> 00:11:09.430 align:start position:0%
+first price and then the first variance
+i'm<00:11:06.800><c> then</c><00:11:07.120><c> going</c><00:11:07.360><c> to</c><00:11:07.760><c> fill</c><00:11:08.000><c> these</c><00:11:08.320><c> values</c><00:11:09.040><c> with</c>
+
+00:11:09.430 --> 00:11:09.440 align:start position:0%
+i'm then going to fill these values with
+ 
+
+00:11:09.440 --> 00:11:12.310 align:start position:0%
+i'm then going to fill these values with
+the<00:11:09.760><c> log</c><00:11:10.160><c> of</c><00:11:10.880><c> asset</c><00:11:11.120><c> price</c><00:11:11.440><c> 1</c><00:11:11.600><c> and</c><00:11:11.760><c> asset</c><00:11:12.079><c> price</c>
+
+00:11:12.310 --> 00:11:12.320 align:start position:0%
+the log of asset price 1 and asset price
+ 
+
+00:11:12.320 --> 00:11:16.710 align:start position:0%
+the log of asset price 1 and asset price
+2<00:11:12.800><c> and</c><00:11:12.959><c> then</c><00:11:13.440><c> our</c><00:11:13.839><c> initial</c><00:11:14.240><c> variances</c>
+
+00:11:16.710 --> 00:11:16.720 align:start position:0%
+2 and then our initial variances
+ 
+
+00:11:16.720 --> 00:11:19.269 align:start position:0%
+2 and then our initial variances
+now<00:11:17.040><c> stepping</c><00:11:17.600><c> through</c><00:11:18.079><c> this</c><00:11:18.480><c> process</c><00:11:19.040><c> all</c><00:11:19.200><c> we</c>
+
+00:11:19.269 --> 00:11:19.279 align:start position:0%
+now stepping through this process all we
+ 
+
+00:11:19.279 --> 00:11:21.030 align:start position:0%
+now stepping through this process all we
+need<00:11:19.440><c> to</c><00:11:19.600><c> do</c><00:11:19.760><c> now</c><00:11:20.160><c> for</c><00:11:20.320><c> the</c><00:11:20.399><c> monte</c><00:11:20.720><c> carlo</c>
+
+00:11:21.030 --> 00:11:21.040 align:start position:0%
+need to do now for the monte carlo
+ 
+
+00:11:21.040 --> 00:11:22.870 align:start position:0%
+need to do now for the monte carlo
+simulation<00:11:21.440><c> is</c><00:11:21.600><c> run</c><00:11:21.839><c> through</c><00:11:22.160><c> time</c><00:11:22.720><c> we're</c>
+
+00:11:22.870 --> 00:11:22.880 align:start position:0%
+simulation is run through time we're
+ 
+
+00:11:22.880 --> 00:11:24.710 align:start position:0%
+simulation is run through time we're
+gonna<00:11:23.040><c> run</c><00:11:23.200><c> through</c><00:11:23.519><c> time</c><00:11:23.839><c> from</c><00:11:24.160><c> one</c><00:11:24.480><c> through</c>
+
+00:11:24.710 --> 00:11:24.720 align:start position:0%
+gonna run through time from one through
+ 
+
+00:11:24.720 --> 00:11:26.550 align:start position:0%
+gonna run through time from one through
+to<00:11:24.880><c> n</c><00:11:25.200><c> plus</c><00:11:25.519><c> one</c>
+
+00:11:26.550 --> 00:11:26.560 align:start position:0%
+to n plus one
+ 
+
+00:11:26.560 --> 00:11:28.470 align:start position:0%
+to n plus one
+so<00:11:26.880><c> simulating</c><00:11:27.440><c> the</c><00:11:27.519><c> variance</c><00:11:27.920><c> process</c><00:11:28.320><c> we</c>
+
+00:11:28.470 --> 00:11:28.480 align:start position:0%
+so simulating the variance process we
+ 
+
+00:11:28.480 --> 00:11:31.030 align:start position:0%
+so simulating the variance process we
+just<00:11:28.720><c> used</c><00:11:28.959><c> the</c><00:11:29.120><c> same</c><00:11:29.440><c> formula</c><00:11:30.000><c> as</c><00:11:30.160><c> before</c><00:11:30.880><c> but</c>
+
+00:11:31.030 --> 00:11:31.040 align:start position:0%
+just used the same formula as before but
+ 
+
+00:11:31.040 --> 00:11:33.590 align:start position:0%
+just used the same formula as before but
+now<00:11:31.360><c> we're</c><00:11:31.600><c> indexing</c><00:11:32.320><c> on</c><00:11:32.399><c> the</c><00:11:32.640><c> previous</c><00:11:33.279><c> time</c>
+
+00:11:33.590 --> 00:11:33.600 align:start position:0%
+now we're indexing on the previous time
+ 
+
+00:11:33.600 --> 00:11:35.430 align:start position:0%
+now we're indexing on the previous time
+period<00:11:34.079><c> and</c><00:11:34.240><c> we're</c><00:11:34.480><c> saving</c><00:11:34.880><c> it</c><00:11:35.040><c> into</c><00:11:35.279><c> the</c>
+
+00:11:35.430 --> 00:11:35.440 align:start position:0%
+period and we're saving it into the
+ 
+
+00:11:35.440 --> 00:11:37.110 align:start position:0%
+period and we're saving it into the
+current<00:11:35.839><c> time</c><00:11:36.079><c> period</c>
+
+00:11:37.110 --> 00:11:37.120 align:start position:0%
+current time period
+ 
+
+00:11:37.120 --> 00:11:39.590 align:start position:0%
+current time period
+we<00:11:37.360><c> then</c><00:11:37.920><c> also</c><00:11:38.480><c> need</c><00:11:38.720><c> to</c><00:11:38.880><c> remember</c><00:11:39.360><c> to</c>
+
+00:11:39.590 --> 00:11:39.600 align:start position:0%
+we then also need to remember to
+ 
+
+00:11:39.600 --> 00:11:42.470 align:start position:0%
+we then also need to remember to
+correctly<00:11:40.160><c> index</c><00:11:40.640><c> our</c><00:11:40.880><c> whiner</c><00:11:41.279><c> process</c><00:11:42.000><c> so</c><00:11:42.320><c> we</c>
+
+00:11:42.470 --> 00:11:42.480 align:start position:0%
+correctly index our whiner process so we
+ 
+
+00:11:42.480 --> 00:11:44.230 align:start position:0%
+correctly index our whiner process so we
+have<00:11:43.279><c> our</c>
+
+00:11:44.230 --> 00:11:44.240 align:start position:0%
+have our
+ 
+
+00:11:44.240 --> 00:11:47.430 align:start position:0%
+have our
+n<00:11:44.560><c> which</c><00:11:44.800><c> is</c><00:11:44.959><c> our</c><00:11:45.360><c> time</c><00:11:45.839><c> so</c><00:11:46.079><c> we</c><00:11:46.320><c> index</c><00:11:46.720><c> by</c><00:11:46.959><c> time</c>
+
+00:11:47.430 --> 00:11:47.440 align:start position:0%
+n which is our time so we index by time
+ 
+
+00:11:47.440 --> 00:11:49.910 align:start position:0%
+n which is our time so we index by time
+we<00:11:47.680><c> take</c><00:11:48.240><c> all</c><00:11:48.640><c> of</c><00:11:49.040><c> our</c>
+
+00:11:49.910 --> 00:11:49.920 align:start position:0%
+we take all of our
+ 
+
+00:11:49.920 --> 00:11:51.350 align:start position:0%
+we take all of our
+simulated
+
+00:11:51.350 --> 00:11:51.360 align:start position:0%
+simulated
+ 
+
+00:11:51.360 --> 00:11:54.069 align:start position:0%
+simulated
+variables<00:11:52.000><c> so</c><00:11:52.240><c> all</c><00:11:52.480><c> of</c><00:11:52.639><c> our</c><00:11:52.880><c> m</c><00:11:53.200><c> simulations</c>
+
+00:11:54.069 --> 00:11:54.079 align:start position:0%
+variables so all of our m simulations
+ 
+
+00:11:54.079 --> 00:11:57.030 align:start position:0%
+variables so all of our m simulations
+and<00:11:54.240><c> then</c><00:11:54.480><c> we</c><00:11:54.720><c> need</c><00:11:54.880><c> to</c><00:11:55.120><c> index</c><00:11:55.519><c> the</c><00:11:55.760><c> correct</c><00:11:56.639><c> uh</c>
+
+00:11:57.030 --> 00:11:57.040 align:start position:0%
+and then we need to index the correct uh
+ 
+
+00:11:57.040 --> 00:11:59.910 align:start position:0%
+and then we need to index the correct uh
+whiner<00:11:57.600><c> process</c><00:11:58.399><c> for</c><00:11:58.560><c> the</c><00:11:58.720><c> respective</c><00:11:59.519><c> asset</c>
+
+00:11:59.910 --> 00:11:59.920 align:start position:0%
+whiner process for the respective asset
+ 
+
+00:11:59.920 --> 00:12:03.190 align:start position:0%
+whiner process for the respective asset
+that<00:12:00.079><c> we</c><00:12:00.560><c> we're</c><00:12:00.800><c> calculating</c><00:12:01.440><c> at</c><00:12:01.519><c> the</c><00:12:01.680><c> time</c>
+
+00:12:03.190 --> 00:12:03.200 align:start position:0%
+that we we're calculating at the time
+ 
+
+00:12:03.200 --> 00:12:05.509 align:start position:0%
+that we we're calculating at the time
+we<00:12:03.360><c> can</c><00:12:03.519><c> then</c><00:12:03.839><c> calculate</c><00:12:04.639><c> our</c><00:12:04.880><c> log</c><00:12:05.200><c> asset</c>
+
+00:12:05.509 --> 00:12:05.519 align:start position:0%
+we can then calculate our log asset
+ 
+
+00:12:05.519 --> 00:12:08.470 align:start position:0%
+we can then calculate our log asset
+prices<00:12:06.000><c> by</c><00:12:06.320><c> getting</c><00:12:06.720><c> the</c><00:12:06.959><c> drift</c><00:12:07.519><c> terms</c><00:12:08.000><c> first</c>
+
+00:12:08.470 --> 00:12:08.480 align:start position:0%
+prices by getting the drift terms first
+ 
+
+00:12:08.480 --> 00:12:10.790 align:start position:0%
+prices by getting the drift terms first
+and<00:12:08.639><c> then</c><00:12:08.959><c> indexing</c><00:12:09.600><c> on</c><00:12:09.760><c> the</c><00:12:10.000><c> current</c><00:12:10.480><c> time</c>
+
+00:12:10.790 --> 00:12:10.800 align:start position:0%
+and then indexing on the current time
+ 
+
+00:12:10.800 --> 00:12:13.190 align:start position:0%
+and then indexing on the current time
+that<00:12:10.959><c> we've</c><00:12:11.120><c> just</c><00:12:11.360><c> calculated</c><00:12:12.480><c> and</c><00:12:12.720><c> then</c><00:12:13.040><c> we</c>
+
+00:12:13.190 --> 00:12:13.200 align:start position:0%
+that we've just calculated and then we
+ 
+
+00:12:13.200 --> 00:12:16.310 align:start position:0%
+that we've just calculated and then we
+can<00:12:13.440><c> get</c><00:12:13.680><c> our</c><00:12:13.920><c> at</c><00:12:14.160><c> log</c><00:12:14.480><c> asset</c><00:12:14.800><c> prices</c><00:12:15.680><c> by</c><00:12:15.920><c> using</c>
+
+00:12:16.310 --> 00:12:16.320 align:start position:0%
+can get our at log asset prices by using
+ 
+
+00:12:16.320 --> 00:12:19.110 align:start position:0%
+can get our at log asset prices by using
+the<00:12:16.560><c> previous</c><00:12:17.040><c> log</c><00:12:17.279><c> asset</c><00:12:17.680><c> price</c><00:12:18.320><c> plus</c><00:12:18.720><c> the</c>
+
+00:12:19.110 --> 00:12:19.120 align:start position:0%
+the previous log asset price plus the
+ 
+
+00:12:19.120 --> 00:12:20.629 align:start position:0%
+the previous log asset price plus the
+current
+
+00:12:20.629 --> 00:12:20.639 align:start position:0%
+current
+ 
+
+00:12:20.639 --> 00:12:23.430 align:start position:0%
+current
+drift<00:12:21.279><c> term</c><00:12:21.760><c> and</c><00:12:21.920><c> then</c><00:12:22.320><c> our</c><00:12:22.959><c> current</c>
+
+00:12:23.430 --> 00:12:23.440 align:start position:0%
+drift term and then our current
+ 
+
+00:12:23.440 --> 00:12:25.670 align:start position:0%
+drift term and then our current
+diffusion<00:12:24.000><c> term</c><00:12:24.320><c> which</c><00:12:24.480><c> is</c><00:12:24.639><c> going</c><00:12:24.720><c> to</c><00:12:24.880><c> be</c><00:12:25.360><c> our</c>
+
+00:12:25.670 --> 00:12:25.680 align:start position:0%
+diffusion term which is going to be our
+ 
+
+00:12:25.680 --> 00:12:27.430 align:start position:0%
+diffusion term which is going to be our
+current<00:12:26.240><c> variance</c>
+
+00:12:27.430 --> 00:12:27.440 align:start position:0%
+current variance
+ 
+
+00:12:27.440 --> 00:12:29.350 align:start position:0%
+current variance
+multiplied<00:12:28.079><c> by</c><00:12:28.320><c> time</c><00:12:28.480><c> step</c><00:12:28.880><c> taken</c><00:12:29.120><c> to</c><00:12:29.279><c> the</c>
+
+00:12:29.350 --> 00:12:29.360 align:start position:0%
+multiplied by time step taken to the
+ 
+
+00:12:29.360 --> 00:12:31.990 align:start position:0%
+multiplied by time step taken to the
+square<00:12:29.680><c> root</c><00:12:30.160><c> multiplied</c><00:12:30.880><c> by</c><00:12:31.200><c> the</c><00:12:31.360><c> respective</c>
+
+00:12:31.990 --> 00:12:32.000 align:start position:0%
+square root multiplied by the respective
+ 
+
+00:12:32.000 --> 00:12:33.590 align:start position:0%
+square root multiplied by the respective
+whiner<00:12:32.399><c> process</c>
+
+00:12:33.590 --> 00:12:33.600 align:start position:0%
+whiner process
+ 
+
+00:12:33.600 --> 00:12:35.590 align:start position:0%
+whiner process
+the<00:12:33.760><c> reason</c><00:12:34.079><c> i'm</c><00:12:34.320><c> indexing</c><00:12:34.800><c> from</c><00:12:34.959><c> before</c><00:12:35.519><c> is</c>
+
+00:12:35.590 --> 00:12:35.600 align:start position:0%
+the reason i'm indexing from before is
+ 
+
+00:12:35.600 --> 00:12:38.550 align:start position:0%
+the reason i'm indexing from before is
+because<00:12:36.000><c> i</c><00:12:36.240><c> only</c><00:12:36.720><c> created</c><00:12:37.279><c> a</c><00:12:37.600><c> matrix</c>
+
+00:12:38.550 --> 00:12:38.560 align:start position:0%
+because i only created a matrix
+ 
+
+00:12:38.560 --> 00:12:41.670 align:start position:0%
+because i only created a matrix
+of<00:12:38.800><c> n</c><00:12:39.040><c> by</c><00:12:39.440><c> m</c><00:12:39.760><c> in</c><00:12:40.000><c> length</c>
+
+00:12:41.670 --> 00:12:41.680 align:start position:0%
+of n by m in length
+ 
+
+00:12:41.680 --> 00:12:44.790 align:start position:0%
+of n by m in length
+we<00:12:41.839><c> then</c><00:12:42.079><c> take</c><00:12:42.320><c> the</c><00:12:42.560><c> exponential</c><00:12:43.680><c> of</c><00:12:44.000><c> our</c><00:12:44.399><c> log</c>
+
+00:12:44.790 --> 00:12:44.800 align:start position:0%
+we then take the exponential of our log
+ 
+
+00:12:44.800 --> 00:12:47.750 align:start position:0%
+we then take the exponential of our log
+prices<00:12:45.360><c> and</c><00:12:45.519><c> then</c><00:12:45.680><c> we</c><00:12:45.920><c> use</c><00:12:46.320><c> the</c><00:12:46.639><c> final</c><00:12:47.279><c> asset</c>
+
+00:12:47.750 --> 00:12:47.760 align:start position:0%
+prices and then we use the final asset
+ 
+
+00:12:47.760 --> 00:12:51.190 align:start position:0%
+prices and then we use the final asset
+prices<00:12:48.240><c> to</c><00:12:48.399><c> compute</c><00:12:49.279><c> our</c><00:12:49.680><c> call</c><00:12:50.079><c> price</c>
+
+00:12:51.190 --> 00:12:51.200 align:start position:0%
+prices to compute our call price
+ 
+
+00:12:51.200 --> 00:12:53.269 align:start position:0%
+prices to compute our call price
+so<00:12:51.600><c> then</c><00:12:52.000><c> we</c><00:12:52.160><c> can</c><00:12:52.399><c> see</c><00:12:52.560><c> that</c><00:12:52.720><c> we</c><00:12:52.880><c> get</c><00:12:52.959><c> a</c><00:12:53.040><c> call</c>
+
+00:12:53.269 --> 00:12:53.279 align:start position:0%
+so then we can see that we get a call
+ 
+
+00:12:53.279 --> 00:12:55.910 align:start position:0%
+so then we can see that we get a call
+value<00:12:53.600><c> of</c><00:12:53.880><c> 895</c><00:12:54.959><c> here</c><00:12:55.200><c> with</c><00:12:55.440><c> a</c><00:12:55.519><c> similar</c>
+
+00:12:55.910 --> 00:12:55.920 align:start position:0%
+value of 895 here with a similar
+ 
+
+00:12:55.920 --> 00:12:57.590 align:start position:0%
+value of 895 here with a similar
+standard<00:12:56.240><c> error</c><00:12:56.560><c> as</c><00:12:56.800><c> before</c><00:12:57.279><c> but</c><00:12:57.440><c> the</c>
+
+00:12:57.590 --> 00:12:57.600 align:start position:0%
+standard error as before but the
+ 
+
+00:12:57.600 --> 00:13:00.949 align:start position:0%
+standard error as before but the
+calculation<00:12:58.320><c> time</c><00:12:58.639><c> has</c><00:12:58.800><c> taken</c><00:12:59.560><c> 0.25</c><00:13:00.560><c> seconds</c>
+
+00:13:00.949 --> 00:13:00.959 align:start position:0%
+calculation time has taken 0.25 seconds
+ 
+
+00:13:00.959 --> 00:13:03.269 align:start position:0%
+calculation time has taken 0.25 seconds
+that's<00:13:01.200><c> a</c><00:13:01.279><c> 60</c><00:13:01.680><c> time</c><00:13:02.160><c> improvement</c><00:13:02.800><c> in</c><00:13:02.880><c> terms</c><00:13:03.200><c> of</c>
+
+00:13:03.269 --> 00:13:03.279 align:start position:0%
+that's a 60 time improvement in terms of
+ 
+
+00:13:03.279 --> 00:13:05.509 align:start position:0%
+that's a 60 time improvement in terms of
+computation<00:13:03.920><c> time</c><00:13:04.240><c> so</c><00:13:04.399><c> now</c><00:13:04.639><c> visualization</c>
+
+00:13:05.509 --> 00:13:05.519 align:start position:0%
+computation time so now visualization
+ 
+
+00:13:05.519 --> 00:13:07.590 align:start position:0%
+computation time so now visualization
+i'm<00:13:05.760><c> just</c><00:13:06.000><c> going</c><00:13:06.240><c> to</c><00:13:06.320><c> show</c><00:13:06.560><c> you</c><00:13:06.959><c> we</c><00:13:07.120><c> can</c><00:13:07.360><c> get</c>
+
+00:13:07.590 --> 00:13:07.600 align:start position:0%
+i'm just going to show you we can get
+ 
+
+00:13:07.600 --> 00:13:09.269 align:start position:0%
+i'm just going to show you we can get
+the<00:13:07.920><c> index</c><00:13:08.320><c> spread</c><00:13:08.639><c> options</c><00:13:08.959><c> now</c><00:13:09.120><c> with</c>
+
+00:13:09.269 --> 00:13:09.279 align:start position:0%
+the index spread options now with
+ 
+
+00:13:09.279 --> 00:13:11.430 align:start position:0%
+the index spread options now with
+stochastic<00:13:09.760><c> volatility</c><00:13:10.480><c> and</c><00:13:10.560><c> you</c><00:13:10.720><c> can</c><00:13:10.959><c> see</c>
+
+00:13:11.430 --> 00:13:11.440 align:start position:0%
+stochastic volatility and you can see
+ 
+
+00:13:11.440 --> 00:13:12.949 align:start position:0%
+stochastic volatility and you can see
+the<00:13:11.680><c> relative</c>
+
+00:13:12.949 --> 00:13:12.959 align:start position:0%
+the relative
+ 
+
+00:13:12.959 --> 00:13:15.190 align:start position:0%
+the relative
+simulations<00:13:13.839><c> i've</c><00:13:14.079><c> only</c><00:13:14.320><c> shown</c><00:13:14.720><c> four</c><00:13:14.959><c> here</c>
+
+00:13:15.190 --> 00:13:15.200 align:start position:0%
+simulations i've only shown four here
+ 
+
+00:13:15.200 --> 00:13:17.030 align:start position:0%
+simulations i've only shown four here
+but<00:13:15.360><c> obviously</c><00:13:15.680><c> we</c><00:13:15.839><c> did</c><00:13:16.000><c> a</c><00:13:16.160><c> thousand</c><00:13:16.880><c> for</c>
+
+00:13:17.030 --> 00:13:17.040 align:start position:0%
+but obviously we did a thousand for
+ 
+
+00:13:17.040 --> 00:13:19.670 align:start position:0%
+but obviously we did a thousand for
+between<00:13:17.360><c> the</c><00:13:17.519><c> nasdaq</c><00:13:18.000><c> and</c><00:13:18.079><c> the</c><00:13:18.240><c> s</c><00:13:18.560><c> p</c><00:13:19.120><c> with</c>
+
+00:13:19.670 --> 00:13:19.680 align:start position:0%
+between the nasdaq and the s p with
+ 
+
+00:13:19.680 --> 00:13:21.750 align:start position:0%
+between the nasdaq and the s p with
+changing<00:13:20.240><c> variances</c><00:13:21.120><c> if</c><00:13:21.279><c> you</c><00:13:21.360><c> enjoyed</c><00:13:21.680><c> the</c>
+
+00:13:21.750 --> 00:13:21.760 align:start position:0%
+changing variances if you enjoyed the
+ 
+
+00:13:21.760 --> 00:13:23.590 align:start position:0%
+changing variances if you enjoyed the
+video<00:13:22.079><c> please</c><00:13:22.240><c> give</c><00:13:22.399><c> it</c><00:13:22.560><c> a</c><00:13:22.639><c> thumbs</c><00:13:22.959><c> up</c><00:13:23.200><c> and</c>
+
+00:13:23.590 --> 00:13:23.600 align:start position:0%
+video please give it a thumbs up and
+ 
+
+00:13:23.600 --> 00:13:25.030 align:start position:0%
+video please give it a thumbs up and
+subscribe<00:13:24.079><c> if</c><00:13:24.240><c> you're</c><00:13:24.320><c> not</c><00:13:24.560><c> already</c><00:13:24.800><c> to</c><00:13:24.959><c> the</c>
+
+00:13:25.030 --> 00:13:25.040 align:start position:0%
+subscribe if you're not already to the
+ 
+
+00:13:25.040 --> 00:13:26.629 align:start position:0%
+subscribe if you're not already to the
+channel<00:13:25.680><c> if</c><00:13:25.760><c> you'd</c><00:13:26.000><c> like</c><00:13:26.160><c> to</c><00:13:26.240><c> get</c><00:13:26.480><c> more</c>
+
+00:13:26.629 --> 00:13:26.639 align:start position:0%
+channel if you'd like to get more
+ 
+
+00:13:26.639 --> 00:13:27.829 align:start position:0%
+channel if you'd like to get more
+involved<00:13:26.959><c> with</c><00:13:27.200><c> the</c>
+
+00:13:27.829 --> 00:13:27.839 align:start position:0%
+involved with the
+ 
+
+00:13:27.839 --> 00:13:29.350 align:start position:0%
+involved with the
+community<00:13:28.240><c> that</c><00:13:28.399><c> we're</c><00:13:28.560><c> trying</c><00:13:28.800><c> to</c><00:13:28.959><c> build</c>
+
+00:13:29.350 --> 00:13:29.360 align:start position:0%
+community that we're trying to build
+ 
+
+00:13:29.360 --> 00:13:31.509 align:start position:0%
+community that we're trying to build
+here<00:13:29.839><c> and</c><00:13:30.160><c> be</c><00:13:30.320><c> involved</c><00:13:30.639><c> with</c><00:13:30.880><c> like-minded</c>
+
+00:13:31.509 --> 00:13:31.519 align:start position:0%
+here and be involved with like-minded
+ 
+
+00:13:31.519 --> 00:13:33.670 align:start position:0%
+here and be involved with like-minded
+individuals<00:13:32.320><c> you</c><00:13:32.560><c> should</c><00:13:32.720><c> go</c><00:13:32.959><c> ahead</c><00:13:33.279><c> and</c><00:13:33.519><c> look</c>
+
+00:13:33.670 --> 00:13:33.680 align:start position:0%
+individuals you should go ahead and look
+ 
+
+00:13:33.680 --> 00:13:35.509 align:start position:0%
+individuals you should go ahead and look
+at<00:13:33.760><c> the</c><00:13:33.920><c> patreon</c><00:13:34.560><c> link</c><00:13:34.880><c> in</c><00:13:34.959><c> the</c><00:13:35.040><c> description</c>
+
+00:13:35.509 --> 00:13:35.519 align:start position:0%
+at the patreon link in the description
+ 
+
+00:13:35.519 --> 00:13:38.079 align:start position:0%
+at the patreon link in the description
+below
+

@@ -27,7 +27,7 @@ PAIRS=(
 # 2. 抓取缺失字幕（幂等）
 for pair in "${PAIRS[@]}"; do
   url="${pair#*|}"
-  ids=$($PY --proxy "$PROXY" --flat-playlist --print "%(id)s" --playlist-end 10 "$url" 2>/dev/null)
+  ids=$($PY --proxy "$PROXY" --flat-playlist --print "%(id)s" --playlist-end 30 "$url" 2>/dev/null)
   for id in $ids; do
     if ls "$OUT/$id.en.vtt" "$OUT/$id.en-orig.vtt" >/dev/null 2>&1; then
       continue

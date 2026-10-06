@@ -1,0 +1,4648 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.080 --> 00:00:02.869 align:start position:0%
+ 
+in<00:00:00.240><c> this</c><00:00:00.399><c> video</c><00:00:00.880><c> you</c><00:00:01.040><c> will</c><00:00:01.280><c> learn</c><00:00:01.680><c> how</c><00:00:02.000><c> to</c><00:00:02.240><c> use</c>
+
+00:00:02.869 --> 00:00:02.879 align:start position:0%
+in this video you will learn how to use
+ 
+
+00:00:02.879 --> 00:00:05.670 align:start position:0%
+in this video you will learn how to use
+the<00:00:03.120><c> bredon</c><00:00:04.080><c> litzenberger</c><00:00:04.960><c> formula</c><00:00:05.440><c> to</c>
+
+00:00:05.670 --> 00:00:05.680 align:start position:0%
+the bredon litzenberger formula to
+ 
+
+00:00:05.680 --> 00:00:08.150 align:start position:0%
+the bredon litzenberger formula to
+derive<00:00:06.160><c> the</c><00:00:06.399><c> risk</c><00:00:06.720><c> neutral</c><00:00:07.200><c> probability</c>
+
+00:00:08.150 --> 00:00:08.160 align:start position:0%
+derive the risk neutral probability
+ 
+
+00:00:08.160 --> 00:00:11.350 align:start position:0%
+derive the risk neutral probability
+density<00:00:08.720><c> functions</c><00:00:09.679><c> from</c><00:00:10.160><c> option</c><00:00:10.639><c> prices</c>
+
+00:00:11.350 --> 00:00:11.360 align:start position:0%
+density functions from option prices
+ 
+
+00:00:11.360 --> 00:00:14.310 align:start position:0%
+density functions from option prices
+this<00:00:11.679><c> can</c><00:00:11.840><c> be</c><00:00:12.000><c> extremely</c><00:00:12.799><c> useful</c><00:00:13.519><c> because</c>
+
+00:00:14.310 --> 00:00:14.320 align:start position:0%
+this can be extremely useful because
+ 
+
+00:00:14.320 --> 00:00:17.750 align:start position:0%
+this can be extremely useful because
+actual<00:00:14.799><c> computing</c><00:00:15.679><c> of</c><00:00:16.000><c> option</c><00:00:16.560><c> prices</c><00:00:17.199><c> can</c><00:00:17.520><c> be</c>
+
+00:00:17.750 --> 00:00:17.760 align:start position:0%
+actual computing of option prices can be
+ 
+
+00:00:17.760 --> 00:00:20.470 align:start position:0%
+actual computing of option prices can be
+a<00:00:18.000><c> time</c><00:00:18.480><c> and</c><00:00:18.720><c> computationally</c><00:00:19.600><c> intensive</c>
+
+00:00:20.470 --> 00:00:20.480 align:start position:0%
+a time and computationally intensive
+ 
+
+00:00:20.480 --> 00:00:22.870 align:start position:0%
+a time and computationally intensive
+task<00:00:21.119><c> especially</c><00:00:21.760><c> when</c><00:00:22.160><c> there</c><00:00:22.480><c> you</c><00:00:22.720><c> have</c>
+
+00:00:22.870 --> 00:00:22.880 align:start position:0%
+task especially when there you have
+ 
+
+00:00:22.880 --> 00:00:24.550 align:start position:0%
+task especially when there you have
+something<00:00:23.359><c> that</c><00:00:23.519><c> you're</c><00:00:23.760><c> trying</c><00:00:23.920><c> to</c><00:00:24.080><c> do</c><00:00:24.240><c> very</c>
+
+00:00:24.550 --> 00:00:24.560 align:start position:0%
+something that you're trying to do very
+ 
+
+00:00:24.560 --> 00:00:27.349 align:start position:0%
+something that you're trying to do very
+complex<00:00:25.039><c> dynamics</c><00:00:25.680><c> of</c><00:00:26.240><c> and</c><00:00:26.560><c> when</c><00:00:26.800><c> there</c><00:00:27.039><c> is</c>
+
+00:00:27.349 --> 00:00:27.359 align:start position:0%
+complex dynamics of and when there is
+ 
+
+00:00:27.359 --> 00:00:29.910 align:start position:0%
+complex dynamics of and when there is
+very<00:00:27.599><c> high</c><00:00:27.920><c> dimensionality</c><00:00:28.880><c> the</c><00:00:29.039><c> beauty</c><00:00:29.439><c> of</c>
+
+00:00:29.910 --> 00:00:29.920 align:start position:0%
+very high dimensionality the beauty of
+ 
+
+00:00:29.920 --> 00:00:32.709 align:start position:0%
+very high dimensionality the beauty of
+the<00:00:30.160><c> breeden</c><00:00:31.039><c> leitzenberger</c><00:00:32.079><c> formula</c><00:00:32.640><c> is</c>
+
+00:00:32.709 --> 00:00:32.719 align:start position:0%
+the breeden leitzenberger formula is
+ 
+
+00:00:32.719 --> 00:00:35.110 align:start position:0%
+the breeden leitzenberger formula is
+that<00:00:33.120><c> we</c><00:00:33.280><c> can</c><00:00:33.600><c> actually</c><00:00:34.079><c> just</c><00:00:34.320><c> compute</c><00:00:34.800><c> this</c>
+
+00:00:35.110 --> 00:00:35.120 align:start position:0%
+that we can actually just compute this
+ 
+
+00:00:35.120 --> 00:00:38.150 align:start position:0%
+that we can actually just compute this
+complicated<00:00:35.840><c> derivatives</c><00:00:37.040><c> once</c><00:00:37.760><c> at</c>
+
+00:00:38.150 --> 00:00:38.160 align:start position:0%
+complicated derivatives once at
+ 
+
+00:00:38.160 --> 00:00:41.110 align:start position:0%
+complicated derivatives once at
+different<00:00:38.640><c> strikes</c><00:00:39.280><c> for</c><00:00:39.520><c> a</c><00:00:39.680><c> particular</c><00:00:40.719><c> tower</c>
+
+00:00:41.110 --> 00:00:41.120 align:start position:0%
+different strikes for a particular tower
+ 
+
+00:00:41.120 --> 00:00:44.470 align:start position:0%
+different strikes for a particular tower
+so<00:00:41.440><c> time</c><00:00:41.680><c> to</c><00:00:41.840><c> maturity</c><00:00:42.559><c> and</c><00:00:42.719><c> we</c><00:00:42.879><c> can</c><00:00:43.200><c> get</c><00:00:43.680><c> this</c>
+
+00:00:44.470 --> 00:00:44.480 align:start position:0%
+so time to maturity and we can get this
+ 
+
+00:00:44.480 --> 00:00:46.229 align:start position:0%
+so time to maturity and we can get this
+risk<00:00:44.719><c> neutral</c><00:00:45.039><c> probability</c><00:00:45.600><c> distribution</c>
+
+00:00:46.229 --> 00:00:46.239 align:start position:0%
+risk neutral probability distribution
+ 
+
+00:00:46.239 --> 00:00:47.910 align:start position:0%
+risk neutral probability distribution
+function<00:00:46.719><c> and</c><00:00:46.800><c> be</c><00:00:46.960><c> able</c><00:00:47.200><c> to</c><00:00:47.280><c> calculate</c><00:00:47.840><c> a</c>
+
+00:00:47.910 --> 00:00:47.920 align:start position:0%
+function and be able to calculate a
+ 
+
+00:00:47.920 --> 00:00:50.549 align:start position:0%
+function and be able to calculate a
+whole<00:00:48.239><c> bunch</c><00:00:48.480><c> of</c><00:00:48.640><c> complex</c><00:00:49.680><c> derivatives</c>
+
+00:00:50.549 --> 00:00:50.559 align:start position:0%
+whole bunch of complex derivatives
+ 
+
+00:00:50.559 --> 00:00:53.189 align:start position:0%
+whole bunch of complex derivatives
+extremely<00:00:51.440><c> simply</c><00:00:51.840><c> and</c><00:00:52.079><c> quickly</c><00:00:52.640><c> so</c><00:00:52.960><c> once</c>
+
+00:00:53.189 --> 00:00:53.199 align:start position:0%
+extremely simply and quickly so once
+ 
+
+00:00:53.199 --> 00:00:55.750 align:start position:0%
+extremely simply and quickly so once
+we've<00:00:53.440><c> got</c><00:00:53.680><c> a</c><00:00:53.920><c> discrete</c><00:00:54.719><c> pdf</c><00:00:55.440><c> what</c><00:00:55.600><c> we're</c>
+
+00:00:55.750 --> 00:00:55.760 align:start position:0%
+we've got a discrete pdf what we're
+ 
+
+00:00:55.760 --> 00:00:57.830 align:start position:0%
+we've got a discrete pdf what we're
+going<00:00:56.000><c> to</c><00:00:56.160><c> do</c><00:00:56.480><c> is</c><00:00:56.640><c> we're</c><00:00:56.800><c> going</c><00:00:57.039><c> to</c><00:00:57.360><c> actually</c>
+
+00:00:57.830 --> 00:00:57.840 align:start position:0%
+going to do is we're going to actually
+ 
+
+00:00:57.840 --> 00:00:58.790 align:start position:0%
+going to do is we're going to actually
+use
+
+00:00:58.790 --> 00:00:58.800 align:start position:0%
+use
+ 
+
+00:00:58.800 --> 00:01:02.150 align:start position:0%
+use
+linear<00:00:59.199><c> regression</c><00:01:00.160><c> to</c><00:01:00.399><c> be</c><00:01:00.640><c> able</c><00:01:00.960><c> to</c><00:01:01.680><c> smooth</c>
+
+00:01:02.150 --> 00:01:02.160 align:start position:0%
+linear regression to be able to smooth
+ 
+
+00:01:02.160 --> 00:01:04.070 align:start position:0%
+linear regression to be able to smooth
+out<00:01:02.320><c> this</c><00:01:02.559><c> function</c><00:01:03.199><c> then</c><00:01:03.440><c> we're</c><00:01:03.600><c> going</c><00:01:03.840><c> to</c>
+
+00:01:04.070 --> 00:01:04.080 align:start position:0%
+out this function then we're going to
+ 
+
+00:01:04.080 --> 00:01:05.830 align:start position:0%
+out this function then we're going to
+use<00:01:04.479><c> a</c><00:01:04.559><c> cumulative</c><00:01:05.280><c> we're</c><00:01:05.439><c> going</c><00:01:05.519><c> to</c><00:01:05.600><c> create</c>
+
+00:01:05.830 --> 00:01:05.840 align:start position:0%
+use a cumulative we're going to create
+ 
+
+00:01:05.840 --> 00:01:07.510 align:start position:0%
+use a cumulative we're going to create
+the<00:01:06.000><c> cumulative</c><00:01:06.400><c> density</c><00:01:06.799><c> function</c><00:01:07.280><c> and</c><00:01:07.360><c> then</c>
+
+00:01:07.510 --> 00:01:07.520 align:start position:0%
+the cumulative density function and then
+ 
+
+00:01:07.520 --> 00:01:09.270 align:start position:0%
+the cumulative density function and then
+we're<00:01:07.600><c> going</c><00:01:07.840><c> to</c><00:01:07.920><c> be</c><00:01:08.080><c> able</c><00:01:08.240><c> to</c><00:01:08.479><c> price</c><00:01:09.119><c> all</c>
+
+00:01:09.270 --> 00:01:09.280 align:start position:0%
+we're going to be able to price all
+ 
+
+00:01:09.280 --> 00:01:11.590 align:start position:0%
+we're going to be able to price all
+sorts<00:01:09.600><c> of</c><00:01:09.760><c> complex</c><00:01:10.240><c> derivatives</c><00:01:11.040><c> easily</c>
+
+00:01:11.590 --> 00:01:11.600 align:start position:0%
+sorts of complex derivatives easily
+ 
+
+00:01:11.600 --> 00:01:13.910 align:start position:0%
+sorts of complex derivatives easily
+using<00:01:11.920><c> this</c><00:01:12.159><c> risk</c><00:01:12.560><c> neutral</c><00:01:13.200><c> distribution</c>
+
+00:01:13.910 --> 00:01:13.920 align:start position:0%
+using this risk neutral distribution
+ 
+
+00:01:13.920 --> 00:01:16.469 align:start position:0%
+using this risk neutral distribution
+that<00:01:14.080><c> we've</c><00:01:14.240><c> defined</c><00:01:14.799><c> for</c><00:01:14.960><c> a</c><00:01:15.040><c> particular</c><00:01:16.080><c> time</c>
+
+00:01:16.469 --> 00:01:16.479 align:start position:0%
+that we've defined for a particular time
+ 
+
+00:01:16.479 --> 00:01:18.469 align:start position:0%
+that we've defined for a particular time
+first<00:01:16.880><c> off</c><00:01:17.119><c> what</c><00:01:17.280><c> is</c><00:01:17.439><c> it</c><00:01:17.600><c> well</c><00:01:17.759><c> the</c><00:01:17.920><c> feynman</c>
+
+00:01:18.469 --> 00:01:18.479 align:start position:0%
+first off what is it well the feynman
+ 
+
+00:01:18.479 --> 00:01:21.109 align:start position:0%
+first off what is it well the feynman
+knack<00:01:18.799><c> analysis</c><00:01:19.600><c> enables</c><00:01:20.080><c> us</c><00:01:20.400><c> to</c><00:01:20.640><c> define</c><00:01:20.960><c> the</c>
+
+00:01:21.109 --> 00:01:21.119 align:start position:0%
+knack analysis enables us to define the
+ 
+
+00:01:21.119 --> 00:01:22.870 align:start position:0%
+knack analysis enables us to define the
+risk<00:01:21.280><c> neutral</c><00:01:21.600><c> probability</c><00:01:22.240><c> in</c><00:01:22.320><c> which</c><00:01:22.560><c> we</c><00:01:22.720><c> can</c>
+
+00:01:22.870 --> 00:01:22.880 align:start position:0%
+risk neutral probability in which we can
+ 
+
+00:01:22.880 --> 00:01:25.590 align:start position:0%
+risk neutral probability in which we can
+price<00:01:23.360><c> options</c><00:01:24.000><c> so</c><00:01:24.159><c> we're</c><00:01:24.320><c> going</c><00:01:24.400><c> to</c><00:01:24.640><c> let</c><00:01:25.200><c> uh</c>
+
+00:01:25.590 --> 00:01:25.600 align:start position:0%
+price options so we're going to let uh
+ 
+
+00:01:25.600 --> 00:01:27.830 align:start position:0%
+price options so we're going to let uh
+this<00:01:26.000><c> function</c><00:01:26.960><c> in</c><00:01:27.119><c> terms</c><00:01:27.439><c> of</c><00:01:27.520><c> the</c><00:01:27.600><c> risk</c>
+
+00:01:27.830 --> 00:01:27.840 align:start position:0%
+this function in terms of the risk
+ 
+
+00:01:27.840 --> 00:01:29.910 align:start position:0%
+this function in terms of the risk
+neutral<00:01:28.240><c> probability</c><00:01:28.799><c> measure</c><00:01:29.200><c> q</c>
+
+00:01:29.910 --> 00:01:29.920 align:start position:0%
+neutral probability measure q
+ 
+
+00:01:29.920 --> 00:01:33.270 align:start position:0%
+neutral probability measure q
+of<00:01:30.320><c> st</c><00:01:30.960><c> denote</c><00:01:31.360><c> the</c><00:01:31.439><c> terminal</c><00:01:31.920><c> risk</c><00:01:32.240><c> neutral</c>
+
+00:01:33.270 --> 00:01:33.280 align:start position:0%
+of st denote the terminal risk neutral
+ 
+
+00:01:33.280 --> 00:01:35.990 align:start position:0%
+of st denote the terminal risk neutral
+so<00:01:33.439><c> the</c><00:01:33.600><c> q</c><00:01:34.000><c> under</c><00:01:34.159><c> the</c><00:01:34.320><c> q</c><00:01:34.799><c> measure</c><00:01:35.280><c> probability</c>
+
+00:01:35.990 --> 00:01:36.000 align:start position:0%
+so the q under the q measure probability
+ 
+
+00:01:36.000 --> 00:01:39.510 align:start position:0%
+so the q under the q measure probability
+at<00:01:36.159><c> time</c><00:01:36.720><c> t</c><00:01:37.200><c> and</c><00:01:37.360><c> we're</c><00:01:37.520><c> going</c><00:01:37.680><c> to</c><00:01:38.000><c> let</c><00:01:38.400><c> this</c><00:01:38.799><c> f</c>
+
+00:01:39.510 --> 00:01:39.520 align:start position:0%
+at time t and we're going to let this f
+ 
+
+00:01:39.520 --> 00:01:41.350 align:start position:0%
+at time t and we're going to let this f
+risk<00:01:39.759><c> neutral</c><00:01:40.079><c> probability</c><00:01:40.640><c> q</c>
+
+00:01:41.350 --> 00:01:41.360 align:start position:0%
+risk neutral probability q
+ 
+
+00:01:41.360 --> 00:01:43.190 align:start position:0%
+risk neutral probability q
+denote<00:01:41.759><c> the</c><00:01:41.920><c> cumulative</c><00:01:42.560><c> probability</c>
+
+00:01:43.190 --> 00:01:43.200 align:start position:0%
+denote the cumulative probability
+ 
+
+00:01:43.200 --> 00:01:45.910 align:start position:0%
+denote the cumulative probability
+distribution<00:01:43.840><c> function</c><00:01:44.560><c> so</c><00:01:44.799><c> a</c><00:01:44.960><c> european</c><00:01:45.600><c> call</c>
+
+00:01:45.910 --> 00:01:45.920 align:start position:0%
+distribution function so a european call
+ 
+
+00:01:45.920 --> 00:01:49.350 align:start position:0%
+distribution function so a european call
+option<00:01:46.320><c> at</c><00:01:46.560><c> time</c><00:01:47.280><c> little</c><00:01:47.600><c> t</c><00:01:48.159><c> expiring</c><00:01:48.880><c> at</c><00:01:49.119><c> big</c>
+
+00:01:49.350 --> 00:01:49.360 align:start position:0%
+option at time little t expiring at big
+ 
+
+00:01:49.360 --> 00:01:51.030 align:start position:0%
+option at time little t expiring at big
+t<00:01:49.680><c> with</c><00:01:49.840><c> strike</c><00:01:50.320><c> k</c>
+
+00:01:51.030 --> 00:01:51.040 align:start position:0%
+t with strike k
+ 
+
+00:01:51.040 --> 00:01:52.550 align:start position:0%
+t with strike k
+is<00:01:51.439><c> priced</c>
+
+00:01:52.550 --> 00:01:52.560 align:start position:0%
+is priced
+ 
+
+00:01:52.560 --> 00:01:54.870 align:start position:0%
+is priced
+as<00:01:52.880><c> follows</c><00:01:53.600><c> so</c><00:01:53.759><c> here</c><00:01:53.920><c> we're</c><00:01:54.159><c> using</c><00:01:54.479><c> tower</c><00:01:54.720><c> to</c>
+
+00:01:54.870 --> 00:01:54.880 align:start position:0%
+as follows so here we're using tower to
+ 
+
+00:01:54.880 --> 00:01:58.550 align:start position:0%
+as follows so here we're using tower to
+represent<00:01:55.439><c> that</c><00:01:55.840><c> time</c><00:01:56.240><c> to</c><00:01:56.399><c> maturity</c>
+
+00:01:58.550 --> 00:01:58.560 align:start position:0%
+represent that time to maturity
+ 
+
+00:01:58.560 --> 00:02:01.109 align:start position:0%
+represent that time to maturity
+so<00:01:58.799><c> here</c><00:01:59.200><c> we've</c><00:01:59.439><c> got</c><00:01:59.840><c> our</c><00:02:00.079><c> call</c><00:02:00.399><c> price</c><00:02:00.960><c> in</c>
+
+00:02:01.109 --> 00:02:01.119 align:start position:0%
+so here we've got our call price in
+ 
+
+00:02:01.119 --> 00:02:03.510 align:start position:0%
+so here we've got our call price in
+terms<00:02:01.600><c> of</c><00:02:01.840><c> k</c><00:02:02.240><c> and</c><00:02:02.479><c> tau</c><00:02:03.040><c> and</c><00:02:03.119><c> we've</c><00:02:03.280><c> got</c><00:02:03.439><c> the</c>
+
+00:02:03.510 --> 00:02:03.520 align:start position:0%
+terms of k and tau and we've got the
+ 
+
+00:02:03.520 --> 00:02:06.389 align:start position:0%
+terms of k and tau and we've got the
+risk<00:02:03.840><c> neutral</c><00:02:04.320><c> discounted</c><00:02:05.119><c> expectation</c><00:02:06.079><c> of</c>
+
+00:02:06.389 --> 00:02:06.399 align:start position:0%
+risk neutral discounted expectation of
+ 
+
+00:02:06.399 --> 00:02:09.190 align:start position:0%
+risk neutral discounted expectation of
+our<00:02:06.799><c> payoff</c><00:02:07.520><c> so</c><00:02:07.759><c> here</c><00:02:08.000><c> we</c><00:02:08.160><c> can</c><00:02:08.399><c> expand</c><00:02:08.959><c> that</c>
+
+00:02:09.190 --> 00:02:09.200 align:start position:0%
+our payoff so here we can expand that
+ 
+
+00:02:09.200 --> 00:02:11.029 align:start position:0%
+our payoff so here we can expand that
+using<00:02:09.440><c> the</c><00:02:09.599><c> indicator</c><00:02:10.080><c> function</c><00:02:10.479><c> and</c><00:02:10.640><c> we</c><00:02:10.800><c> can</c>
+
+00:02:11.029 --> 00:02:11.039 align:start position:0%
+using the indicator function and we can
+ 
+
+00:02:11.039 --> 00:02:14.710 align:start position:0%
+using the indicator function and we can
+get<00:02:11.360><c> that</c><00:02:11.760><c> this</c><00:02:12.160><c> discounted</c><00:02:13.040><c> integral</c>
+
+00:02:14.710 --> 00:02:14.720 align:start position:0%
+get that this discounted integral
+ 
+
+00:02:14.720 --> 00:02:17.190 align:start position:0%
+get that this discounted integral
+between<00:02:15.360><c> k</c><00:02:15.760><c> and</c><00:02:15.920><c> infinity</c>
+
+00:02:17.190 --> 00:02:17.200 align:start position:0%
+between k and infinity
+ 
+
+00:02:17.200 --> 00:02:20.869 align:start position:0%
+between k and infinity
+of<00:02:17.760><c> st</c><00:02:18.239><c> minus</c><00:02:18.720><c> k</c><00:02:19.280><c> times</c><00:02:19.680><c> by</c><00:02:20.000><c> the</c><00:02:20.160><c> probability</c>
+
+00:02:20.869 --> 00:02:20.879 align:start position:0%
+of st minus k times by the probability
+ 
+
+00:02:20.879 --> 00:02:23.910 align:start position:0%
+of st minus k times by the probability
+distribution<00:02:21.520><c> function</c><00:02:21.840><c> this</c><00:02:22.080><c> risk</c><00:02:22.400><c> neutral</c>
+
+00:02:23.910 --> 00:02:23.920 align:start position:0%
+distribution function this risk neutral
+ 
+
+00:02:23.920 --> 00:02:26.309 align:start position:0%
+distribution function this risk neutral
+density<00:02:24.400><c> function</c><00:02:25.280><c> in</c><00:02:25.440><c> terms</c><00:02:25.760><c> of</c><00:02:25.920><c> our</c><00:02:26.080><c> risk</c>
+
+00:02:26.309 --> 00:02:26.319 align:start position:0%
+density function in terms of our risk
+ 
+
+00:02:26.319 --> 00:02:29.510 align:start position:0%
+density function in terms of our risk
+neutral<00:02:26.720><c> measure</c><00:02:27.599><c> so</c><00:02:28.000><c> how</c><00:02:28.239><c> can</c><00:02:28.400><c> we</c><00:02:28.640><c> actually</c>
+
+00:02:29.510 --> 00:02:29.520 align:start position:0%
+neutral measure so how can we actually
+ 
+
+00:02:29.520 --> 00:02:31.430 align:start position:0%
+neutral measure so how can we actually
+calculate<00:02:30.160><c> directly</c><00:02:30.640><c> from</c><00:02:30.800><c> this</c><00:02:30.959><c> formula</c>
+
+00:02:31.430 --> 00:02:31.440 align:start position:0%
+calculate directly from this formula
+ 
+
+00:02:31.440 --> 00:02:32.949 align:start position:0%
+calculate directly from this formula
+well<00:02:31.680><c> we're</c><00:02:31.840><c> going</c><00:02:31.920><c> to</c><00:02:32.000><c> get</c><00:02:32.160><c> into</c><00:02:32.319><c> that</c><00:02:32.560><c> so</c><00:02:32.720><c> now</c>
+
+00:02:32.949 --> 00:02:32.959 align:start position:0%
+well we're going to get into that so now
+ 
+
+00:02:32.959 --> 00:02:34.869 align:start position:0%
+well we're going to get into that so now
+that<00:02:33.040><c> we</c><00:02:33.200><c> have</c><00:02:33.360><c> this</c><00:02:33.599><c> formula</c>
+
+00:02:34.869 --> 00:02:34.879 align:start position:0%
+that we have this formula
+ 
+
+00:02:34.879 --> 00:02:36.550 align:start position:0%
+that we have this formula
+in<00:02:35.120><c> terms</c><00:02:35.599><c> of</c>
+
+00:02:36.550 --> 00:02:36.560 align:start position:0%
+in terms of
+ 
+
+00:02:36.560 --> 00:02:38.070 align:start position:0%
+in terms of
+k<00:02:36.959><c> and</c><00:02:37.200><c> tau</c>
+
+00:02:38.070 --> 00:02:38.080 align:start position:0%
+k and tau
+ 
+
+00:02:38.080 --> 00:02:39.750 align:start position:0%
+k and tau
+in<00:02:38.239><c> the</c><00:02:38.400><c> case</c><00:02:38.800><c> where</c><00:02:39.040><c> the</c><00:02:39.200><c> risk</c><00:02:39.440><c> neutral</c>
+
+00:02:39.750 --> 00:02:39.760 align:start position:0%
+in the case where the risk neutral
+ 
+
+00:02:39.760 --> 00:02:41.990 align:start position:0%
+in the case where the risk neutral
+density<00:02:40.239><c> function</c><00:02:40.640><c> is</c><00:02:40.879><c> log</c><00:02:41.120><c> normal</c><00:02:41.519><c> density</c>
+
+00:02:41.990 --> 00:02:42.000 align:start position:0%
+density function is log normal density
+ 
+
+00:02:42.000 --> 00:02:43.830 align:start position:0%
+density function is log normal density
+and<00:02:42.160><c> volatility</c><00:02:42.720><c> is</c><00:02:42.879><c> constant</c><00:02:43.280><c> with</c><00:02:43.440><c> respect</c>
+
+00:02:43.830 --> 00:02:43.840 align:start position:0%
+and volatility is constant with respect
+ 
+
+00:02:43.840 --> 00:02:46.309 align:start position:0%
+and volatility is constant with respect
+to<00:02:44.080><c> k</c><00:02:44.640><c> then</c><00:02:44.879><c> this</c><00:02:45.120><c> yields</c><00:02:45.519><c> the</c><00:02:45.680><c> black</c><00:02:45.920><c> shoals</c>
+
+00:02:46.309 --> 00:02:46.319 align:start position:0%
+to k then this yields the black shoals
+ 
+
+00:02:46.319 --> 00:02:48.630 align:start position:0%
+to k then this yields the black shoals
+formula<00:02:46.800><c> so</c><00:02:47.040><c> under</c><00:02:47.280><c> the</c><00:02:47.440><c> basic</c><00:02:47.920><c> no</c><00:02:48.160><c> arbitrage</c>
+
+00:02:48.630 --> 00:02:48.640 align:start position:0%
+formula so under the basic no arbitrage
+ 
+
+00:02:48.640 --> 00:02:50.070 align:start position:0%
+formula so under the basic no arbitrage
+restrictions<00:02:49.120><c> we</c><00:02:49.280><c> can</c><00:02:49.360><c> consider</c><00:02:49.840><c> more</c>
+
+00:02:50.070 --> 00:02:50.080 align:start position:0%
+restrictions we can consider more
+ 
+
+00:02:50.080 --> 00:02:51.670 align:start position:0%
+restrictions we can consider more
+general<00:02:50.400><c> densities</c><00:02:50.879><c> than</c><00:02:51.120><c> just</c><00:02:51.280><c> this</c><00:02:51.440><c> log</c>
+
+00:02:51.670 --> 00:02:51.680 align:start position:0%
+general densities than just this log
+ 
+
+00:02:51.680 --> 00:02:54.309 align:start position:0%
+general densities than just this log
+normal<00:02:52.000><c> distribution</c><00:02:52.560><c> of</c><00:02:52.640><c> the</c><00:02:52.720><c> underlying</c><00:02:53.680><c> so</c>
+
+00:02:54.309 --> 00:02:54.319 align:start position:0%
+normal distribution of the underlying so
+ 
+
+00:02:54.319 --> 00:02:56.470 align:start position:0%
+normal distribution of the underlying so
+here<00:02:54.640><c> we</c><00:02:54.800><c> can</c><00:02:54.959><c> use</c><00:02:55.280><c> the</c><00:02:55.440><c> breeden</c>
+
+00:02:56.470 --> 00:02:56.480 align:start position:0%
+here we can use the breeden
+ 
+
+00:02:56.480 --> 00:02:57.830 align:start position:0%
+here we can use the breeden
+litzenberger
+
+00:02:57.830 --> 00:02:57.840 align:start position:0%
+litzenberger
+ 
+
+00:02:57.840 --> 00:03:00.630 align:start position:0%
+litzenberger
+formula<00:02:58.319><c> from</c><00:02:58.599><c> 1978</c><00:02:59.599><c> to</c><00:02:59.760><c> show</c><00:03:00.000><c> that</c><00:03:00.159><c> the</c><00:03:00.319><c> first</c>
+
+00:03:00.630 --> 00:03:00.640 align:start position:0%
+formula from 1978 to show that the first
+ 
+
+00:03:00.640 --> 00:03:02.309 align:start position:0%
+formula from 1978 to show that the first
+derivative<00:03:01.360><c> is</c><00:03:01.519><c> a</c><00:03:01.680><c> function</c><00:03:02.080><c> of</c><00:03:02.159><c> the</c>
+
+00:03:02.309 --> 00:03:02.319 align:start position:0%
+derivative is a function of the
+ 
+
+00:03:02.319 --> 00:03:04.710 align:start position:0%
+derivative is a function of the
+cumulative<00:03:02.800><c> distribution</c><00:03:03.519><c> function</c>
+
+00:03:04.710 --> 00:03:04.720 align:start position:0%
+cumulative distribution function
+ 
+
+00:03:04.720 --> 00:03:07.270 align:start position:0%
+cumulative distribution function
+so<00:03:05.360><c> here</c><00:03:05.599><c> what</c><00:03:05.760><c> we</c><00:03:05.920><c> mean</c><00:03:06.239><c> is</c><00:03:06.400><c> if</c><00:03:06.560><c> we</c><00:03:06.720><c> take</c><00:03:07.040><c> the</c>
+
+00:03:07.270 --> 00:03:07.280 align:start position:0%
+so here what we mean is if we take the
+ 
+
+00:03:07.280 --> 00:03:10.550 align:start position:0%
+so here what we mean is if we take the
+first<00:03:07.760><c> derivative</c><00:03:08.480><c> with</c><00:03:08.800><c> respect</c><00:03:09.280><c> to</c><00:03:09.760><c> k</c>
+
+00:03:10.550 --> 00:03:10.560 align:start position:0%
+first derivative with respect to k
+ 
+
+00:03:10.560 --> 00:03:12.229 align:start position:0%
+first derivative with respect to k
+of<00:03:11.200><c> this</c>
+
+00:03:12.229 --> 00:03:12.239 align:start position:0%
+of this
+ 
+
+00:03:12.239 --> 00:03:15.350 align:start position:0%
+of this
+integral<00:03:12.800><c> here</c><00:03:13.360><c> then</c><00:03:13.760><c> we</c><00:03:14.000><c> actually</c><00:03:14.480><c> get</c><00:03:14.959><c> minus</c>
+
+00:03:15.350 --> 00:03:15.360 align:start position:0%
+integral here then we actually get minus
+ 
+
+00:03:15.360 --> 00:03:18.949 align:start position:0%
+integral here then we actually get minus
+this<00:03:15.840><c> exponential</c><00:03:16.879><c> discount</c><00:03:17.440><c> factor</c>
+
+00:03:18.949 --> 00:03:18.959 align:start position:0%
+this exponential discount factor
+ 
+
+00:03:18.959 --> 00:03:21.430 align:start position:0%
+this exponential discount factor
+times<00:03:19.360><c> by</c><00:03:19.760><c> 1</c><00:03:20.080><c> minus</c><00:03:20.400><c> the</c><00:03:20.560><c> cumulative</c><00:03:21.040><c> density</c>
+
+00:03:21.430 --> 00:03:21.440 align:start position:0%
+times by 1 minus the cumulative density
+ 
+
+00:03:21.440 --> 00:03:24.710 align:start position:0%
+times by 1 minus the cumulative density
+function<00:03:22.319><c> so</c><00:03:22.959><c> the</c><00:03:23.120><c> second</c><00:03:23.519><c> derivative</c><00:03:24.319><c> then</c>
+
+00:03:24.710 --> 00:03:24.720 align:start position:0%
+function so the second derivative then
+ 
+
+00:03:24.720 --> 00:03:27.589 align:start position:0%
+function so the second derivative then
+extracts<00:03:25.280><c> the</c><00:03:25.440><c> pdf</c><00:03:26.319><c> so</c><00:03:26.560><c> if</c><00:03:26.720><c> you</c><00:03:26.879><c> then</c><00:03:27.200><c> take</c><00:03:27.440><c> the</c>
+
+00:03:27.589 --> 00:03:27.599 align:start position:0%
+extracts the pdf so if you then take the
+ 
+
+00:03:27.599 --> 00:03:29.430 align:start position:0%
+extracts the pdf so if you then take the
+second<00:03:27.920><c> derivative</c><00:03:28.480><c> with</c><00:03:28.720><c> respect</c><00:03:29.120><c> to</c><00:03:29.280><c> the</c>
+
+00:03:29.430 --> 00:03:29.440 align:start position:0%
+second derivative with respect to the
+ 
+
+00:03:29.440 --> 00:03:33.430 align:start position:0%
+second derivative with respect to the
+strike<00:03:30.319><c> centered</c><00:03:30.799><c> around</c><00:03:31.360><c> k</c><00:03:31.599><c> equals</c><00:03:32.080><c> st</c><00:03:32.959><c> then</c>
+
+00:03:33.430 --> 00:03:33.440 align:start position:0%
+strike centered around k equals st then
+ 
+
+00:03:33.440 --> 00:03:35.750 align:start position:0%
+strike centered around k equals st then
+what<00:03:33.599><c> you</c><00:03:33.840><c> get</c><00:03:34.080><c> is</c><00:03:34.319><c> the</c><00:03:34.480><c> discount</c><00:03:35.280><c> factor</c>
+
+00:03:35.750 --> 00:03:35.760 align:start position:0%
+what you get is the discount factor
+ 
+
+00:03:35.760 --> 00:03:39.270 align:start position:0%
+what you get is the discount factor
+multiplied<00:03:36.640><c> by</c><00:03:37.200><c> this</c><00:03:37.440><c> wrist</c><00:03:37.760><c> neutral</c><00:03:38.239><c> pdf</c><00:03:38.959><c> now</c>
+
+00:03:39.270 --> 00:03:39.280 align:start position:0%
+multiplied by this wrist neutral pdf now
+ 
+
+00:03:39.280 --> 00:03:43.670 align:start position:0%
+multiplied by this wrist neutral pdf now
+thanks<00:03:39.920><c> to</c><00:03:40.239><c> bruce</c><00:03:40.959><c> uh</c><00:03:41.440><c> mizerak</c><00:03:42.480><c> in</c><00:03:42.640><c> chapter</c><00:03:43.040><c> 35</c>
+
+00:03:43.670 --> 00:03:43.680 align:start position:0%
+thanks to bruce uh mizerak in chapter 35
+ 
+
+00:03:43.680 --> 00:03:45.190 align:start position:0%
+thanks to bruce uh mizerak in chapter 35
+for<00:03:43.840><c> putting</c><00:03:44.080><c> a</c><00:03:44.159><c> lot</c><00:03:44.319><c> of</c><00:03:44.400><c> this</c><00:03:44.640><c> information</c>
+
+00:03:45.190 --> 00:03:45.200 align:start position:0%
+for putting a lot of this information
+ 
+
+00:03:45.200 --> 00:03:47.270 align:start position:0%
+for putting a lot of this information
+together<00:03:45.519><c> in</c><00:03:45.680><c> a</c><00:03:45.920><c> very</c><00:03:46.319><c> easy</c><00:03:46.720><c> format</c><00:03:47.120><c> to</c>
+
+00:03:47.270 --> 00:03:47.280 align:start position:0%
+together in a very easy format to
+ 
+
+00:03:47.280 --> 00:03:49.110 align:start position:0%
+together in a very easy format to
+understand<00:03:47.920><c> i</c><00:03:48.080><c> recommend</c><00:03:48.480><c> going</c><00:03:48.720><c> to</c><00:03:48.879><c> this</c>
+
+00:03:49.110 --> 00:03:49.120 align:start position:0%
+understand i recommend going to this
+ 
+
+00:03:49.120 --> 00:03:49.910 align:start position:0%
+understand i recommend going to this
+link
+
+00:03:49.910 --> 00:03:49.920 align:start position:0%
+link
+ 
+
+00:03:49.920 --> 00:03:51.830 align:start position:0%
+link
+link<00:03:50.159><c> in</c><00:03:50.239><c> the</c><00:03:50.319><c> description</c><00:03:51.040><c> and</c><00:03:51.200><c> he's</c><00:03:51.440><c> written</c>
+
+00:03:51.830 --> 00:03:51.840 align:start position:0%
+link in the description and he's written
+ 
+
+00:03:51.840 --> 00:03:53.509 align:start position:0%
+link in the description and he's written
+a<00:03:51.920><c> whole</c><00:03:52.159><c> bunch</c><00:03:52.400><c> of</c><00:03:52.560><c> things</c><00:03:52.799><c> on</c><00:03:52.959><c> estimating</c>
+
+00:03:53.509 --> 00:03:53.519 align:start position:0%
+a whole bunch of things on estimating
+ 
+
+00:03:53.519 --> 00:03:55.429 align:start position:0%
+a whole bunch of things on estimating
+applied<00:03:53.840><c> probabilities</c><00:03:54.560><c> from</c><00:03:54.959><c> options</c>
+
+00:03:55.429 --> 00:03:55.439 align:start position:0%
+applied probabilities from options
+ 
+
+00:03:55.439 --> 00:03:57.670 align:start position:0%
+applied probabilities from options
+prices<00:03:55.840><c> and</c><00:03:56.000><c> underlying</c><00:03:56.720><c> great</c><00:03:57.120><c> resource</c>
+
+00:03:57.670 --> 00:03:57.680 align:start position:0%
+prices and underlying great resource
+ 
+
+00:03:57.680 --> 00:03:58.869 align:start position:0%
+prices and underlying great resource
+there
+
+00:03:58.869 --> 00:03:58.879 align:start position:0%
+there
+ 
+
+00:03:58.879 --> 00:03:59.670 align:start position:0%
+there
+so
+
+00:03:59.670 --> 00:03:59.680 align:start position:0%
+so
+ 
+
+00:03:59.680 --> 00:04:01.990 align:start position:0%
+so
+for<00:04:00.080><c> python</c><00:04:00.640><c> let's</c><00:04:00.959><c> go</c><00:04:01.280><c> and</c><00:04:01.360><c> see</c><00:04:01.599><c> how</c><00:04:01.760><c> we</c><00:04:01.840><c> can</c>
+
+00:04:01.990 --> 00:04:02.000 align:start position:0%
+for python let's go and see how we can
+ 
+
+00:04:02.000 --> 00:04:05.270 align:start position:0%
+for python let's go and see how we can
+actually<00:04:02.640><c> apply</c><00:04:03.360><c> this</c><00:04:03.599><c> bit</c><00:04:04.319><c> to</c><00:04:04.560><c> actually</c><00:04:04.959><c> get</c>
+
+00:04:05.270 --> 00:04:05.280 align:start position:0%
+actually apply this bit to actually get
+ 
+
+00:04:05.280 --> 00:04:07.509 align:start position:0%
+actually apply this bit to actually get
+this<00:04:05.519><c> risk</c><00:04:05.760><c> neutral</c><00:04:06.080><c> distribution</c><00:04:07.040><c> so</c><00:04:07.280><c> here</c>
+
+00:04:07.509 --> 00:04:07.519 align:start position:0%
+this risk neutral distribution so here
+ 
+
+00:04:07.519 --> 00:04:09.030 align:start position:0%
+this risk neutral distribution so here
+we're<00:04:07.680><c> going</c><00:04:07.920><c> to</c><00:04:08.000><c> have</c><00:04:08.239><c> numpy</c><00:04:08.720><c> we've</c><00:04:08.799><c> got</c>
+
+00:04:09.030 --> 00:04:09.040 align:start position:0%
+we're going to have numpy we've got
+ 
+
+00:04:09.040 --> 00:04:11.030 align:start position:0%
+we're going to have numpy we've got
+scipy<00:04:09.680><c> pandas</c>
+
+00:04:11.030 --> 00:04:11.040 align:start position:0%
+scipy pandas
+ 
+
+00:04:11.040 --> 00:04:13.750 align:start position:0%
+scipy pandas
+scipy<00:04:11.599><c> we</c><00:04:11.680><c> need</c><00:04:11.840><c> to</c><00:04:11.920><c> import</c><00:04:12.400><c> stats</c><00:04:13.040><c> explicitly</c>
+
+00:04:13.750 --> 00:04:13.760 align:start position:0%
+scipy we need to import stats explicitly
+ 
+
+00:04:13.760 --> 00:04:15.990 align:start position:0%
+scipy we need to import stats explicitly
+and<00:04:13.840><c> then</c><00:04:14.000><c> we're</c><00:04:14.080><c> going</c><00:04:14.159><c> to</c><00:04:14.239><c> use</c><00:04:14.480><c> matplotlib</c>
+
+00:04:15.990 --> 00:04:16.000 align:start position:0%
+and then we're going to use matplotlib
+ 
+
+00:04:16.000 --> 00:04:17.990 align:start position:0%
+and then we're going to use matplotlib
+now<00:04:16.560><c> let's</c><00:04:16.880><c> look</c><00:04:17.120><c> at</c><00:04:17.359><c> what</c><00:04:17.519><c> we're</c><00:04:17.680><c> going</c><00:04:17.759><c> to</c><00:04:17.840><c> be</c>
+
+00:04:17.990 --> 00:04:18.000 align:start position:0%
+now let's look at what we're going to be
+ 
+
+00:04:18.000 --> 00:04:19.590 align:start position:0%
+now let's look at what we're going to be
+pricing<00:04:18.320><c> today</c><00:04:18.560><c> we've</c><00:04:18.639><c> got</c><00:04:18.799><c> a</c><00:04:18.880><c> european</c><00:04:19.359><c> call</c>
+
+00:04:19.590 --> 00:04:19.600 align:start position:0%
+pricing today we've got a european call
+ 
+
+00:04:19.600 --> 00:04:21.030 align:start position:0%
+pricing today we've got a european call
+option<00:04:19.840><c> with</c><00:04:20.000><c> stochastic</c><00:04:20.479><c> volatility</c>
+
+00:04:21.030 --> 00:04:21.040 align:start position:0%
+option with stochastic volatility
+ 
+
+00:04:21.040 --> 00:04:22.469 align:start position:0%
+option with stochastic volatility
+stochastic<00:04:21.519><c> volatility</c><00:04:22.079><c> is</c><00:04:22.160><c> going</c><00:04:22.240><c> to</c><00:04:22.320><c> be</c>
+
+00:04:22.469 --> 00:04:22.479 align:start position:0%
+stochastic volatility is going to be
+ 
+
+00:04:22.479 --> 00:04:24.070 align:start position:0%
+stochastic volatility is going to be
+under<00:04:22.639><c> the</c><00:04:22.720><c> hester</c><00:04:23.120><c> model</c><00:04:23.520><c> so</c><00:04:23.680><c> our</c><00:04:23.840><c> wrist</c>
+
+00:04:24.070 --> 00:04:24.080 align:start position:0%
+under the hester model so our wrist
+ 
+
+00:04:24.080 --> 00:04:25.909 align:start position:0%
+under the hester model so our wrist
+neutral<00:04:24.479><c> dynamics</c><00:04:25.120><c> for</c><00:04:25.280><c> the</c><00:04:25.440><c> underlying</c>
+
+00:04:25.909 --> 00:04:25.919 align:start position:0%
+neutral dynamics for the underlying
+ 
+
+00:04:25.919 --> 00:04:28.390 align:start position:0%
+neutral dynamics for the underlying
+process<00:04:26.560><c> here</c><00:04:26.800><c> we've</c><00:04:26.960><c> got</c><00:04:27.199><c> our</c><00:04:27.440><c> drift</c><00:04:28.000><c> and</c><00:04:28.160><c> our</c>
+
+00:04:28.390 --> 00:04:28.400 align:start position:0%
+process here we've got our drift and our
+ 
+
+00:04:28.400 --> 00:04:30.629 align:start position:0%
+process here we've got our drift and our
+diffusion<00:04:28.960><c> term</c><00:04:29.199><c> that</c><00:04:29.360><c> we're</c><00:04:29.520><c> used</c><00:04:29.759><c> to</c><00:04:29.919><c> seeing</c>
+
+00:04:30.629 --> 00:04:30.639 align:start position:0%
+diffusion term that we're used to seeing
+ 
+
+00:04:30.639 --> 00:04:33.510 align:start position:0%
+diffusion term that we're used to seeing
+now<00:04:31.120><c> here</c><00:04:31.520><c> the</c><00:04:31.759><c> variance</c><00:04:32.400><c> this</c><00:04:32.800><c> uh</c><00:04:33.120><c> square</c>
+
+00:04:33.510 --> 00:04:33.520 align:start position:0%
+now here the variance this uh square
+ 
+
+00:04:33.520 --> 00:04:35.510 align:start position:0%
+now here the variance this uh square
+root<00:04:33.840><c> variance</c><00:04:34.400><c> process</c><00:04:35.040><c> is</c><00:04:35.199><c> going</c><00:04:35.280><c> to</c><00:04:35.440><c> be</c>
+
+00:04:35.510 --> 00:04:35.520 align:start position:0%
+root variance process is going to be
+ 
+
+00:04:35.520 --> 00:04:38.230 align:start position:0%
+root variance process is going to be
+modeled<00:04:36.000><c> with</c><00:04:36.320><c> this</c><00:04:36.639><c> sde</c><00:04:37.440><c> which</c><00:04:37.680><c> of</c><00:04:37.840><c> course</c>
+
+00:04:38.230 --> 00:04:38.240 align:start position:0%
+modeled with this sde which of course
+ 
+
+00:04:38.240 --> 00:04:40.710 align:start position:0%
+modeled with this sde which of course
+you'll<00:04:38.639><c> recognize</c><00:04:39.280><c> from</c><00:04:39.840><c> the</c><00:04:40.000><c> hester</c><00:04:40.320><c> model</c>
+
+00:04:40.710 --> 00:04:40.720 align:start position:0%
+you'll recognize from the hester model
+ 
+
+00:04:40.720 --> 00:04:43.030 align:start position:0%
+you'll recognize from the hester model
+and<00:04:41.040><c> we</c><00:04:41.199><c> have</c><00:04:41.440><c> previous</c><00:04:41.919><c> videos</c><00:04:42.720><c> on</c><00:04:42.960><c> the</c>
+
+00:04:43.030 --> 00:04:43.040 align:start position:0%
+and we have previous videos on the
+ 
+
+00:04:43.040 --> 00:04:45.350 align:start position:0%
+and we have previous videos on the
+dynamics<00:04:43.680><c> of</c><00:04:43.759><c> this</c>
+
+00:04:45.350 --> 00:04:45.360 align:start position:0%
+dynamics of this
+ 
+
+00:04:45.360 --> 00:04:48.390 align:start position:0%
+dynamics of this
+now<00:04:45.759><c> here</c><00:04:46.000><c> we've</c><00:04:46.160><c> got</c><00:04:46.320><c> a</c><00:04:46.400><c> correlation</c><00:04:47.520><c> p</c>
+
+00:04:48.390 --> 00:04:48.400 align:start position:0%
+now here we've got a correlation p
+ 
+
+00:04:48.400 --> 00:04:50.790 align:start position:0%
+now here we've got a correlation p
+just<00:04:48.720><c> that</c><00:04:49.440><c> is</c><00:04:49.600><c> the</c><00:04:49.680><c> correlation</c><00:04:50.320><c> between</c>
+
+00:04:50.790 --> 00:04:50.800 align:start position:0%
+just that is the correlation between
+ 
+
+00:04:50.800 --> 00:04:52.950 align:start position:0%
+just that is the correlation between
+these<00:04:51.040><c> two</c><00:04:51.280><c> winer</c><00:04:51.680><c> processes</c>
+
+00:04:52.950 --> 00:04:52.960 align:start position:0%
+these two winer processes
+ 
+
+00:04:52.960 --> 00:04:55.110 align:start position:0%
+these two winer processes
+between<00:04:53.280><c> the</c><00:04:53.440><c> variance</c><00:04:53.840><c> process</c><00:04:54.400><c> and</c><00:04:54.639><c> then</c>
+
+00:04:55.110 --> 00:04:55.120 align:start position:0%
+between the variance process and then
+ 
+
+00:04:55.120 --> 00:04:56.710 align:start position:0%
+between the variance process and then
+the<00:04:55.759><c> stock</c>
+
+00:04:56.710 --> 00:04:56.720 align:start position:0%
+the stock
+ 
+
+00:04:56.720 --> 00:04:58.550 align:start position:0%
+the stock
+underlying<00:04:57.280><c> process</c>
+
+00:04:58.550 --> 00:04:58.560 align:start position:0%
+underlying process
+ 
+
+00:04:58.560 --> 00:05:00.790 align:start position:0%
+underlying process
+so<00:04:58.800><c> let's</c><00:04:59.199><c> initialize</c><00:04:59.759><c> our</c><00:04:59.919><c> parameters</c><00:05:00.639><c> here</c>
+
+00:05:00.790 --> 00:05:00.800 align:start position:0%
+so let's initialize our parameters here
+ 
+
+00:05:00.800 --> 00:05:03.430 align:start position:0%
+so let's initialize our parameters here
+we've<00:05:01.039><c> got</c><00:05:01.280><c> a</c><00:05:01.520><c> stock</c><00:05:01.759><c> price</c><00:05:02.080><c> of</c><00:05:02.160><c> 100</c>
+
+00:05:03.430 --> 00:05:03.440 align:start position:0%
+we've got a stock price of 100
+ 
+
+00:05:03.440 --> 00:05:06.310 align:start position:0%
+we've got a stock price of 100
+strike<00:05:03.840><c> of</c><00:05:04.000><c> 150</c><00:05:04.880><c> tower</c><00:05:05.280><c> is</c><00:05:05.440><c> one</c><00:05:05.759><c> and</c><00:05:05.919><c> then</c><00:05:06.160><c> an</c>
+
+00:05:06.310 --> 00:05:06.320 align:start position:0%
+strike of 150 tower is one and then an
+ 
+
+00:05:06.320 --> 00:05:09.270 align:start position:0%
+strike of 150 tower is one and then an
+annual<00:05:06.560><c> risk</c><00:05:06.800><c> free</c><00:05:06.960><c> rate</c><00:05:07.360><c> of</c><00:05:07.759><c> six</c><00:05:08.000><c> percent</c>
+
+00:05:09.270 --> 00:05:09.280 align:start position:0%
+annual risk free rate of six percent
+ 
+
+00:05:09.280 --> 00:05:11.350 align:start position:0%
+annual risk free rate of six percent
+heston<00:05:09.600><c> dependent</c><00:05:09.919><c> models</c><00:05:10.560><c> who</c><00:05:10.800><c> cares</c><00:05:11.199><c> you</c>
+
+00:05:11.350 --> 00:05:11.360 align:start position:0%
+heston dependent models who cares you
+ 
+
+00:05:11.360 --> 00:05:12.710 align:start position:0%
+heston dependent models who cares you
+could<00:05:11.440><c> take</c><00:05:11.600><c> this</c><00:05:11.759><c> from</c><00:05:11.919><c> market</c><00:05:12.240><c> data</c><00:05:12.560><c> we've</c>
+
+00:05:12.710 --> 00:05:12.720 align:start position:0%
+could take this from market data we've
+ 
+
+00:05:12.720 --> 00:05:14.550 align:start position:0%
+could take this from market data we've
+done<00:05:12.880><c> that</c><00:05:13.039><c> before</c><00:05:13.600><c> i'm</c><00:05:13.840><c> using</c><00:05:14.240><c> machine</c>
+
+00:05:14.550 --> 00:05:14.560 align:start position:0%
+done that before i'm using machine
+ 
+
+00:05:14.560 --> 00:05:15.749 align:start position:0%
+done that before i'm using machine
+learning<00:05:14.880><c> techniques</c><00:05:15.360><c> under</c><00:05:15.440><c> the</c><00:05:15.520><c> risk</c>
+
+00:05:15.749 --> 00:05:15.759 align:start position:0%
+learning techniques under the risk
+ 
+
+00:05:15.759 --> 00:05:17.670 align:start position:0%
+learning techniques under the risk
+neutral<00:05:16.080><c> measure</c><00:05:16.880><c> to</c><00:05:17.039><c> be</c><00:05:17.120><c> able</c><00:05:17.280><c> to</c><00:05:17.360><c> find</c><00:05:17.520><c> what</c>
+
+00:05:17.670 --> 00:05:17.680 align:start position:0%
+neutral measure to be able to find what
+ 
+
+00:05:17.680 --> 00:05:19.270 align:start position:0%
+neutral measure to be able to find what
+these<00:05:17.919><c> factors</c><00:05:18.320><c> are</c><00:05:18.639><c> go</c><00:05:18.800><c> and</c><00:05:18.880><c> take</c><00:05:19.039><c> a</c><00:05:19.120><c> look</c><00:05:19.199><c> at</c>
+
+00:05:19.270 --> 00:05:19.280 align:start position:0%
+these factors are go and take a look at
+ 
+
+00:05:19.280 --> 00:05:20.790 align:start position:0%
+these factors are go and take a look at
+that<00:05:19.440><c> video</c><00:05:19.759><c> if</c><00:05:19.840><c> you're</c><00:05:20.000><c> interested</c><00:05:20.479><c> in</c><00:05:20.560><c> that</c>
+
+00:05:20.790 --> 00:05:20.800 align:start position:0%
+that video if you're interested in that
+ 
+
+00:05:20.800 --> 00:05:23.110 align:start position:0%
+that video if you're interested in that
+process<00:05:21.440><c> here</c><00:05:21.680><c> i'm</c><00:05:21.840><c> just</c><00:05:22.000><c> defining</c><00:05:22.639><c> kappa</c><00:05:23.039><c> is</c>
+
+00:05:23.110 --> 00:05:23.120 align:start position:0%
+process here i'm just defining kappa is
+ 
+
+00:05:23.120 --> 00:05:24.230 align:start position:0%
+process here i'm just defining kappa is
+three<00:05:23.440><c> which</c><00:05:23.600><c> is</c><00:05:23.680><c> the</c><00:05:23.759><c> rate</c><00:05:23.919><c> of</c><00:05:24.000><c> mean</c>
+
+00:05:24.230 --> 00:05:24.240 align:start position:0%
+three which is the rate of mean
+ 
+
+00:05:24.240 --> 00:05:26.150 align:start position:0%
+three which is the rate of mean
+reversion<00:05:25.039><c> we've</c><00:05:25.199><c> got</c><00:05:25.440><c> theta</c><00:05:25.759><c> which</c><00:05:25.919><c> is</c><00:05:26.080><c> the</c>
+
+00:05:26.150 --> 00:05:26.160 align:start position:0%
+reversion we've got theta which is the
+ 
+
+00:05:26.160 --> 00:05:28.390 align:start position:0%
+reversion we've got theta which is the
+long<00:05:26.320><c> term</c><00:05:26.639><c> variance</c><00:05:27.360><c> so</c>
+
+00:05:28.390 --> 00:05:28.400 align:start position:0%
+long term variance so
+ 
+
+00:05:28.400 --> 00:05:30.150 align:start position:0%
+long term variance so
+i've<00:05:28.720><c> just</c><00:05:29.039><c> got</c>
+
+00:05:30.150 --> 00:05:30.160 align:start position:0%
+i've just got
+ 
+
+00:05:30.160 --> 00:05:31.029 align:start position:0%
+i've just got
+this
+
+00:05:31.029 --> 00:05:31.039 align:start position:0%
+this
+ 
+
+00:05:31.039 --> 00:05:33.110 align:start position:0%
+this
+volatilities<00:05:31.840><c> of</c><00:05:32.080><c> 20</c>
+
+00:05:33.110 --> 00:05:33.120 align:start position:0%
+volatilities of 20
+ 
+
+00:05:33.120 --> 00:05:35.270 align:start position:0%
+volatilities of 20
+long<00:05:33.360><c> term</c><00:05:33.759><c> and</c><00:05:34.000><c> then</c><00:05:34.400><c> we've</c><00:05:34.560><c> got</c><00:05:34.720><c> the</c><00:05:34.880><c> initial</c>
+
+00:05:35.270 --> 00:05:35.280 align:start position:0%
+long term and then we've got the initial
+ 
+
+00:05:35.280 --> 00:05:37.749 align:start position:0%
+long term and then we've got the initial
+volatility<00:05:36.479><c> which</c><00:05:36.720><c> is</c><00:05:36.880><c> 20</c>
+
+00:05:37.749 --> 00:05:37.759 align:start position:0%
+volatility which is 20
+ 
+
+00:05:37.759 --> 00:05:39.510 align:start position:0%
+volatility which is 20
+and<00:05:37.919><c> again</c><00:05:38.240><c> variance</c><00:05:38.720><c> so</c><00:05:38.880><c> we're</c><00:05:39.039><c> squaring</c>
+
+00:05:39.510 --> 00:05:39.520 align:start position:0%
+and again variance so we're squaring
+ 
+
+00:05:39.520 --> 00:05:41.510 align:start position:0%
+and again variance so we're squaring
+these<00:05:39.759><c> numbers</c><00:05:40.400><c> and</c><00:05:40.639><c> here</c><00:05:40.800><c> we've</c><00:05:40.960><c> got</c><00:05:41.199><c> rho</c>
+
+00:05:41.510 --> 00:05:41.520 align:start position:0%
+these numbers and here we've got rho
+ 
+
+00:05:41.520 --> 00:05:43.350 align:start position:0%
+these numbers and here we've got rho
+which<00:05:41.680><c> is</c><00:05:41.759><c> the</c><00:05:41.919><c> correlation</c><00:05:42.479><c> between</c><00:05:42.880><c> returns</c>
+
+00:05:43.350 --> 00:05:43.360 align:start position:0%
+which is the correlation between returns
+ 
+
+00:05:43.360 --> 00:05:45.990 align:start position:0%
+which is the correlation between returns
+and<00:05:43.520><c> variances</c><00:05:44.160><c> i</c><00:05:44.400><c> wanted</c><00:05:44.720><c> a</c><00:05:44.800><c> really</c><00:05:45.120><c> skewed</c>
+
+00:05:45.990 --> 00:05:46.000 align:start position:0%
+and variances i wanted a really skewed
+ 
+
+00:05:46.000 --> 00:05:47.749 align:start position:0%
+and variances i wanted a really skewed
+uh<00:05:46.160><c> wrist</c><00:05:46.479><c> initial</c><00:05:46.800><c> distribution</c><00:05:47.440><c> i</c><00:05:47.520><c> don't</c>
+
+00:05:47.749 --> 00:05:47.759 align:start position:0%
+uh wrist initial distribution i don't
+ 
+
+00:05:47.759 --> 00:05:49.749 align:start position:0%
+uh wrist initial distribution i don't
+want<00:05:48.080><c> a</c><00:05:48.240><c> log</c><00:05:48.479><c> normal</c><00:05:48.720><c> distribution</c><00:05:49.360><c> so</c><00:05:49.600><c> i've</c>
+
+00:05:49.749 --> 00:05:49.759 align:start position:0%
+want a log normal distribution so i've
+ 
+
+00:05:49.759 --> 00:05:52.950 align:start position:0%
+want a log normal distribution so i've
+made<00:05:50.000><c> this</c><00:05:50.560><c> positive</c><00:05:51.039><c> 0.98</c><00:05:52.240><c> so</c><00:05:52.400><c> that'll</c><00:05:52.720><c> show</c>
+
+00:05:52.950 --> 00:05:52.960 align:start position:0%
+made this positive 0.98 so that'll show
+ 
+
+00:05:52.960 --> 00:05:55.350 align:start position:0%
+made this positive 0.98 so that'll show
+an<00:05:53.199><c> interesting</c><00:05:54.080><c> effect</c><00:05:54.560><c> on</c><00:05:54.800><c> our</c><00:05:55.120><c> risk</c>
+
+00:05:55.350 --> 00:05:55.360 align:start position:0%
+an interesting effect on our risk
+ 
+
+00:05:55.360 --> 00:05:56.870 align:start position:0%
+an interesting effect on our risk
+neutral<00:05:55.680><c> distribution</c>
+
+00:05:56.870 --> 00:05:56.880 align:start position:0%
+neutral distribution
+ 
+
+00:05:56.880 --> 00:05:59.189 align:start position:0%
+neutral distribution
+and<00:05:57.039><c> here</c><00:05:57.280><c> we've</c><00:05:57.520><c> got</c><00:05:57.840><c> sigma</c><00:05:58.479><c> which</c><00:05:58.720><c> is</c><00:05:59.039><c> the</c>
+
+00:05:59.189 --> 00:05:59.199 align:start position:0%
+and here we've got sigma which is the
+ 
+
+00:05:59.199 --> 00:06:01.510 align:start position:0%
+and here we've got sigma which is the
+volatility<00:05:59.840><c> of</c><00:06:00.000><c> volatility</c>
+
+00:06:01.510 --> 00:06:01.520 align:start position:0%
+volatility of volatility
+ 
+
+00:06:01.520 --> 00:06:02.790 align:start position:0%
+volatility of volatility
+which<00:06:01.840><c> is</c>
+
+00:06:02.790 --> 00:06:02.800 align:start position:0%
+which is
+ 
+
+00:06:02.800 --> 00:06:05.189 align:start position:0%
+which is
+this<00:06:03.039><c> factor</c><00:06:03.440><c> here</c><00:06:04.000><c> so</c><00:06:04.319><c> here</c><00:06:04.639><c> i've</c><00:06:04.880><c> called</c>
+
+00:06:05.189 --> 00:06:05.199 align:start position:0%
+this factor here so here i've called
+ 
+
+00:06:05.199 --> 00:06:07.909 align:start position:0%
+this factor here so here i've called
+that<00:06:05.520><c> 20</c>
+
+00:06:07.909 --> 00:06:07.919 align:start position:0%
+ 
+ 
+
+00:06:07.919 --> 00:06:09.430 align:start position:0%
+ 
+now<00:06:08.080><c> the</c><00:06:08.240><c> risk</c><00:06:08.479><c> premium</c><00:06:08.880><c> of</c><00:06:08.960><c> variance</c><00:06:09.360><c> i'm</c>
+
+00:06:09.430 --> 00:06:09.440 align:start position:0%
+now the risk premium of variance i'm
+ 
+
+00:06:09.440 --> 00:06:10.790 align:start position:0%
+now the risk premium of variance i'm
+just<00:06:09.600><c> saying</c><00:06:09.840><c> that</c><00:06:10.000><c> that's</c><00:06:10.319><c> already</c><00:06:10.639><c> been</c>
+
+00:06:10.790 --> 00:06:10.800 align:start position:0%
+just saying that that's already been
+ 
+
+00:06:10.800 --> 00:06:13.909 align:start position:0%
+just saying that that's already been
+taken<00:06:11.280><c> into</c><00:06:11.919><c> account</c><00:06:12.639><c> um</c><00:06:13.039><c> with</c><00:06:13.199><c> the</c><00:06:13.360><c> variable</c>
+
+00:06:13.909 --> 00:06:13.919 align:start position:0%
+taken into account um with the variable
+ 
+
+00:06:13.919 --> 00:06:15.830 align:start position:0%
+taken into account um with the variable
+one<00:06:14.319><c> you</c><00:06:14.400><c> know</c><00:06:14.639><c> the</c><00:06:14.800><c> develop</c><00:06:15.280><c> variable</c><00:06:15.680><c> that</c>
+
+00:06:15.830 --> 00:06:15.840 align:start position:0%
+one you know the develop variable that
+ 
+
+00:06:15.840 --> 00:06:18.870 align:start position:0%
+one you know the develop variable that
+i've<00:06:16.000><c> defined</c><00:06:16.560><c> here</c><00:06:17.199><c> um</c><00:06:17.759><c> in</c><00:06:17.840><c> my</c><00:06:18.000><c> kappa</c><00:06:18.479><c> so</c><00:06:18.639><c> i've</c>
+
+00:06:18.870 --> 00:06:18.880 align:start position:0%
+i've defined here um in my kappa so i've
+ 
+
+00:06:18.880 --> 00:06:23.029 align:start position:0%
+i've defined here um in my kappa so i've
+just<00:06:19.039><c> called</c><00:06:19.360><c> it</c><00:06:19.520><c> zero</c><00:06:19.919><c> for</c><00:06:20.080><c> now</c>
+
+00:06:23.029 --> 00:06:23.039 align:start position:0%
+ 
+ 
+
+00:06:23.039 --> 00:06:24.469 align:start position:0%
+ 
+now<00:06:23.360><c> one</c><00:06:23.600><c> thing</c><00:06:23.759><c> that</c><00:06:23.919><c> you</c><00:06:24.080><c> need</c><00:06:24.319><c> to</c>
+
+00:06:24.469 --> 00:06:24.479 align:start position:0%
+now one thing that you need to
+ 
+
+00:06:24.479 --> 00:06:27.110 align:start position:0%
+now one thing that you need to
+understand<00:06:25.280><c> with</c><00:06:25.440><c> the</c><00:06:25.600><c> hester</c><00:06:26.000><c> model</c><00:06:26.560><c> is</c><00:06:26.800><c> that</c>
+
+00:06:27.110 --> 00:06:27.120 align:start position:0%
+understand with the hester model is that
+ 
+
+00:06:27.120 --> 00:06:29.510 align:start position:0%
+understand with the hester model is that
+you<00:06:27.280><c> can</c><00:06:27.520><c> get</c><00:06:27.840><c> negative</c><00:06:28.240><c> volatility</c><00:06:29.039><c> if</c><00:06:29.280><c> this</c>
+
+00:06:29.510 --> 00:06:29.520 align:start position:0%
+you can get negative volatility if this
+ 
+
+00:06:29.520 --> 00:06:31.909 align:start position:0%
+you can get negative volatility if this
+condition<00:06:30.080><c> is</c><00:06:30.160><c> not</c><00:06:30.400><c> satisfied</c><00:06:31.120><c> if</c><00:06:31.360><c> two</c><00:06:31.600><c> times</c>
+
+00:06:31.909 --> 00:06:31.919 align:start position:0%
+condition is not satisfied if two times
+ 
+
+00:06:31.919 --> 00:06:35.830 align:start position:0%
+condition is not satisfied if two times
+kappa<00:06:32.319><c> times</c><00:06:32.720><c> theta</c><00:06:33.440><c> is</c><00:06:33.840><c> is</c><00:06:34.240><c> not</c><00:06:34.560><c> greater</c><00:06:35.280><c> than</c>
+
+00:06:35.830 --> 00:06:35.840 align:start position:0%
+kappa times theta is is not greater than
+ 
+
+00:06:35.840 --> 00:06:36.870 align:start position:0%
+kappa times theta is is not greater than
+sigma
+
+00:06:36.870 --> 00:06:36.880 align:start position:0%
+sigma
+ 
+
+00:06:36.880 --> 00:06:39.670 align:start position:0%
+sigma
+squared<00:06:37.600><c> then</c><00:06:37.840><c> you're</c><00:06:38.080><c> going</c><00:06:38.400><c> to</c><00:06:38.560><c> have</c><00:06:38.960><c> issues</c>
+
+00:06:39.670 --> 00:06:39.680 align:start position:0%
+squared then you're going to have issues
+ 
+
+00:06:39.680 --> 00:06:43.029 align:start position:0%
+squared then you're going to have issues
+but<00:06:40.000><c> here</c><00:06:40.319><c> i've</c><00:06:40.960><c> convinced</c><00:06:41.360><c> myself</c><00:06:42.000><c> that</c><00:06:42.400><c> this</c>
+
+00:06:43.029 --> 00:06:43.039 align:start position:0%
+but here i've convinced myself that this
+ 
+
+00:06:43.039 --> 00:06:46.150 align:start position:0%
+but here i've convinced myself that this
+condition<00:06:43.680><c> holds</c><00:06:44.400><c> so</c><00:06:44.800><c> i'm</c><00:06:45.039><c> not</c><00:06:45.280><c> worried</c><00:06:45.919><c> even</c>
+
+00:06:46.150 --> 00:06:46.160 align:start position:0%
+condition holds so i'm not worried even
+ 
+
+00:06:46.160 --> 00:06:48.230 align:start position:0%
+condition holds so i'm not worried even
+if<00:06:46.319><c> i</c><00:06:46.479><c> discretize</c>
+
+00:06:48.230 --> 00:06:48.240 align:start position:0%
+if i discretize
+ 
+
+00:06:48.240 --> 00:06:51.029 align:start position:0%
+if i discretize
+now<00:06:48.639><c> the</c><00:06:48.800><c> bredon</c><00:06:49.280><c> litzenberger</c><00:06:50.000><c> formula</c><00:06:50.720><c> here</c>
+
+00:06:51.029 --> 00:06:51.039 align:start position:0%
+now the bredon litzenberger formula here
+ 
+
+00:06:51.039 --> 00:06:52.309 align:start position:0%
+now the bredon litzenberger formula here
+let's<00:06:51.280><c> determine</c><00:06:51.680><c> the</c><00:06:51.759><c> risk</c><00:06:52.000><c> neutral</c>
+
+00:06:52.309 --> 00:06:52.319 align:start position:0%
+let's determine the risk neutral
+ 
+
+00:06:52.319 --> 00:06:54.070 align:start position:0%
+let's determine the risk neutral
+probability<00:06:52.800><c> distribution</c><00:06:53.360><c> function</c><00:06:53.759><c> so</c><00:06:53.919><c> as</c>
+
+00:06:54.070 --> 00:06:54.080 align:start position:0%
+probability distribution function so as
+ 
+
+00:06:54.080 --> 00:06:55.990 align:start position:0%
+probability distribution function so as
+we<00:06:54.240><c> said</c><00:06:54.400><c> before</c><00:06:54.880><c> it's</c><00:06:55.039><c> that</c><00:06:55.199><c> discounted</c>
+
+00:06:55.990 --> 00:06:56.000 align:start position:0%
+we said before it's that discounted
+ 
+
+00:06:56.000 --> 00:06:58.150 align:start position:0%
+we said before it's that discounted
+factor
+
+00:06:58.150 --> 00:06:58.160 align:start position:0%
+factor
+ 
+
+00:06:58.160 --> 00:07:01.029 align:start position:0%
+factor
+so<00:06:58.400><c> here</c><00:06:58.720><c> remember</c><00:06:59.120><c> that</c><00:06:59.280><c> we</c><00:06:59.440><c> had</c><00:06:59.840><c> um</c><00:07:00.400><c> that</c><00:07:00.639><c> our</c>
+
+00:07:01.029 --> 00:07:01.039 align:start position:0%
+so here remember that we had um that our
+ 
+
+00:07:01.039 --> 00:07:03.990 align:start position:0%
+so here remember that we had um that our
+second<00:07:01.520><c> order</c><00:07:02.319><c> um</c><00:07:02.720><c> derivative</c><00:07:03.360><c> was</c><00:07:03.599><c> equal</c><00:07:03.840><c> to</c>
+
+00:07:03.990 --> 00:07:04.000 align:start position:0%
+second order um derivative was equal to
+ 
+
+00:07:04.000 --> 00:07:06.710 align:start position:0%
+second order um derivative was equal to
+the<00:07:04.240><c> discount</c><00:07:04.800><c> factor</c><00:07:05.440><c> uh</c><00:07:05.680><c> times</c><00:07:06.000><c> by</c><00:07:06.160><c> the</c><00:07:06.240><c> pdf</c>
+
+00:07:06.710 --> 00:07:06.720 align:start position:0%
+the discount factor uh times by the pdf
+ 
+
+00:07:06.720 --> 00:07:08.309 align:start position:0%
+the discount factor uh times by the pdf
+i've<00:07:06.800><c> just</c><00:07:07.039><c> taken</c><00:07:07.280><c> that</c><00:07:07.440><c> discount</c><00:07:07.840><c> factor</c><00:07:08.240><c> and</c>
+
+00:07:08.309 --> 00:07:08.319 align:start position:0%
+i've just taken that discount factor and
+ 
+
+00:07:08.319 --> 00:07:09.589 align:start position:0%
+i've just taken that discount factor and
+now<00:07:08.479><c> we've</c><00:07:08.560><c> got</c><00:07:08.720><c> the</c><00:07:08.800><c> forward</c><00:07:09.120><c> factor</c>
+
+00:07:09.589 --> 00:07:09.599 align:start position:0%
+now we've got the forward factor
+ 
+
+00:07:09.599 --> 00:07:11.749 align:start position:0%
+now we've got the forward factor
+multiplied<00:07:10.400><c> by</c><00:07:10.800><c> this</c><00:07:11.039><c> second</c><00:07:11.520><c> order</c>
+
+00:07:11.749 --> 00:07:11.759 align:start position:0%
+multiplied by this second order
+ 
+
+00:07:11.759 --> 00:07:13.909 align:start position:0%
+multiplied by this second order
+derivative<00:07:12.479><c> now</c><00:07:12.720><c> in</c><00:07:12.880><c> order</c><00:07:13.199><c> to</c><00:07:13.360><c> approximate</c>
+
+00:07:13.909 --> 00:07:13.919 align:start position:0%
+derivative now in order to approximate
+ 
+
+00:07:13.919 --> 00:07:15.270 align:start position:0%
+derivative now in order to approximate
+that<00:07:14.080><c> derivative</c><00:07:14.560><c> we're</c><00:07:14.720><c> going</c><00:07:14.960><c> to</c><00:07:15.039><c> use</c>
+
+00:07:15.270 --> 00:07:15.280 align:start position:0%
+that derivative we're going to use
+ 
+
+00:07:15.280 --> 00:07:17.589 align:start position:0%
+that derivative we're going to use
+finite<00:07:15.680><c> difference</c><00:07:16.080><c> approximation</c><00:07:16.880><c> so</c><00:07:17.440><c> in</c>
+
+00:07:17.589 --> 00:07:17.599 align:start position:0%
+finite difference approximation so in
+ 
+
+00:07:17.599 --> 00:07:19.270 align:start position:0%
+finite difference approximation so in
+actuality<00:07:18.160><c> what</c><00:07:18.319><c> that</c><00:07:18.479><c> looks</c><00:07:18.720><c> like</c><00:07:18.960><c> is</c><00:07:19.120><c> we're</c>
+
+00:07:19.270 --> 00:07:19.280 align:start position:0%
+actuality what that looks like is we're
+ 
+
+00:07:19.280 --> 00:07:22.070 align:start position:0%
+actuality what that looks like is we're
+going<00:07:19.599><c> to</c><00:07:20.000><c> uh</c><00:07:20.560><c> we're</c><00:07:20.880><c> going</c><00:07:21.120><c> to</c><00:07:21.280><c> get</c><00:07:21.520><c> our</c><00:07:21.840><c> call</c>
+
+00:07:22.070 --> 00:07:22.080 align:start position:0%
+going to uh we're going to get our call
+ 
+
+00:07:22.080 --> 00:07:23.189 align:start position:0%
+going to uh we're going to get our call
+prices
+
+00:07:23.189 --> 00:07:23.199 align:start position:0%
+prices
+ 
+
+00:07:23.199 --> 00:07:25.350 align:start position:0%
+prices
+for<00:07:23.360><c> different</c><00:07:23.759><c> strikes</c><00:07:24.720><c> and</c><00:07:24.960><c> then</c><00:07:25.199><c> we're</c>
+
+00:07:25.350 --> 00:07:25.360 align:start position:0%
+for different strikes and then we're
+ 
+
+00:07:25.360 --> 00:07:26.950 align:start position:0%
+for different strikes and then we're
+going<00:07:25.599><c> to</c><00:07:25.759><c> make</c><00:07:25.919><c> sure</c><00:07:26.080><c> that</c><00:07:26.240><c> these</c><00:07:26.479><c> strikes</c>
+
+00:07:26.950 --> 00:07:26.960 align:start position:0%
+going to make sure that these strikes
+ 
+
+00:07:26.960 --> 00:07:29.510 align:start position:0%
+going to make sure that these strikes
+have<00:07:27.199><c> an</c><00:07:27.520><c> even</c><00:07:27.919><c> difference</c><00:07:28.479><c> in</c><00:07:28.560><c> between</c><00:07:28.960><c> them</c>
+
+00:07:29.510 --> 00:07:29.520 align:start position:0%
+have an even difference in between them
+ 
+
+00:07:29.520 --> 00:07:31.990 align:start position:0%
+have an even difference in between them
+and<00:07:29.759><c> we're</c><00:07:29.919><c> going</c><00:07:30.160><c> to</c><00:07:30.319><c> use</c><00:07:30.560><c> this</c><00:07:30.800><c> formula</c>
+
+00:07:31.990 --> 00:07:32.000 align:start position:0%
+and we're going to use this formula
+ 
+
+00:07:32.000 --> 00:07:33.990 align:start position:0%
+and we're going to use this formula
+that<00:07:32.240><c> are</c><00:07:32.400><c> centered</c><00:07:32.720><c> around</c><00:07:33.199><c> a</c><00:07:33.360><c> particular</c>
+
+00:07:33.990 --> 00:07:34.000 align:start position:0%
+that are centered around a particular
+ 
+
+00:07:34.000 --> 00:07:37.189 align:start position:0%
+that are centered around a particular
+strike<00:07:34.479><c> to</c><00:07:34.639><c> be</c><00:07:34.800><c> able</c><00:07:34.960><c> to</c><00:07:35.280><c> calculate</c><00:07:36.400><c> our</c><00:07:36.880><c> risk</c>
+
+00:07:37.189 --> 00:07:37.199 align:start position:0%
+strike to be able to calculate our risk
+ 
+
+00:07:37.199 --> 00:07:39.589 align:start position:0%
+strike to be able to calculate our risk
+neutral<00:07:37.599><c> distribution</c><00:07:38.560><c> for</c><00:07:38.800><c> that</c><00:07:39.039><c> particular</c>
+
+00:07:39.589 --> 00:07:39.599 align:start position:0%
+neutral distribution for that particular
+ 
+
+00:07:39.599 --> 00:07:43.189 align:start position:0%
+neutral distribution for that particular
+strike<00:07:40.160><c> at</c><00:07:40.479><c> that</c><00:07:40.720><c> time</c><00:07:40.960><c> to</c><00:07:41.120><c> maturity</c>
+
+00:07:43.189 --> 00:07:43.199 align:start position:0%
+strike at that time to maturity
+ 
+
+00:07:43.199 --> 00:07:45.909 align:start position:0%
+strike at that time to maturity
+we're<00:07:43.360><c> just</c><00:07:43.520><c> going</c><00:07:43.680><c> to</c><00:07:43.759><c> be</c><00:07:43.919><c> defining</c><00:07:44.560><c> a</c><00:07:44.879><c> 2d</c>
+
+00:07:45.909 --> 00:07:45.919 align:start position:0%
+we're just going to be defining a 2d
+ 
+
+00:07:45.919 --> 00:07:48.550 align:start position:0%
+we're just going to be defining a 2d
+pdf<00:07:46.479><c> here</c><00:07:47.199><c> for</c><00:07:47.440><c> a</c><00:07:47.520><c> particular</c><00:07:48.080><c> time</c><00:07:48.400><c> to</c>
+
+00:07:48.550 --> 00:07:48.560 align:start position:0%
+pdf here for a particular time to
+ 
+
+00:07:48.560 --> 00:07:52.230 align:start position:0%
+pdf here for a particular time to
+maturity<00:07:49.440><c> now</c><00:07:49.840><c> for</c><00:07:50.160><c> actually</c><00:07:50.560><c> calculating</c><00:07:51.280><c> um</c>
+
+00:07:52.230 --> 00:07:52.240 align:start position:0%
+maturity now for actually calculating um
+ 
+
+00:07:52.240 --> 00:07:54.550 align:start position:0%
+maturity now for actually calculating um
+option<00:07:52.879><c> prices</c><00:07:53.440><c> under</c><00:07:53.599><c> the</c><00:07:53.680><c> hester</c><00:07:54.080><c> model</c>
+
+00:07:54.550 --> 00:07:54.560 align:start position:0%
+option prices under the hester model
+ 
+
+00:07:54.560 --> 00:07:56.950 align:start position:0%
+option prices under the hester model
+what<00:07:54.720><c> we've</c><00:07:54.960><c> got</c><00:07:55.199><c> is</c><00:07:55.360><c> an</c><00:07:55.520><c> analytical</c><00:07:56.319><c> solution</c>
+
+00:07:56.950 --> 00:07:56.960 align:start position:0%
+what we've got is an analytical solution
+ 
+
+00:07:56.960 --> 00:07:58.309 align:start position:0%
+what we've got is an analytical solution
+and<00:07:57.120><c> that</c><00:07:57.360><c> is</c><00:07:57.599><c> in</c><00:07:57.759><c> terms</c><00:07:58.080><c> of</c><00:07:58.240><c> the</c>
+
+00:07:58.309 --> 00:07:58.319 align:start position:0%
+and that is in terms of the
+ 
+
+00:07:58.319 --> 00:08:00.309 align:start position:0%
+and that is in terms of the
+characteristic<00:07:59.120><c> equation</c><00:07:59.680><c> and</c><00:07:59.759><c> hester</c><00:08:00.080><c> model</c>
+
+00:08:00.309 --> 00:08:00.319 align:start position:0%
+characteristic equation and hester model
+ 
+
+00:08:00.319 --> 00:08:02.070 align:start position:0%
+characteristic equation and hester model
+that<00:08:00.479><c> we</c><00:08:00.560><c> have</c><00:08:00.720><c> here</c><00:08:01.360><c> please</c><00:08:01.599><c> look</c><00:08:01.840><c> at</c><00:08:01.919><c> a</c>
+
+00:08:02.070 --> 00:08:02.080 align:start position:0%
+that we have here please look at a
+ 
+
+00:08:02.080 --> 00:08:03.670 align:start position:0%
+that we have here please look at a
+previous<00:08:02.479><c> video</c><00:08:02.720><c> that</c><00:08:02.879><c> i've</c><00:08:03.039><c> got</c><00:08:03.199><c> linked</c><00:08:03.520><c> up</c>
+
+00:08:03.670 --> 00:08:03.680 align:start position:0%
+previous video that i've got linked up
+ 
+
+00:08:03.680 --> 00:08:05.029 align:start position:0%
+previous video that i've got linked up
+on<00:08:03.759><c> the</c><00:08:03.840><c> screen</c><00:08:04.160><c> right</c><00:08:04.400><c> now</c><00:08:04.639><c> where</c><00:08:04.800><c> we've</c>
+
+00:08:05.029 --> 00:08:05.039 align:start position:0%
+on the screen right now where we've
+ 
+
+00:08:05.039 --> 00:08:06.629 align:start position:0%
+on the screen right now where we've
+actually<00:08:05.280><c> taken</c><00:08:05.599><c> you</c><00:08:05.840><c> through</c><00:08:06.319><c> how</c><00:08:06.479><c> to</c>
+
+00:08:06.629 --> 00:08:06.639 align:start position:0%
+actually taken you through how to
+ 
+
+00:08:06.639 --> 00:08:08.790 align:start position:0%
+actually taken you through how to
+calculate<00:08:07.199><c> this</c><00:08:07.599><c> from</c><00:08:07.840><c> the</c><00:08:07.919><c> characteristic</c>
+
+00:08:08.790 --> 00:08:08.800 align:start position:0%
+calculate this from the characteristic
+ 
+
+00:08:08.800 --> 00:08:10.469 align:start position:0%
+calculate this from the characteristic
+function<00:08:09.440><c> so</c><00:08:09.759><c> essentially</c><00:08:10.160><c> it's</c><00:08:10.400><c> a</c>
+
+00:08:10.469 --> 00:08:10.479 align:start position:0%
+function so essentially it's a
+ 
+
+00:08:10.479 --> 00:08:12.869 align:start position:0%
+function so essentially it's a
+two-parter<00:08:11.280><c> here</c><00:08:11.520><c> i</c><00:08:11.680><c> need</c><00:08:11.840><c> to</c><00:08:11.919><c> be</c><00:08:12.080><c> calculating</c>
+
+00:08:12.869 --> 00:08:12.879 align:start position:0%
+two-parter here i need to be calculating
+ 
+
+00:08:12.879 --> 00:08:16.309 align:start position:0%
+two-parter here i need to be calculating
+complex<00:08:13.680><c> integrals</c><00:08:14.720><c> on</c><00:08:14.960><c> this</c><00:08:15.280><c> domain</c><00:08:15.759><c> from</c><00:08:16.000><c> 0</c>
+
+00:08:16.309 --> 00:08:16.319 align:start position:0%
+complex integrals on this domain from 0
+ 
+
+00:08:16.319 --> 00:08:17.909 align:start position:0%
+complex integrals on this domain from 0
+to<00:08:16.560><c> infinity</c>
+
+00:08:17.909 --> 00:08:17.919 align:start position:0%
+to infinity
+ 
+
+00:08:17.919 --> 00:08:21.430 align:start position:0%
+to infinity
+of<00:08:18.639><c> this</c><00:08:18.960><c> characteristic</c><00:08:19.919><c> function</c>
+
+00:08:21.430 --> 00:08:21.440 align:start position:0%
+of this characteristic function
+ 
+
+00:08:21.440 --> 00:08:23.350 align:start position:0%
+of this characteristic function
+now<00:08:21.840><c> here</c><00:08:22.160><c> i've</c><00:08:22.400><c> defined</c><00:08:22.960><c> what</c><00:08:23.199><c> that</c>
+
+00:08:23.350 --> 00:08:23.360 align:start position:0%
+now here i've defined what that
+ 
+
+00:08:23.360 --> 00:08:25.909 align:start position:0%
+now here i've defined what that
+characteristic<00:08:24.160><c> function</c><00:08:24.639><c> is</c><00:08:25.199><c> and</c><00:08:25.440><c> then</c><00:08:25.759><c> i</c>
+
+00:08:25.909 --> 00:08:25.919 align:start position:0%
+characteristic function is and then i
+ 
+
+00:08:25.919 --> 00:08:28.309 align:start position:0%
+characteristic function is and then i
+need<00:08:26.080><c> to</c><00:08:26.160><c> compute</c><00:08:26.639><c> that</c><00:08:26.879><c> complex</c><00:08:27.440><c> integration</c>
+
+00:08:28.309 --> 00:08:28.319 align:start position:0%
+need to compute that complex integration
+ 
+
+00:08:28.319 --> 00:08:29.909 align:start position:0%
+need to compute that complex integration
+and<00:08:28.479><c> the</c><00:08:28.639><c> way</c><00:08:28.879><c> that</c><00:08:29.039><c> i'm</c><00:08:29.120><c> doing</c><00:08:29.440><c> that</c><00:08:29.680><c> is</c>
+
+00:08:29.909 --> 00:08:29.919 align:start position:0%
+and the way that i'm doing that is
+ 
+
+00:08:29.919 --> 00:08:32.709 align:start position:0%
+and the way that i'm doing that is
+through<00:08:30.560><c> rectangular</c><00:08:31.440><c> integration</c><00:08:32.240><c> so</c><00:08:32.399><c> here</c>
+
+00:08:32.709 --> 00:08:32.719 align:start position:0%
+through rectangular integration so here
+ 
+
+00:08:32.719 --> 00:08:34.310 align:start position:0%
+through rectangular integration so here
+i<00:08:32.880><c> step</c><00:08:33.279><c> through</c>
+
+00:08:34.310 --> 00:08:34.320 align:start position:0%
+i step through
+ 
+
+00:08:34.320 --> 00:08:37.190 align:start position:0%
+i step through
+my<00:08:34.560><c> domain</c><00:08:35.120><c> size</c><00:08:35.839><c> from</c><00:08:36.159><c> zero</c><00:08:36.479><c> to</c><00:08:36.640><c> infinity</c><00:08:37.120><c> but</c>
+
+00:08:37.190 --> 00:08:37.200 align:start position:0%
+my domain size from zero to infinity but
+ 
+
+00:08:37.200 --> 00:08:38.949 align:start position:0%
+my domain size from zero to infinity but
+you<00:08:37.360><c> don't</c><00:08:37.519><c> need</c><00:08:37.599><c> to</c><00:08:37.680><c> go</c><00:08:37.839><c> that</c><00:08:38.080><c> far</c><00:08:38.399><c> for</c><00:08:38.640><c> option</c>
+
+00:08:38.949 --> 00:08:38.959 align:start position:0%
+you don't need to go that far for option
+ 
+
+00:08:38.959 --> 00:08:41.190 align:start position:0%
+you don't need to go that far for option
+pricing<00:08:39.440><c> i've</c><00:08:39.599><c> just</c><00:08:39.760><c> gone</c><00:08:40.000><c> to</c><00:08:40.159><c> 100</c><00:08:40.560><c> here</c><00:08:40.959><c> and</c>
+
+00:08:41.190 --> 00:08:41.200 align:start position:0%
+pricing i've just gone to 100 here and
+ 
+
+00:08:41.200 --> 00:08:44.149 align:start position:0%
+pricing i've just gone to 100 here and
+we're<00:08:41.360><c> going</c><00:08:41.599><c> to</c><00:08:41.760><c> take</c><00:08:42.240><c> 650</c><00:08:43.279><c> segments</c><00:08:43.919><c> now</c>
+
+00:08:44.149 --> 00:08:44.159 align:start position:0%
+we're going to take 650 segments now
+ 
+
+00:08:44.159 --> 00:08:45.990 align:start position:0%
+we're going to take 650 segments now
+it's<00:08:44.480><c> really</c><00:08:44.800><c> important</c>
+
+00:08:45.990 --> 00:08:46.000 align:start position:0%
+it's really important
+ 
+
+00:08:46.000 --> 00:08:47.350 align:start position:0%
+it's really important
+because
+
+00:08:47.350 --> 00:08:47.360 align:start position:0%
+because
+ 
+
+00:08:47.360 --> 00:08:49.910 align:start position:0%
+because
+with<00:08:47.680><c> our</c><00:08:48.000><c> complex</c><00:08:48.480><c> integration</c><00:08:49.040><c> here</c>
+
+00:08:49.910 --> 00:08:49.920 align:start position:0%
+with our complex integration here
+ 
+
+00:08:49.920 --> 00:08:52.630 align:start position:0%
+with our complex integration here
+the<00:08:50.399><c> step</c><00:08:50.720><c> size</c><00:08:51.040><c> that</c><00:08:51.200><c> you</c><00:08:51.440><c> choose</c><00:08:52.080><c> will</c>
+
+00:08:52.630 --> 00:08:52.640 align:start position:0%
+the step size that you choose will
+ 
+
+00:08:52.640 --> 00:08:54.949 align:start position:0%
+the step size that you choose will
+really<00:08:53.200><c> impact</c><00:08:53.760><c> especially</c><00:08:54.320><c> for</c><00:08:54.560><c> out</c><00:08:54.800><c> of</c><00:08:54.880><c> the</c>
+
+00:08:54.949 --> 00:08:54.959 align:start position:0%
+really impact especially for out of the
+ 
+
+00:08:54.959 --> 00:08:56.070 align:start position:0%
+really impact especially for out of the
+money
+
+00:08:56.070 --> 00:08:56.080 align:start position:0%
+money
+ 
+
+00:08:56.080 --> 00:08:57.829 align:start position:0%
+money
+options<00:08:56.560><c> will</c><00:08:56.800><c> really</c><00:08:57.120><c> impact</c><00:08:57.600><c> your</c>
+
+00:08:57.829 --> 00:08:57.839 align:start position:0%
+options will really impact your
+ 
+
+00:08:57.839 --> 00:09:00.230 align:start position:0%
+options will really impact your
+precision<00:08:58.480><c> of</c><00:08:58.640><c> calculation</c><00:08:59.600><c> and</c><00:08:59.680><c> the</c><00:08:59.839><c> reason</c>
+
+00:09:00.230 --> 00:09:00.240 align:start position:0%
+precision of calculation and the reason
+ 
+
+00:09:00.240 --> 00:09:02.230 align:start position:0%
+precision of calculation and the reason
+is<00:09:00.399><c> that</c><00:09:00.640><c> python</c><00:09:01.120><c> has</c><00:09:01.440><c> this</c><00:09:01.760><c> terrible</c>
+
+00:09:02.230 --> 00:09:02.240 align:start position:0%
+is that python has this terrible
+ 
+
+00:09:02.240 --> 00:09:03.990 align:start position:0%
+is that python has this terrible
+round-off<00:09:02.880><c> issue</c>
+
+00:09:03.990 --> 00:09:04.000 align:start position:0%
+round-off issue
+ 
+
+00:09:04.000 --> 00:09:05.509 align:start position:0%
+round-off issue
+because<00:09:04.320><c> it</c><00:09:04.480><c> stores</c><00:09:04.880><c> things</c><00:09:05.120><c> in</c><00:09:05.200><c> terms</c><00:09:05.440><c> of</c>
+
+00:09:05.509 --> 00:09:05.519 align:start position:0%
+because it stores things in terms of
+ 
+
+00:09:05.519 --> 00:09:07.910 align:start position:0%
+because it stores things in terms of
+binary<00:09:06.000><c> variables</c><00:09:06.880><c> it's</c><00:09:07.120><c> decimals</c><00:09:07.600><c> in</c><00:09:07.680><c> terms</c>
+
+00:09:07.910 --> 00:09:07.920 align:start position:0%
+binary variables it's decimals in terms
+ 
+
+00:09:07.920 --> 00:09:10.070 align:start position:0%
+binary variables it's decimals in terms
+of<00:09:08.000><c> binary</c><00:09:08.399><c> variables</c><00:09:08.880><c> we</c><00:09:09.200><c> will</c><00:09:09.519><c> talk</c><00:09:09.760><c> about</c>
+
+00:09:10.070 --> 00:09:10.080 align:start position:0%
+of binary variables we will talk about
+ 
+
+00:09:10.080 --> 00:09:13.509 align:start position:0%
+of binary variables we will talk about
+that<00:09:10.480><c> later</c><00:09:10.959><c> and</c><00:09:11.279><c> why</c><00:09:12.000><c> the</c><00:09:12.160><c> quant</c><00:09:12.560><c> lib</c><00:09:13.200><c> that's</c>
+
+00:09:13.509 --> 00:09:13.519 align:start position:0%
+that later and why the quant lib that's
+ 
+
+00:09:13.519 --> 00:09:15.750 align:start position:0%
+that later and why the quant lib that's
+implemented<00:09:14.000><c> in</c><00:09:14.240><c> c</c><00:09:14.560><c> is</c><00:09:14.720><c> much</c><00:09:14.959><c> more</c><00:09:15.200><c> effective</c>
+
+00:09:15.750 --> 00:09:15.760 align:start position:0%
+implemented in c is much more effective
+ 
+
+00:09:15.760 --> 00:09:19.030 align:start position:0%
+implemented in c is much more effective
+at<00:09:16.000><c> completing</c><00:09:16.640><c> this</c><00:09:17.120><c> numerical</c><00:09:17.760><c> integration</c>
+
+00:09:19.030 --> 00:09:19.040 align:start position:0%
+at completing this numerical integration
+ 
+
+00:09:19.040 --> 00:09:20.630 align:start position:0%
+at completing this numerical integration
+anyway
+
+00:09:20.630 --> 00:09:20.640 align:start position:0%
+anyway
+ 
+
+00:09:20.640 --> 00:09:23.110 align:start position:0%
+anyway
+we<00:09:20.800><c> can</c><00:09:21.120><c> implement</c><00:09:21.680><c> this</c><00:09:22.160><c> uh</c>
+
+00:09:23.110 --> 00:09:23.120 align:start position:0%
+we can implement this uh
+ 
+
+00:09:23.120 --> 00:09:24.310 align:start position:0%
+we can implement this uh
+this<00:09:23.360><c> equation</c><00:09:23.760><c> and</c><00:09:23.839><c> we're</c><00:09:24.000><c> going</c><00:09:24.080><c> to</c><00:09:24.160><c> take</c>
+
+00:09:24.310 --> 00:09:24.320 align:start position:0%
+this equation and we're going to take
+ 
+
+00:09:24.320 --> 00:09:27.430 align:start position:0%
+this equation and we're going to take
+the<00:09:24.480><c> real</c><00:09:24.800><c> component</c><00:09:25.680><c> of</c><00:09:26.080><c> the</c><00:09:26.399><c> option</c><00:09:26.880><c> price</c>
+
+00:09:27.430 --> 00:09:27.440 align:start position:0%
+the real component of the option price
+ 
+
+00:09:27.440 --> 00:09:29.910 align:start position:0%
+the real component of the option price
+as<00:09:27.680><c> we've</c><00:09:27.920><c> defined</c><00:09:28.480><c> in</c><00:09:28.640><c> the</c><00:09:28.800><c> formula</c>
+
+00:09:29.910 --> 00:09:29.920 align:start position:0%
+as we've defined in the formula
+ 
+
+00:09:29.920 --> 00:09:32.550 align:start position:0%
+as we've defined in the formula
+up<00:09:30.320><c> here</c><00:09:31.040><c> so</c><00:09:31.279><c> we</c><00:09:31.440><c> have</c><00:09:31.600><c> an</c><00:09:31.760><c> analytical</c>
+
+00:09:32.550 --> 00:09:32.560 align:start position:0%
+up here so we have an analytical
+ 
+
+00:09:32.560 --> 00:09:34.389 align:start position:0%
+up here so we have an analytical
+solution<00:09:33.040><c> semi-analytical</c><00:09:33.839><c> solution</c><00:09:34.240><c> we</c>
+
+00:09:34.389 --> 00:09:34.399 align:start position:0%
+solution semi-analytical solution we
+ 
+
+00:09:34.399 --> 00:09:36.630 align:start position:0%
+solution semi-analytical solution we
+still<00:09:34.560><c> need</c><00:09:34.720><c> to</c><00:09:34.800><c> compute</c><00:09:35.360><c> this</c>
+
+00:09:36.630 --> 00:09:36.640 align:start position:0%
+still need to compute this
+ 
+
+00:09:36.640 --> 00:09:39.110 align:start position:0%
+still need to compute this
+this<00:09:36.959><c> numerically</c><00:09:37.760><c> across</c><00:09:38.399><c> this</c><00:09:38.720><c> using</c>
+
+00:09:39.110 --> 00:09:39.120 align:start position:0%
+this numerically across this using
+ 
+
+00:09:39.120 --> 00:09:41.590 align:start position:0%
+this numerically across this using
+rectangular<00:09:39.839><c> integration</c>
+
+00:09:41.590 --> 00:09:41.600 align:start position:0%
+rectangular integration
+ 
+
+00:09:41.600 --> 00:09:43.269 align:start position:0%
+rectangular integration
+so<00:09:42.000><c> for</c><00:09:42.240><c> a</c><00:09:42.320><c> whole</c><00:09:42.480><c> bunch</c><00:09:42.720><c> of</c><00:09:42.800><c> strikes</c><00:09:43.200><c> i'm</c>
+
+00:09:43.269 --> 00:09:43.279 align:start position:0%
+so for a whole bunch of strikes i'm
+ 
+
+00:09:43.279 --> 00:09:46.710 align:start position:0%
+so for a whole bunch of strikes i'm
+going<00:09:43.440><c> to</c><00:09:43.519><c> take</c><00:09:43.839><c> 60</c><00:09:44.240><c> through</c><00:09:44.399><c> to</c><00:09:44.560><c> 180</c><00:09:45.600><c> with</c><00:09:45.920><c> a</c>
+
+00:09:46.710 --> 00:09:46.720 align:start position:0%
+going to take 60 through to 180 with a
+ 
+
+00:09:46.720 --> 00:09:49.750 align:start position:0%
+going to take 60 through to 180 with a
+step<00:09:47.040><c> of</c><00:09:47.200><c> one</c><00:09:47.839><c> i'm</c><00:09:48.160><c> going</c><00:09:48.560><c> to</c><00:09:49.040><c> calculate</c><00:09:49.519><c> my</c>
+
+00:09:49.750 --> 00:09:49.760 align:start position:0%
+step of one i'm going to calculate my
+ 
+
+00:09:49.760 --> 00:09:52.230 align:start position:0%
+step of one i'm going to calculate my
+option<00:09:50.080><c> prices</c><00:09:50.640><c> of</c><00:09:50.880><c> the</c><00:09:51.040><c> heston</c><00:09:51.440><c> price</c><00:09:51.839><c> using</c>
+
+00:09:52.230 --> 00:09:52.240 align:start position:0%
+option prices of the heston price using
+ 
+
+00:09:52.240 --> 00:09:54.310 align:start position:0%
+option prices of the heston price using
+rectangular<00:09:52.880><c> integration</c><00:09:53.680><c> i've</c><00:09:53.920><c> defined</c><00:09:54.240><c> all</c>
+
+00:09:54.310 --> 00:09:54.320 align:start position:0%
+rectangular integration i've defined all
+ 
+
+00:09:54.320 --> 00:09:56.550 align:start position:0%
+rectangular integration i've defined all
+my<00:09:54.480><c> variables</c><00:09:54.959><c> as</c><00:09:55.120><c> above</c><00:09:55.839><c> so</c><00:09:56.080><c> once</c><00:09:56.320><c> we've</c>
+
+00:09:56.550 --> 00:09:56.560 align:start position:0%
+my variables as above so once we've
+ 
+
+00:09:56.560 --> 00:09:58.710 align:start position:0%
+my variables as above so once we've
+calculated<00:09:57.279><c> these</c>
+
+00:09:58.710 --> 00:09:58.720 align:start position:0%
+calculated these
+ 
+
+00:09:58.720 --> 00:10:01.030 align:start position:0%
+calculated these
+option<00:09:59.040><c> prices</c><00:09:59.600><c> under</c><00:09:59.760><c> the</c><00:09:59.920><c> hester</c><00:10:00.320><c> model</c>
+
+00:10:01.030 --> 00:10:01.040 align:start position:0%
+option prices under the hester model
+ 
+
+00:10:01.040 --> 00:10:03.269 align:start position:0%
+option prices under the hester model
+then<00:10:01.519><c> we're</c><00:10:01.680><c> going</c><00:10:01.920><c> to</c><00:10:02.160><c> use</c><00:10:02.640><c> second</c><00:10:02.959><c> order</c>
+
+00:10:03.269 --> 00:10:03.279 align:start position:0%
+then we're going to use second order
+ 
+
+00:10:03.279 --> 00:10:05.590 align:start position:0%
+then we're going to use second order
+finite<00:10:03.760><c> difference</c><00:10:04.160><c> approximation</c>
+
+00:10:05.590 --> 00:10:05.600 align:start position:0%
+finite difference approximation
+ 
+
+00:10:05.600 --> 00:10:08.310 align:start position:0%
+finite difference approximation
+to<00:10:05.760><c> actually</c><00:10:06.160><c> calculate</c><00:10:06.720><c> the</c><00:10:06.880><c> risk</c><00:10:07.120><c> neutral</c>
+
+00:10:08.310 --> 00:10:08.320 align:start position:0%
+to actually calculate the risk neutral
+ 
+
+00:10:08.320 --> 00:10:11.030 align:start position:0%
+to actually calculate the risk neutral
+distribution<00:10:09.120><c> and</c><00:10:09.200><c> the</c><00:10:09.360><c> curvature</c>
+
+00:10:11.030 --> 00:10:11.040 align:start position:0%
+distribution and the curvature
+ 
+
+00:10:11.040 --> 00:10:12.870 align:start position:0%
+distribution and the curvature
+so<00:10:11.360><c> here</c>
+
+00:10:12.870 --> 00:10:12.880 align:start position:0%
+so here
+ 
+
+00:10:12.880 --> 00:10:14.630 align:start position:0%
+so here
+you'll<00:10:13.120><c> note</c><00:10:13.440><c> that</c><00:10:13.760><c> we</c><00:10:13.920><c> have</c><00:10:14.240><c> this</c><00:10:14.399><c> risk</c>
+
+00:10:14.630 --> 00:10:14.640 align:start position:0%
+you'll note that we have this risk
+ 
+
+00:10:14.640 --> 00:10:16.710 align:start position:0%
+you'll note that we have this risk
+neutral<00:10:15.040><c> distribution</c><00:10:15.920><c> as</c><00:10:16.079><c> that</c><00:10:16.320><c> forward</c>
+
+00:10:16.710 --> 00:10:16.720 align:start position:0%
+neutral distribution as that forward
+ 
+
+00:10:16.720 --> 00:10:19.269 align:start position:0%
+neutral distribution as that forward
+factor<00:10:17.279><c> times</c><00:10:17.600><c> by</c><00:10:17.920><c> a</c><00:10:18.160><c> second</c><00:10:18.480><c> order</c><00:10:18.800><c> finite</c>
+
+00:10:19.269 --> 00:10:19.279 align:start position:0%
+factor times by a second order finite
+ 
+
+00:10:19.279 --> 00:10:21.190 align:start position:0%
+factor times by a second order finite
+difference<00:10:19.600><c> approximation</c><00:10:20.640><c> so</c><00:10:20.800><c> let's</c>
+
+00:10:21.190 --> 00:10:21.200 align:start position:0%
+difference approximation so let's
+ 
+
+00:10:21.200 --> 00:10:22.790 align:start position:0%
+difference approximation so let's
+actually<00:10:21.519><c> just</c><00:10:21.760><c> place</c><00:10:22.000><c> that</c><00:10:22.160><c> within</c><00:10:22.399><c> a</c><00:10:22.480><c> data</c>
+
+00:10:22.790 --> 00:10:22.800 align:start position:0%
+actually just place that within a data
+ 
+
+00:10:22.800 --> 00:10:24.630 align:start position:0%
+actually just place that within a data
+frame<00:10:23.120><c> our</c><00:10:23.279><c> strike</c><00:10:23.600><c> in</c><00:10:23.760><c> our</c><00:10:24.000><c> option</c><00:10:24.240><c> prices</c>
+
+00:10:24.630 --> 00:10:24.640 align:start position:0%
+frame our strike in our option prices
+ 
+
+00:10:24.640 --> 00:10:26.389 align:start position:0%
+frame our strike in our option prices
+that<00:10:24.800><c> we</c><00:10:24.880><c> have</c><00:10:25.040><c> above</c><00:10:25.760><c> and</c><00:10:25.920><c> then</c><00:10:26.079><c> we're</c><00:10:26.240><c> going</c>
+
+00:10:26.389 --> 00:10:26.399 align:start position:0%
+that we have above and then we're going
+ 
+
+00:10:26.399 --> 00:10:28.870 align:start position:0%
+that we have above and then we're going
+to<00:10:26.560><c> use</c><00:10:26.720><c> the</c><00:10:26.959><c> shift</c><00:10:27.279><c> function</c><00:10:27.920><c> to</c><00:10:28.079><c> get</c><00:10:28.560><c> the</c>
+
+00:10:28.870 --> 00:10:28.880 align:start position:0%
+to use the shift function to get the
+ 
+
+00:10:28.880 --> 00:10:31.110 align:start position:0%
+to use the shift function to get the
+strike<00:10:29.279><c> price</c><00:10:29.680><c> above</c><00:10:30.079><c> and</c><00:10:30.160><c> the</c><00:10:30.320><c> strike</c><00:10:30.640><c> price</c>
+
+00:10:31.110 --> 00:10:31.120 align:start position:0%
+strike price above and the strike price
+ 
+
+00:10:31.120 --> 00:10:32.470 align:start position:0%
+strike price above and the strike price
+below
+
+00:10:32.470 --> 00:10:32.480 align:start position:0%
+below
+ 
+
+00:10:32.480 --> 00:10:34.710 align:start position:0%
+below
+so<00:10:32.720><c> here</c><00:10:32.880><c> we've</c><00:10:33.040><c> got</c><00:10:33.360><c> minus</c><00:10:33.920><c> two</c><00:10:34.320><c> of</c><00:10:34.480><c> the</c>
+
+00:10:34.710 --> 00:10:34.720 align:start position:0%
+so here we've got minus two of the
+ 
+
+00:10:34.720 --> 00:10:38.550 align:start position:0%
+so here we've got minus two of the
+current<00:10:35.519><c> uh</c><00:10:35.839><c> call</c><00:10:36.399><c> option</c><00:10:37.040><c> prices</c><00:10:38.000><c> so</c><00:10:38.240><c> two</c>
+
+00:10:38.550 --> 00:10:38.560 align:start position:0%
+current uh call option prices so two
+ 
+
+00:10:38.560 --> 00:10:40.790 align:start position:0%
+current uh call option prices so two
+times<00:10:38.880><c> that</c><00:10:39.360><c> that</c><00:10:39.600><c> price</c><00:10:39.920><c> here</c><00:10:40.399><c> then</c><00:10:40.640><c> we've</c>
+
+00:10:40.790 --> 00:10:40.800 align:start position:0%
+times that that price here then we've
+ 
+
+00:10:40.800 --> 00:10:43.990 align:start position:0%
+times that that price here then we've
+got<00:10:41.200><c> plus</c><00:10:42.079><c> uh</c><00:10:42.399><c> the</c><00:10:42.640><c> next</c><00:10:42.959><c> strike</c><00:10:43.360><c> above</c><00:10:43.680><c> so</c><00:10:43.839><c> we</c>
+
+00:10:43.990 --> 00:10:44.000 align:start position:0%
+got plus uh the next strike above so we
+ 
+
+00:10:44.000 --> 00:10:47.110 align:start position:0%
+got plus uh the next strike above so we
+just<00:10:44.240><c> use</c><00:10:44.640><c> the</c><00:10:44.880><c> shift</c><00:10:45.360><c> by</c><00:10:45.680><c> one</c><00:10:46.160><c> function</c><00:10:46.959><c> in</c>
+
+00:10:47.110 --> 00:10:47.120 align:start position:0%
+just use the shift by one function in
+ 
+
+00:10:47.120 --> 00:10:48.790 align:start position:0%
+just use the shift by one function in
+pandas<00:10:47.519><c> data</c><00:10:47.839><c> frame</c>
+
+00:10:48.790 --> 00:10:48.800 align:start position:0%
+pandas data frame
+ 
+
+00:10:48.800 --> 00:10:51.110 align:start position:0%
+pandas data frame
+and<00:10:48.880><c> we're</c><00:10:49.040><c> going</c><00:10:49.279><c> to</c><00:10:49.360><c> add</c><00:10:49.680><c> the</c><00:10:49.920><c> shift</c><00:10:50.560><c> price</c>
+
+00:10:51.110 --> 00:10:51.120 align:start position:0%
+and we're going to add the shift price
+ 
+
+00:10:51.120 --> 00:10:53.990 align:start position:0%
+and we're going to add the shift price
+minus<00:10:51.600><c> one</c><00:10:51.920><c> so</c><00:10:52.320><c> the</c><00:10:52.480><c> strike</c><00:10:53.040><c> below</c><00:10:53.680><c> then</c><00:10:53.839><c> we're</c>
+
+00:10:53.990 --> 00:10:54.000 align:start position:0%
+minus one so the strike below then we're
+ 
+
+00:10:54.000 --> 00:10:56.710 align:start position:0%
+minus one so the strike below then we're
+going<00:10:54.320><c> to</c><00:10:54.560><c> divide</c><00:10:55.200><c> that</c><00:10:55.519><c> whole</c><00:10:55.839><c> summation</c>
+
+00:10:56.710 --> 00:10:56.720 align:start position:0%
+going to divide that whole summation
+ 
+
+00:10:56.720 --> 00:10:57.670 align:start position:0%
+going to divide that whole summation
+through
+
+00:10:57.670 --> 00:10:57.680 align:start position:0%
+through
+ 
+
+00:10:57.680 --> 00:11:00.470 align:start position:0%
+through
+by<00:10:58.240><c> the</c><00:10:58.480><c> step</c><00:10:58.880><c> size</c><00:10:59.279><c> squared</c><00:10:59.680><c> that</c><00:10:59.839><c> we</c><00:11:00.079><c> took</c><00:11:00.320><c> in</c>
+
+00:11:00.470 --> 00:11:00.480 align:start position:0%
+by the step size squared that we took in
+ 
+
+00:11:00.480 --> 00:11:03.590 align:start position:0%
+by the step size squared that we took in
+the<00:11:00.640><c> step</c><00:11:00.880><c> size</c><00:11:01.200><c> of</c><00:11:01.279><c> course</c><00:11:01.600><c> with</c><00:11:01.839><c> just</c><00:11:02.480><c> one</c>
+
+00:11:03.590 --> 00:11:03.600 align:start position:0%
+the step size of course with just one
+ 
+
+00:11:03.600 --> 00:11:06.710 align:start position:0%
+the step size of course with just one
+strike
+
+00:11:06.710 --> 00:11:06.720 align:start position:0%
+ 
+ 
+
+00:11:06.720 --> 00:11:09.590 align:start position:0%
+ 
+so<00:11:07.360><c> we</c><00:11:07.519><c> did</c><00:11:07.680><c> that</c><00:11:07.839><c> by</c><00:11:08.079><c> definition</c><00:11:08.959><c> when</c><00:11:09.200><c> we</c>
+
+00:11:09.590 --> 00:11:09.600 align:start position:0%
+so we did that by definition when we
+ 
+
+00:11:09.600 --> 00:11:12.829 align:start position:0%
+so we did that by definition when we
+defined<00:11:10.160><c> and</c><00:11:10.320><c> calculated</c><00:11:11.040><c> our</c><00:11:11.519><c> option</c>
+
+00:11:12.829 --> 00:11:12.839 align:start position:0%
+defined and calculated our option
+ 
+
+00:11:12.839 --> 00:11:16.150 align:start position:0%
+defined and calculated our option
+prices<00:11:14.079><c> so</c><00:11:14.480><c> let's</c><00:11:14.880><c> plot</c><00:11:15.440><c> what</c><00:11:15.680><c> that</c><00:11:15.920><c> looks</c>
+
+00:11:16.150 --> 00:11:16.160 align:start position:0%
+prices so let's plot what that looks
+ 
+
+00:11:16.160 --> 00:11:17.509 align:start position:0%
+prices so let's plot what that looks
+like
+
+00:11:17.509 --> 00:11:17.519 align:start position:0%
+like
+ 
+
+00:11:17.519 --> 00:11:22.949 align:start position:0%
+like
+and<00:11:17.680><c> what</c><00:11:17.920><c> that</c><00:11:18.320><c> curvature</c><00:11:19.120><c> looks</c><00:11:19.360><c> like</c>
+
+00:11:22.949 --> 00:11:22.959 align:start position:0%
+ 
+ 
+
+00:11:22.959 --> 00:11:25.670 align:start position:0%
+ 
+so<00:11:23.120><c> here</c><00:11:23.360><c> we</c><00:11:23.600><c> have</c><00:11:23.920><c> our</c><00:11:24.399><c> heston</c>
+
+00:11:25.670 --> 00:11:25.680 align:start position:0%
+so here we have our heston
+ 
+
+00:11:25.680 --> 00:11:27.910 align:start position:0%
+so here we have our heston
+stochastic<00:11:26.160><c> volatility</c><00:11:26.800><c> calculated</c><00:11:27.519><c> option</c>
+
+00:11:27.910 --> 00:11:27.920 align:start position:0%
+stochastic volatility calculated option
+ 
+
+00:11:27.920 --> 00:11:30.389 align:start position:0%
+stochastic volatility calculated option
+prices<00:11:28.720><c> and</c><00:11:28.880><c> that's</c><00:11:29.120><c> in</c><00:11:29.279><c> the</c><00:11:29.360><c> blue</c><00:11:30.000><c> and</c><00:11:30.079><c> then</c>
+
+00:11:30.389 --> 00:11:30.399 align:start position:0%
+prices and that's in the blue and then
+ 
+
+00:11:30.399 --> 00:11:33.190 align:start position:0%
+prices and that's in the blue and then
+here<00:11:30.720><c> we've</c><00:11:31.040><c> got</c><00:11:31.279><c> our</c><00:11:31.680><c> curvature</c>
+
+00:11:33.190 --> 00:11:33.200 align:start position:0%
+here we've got our curvature
+ 
+
+00:11:33.200 --> 00:11:35.990 align:start position:0%
+here we've got our curvature
+on<00:11:33.360><c> the</c><00:11:33.600><c> y-axis</c><00:11:34.880><c> which</c><00:11:35.120><c> is</c><00:11:35.279><c> really</c><00:11:35.760><c> the</c>
+
+00:11:35.990 --> 00:11:36.000 align:start position:0%
+on the y-axis which is really the
+ 
+
+00:11:36.000 --> 00:11:38.230 align:start position:0%
+on the y-axis which is really the
+density<00:11:36.640><c> function</c><00:11:37.279><c> now</c><00:11:37.600><c> here</c><00:11:37.839><c> i</c><00:11:38.000><c> haven't</c>
+
+00:11:38.230 --> 00:11:38.240 align:start position:0%
+density function now here i haven't
+ 
+
+00:11:38.240 --> 00:11:40.150 align:start position:0%
+density function now here i haven't
+taken<00:11:38.560><c> the</c><00:11:38.640><c> forward</c><00:11:38.959><c> factor</c>
+
+00:11:40.150 --> 00:11:40.160 align:start position:0%
+taken the forward factor
+ 
+
+00:11:40.160 --> 00:11:42.550 align:start position:0%
+taken the forward factor
+so<00:11:40.399><c> it's</c><00:11:40.560><c> approximately</c><00:11:41.200><c> the</c><00:11:41.360><c> pdf</c><00:11:41.839><c> here</c><00:11:42.399><c> and</c>
+
+00:11:42.550 --> 00:11:42.560 align:start position:0%
+so it's approximately the pdf here and
+ 
+
+00:11:42.560 --> 00:11:44.710 align:start position:0%
+so it's approximately the pdf here and
+we'll<00:11:42.720><c> do</c><00:11:42.880><c> that</c><00:11:43.200><c> in</c><00:11:43.279><c> the</c><00:11:43.440><c> next</c><00:11:43.680><c> step</c><00:11:44.240><c> but</c><00:11:44.480><c> see</c>
+
+00:11:44.710 --> 00:11:44.720 align:start position:0%
+we'll do that in the next step but see
+ 
+
+00:11:44.720 --> 00:11:47.910 align:start position:0%
+we'll do that in the next step but see
+here<00:11:45.040><c> we've</c><00:11:45.279><c> got</c><00:11:45.519><c> some</c><00:11:45.839><c> issues</c><00:11:46.399><c> because</c>
+
+00:11:47.910 --> 00:11:47.920 align:start position:0%
+here we've got some issues because
+ 
+
+00:11:47.920 --> 00:11:50.069 align:start position:0%
+here we've got some issues because
+on<00:11:48.079><c> the</c><00:11:48.160><c> left</c><00:11:48.399><c> hand</c><00:11:48.720><c> side</c><00:11:49.200><c> you</c><00:11:49.360><c> can</c><00:11:49.600><c> see</c><00:11:49.839><c> here</c>
+
+00:11:50.069 --> 00:11:50.079 align:start position:0%
+on the left hand side you can see here
+ 
+
+00:11:50.079 --> 00:11:52.710 align:start position:0%
+on the left hand side you can see here
+how<00:11:50.240><c> the</c><00:11:50.399><c> curvature</c><00:11:50.959><c> actually</c><00:11:51.440><c> dips</c><00:11:51.839><c> below</c>
+
+00:11:52.710 --> 00:11:52.720 align:start position:0%
+how the curvature actually dips below
+ 
+
+00:11:52.720 --> 00:11:55.110 align:start position:0%
+how the curvature actually dips below
+zero<00:11:53.279><c> so</c><00:11:53.440><c> we</c><00:11:53.600><c> have</c><00:11:53.839><c> a</c><00:11:53.920><c> density</c><00:11:54.480><c> that's</c><00:11:54.800><c> below</c>
+
+00:11:55.110 --> 00:11:55.120 align:start position:0%
+zero so we have a density that's below
+ 
+
+00:11:55.120 --> 00:11:57.430 align:start position:0%
+zero so we have a density that's below
+zero<00:11:55.440><c> so</c><00:11:55.519><c> obviously</c><00:11:55.920><c> that</c><00:11:56.079><c> doesn't</c><00:11:56.399><c> hold</c><00:11:57.040><c> and</c>
+
+00:11:57.430 --> 00:11:57.440 align:start position:0%
+zero so obviously that doesn't hold and
+ 
+
+00:11:57.440 --> 00:11:58.790 align:start position:0%
+zero so obviously that doesn't hold and
+therefore
+
+00:11:58.790 --> 00:11:58.800 align:start position:0%
+therefore
+ 
+
+00:11:58.800 --> 00:12:02.150 align:start position:0%
+therefore
+this<00:11:59.040><c> is</c><00:11:59.200><c> just</c><00:11:59.519><c> impactful</c><00:12:00.399><c> by</c><00:12:00.880><c> the</c><00:12:01.519><c> roundoff</c>
+
+00:12:02.150 --> 00:12:02.160 align:start position:0%
+this is just impactful by the roundoff
+ 
+
+00:12:02.160 --> 00:12:04.710 align:start position:0%
+this is just impactful by the roundoff
+errors<00:12:02.639><c> as</c><00:12:02.720><c> you</c><00:12:02.880><c> get</c><00:12:03.200><c> out</c><00:12:03.360><c> of</c><00:12:03.519><c> the</c><00:12:03.600><c> money</c>
+
+00:12:04.710 --> 00:12:04.720 align:start position:0%
+errors as you get out of the money
+ 
+
+00:12:04.720 --> 00:12:06.790 align:start position:0%
+errors as you get out of the money
+the<00:12:05.120><c> calculation</c><00:12:05.920><c> with</c><00:12:06.079><c> our</c><00:12:06.240><c> rectangular</c>
+
+00:12:06.790 --> 00:12:06.800 align:start position:0%
+the calculation with our rectangular
+ 
+
+00:12:06.800 --> 00:12:11.030 align:start position:0%
+the calculation with our rectangular
+integration<00:12:07.360><c> function</c><00:12:08.079><c> does</c><00:12:08.320><c> not</c><00:12:08.639><c> do</c><00:12:08.880><c> so</c><00:12:09.120><c> well</c>
+
+00:12:11.030 --> 00:12:11.040 align:start position:0%
+integration function does not do so well
+ 
+
+00:12:11.040 --> 00:12:12.870 align:start position:0%
+integration function does not do so well
+so<00:12:11.279><c> let's</c><00:12:11.519><c> compare</c><00:12:11.839><c> this</c><00:12:11.920><c> with</c><00:12:12.079><c> the</c><00:12:12.160><c> quant</c><00:12:12.480><c> lib</c>
+
+00:12:12.870 --> 00:12:12.880 align:start position:0%
+so let's compare this with the quant lib
+ 
+
+00:12:12.880 --> 00:12:15.829 align:start position:0%
+so let's compare this with the quant lib
+hester<00:12:13.279><c> model</c><00:12:14.000><c> so</c><00:12:14.240><c> here</c><00:12:14.639><c> we've</c><00:12:15.200><c> taken</c><00:12:15.600><c> a</c><00:12:15.680><c> lot</c>
+
+00:12:15.829 --> 00:12:15.839 align:start position:0%
+hester model so here we've taken a lot
+ 
+
+00:12:15.839 --> 00:12:17.910 align:start position:0%
+hester model so here we've taken a lot
+of<00:12:15.920><c> this</c><00:12:16.079><c> code</c><00:12:16.399><c> from</c><00:12:16.800><c> quant</c><00:12:17.120><c> stack</c><00:12:17.440><c> exchange</c>
+
+00:12:17.910 --> 00:12:17.920 align:start position:0%
+of this code from quant stack exchange
+ 
+
+00:12:17.920 --> 00:12:20.069 align:start position:0%
+of this code from quant stack exchange
+on<00:12:18.079><c> this</c><00:12:18.240><c> question</c><00:12:18.639><c> here</c><00:12:19.200><c> which</c><00:12:19.440><c> is</c><00:12:19.600><c> computing</c>
+
+00:12:20.069 --> 00:12:20.079 align:start position:0%
+on this question here which is computing
+ 
+
+00:12:20.079 --> 00:12:21.590 align:start position:0%
+on this question here which is computing
+the<00:12:20.160><c> probability</c><00:12:20.639><c> density</c><00:12:21.040><c> function</c><00:12:21.360><c> of</c><00:12:21.519><c> the</c>
+
+00:12:21.590 --> 00:12:21.600 align:start position:0%
+the probability density function of the
+ 
+
+00:12:21.600 --> 00:12:23.590 align:start position:0%
+the probability density function of the
+hester<00:12:21.920><c> model</c><00:12:22.320><c> go</c><00:12:22.480><c> figure</c>
+
+00:12:23.590 --> 00:12:23.600 align:start position:0%
+hester model go figure
+ 
+
+00:12:23.600 --> 00:12:25.670 align:start position:0%
+hester model go figure
+i<00:12:23.839><c> haven't</c><00:12:24.160><c> used</c><00:12:24.399><c> quant</c><00:12:24.800><c> lib</c>
+
+00:12:25.670 --> 00:12:25.680 align:start position:0%
+i haven't used quant lib
+ 
+
+00:12:25.680 --> 00:12:27.829 align:start position:0%
+i haven't used quant lib
+a<00:12:25.839><c> lot</c><00:12:26.240><c> but</c><00:12:26.639><c> obviously</c><00:12:27.120><c> i</c><00:12:27.279><c> think</c><00:12:27.440><c> it</c><00:12:27.519><c> would</c><00:12:27.680><c> be</c>
+
+00:12:27.829 --> 00:12:27.839 align:start position:0%
+a lot but obviously i think it would be
+ 
+
+00:12:27.839 --> 00:12:29.590 align:start position:0%
+a lot but obviously i think it would be
+good<00:12:28.000><c> going</c><00:12:28.320><c> forward</c><00:12:28.560><c> to</c><00:12:28.639><c> actually</c><00:12:28.959><c> benchmark</c>
+
+00:12:29.590 --> 00:12:29.600 align:start position:0%
+good going forward to actually benchmark
+ 
+
+00:12:29.600 --> 00:12:30.949 align:start position:0%
+good going forward to actually benchmark
+a lot<00:12:29.760><c> of</c><00:12:29.839><c> the</c><00:12:30.079><c> models</c><00:12:30.399><c> that</c><00:12:30.560><c> we're</c>
+
+00:12:30.949 --> 00:12:30.959 align:start position:0%
+a lot of the models that we're
+ 
+
+00:12:30.959 --> 00:12:33.190 align:start position:0%
+a lot of the models that we're
+implementing<00:12:31.519><c> here</c><00:12:31.760><c> in</c><00:12:31.920><c> python</c><00:12:32.880><c> with</c><00:12:33.040><c> the</c>
+
+00:12:33.190 --> 00:12:33.200 align:start position:0%
+implementing here in python with the
+ 
+
+00:12:33.200 --> 00:12:35.110 align:start position:0%
+implementing here in python with the
+quant<00:12:33.440><c> lib</c><00:12:33.920><c> library</c>
+
+00:12:35.110 --> 00:12:35.120 align:start position:0%
+quant lib library
+ 
+
+00:12:35.120 --> 00:12:36.389 align:start position:0%
+quant lib library
+so
+
+00:12:36.389 --> 00:12:36.399 align:start position:0%
+so
+ 
+
+00:12:36.399 --> 00:12:39.430 align:start position:0%
+so
+here<00:12:36.720><c> you</c><00:12:36.959><c> have</c><00:12:37.120><c> to</c><00:12:37.839><c> define</c><00:12:38.399><c> your</c><00:12:38.639><c> date</c><00:12:38.880><c> ranges</c>
+
+00:12:39.430 --> 00:12:39.440 align:start position:0%
+here you have to define your date ranges
+ 
+
+00:12:39.440 --> 00:12:40.710 align:start position:0%
+here you have to define your date ranges
+of<00:12:39.600><c> the</c><00:12:39.760><c> product</c><00:12:40.079><c> that</c><00:12:40.160><c> you're</c><00:12:40.399><c> actually</c>
+
+00:12:40.710 --> 00:12:40.720 align:start position:0%
+of the product that you're actually
+ 
+
+00:12:40.720 --> 00:12:42.069 align:start position:0%
+of the product that you're actually
+valuing
+
+00:12:42.069 --> 00:12:42.079 align:start position:0%
+valuing
+ 
+
+00:12:42.079 --> 00:12:43.509 align:start position:0%
+valuing
+setting<00:12:42.399><c> up</c><00:12:42.480><c> your</c><00:12:42.639><c> discount</c><00:12:43.120><c> curve</c><00:12:43.440><c> and</c>
+
+00:12:43.509 --> 00:12:43.519 align:start position:0%
+setting up your discount curve and
+ 
+
+00:12:43.519 --> 00:12:44.949 align:start position:0%
+setting up your discount curve and
+you've<00:12:43.600><c> got</c><00:12:43.680><c> a</c><00:12:43.760><c> flat</c><00:12:44.000><c> curve</c><00:12:44.320><c> and</c><00:12:44.399><c> then</c><00:12:44.560><c> a</c><00:12:44.639><c> yield</c>
+
+00:12:44.949 --> 00:12:44.959 align:start position:0%
+you've got a flat curve and then a yield
+ 
+
+00:12:44.959 --> 00:12:46.389 align:start position:0%
+you've got a flat curve and then a yield
+curve
+
+00:12:46.389 --> 00:12:46.399 align:start position:0%
+curve
+ 
+
+00:12:46.399 --> 00:12:49.670 align:start position:0%
+curve
+then<00:12:46.720><c> you</c><00:12:46.880><c> need</c><00:12:47.200><c> to</c><00:12:47.680><c> have</c><00:12:48.160><c> a</c><00:12:48.560><c> heston</c><00:12:48.959><c> model</c><00:12:49.360><c> so</c>
+
+00:12:49.670 --> 00:12:49.680 align:start position:0%
+then you need to have a heston model so
+ 
+
+00:12:49.680 --> 00:12:52.389 align:start position:0%
+then you need to have a heston model so
+you<00:12:50.000><c> define</c><00:12:50.399><c> your</c><00:12:50.560><c> heston</c><00:12:51.040><c> process</c><00:12:51.680><c> with</c><00:12:52.160><c> all</c>
+
+00:12:52.389 --> 00:12:52.399 align:start position:0%
+you define your heston process with all
+ 
+
+00:12:52.399 --> 00:12:54.949 align:start position:0%
+you define your heston process with all
+the<00:12:52.560><c> factors</c><00:12:53.440><c> that</c><00:12:53.760><c> we</c><00:12:54.079><c> have</c>
+
+00:12:54.949 --> 00:12:54.959 align:start position:0%
+the factors that we have
+ 
+
+00:12:54.959 --> 00:12:56.870 align:start position:0%
+the factors that we have
+identified<00:12:55.519><c> above</c><00:12:55.839><c> so</c><00:12:56.000><c> your</c><00:12:56.079><c> spot</c><00:12:56.399><c> price</c><00:12:56.720><c> and</c>
+
+00:12:56.870 --> 00:12:56.880 align:start position:0%
+identified above so your spot price and
+ 
+
+00:12:56.880 --> 00:12:59.910 align:start position:0%
+identified above so your spot price and
+then<00:12:57.440><c> your</c><00:12:58.160><c> initial</c><00:12:58.480><c> volatility</c><00:12:59.040><c> kappa</c><00:12:59.440><c> theta</c>
+
+00:12:59.910 --> 00:12:59.920 align:start position:0%
+then your initial volatility kappa theta
+ 
+
+00:12:59.920 --> 00:13:01.430 align:start position:0%
+then your initial volatility kappa theta
+sigma<00:13:00.399><c> and</c><00:13:00.560><c> rho</c>
+
+00:13:01.430 --> 00:13:01.440 align:start position:0%
+sigma and rho
+ 
+
+00:13:01.440 --> 00:13:03.990 align:start position:0%
+sigma and rho
+and<00:13:01.680><c> then</c><00:13:02.079><c> you</c><00:13:02.639><c> create</c><00:13:03.120><c> the</c><00:13:03.200><c> model</c><00:13:03.600><c> from</c><00:13:03.839><c> the</c>
+
+00:13:03.990 --> 00:13:04.000 align:start position:0%
+and then you create the model from the
+ 
+
+00:13:04.000 --> 00:13:05.350 align:start position:0%
+and then you create the model from the
+process
+
+00:13:05.350 --> 00:13:05.360 align:start position:0%
+process
+ 
+
+00:13:05.360 --> 00:13:08.069 align:start position:0%
+process
+you<00:13:05.519><c> have</c><00:13:05.760><c> this</c><00:13:06.160><c> heston</c><00:13:06.720><c> handle</c>
+
+00:13:08.069 --> 00:13:08.079 align:start position:0%
+you have this heston handle
+ 
+
+00:13:08.079 --> 00:13:09.910 align:start position:0%
+you have this heston handle
+model<00:13:08.480><c> handle</c>
+
+00:13:09.910 --> 00:13:09.920 align:start position:0%
+model handle
+ 
+
+00:13:09.920 --> 00:13:12.470 align:start position:0%
+model handle
+class<00:13:10.480><c> and</c><00:13:10.720><c> then</c><00:13:11.120><c> that</c><00:13:11.440><c> goes</c><00:13:11.760><c> into</c><00:13:12.160><c> creating</c>
+
+00:13:12.470 --> 00:13:12.480 align:start position:0%
+class and then that goes into creating
+ 
+
+00:13:12.480 --> 00:13:15.829 align:start position:0%
+class and then that goes into creating
+your<00:13:12.639><c> heston</c><00:13:13.200><c> black</c><00:13:13.680><c> vole</c><00:13:14.240><c> surface</c><00:13:15.120><c> now</c><00:13:15.519><c> from</c>
+
+00:13:15.829 --> 00:13:15.839 align:start position:0%
+your heston black vole surface now from
+ 
+
+00:13:15.839 --> 00:13:17.829 align:start position:0%
+your heston black vole surface now from
+that<00:13:16.000><c> we</c><00:13:16.160><c> can</c><00:13:16.320><c> use</c><00:13:16.560><c> the</c><00:13:16.720><c> dot</c><00:13:16.959><c> black</c><00:13:17.279><c> foal</c>
+
+00:13:17.829 --> 00:13:17.839 align:start position:0%
+that we can use the dot black foal
+ 
+
+00:13:17.839 --> 00:13:19.110 align:start position:0%
+that we can use the dot black foal
+function
+
+00:13:19.110 --> 00:13:19.120 align:start position:0%
+function
+ 
+
+00:13:19.120 --> 00:13:21.910 align:start position:0%
+function
+for<00:13:19.279><c> a</c><00:13:19.360><c> particular</c><00:13:20.320><c> time</c><00:13:20.560><c> to</c><00:13:20.720><c> maturity</c><00:13:21.519><c> and</c><00:13:21.760><c> a</c>
+
+00:13:21.910 --> 00:13:21.920 align:start position:0%
+for a particular time to maturity and a
+ 
+
+00:13:21.920 --> 00:13:25.030 align:start position:0%
+for a particular time to maturity and a
+particular<00:13:22.639><c> strike</c><00:13:23.519><c> k</c>
+
+00:13:25.030 --> 00:13:25.040 align:start position:0%
+particular strike k
+ 
+
+00:13:25.040 --> 00:13:28.310 align:start position:0%
+particular strike k
+so<00:13:25.440><c> once</c><00:13:25.839><c> we've</c><00:13:26.079><c> got</c><00:13:26.320><c> our</c><00:13:26.560><c> voles</c><00:13:27.200><c> we</c><00:13:27.440><c> can</c><00:13:27.680><c> then</c>
+
+00:13:28.310 --> 00:13:28.320 align:start position:0%
+so once we've got our voles we can then
+ 
+
+00:13:28.320 --> 00:13:30.389 align:start position:0%
+so once we've got our voles we can then
+use<00:13:28.639><c> that</c><00:13:28.880><c> to</c><00:13:29.120><c> calculate</c>
+
+00:13:30.389 --> 00:13:30.399 align:start position:0%
+use that to calculate
+ 
+
+00:13:30.399 --> 00:13:34.069 align:start position:0%
+use that to calculate
+the<00:13:30.560><c> correct</c><00:13:31.360><c> heston</c><00:13:32.320><c> pricing</c><00:13:33.120><c> method</c><00:13:33.760><c> given</c>
+
+00:13:34.069 --> 00:13:34.079 align:start position:0%
+the correct heston pricing method given
+ 
+
+00:13:34.079 --> 00:13:37.269 align:start position:0%
+the correct heston pricing method given
+the<00:13:34.240><c> heston</c><00:13:34.959><c> analytical</c><00:13:35.920><c> engine</c><00:13:36.720><c> so</c><00:13:37.040><c> once</c>
+
+00:13:37.269 --> 00:13:37.279 align:start position:0%
+the heston analytical engine so once
+ 
+
+00:13:37.279 --> 00:13:39.030 align:start position:0%
+the heston analytical engine so once
+we've<00:13:37.440><c> got</c><00:13:37.600><c> the</c><00:13:37.760><c> heston</c><00:13:38.160><c> prices</c><00:13:38.639><c> we</c><00:13:38.800><c> just</c>
+
+00:13:39.030 --> 00:13:39.040 align:start position:0%
+we've got the heston prices we just
+ 
+
+00:13:39.040 --> 00:13:40.150 align:start position:0%
+we've got the heston prices we just
+append<00:13:39.360><c> that</c>
+
+00:13:40.150 --> 00:13:40.160 align:start position:0%
+append that
+ 
+
+00:13:40.160 --> 00:13:42.150 align:start position:0%
+append that
+as<00:13:40.320><c> the</c><00:13:40.399><c> discounted</c><00:13:41.040><c> expectation</c><00:13:41.680><c> of</c><00:13:41.839><c> those</c>
+
+00:13:42.150 --> 00:13:42.160 align:start position:0%
+as the discounted expectation of those
+ 
+
+00:13:42.160 --> 00:13:45.350 align:start position:0%
+as the discounted expectation of those
+prices<00:13:42.959><c> and</c><00:13:43.279><c> then</c><00:13:43.600><c> we</c><00:13:43.760><c> can</c><00:13:44.000><c> add</c><00:13:44.320><c> that</c><00:13:44.639><c> into</c><00:13:45.120><c> our</c>
+
+00:13:45.350 --> 00:13:45.360 align:start position:0%
+prices and then we can add that into our
+ 
+
+00:13:45.360 --> 00:13:47.269 align:start position:0%
+prices and then we can add that into our
+pandas<00:13:45.839><c> data</c><00:13:46.160><c> frame</c>
+
+00:13:47.269 --> 00:13:47.279 align:start position:0%
+pandas data frame
+ 
+
+00:13:47.279 --> 00:13:48.949 align:start position:0%
+pandas data frame
+so<00:13:47.519><c> let's</c><00:13:47.760><c> compare</c><00:13:48.160><c> our</c><00:13:48.320><c> rectangular</c>
+
+00:13:48.949 --> 00:13:48.959 align:start position:0%
+so let's compare our rectangular
+ 
+
+00:13:48.959 --> 00:13:52.550 align:start position:0%
+so let's compare our rectangular
+integration<00:13:50.000><c> with</c><00:13:50.480><c> our</c><00:13:50.959><c> quant</c><00:13:51.760><c> library</c><00:13:52.399><c> so</c>
+
+00:13:52.550 --> 00:13:52.560 align:start position:0%
+integration with our quant library so
+ 
+
+00:13:52.560 --> 00:13:53.990 align:start position:0%
+integration with our quant library so
+here<00:13:52.720><c> you</c><00:13:52.800><c> can</c><00:13:52.959><c> see</c><00:13:53.279><c> we're</c><00:13:53.600><c> actually</c><00:13:53.839><c> just</c>
+
+00:13:53.990 --> 00:13:54.000 align:start position:0%
+here you can see we're actually just
+ 
+
+00:13:54.000 --> 00:13:55.750 align:start position:0%
+here you can see we're actually just
+calculating<00:13:54.639><c> that</c><00:13:54.800><c> exact</c><00:13:55.040><c> same</c><00:13:55.279><c> graph</c><00:13:55.600><c> as</c>
+
+00:13:55.750 --> 00:13:55.760 align:start position:0%
+calculating that exact same graph as
+ 
+
+00:13:55.760 --> 00:13:58.790 align:start position:0%
+calculating that exact same graph as
+before<00:13:56.079><c> we</c><00:13:56.240><c> have</c><00:13:56.480><c> call</c><00:13:56.800><c> prices</c><00:13:57.279><c> in</c><00:13:57.360><c> blue</c>
+
+00:13:58.790 --> 00:13:58.800 align:start position:0%
+before we have call prices in blue
+ 
+
+00:13:58.800 --> 00:14:00.470 align:start position:0%
+before we have call prices in blue
+on<00:13:58.880><c> the</c><00:13:58.959><c> main</c><00:13:59.279><c> axis</c><00:13:59.600><c> and</c><00:13:59.680><c> then</c><00:13:59.839><c> on</c><00:14:00.000><c> the</c><00:14:00.079><c> y</c>
+
+00:14:00.470 --> 00:14:00.480 align:start position:0%
+on the main axis and then on the y
+ 
+
+00:14:00.480 --> 00:14:02.389 align:start position:0%
+on the main axis and then on the y
+second<00:14:00.800><c> y</c><00:14:01.040><c> axis</c><00:14:01.360><c> here</c><00:14:01.839><c> we've</c><00:14:02.000><c> got</c><00:14:02.160><c> that</c>
+
+00:14:02.389 --> 00:14:02.399 align:start position:0%
+second y axis here we've got that
+ 
+
+00:14:02.399 --> 00:14:03.590 align:start position:0%
+second y axis here we've got that
+density
+
+00:14:03.590 --> 00:14:03.600 align:start position:0%
+density
+ 
+
+00:14:03.600 --> 00:14:05.110 align:start position:0%
+density
+and<00:14:03.680><c> the</c><00:14:03.839><c> difference</c><00:14:04.160><c> is</c><00:14:04.320><c> you</c><00:14:04.480><c> can</c><00:14:04.560><c> see</c><00:14:04.959><c> that</c>
+
+00:14:05.110 --> 00:14:05.120 align:start position:0%
+and the difference is you can see that
+ 
+
+00:14:05.120 --> 00:14:08.550 align:start position:0%
+and the difference is you can see that
+the<00:14:05.279><c> density</c><00:14:05.760><c> has</c><00:14:06.000><c> not</c><00:14:06.240><c> dropped</c><00:14:06.639><c> below</c><00:14:07.120><c> zero</c>
+
+00:14:08.550 --> 00:14:08.560 align:start position:0%
+the density has not dropped below zero
+ 
+
+00:14:08.560 --> 00:14:10.870 align:start position:0%
+the density has not dropped below zero
+which<00:14:08.800><c> is</c><00:14:09.040><c> ideal</c><00:14:09.600><c> for</c><00:14:09.760><c> a</c><00:14:09.839><c> probability</c><00:14:10.480><c> density</c>
+
+00:14:10.870 --> 00:14:10.880 align:start position:0%
+which is ideal for a probability density
+ 
+
+00:14:10.880 --> 00:14:13.110 align:start position:0%
+which is ideal for a probability density
+function<00:14:11.680><c> so</c>
+
+00:14:13.110 --> 00:14:13.120 align:start position:0%
+function so
+ 
+
+00:14:13.120 --> 00:14:14.629 align:start position:0%
+function so
+obviously<00:14:13.680><c> we're</c><00:14:13.839><c> going</c><00:14:14.079><c> to</c><00:14:14.160><c> go</c><00:14:14.320><c> with</c><00:14:14.480><c> this</c>
+
+00:14:14.629 --> 00:14:14.639 align:start position:0%
+obviously we're going to go with this
+ 
+
+00:14:14.639 --> 00:14:17.509 align:start position:0%
+obviously we're going to go with this
+one<00:14:15.040><c> now</c><00:14:15.360><c> what</c><00:14:15.519><c> are</c><00:14:15.600><c> the</c><00:14:15.760><c> differences</c><00:14:16.399><c> and</c><00:14:16.720><c> why</c>
+
+00:14:17.509 --> 00:14:17.519 align:start position:0%
+one now what are the differences and why
+ 
+
+00:14:17.519 --> 00:14:19.670 align:start position:0%
+one now what are the differences and why
+so<00:14:17.920><c> to</c><00:14:18.240><c> look</c><00:14:18.399><c> at</c><00:14:18.480><c> the</c><00:14:18.560><c> differences</c><00:14:19.199><c> we</c><00:14:19.519><c> can</c>
+
+00:14:19.670 --> 00:14:19.680 align:start position:0%
+so to look at the differences we can
+ 
+
+00:14:19.680 --> 00:14:21.430 align:start position:0%
+so to look at the differences we can
+first<00:14:19.920><c> look</c><00:14:20.079><c> at</c><00:14:20.160><c> the</c><00:14:20.320><c> mse</c><00:14:20.880><c> we</c><00:14:20.959><c> can</c><00:14:21.040><c> look</c><00:14:21.199><c> at</c><00:14:21.279><c> the</c>
+
+00:14:21.430 --> 00:14:21.440 align:start position:0%
+first look at the mse we can look at the
+ 
+
+00:14:21.440 --> 00:14:22.790 align:start position:0%
+first look at the mse we can look at the
+mean<00:14:21.760><c> of</c><00:14:21.839><c> the</c><00:14:22.000><c> difference</c><00:14:22.320><c> of</c><00:14:22.399><c> the</c><00:14:22.560><c> option</c>
+
+00:14:22.790 --> 00:14:22.800 align:start position:0%
+mean of the difference of the option
+ 
+
+00:14:22.800 --> 00:14:25.110 align:start position:0%
+mean of the difference of the option
+prices<00:14:23.440><c> from</c><00:14:23.680><c> our</c><00:14:23.839><c> rectangular</c><00:14:24.399><c> integration</c>
+
+00:14:25.110 --> 00:14:25.120 align:start position:0%
+prices from our rectangular integration
+ 
+
+00:14:25.120 --> 00:14:28.150 align:start position:0%
+prices from our rectangular integration
+to<00:14:25.600><c> the</c><00:14:26.000><c> quant</c><00:14:26.399><c> lib</c><00:14:26.720><c> library</c>
+
+00:14:28.150 --> 00:14:28.160 align:start position:0%
+to the quant lib library
+ 
+
+00:14:28.160 --> 00:14:30.069 align:start position:0%
+to the quant lib library
+mse<00:14:28.639><c> is</c><00:14:28.720><c> very</c><00:14:28.959><c> small</c><00:14:29.360><c> across</c><00:14:29.680><c> all</c><00:14:29.839><c> these</c>
+
+00:14:30.069 --> 00:14:30.079 align:start position:0%
+mse is very small across all these
+ 
+
+00:14:30.079 --> 00:14:33.829 align:start position:0%
+mse is very small across all these
+strikes<00:14:30.959><c> 0.07</c><00:14:32.320><c> and</c><00:14:32.639><c> you</c><00:14:32.800><c> can</c><00:14:32.959><c> see</c>
+
+00:14:33.829 --> 00:14:33.839 align:start position:0%
+strikes 0.07 and you can see
+ 
+
+00:14:33.839 --> 00:14:36.389 align:start position:0%
+strikes 0.07 and you can see
+only<00:14:34.240><c> small</c><00:14:34.560><c> differences</c><00:14:35.199><c> here</c>
+
+00:14:36.389 --> 00:14:36.399 align:start position:0%
+only small differences here
+ 
+
+00:14:36.399 --> 00:14:37.430 align:start position:0%
+only small differences here
+between
+
+00:14:37.430 --> 00:14:37.440 align:start position:0%
+between
+ 
+
+00:14:37.440 --> 00:14:40.150 align:start position:0%
+between
+at<00:14:37.600><c> all</c><00:14:37.760><c> these</c><00:14:38.000><c> strikes</c>
+
+00:14:40.150 --> 00:14:40.160 align:start position:0%
+at all these strikes
+ 
+
+00:14:40.160 --> 00:14:42.629 align:start position:0%
+at all these strikes
+now<00:14:40.480><c> it</c><00:14:40.959><c> does</c><00:14:41.360><c> it</c><00:14:41.600><c> does</c><00:14:41.920><c> get</c><00:14:42.160><c> larger</c>
+
+00:14:42.629 --> 00:14:42.639 align:start position:0%
+now it does it does get larger
+ 
+
+00:14:42.639 --> 00:14:44.470 align:start position:0%
+now it does it does get larger
+especially<00:14:43.040><c> when</c><00:14:43.199><c> you</c><00:14:43.360><c> get</c><00:14:43.680><c> out</c><00:14:43.839><c> of</c><00:14:44.000><c> the</c><00:14:44.079><c> money</c>
+
+00:14:44.470 --> 00:14:44.480 align:start position:0%
+especially when you get out of the money
+ 
+
+00:14:44.480 --> 00:14:47.269 align:start position:0%
+especially when you get out of the money
+further<00:14:44.880><c> and</c><00:14:45.040><c> further</c><00:14:45.839><c> and</c><00:14:46.320><c> the</c><00:14:46.639><c> reason</c><00:14:47.120><c> for</c>
+
+00:14:47.269 --> 00:14:47.279 align:start position:0%
+further and further and the reason for
+ 
+
+00:14:47.279 --> 00:14:48.550 align:start position:0%
+further and further and the reason for
+that<00:14:47.680><c> is</c>
+
+00:14:48.550 --> 00:14:48.560 align:start position:0%
+that is
+ 
+
+00:14:48.560 --> 00:14:51.030 align:start position:0%
+that is
+we<00:14:48.880><c> have</c><00:14:49.440><c> a</c><00:14:49.920><c> large</c>
+
+00:14:51.030 --> 00:14:51.040 align:start position:0%
+we have a large
+ 
+
+00:14:51.040 --> 00:14:52.949 align:start position:0%
+we have a large
+now<00:14:51.279><c> the</c><00:14:51.440><c> main</c><00:14:51.760><c> reason</c><00:14:52.160><c> for</c><00:14:52.320><c> the</c><00:14:52.399><c> difference</c>
+
+00:14:52.949 --> 00:14:52.959 align:start position:0%
+now the main reason for the difference
+ 
+
+00:14:52.959 --> 00:14:55.110 align:start position:0%
+now the main reason for the difference
+is<00:14:53.279><c> because</c><00:14:53.680><c> of</c><00:14:53.839><c> a</c><00:14:53.920><c> result</c><00:14:54.320><c> of</c><00:14:54.480><c> the</c><00:14:54.639><c> complex</c>
+
+00:14:55.110 --> 00:14:55.120 align:start position:0%
+is because of a result of the complex
+ 
+
+00:14:55.120 --> 00:14:58.230 align:start position:0%
+is because of a result of the complex
+integration<00:14:56.000><c> over</c><00:14:56.480><c> really</c><00:14:56.880><c> small</c><00:14:57.360><c> increments</c>
+
+00:14:58.230 --> 00:14:58.240 align:start position:0%
+integration over really small increments
+ 
+
+00:14:58.240 --> 00:15:00.710 align:start position:0%
+integration over really small increments
+now<00:14:58.560><c> python</c><00:14:58.959><c> has</c><00:14:59.360><c> big</c><00:14:59.600><c> issues</c><00:14:59.920><c> with</c><00:15:00.160><c> round</c><00:15:00.480><c> off</c>
+
+00:15:00.710 --> 00:15:00.720 align:start position:0%
+now python has big issues with round off
+ 
+
+00:15:00.720 --> 00:15:03.350 align:start position:0%
+now python has big issues with round off
+errors<00:15:01.440><c> at</c><00:15:01.680><c> small</c><00:15:02.079><c> values</c><00:15:02.560><c> approximated</c>
+
+00:15:03.350 --> 00:15:03.360 align:start position:0%
+errors at small values approximated
+ 
+
+00:15:03.360 --> 00:15:05.990 align:start position:0%
+errors at small values approximated
+because<00:15:03.680><c> of</c><00:15:03.839><c> the</c><00:15:04.079><c> binary</c><00:15:04.720><c> float</c><00:15:05.519><c> point</c>
+
+00:15:05.990 --> 00:15:06.000 align:start position:0%
+because of the binary float point
+ 
+
+00:15:06.000 --> 00:15:07.670 align:start position:0%
+because of the binary float point
+numbers<00:15:06.639><c> because</c>
+
+00:15:07.670 --> 00:15:07.680 align:start position:0%
+numbers because
+ 
+
+00:15:07.680 --> 00:15:09.829 align:start position:0%
+numbers because
+python<00:15:08.240><c> actually</c><00:15:08.720><c> approximates</c><00:15:09.600><c> these</c>
+
+00:15:09.829 --> 00:15:09.839 align:start position:0%
+python actually approximates these
+ 
+
+00:15:09.839 --> 00:15:11.269 align:start position:0%
+python actually approximates these
+decimal
+
+00:15:11.269 --> 00:15:11.279 align:start position:0%
+decimal
+ 
+
+00:15:11.279 --> 00:15:14.629 align:start position:0%
+decimal
+values<00:15:12.079><c> by</c><00:15:12.399><c> binary</c><00:15:13.040><c> float</c><00:15:13.519><c> point</c><00:15:13.839><c> numbers</c><00:15:14.399><c> we</c>
+
+00:15:14.629 --> 00:15:14.639 align:start position:0%
+values by binary float point numbers we
+ 
+
+00:15:14.639 --> 00:15:16.949 align:start position:0%
+values by binary float point numbers we
+get<00:15:15.040><c> rounding</c><00:15:15.600><c> errors</c><00:15:16.000><c> and</c><00:15:16.160><c> i've</c><00:15:16.399><c> put</c><00:15:16.639><c> two</c>
+
+00:15:16.949 --> 00:15:16.959 align:start position:0%
+get rounding errors and i've put two
+ 
+
+00:15:16.959 --> 00:15:18.150 align:start position:0%
+get rounding errors and i've put two
+links<00:15:17.279><c> there</c>
+
+00:15:18.150 --> 00:15:18.160 align:start position:0%
+links there
+ 
+
+00:15:18.160 --> 00:15:19.990 align:start position:0%
+links there
+that<00:15:18.320><c> you</c><00:15:18.480><c> can</c><00:15:18.639><c> investigate</c><00:15:19.279><c> to</c><00:15:19.360><c> see</c><00:15:19.600><c> why</c><00:15:19.760><c> that</c>
+
+00:15:19.990 --> 00:15:20.000 align:start position:0%
+that you can investigate to see why that
+ 
+
+00:15:20.000 --> 00:15:22.470 align:start position:0%
+that you can investigate to see why that
+is<00:15:20.079><c> the</c><00:15:20.240><c> fact</c><00:15:20.959><c> quantlib</c><00:15:21.600><c> is</c><00:15:21.760><c> obviously</c><00:15:22.240><c> more</c>
+
+00:15:22.470 --> 00:15:22.480 align:start position:0%
+is the fact quantlib is obviously more
+ 
+
+00:15:22.480 --> 00:15:24.310 align:start position:0%
+is the fact quantlib is obviously more
+effective<00:15:22.959><c> at</c><00:15:23.120><c> this</c><00:15:23.440><c> it's</c><00:15:23.760><c> actually</c><00:15:24.079><c> been</c>
+
+00:15:24.310 --> 00:15:24.320 align:start position:0%
+effective at this it's actually been
+ 
+
+00:15:24.320 --> 00:15:27.030 align:start position:0%
+effective at this it's actually been
+implemented<00:15:24.959><c> in</c><00:15:25.440><c> c</c><00:15:26.160><c> and</c>
+
+00:15:27.030 --> 00:15:27.040 align:start position:0%
+implemented in c and
+ 
+
+00:15:27.040 --> 00:15:29.350 align:start position:0%
+implemented in c and
+handles<00:15:27.920><c> decimal</c><00:15:28.399><c> points</c><00:15:28.720><c> a</c><00:15:28.800><c> different</c><00:15:29.120><c> way</c>
+
+00:15:29.350 --> 00:15:29.360 align:start position:0%
+handles decimal points a different way
+ 
+
+00:15:29.360 --> 00:15:31.749 align:start position:0%
+handles decimal points a different way
+within<00:15:29.680><c> their</c><00:15:29.839><c> calculation</c><00:15:30.959><c> so</c><00:15:31.279><c> they've</c><00:15:31.519><c> got</c>
+
+00:15:31.749 --> 00:15:31.759 align:start position:0%
+within their calculation so they've got
+ 
+
+00:15:31.759 --> 00:15:33.990 align:start position:0%
+within their calculation so they've got
+a<00:15:31.920><c> slightly</c><00:15:32.560><c> better</c><00:15:32.880><c> numerical</c><00:15:33.519><c> integration</c>
+
+00:15:33.990 --> 00:15:34.000 align:start position:0%
+a slightly better numerical integration
+ 
+
+00:15:34.000 --> 00:15:35.749 align:start position:0%
+a slightly better numerical integration
+scheme<00:15:34.320><c> than</c><00:15:34.560><c> our</c>
+
+00:15:35.749 --> 00:15:35.759 align:start position:0%
+scheme than our
+ 
+
+00:15:35.759 --> 00:15:38.470 align:start position:0%
+scheme than our
+year<00:15:36.000><c> 12</c><00:15:36.560><c> rectangular</c><00:15:37.279><c> integration</c><00:15:38.160><c> i</c><00:15:38.240><c> would</c>
+
+00:15:38.470 --> 00:15:38.480 align:start position:0%
+year 12 rectangular integration i would
+ 
+
+00:15:38.480 --> 00:15:40.870 align:start position:0%
+year 12 rectangular integration i would
+love<00:15:38.639><c> to</c><00:15:38.800><c> hear</c><00:15:39.120><c> your</c><00:15:39.360><c> solutions</c><00:15:40.000><c> for</c><00:15:40.320><c> python</c>
+
+00:15:40.870 --> 00:15:40.880 align:start position:0%
+love to hear your solutions for python
+ 
+
+00:15:40.880 --> 00:15:42.389 align:start position:0%
+love to hear your solutions for python
+in<00:15:41.040><c> how</c><00:15:41.279><c> we</c><00:15:41.360><c> can</c><00:15:41.600><c> actually</c><00:15:42.000><c> get</c><00:15:42.240><c> this</c>
+
+00:15:42.389 --> 00:15:42.399 align:start position:0%
+in how we can actually get this
+ 
+
+00:15:42.399 --> 00:15:44.629 align:start position:0%
+in how we can actually get this
+numerical<00:15:42.959><c> integration</c><00:15:43.839><c> um</c><00:15:44.160><c> a</c><00:15:44.240><c> little</c><00:15:44.480><c> bit</c>
+
+00:15:44.629 --> 00:15:44.639 align:start position:0%
+numerical integration um a little bit
+ 
+
+00:15:44.639 --> 00:15:47.110 align:start position:0%
+numerical integration um a little bit
+better<00:15:45.040><c> and</c><00:15:45.199><c> then</c><00:15:45.519><c> more</c><00:15:45.759><c> precise</c><00:15:46.800><c> maybe</c>
+
+00:15:47.110 --> 00:15:47.120 align:start position:0%
+better and then more precise maybe
+ 
+
+00:15:47.120 --> 00:15:49.269 align:start position:0%
+better and then more precise maybe
+taking<00:15:47.440><c> different</c><00:15:47.680><c> step</c><00:15:48.000><c> size</c><00:15:48.399><c> functions</c><00:15:49.040><c> and</c>
+
+00:15:49.269 --> 00:15:49.279 align:start position:0%
+taking different step size functions and
+ 
+
+00:15:49.279 --> 00:15:50.790 align:start position:0%
+taking different step size functions and
+making<00:15:49.600><c> that</c><00:15:49.839><c> variable</c><00:15:50.320><c> for</c><00:15:50.480><c> different</c>
+
+00:15:50.790 --> 00:15:50.800 align:start position:0%
+making that variable for different
+ 
+
+00:15:50.800 --> 00:15:51.990 align:start position:0%
+making that variable for different
+strikes<00:15:51.199><c> i</c><00:15:51.279><c> would</c><00:15:51.440><c> love</c><00:15:51.600><c> to</c><00:15:51.680><c> hear</c><00:15:51.839><c> your</c>
+
+00:15:51.990 --> 00:15:52.000 align:start position:0%
+strikes i would love to hear your
+ 
+
+00:15:52.000 --> 00:15:54.629 align:start position:0%
+strikes i would love to hear your
+suggestions<00:15:52.720><c> in</c><00:15:52.800><c> the</c><00:15:52.880><c> comment</c><00:15:53.199><c> section</c><00:15:53.600><c> below</c>
+
+00:15:54.629 --> 00:15:54.639 align:start position:0%
+suggestions in the comment section below
+ 
+
+00:15:54.639 --> 00:15:56.710 align:start position:0%
+suggestions in the comment section below
+how<00:15:54.880><c> can</c><00:15:55.120><c> i</c><00:15:55.279><c> improve</c><00:15:55.920><c> my</c>
+
+00:15:56.710 --> 00:15:56.720 align:start position:0%
+how can i improve my
+ 
+
+00:15:56.720 --> 00:15:58.790 align:start position:0%
+how can i improve my
+rectangular<00:15:57.279><c> integration</c><00:15:57.839><c> function</c>
+
+00:15:58.790 --> 00:15:58.800 align:start position:0%
+rectangular integration function
+ 
+
+00:15:58.800 --> 00:16:01.509 align:start position:0%
+rectangular integration function
+so<00:15:58.959><c> now</c><00:15:59.120><c> we've</c><00:15:59.360><c> got</c><00:15:59.600><c> we've</c><00:15:59.759><c> got</c><00:16:00.000><c> a</c><00:16:00.160><c> discretize</c>
+
+00:16:01.509 --> 00:16:01.519 align:start position:0%
+so now we've got we've got a discretize
+ 
+
+00:16:01.519 --> 00:16:04.550 align:start position:0%
+so now we've got we've got a discretize
+approximate<00:16:02.079><c> pdf</c><00:16:02.639><c> so</c><00:16:02.800><c> i</c><00:16:02.959><c> want</c><00:16:03.120><c> to</c><00:16:03.360><c> take</c>
+
+00:16:04.550 --> 00:16:04.560 align:start position:0%
+approximate pdf so i want to take
+ 
+
+00:16:04.560 --> 00:16:06.470 align:start position:0%
+approximate pdf so i want to take
+those<00:16:04.959><c> prices</c>
+
+00:16:06.470 --> 00:16:06.480 align:start position:0%
+those prices
+ 
+
+00:16:06.480 --> 00:16:08.870 align:start position:0%
+those prices
+that<00:16:06.720><c> curvature</c><00:16:07.519><c> and</c><00:16:07.680><c> i'm</c><00:16:07.839><c> going</c><00:16:08.079><c> to</c><00:16:08.240><c> multiply</c>
+
+00:16:08.870 --> 00:16:08.880 align:start position:0%
+that curvature and i'm going to multiply
+ 
+
+00:16:08.880 --> 00:16:10.870 align:start position:0%
+that curvature and i'm going to multiply
+by<00:16:09.120><c> our</c><00:16:09.279><c> forward</c><00:16:09.600><c> factor</c><00:16:10.000><c> now</c>
+
+00:16:10.870 --> 00:16:10.880 align:start position:0%
+by our forward factor now
+ 
+
+00:16:10.880 --> 00:16:12.230 align:start position:0%
+by our forward factor now
+so<00:16:11.040><c> i've</c><00:16:11.279><c> got</c><00:16:11.440><c> our</c><00:16:11.600><c> forward</c><00:16:11.839><c> factor</c>
+
+00:16:12.230 --> 00:16:12.240 align:start position:0%
+so i've got our forward factor
+ 
+
+00:16:12.240 --> 00:16:16.550 align:start position:0%
+so i've got our forward factor
+multiplied<00:16:13.040><c> by</c><00:16:13.519><c> the</c><00:16:13.839><c> curvature</c>
+
+00:16:16.550 --> 00:16:16.560 align:start position:0%
+multiplied by the curvature
+ 
+
+00:16:16.560 --> 00:16:18.870 align:start position:0%
+multiplied by the curvature
+array<00:16:17.120><c> and</c><00:16:17.360><c> what</c><00:16:17.600><c> i</c><00:16:17.680><c> want</c><00:16:17.839><c> to</c><00:16:18.000><c> do</c><00:16:18.320><c> is</c><00:16:18.480><c> i</c><00:16:18.639><c> want</c><00:16:18.800><c> to</c>
+
+00:16:18.870 --> 00:16:18.880 align:start position:0%
+array and what i want to do is i want to
+ 
+
+00:16:18.880 --> 00:16:21.749 align:start position:0%
+array and what i want to do is i want to
+use<00:16:19.199><c> psi</c><00:16:19.440><c> pi</c><00:16:19.920><c> interpolate</c>
+
+00:16:21.749 --> 00:16:21.759 align:start position:0%
+use psi pi interpolate
+ 
+
+00:16:21.759 --> 00:16:24.150 align:start position:0%
+use psi pi interpolate
+and<00:16:21.920><c> i'm</c><00:16:22.079><c> going</c><00:16:22.240><c> to</c><00:16:22.480><c> interpolate</c><00:16:23.120><c> between</c><00:16:23.920><c> the</c>
+
+00:16:24.150 --> 00:16:24.160 align:start position:0%
+and i'm going to interpolate between the
+ 
+
+00:16:24.160 --> 00:16:26.790 align:start position:0%
+and i'm going to interpolate between the
+strikes<00:16:24.800><c> so</c><00:16:25.040><c> given</c><00:16:25.360><c> a</c><00:16:25.440><c> strike</c><00:16:26.240><c> i</c><00:16:26.399><c> want</c><00:16:26.560><c> to</c><00:16:26.720><c> be</c>
+
+00:16:26.790 --> 00:16:26.800 align:start position:0%
+strikes so given a strike i want to be
+ 
+
+00:16:26.800 --> 00:16:29.430 align:start position:0%
+strikes so given a strike i want to be
+able<00:16:27.040><c> to</c><00:16:27.279><c> interpolate</c><00:16:28.079><c> our</c><00:16:28.399><c> discrete</c>
+
+00:16:29.430 --> 00:16:29.440 align:start position:0%
+able to interpolate our discrete
+ 
+
+00:16:29.440 --> 00:16:32.550 align:start position:0%
+able to interpolate our discrete
+curvature<00:16:30.000><c> function</c><00:16:30.399><c> so</c><00:16:30.560><c> i</c><00:16:30.720><c> want</c><00:16:30.880><c> a</c><00:16:30.959><c> pdf</c>
+
+00:16:32.550 --> 00:16:32.560 align:start position:0%
+curvature function so i want a pdf
+ 
+
+00:16:32.560 --> 00:16:35.269 align:start position:0%
+curvature function so i want a pdf
+given<00:16:32.800><c> the</c><00:16:32.959><c> strike</c><00:16:33.519><c> i'm</c><00:16:33.759><c> going</c><00:16:34.160><c> to</c><00:16:34.720><c> get</c><00:16:35.040><c> back</c>
+
+00:16:35.269 --> 00:16:35.279 align:start position:0%
+given the strike i'm going to get back
+ 
+
+00:16:35.279 --> 00:16:36.710 align:start position:0%
+given the strike i'm going to get back
+the<00:16:35.519><c> curvature</c>
+
+00:16:36.710 --> 00:16:36.720 align:start position:0%
+the curvature
+ 
+
+00:16:36.720 --> 00:16:38.069 align:start position:0%
+the curvature
+so
+
+00:16:38.069 --> 00:16:38.079 align:start position:0%
+so
+ 
+
+00:16:38.079 --> 00:16:40.629 align:start position:0%
+so
+i'm<00:16:38.240><c> going</c><00:16:38.480><c> to</c><00:16:38.720><c> use</c><00:16:39.120><c> two</c><00:16:39.360><c> different</c><00:16:40.000><c> types</c><00:16:40.399><c> of</c>
+
+00:16:40.629 --> 00:16:40.639 align:start position:0%
+i'm going to use two different types of
+ 
+
+00:16:40.639 --> 00:16:41.910 align:start position:0%
+i'm going to use two different types of
+pdfs
+
+00:16:41.910 --> 00:16:41.920 align:start position:0%
+pdfs
+ 
+
+00:16:41.920 --> 00:16:43.269 align:start position:0%
+pdfs
+so<00:16:42.079><c> i'm</c><00:16:42.240><c> going</c><00:16:42.320><c> to</c><00:16:42.399><c> use</c><00:16:42.639><c> two</c><00:16:42.800><c> different</c><00:16:43.040><c> types</c>
+
+00:16:43.269 --> 00:16:43.279 align:start position:0%
+so i'm going to use two different types
+ 
+
+00:16:43.279 --> 00:16:45.030 align:start position:0%
+so i'm going to use two different types
+of<00:16:43.360><c> interpolation</c><00:16:44.079><c> i'm</c><00:16:44.240><c> going</c><00:16:44.399><c> to</c><00:16:44.480><c> use</c><00:16:44.720><c> linear</c>
+
+00:16:45.030 --> 00:16:45.040 align:start position:0%
+of interpolation i'm going to use linear
+ 
+
+00:16:45.040 --> 00:16:46.310 align:start position:0%
+of interpolation i'm going to use linear
+and<00:16:45.120><c> cubic</c><00:16:45.519><c> and</c><00:16:45.600><c> we're</c><00:16:45.759><c> going</c><00:16:45.920><c> to</c><00:16:46.000><c> look</c><00:16:46.160><c> at</c><00:16:46.240><c> the</c>
+
+00:16:46.310 --> 00:16:46.320 align:start position:0%
+and cubic and we're going to look at the
+ 
+
+00:16:46.320 --> 00:16:48.710 align:start position:0%
+and cubic and we're going to look at the
+difference<00:16:46.720><c> between</c><00:16:47.040><c> the</c><00:16:47.199><c> two</c><00:16:47.920><c> now</c><00:16:48.480><c> really</c>
+
+00:16:48.710 --> 00:16:48.720 align:start position:0%
+difference between the two now really
+ 
+
+00:16:48.720 --> 00:16:50.389 align:start position:0%
+difference between the two now really
+important<00:16:49.120><c> here</c>
+
+00:16:50.389 --> 00:16:50.399 align:start position:0%
+important here
+ 
+
+00:16:50.399 --> 00:16:53.430 align:start position:0%
+important here
+sci<00:16:50.720><c> pi</c><00:16:51.120><c> is</c><00:16:51.279><c> only</c><00:16:51.600><c> going</c><00:16:51.839><c> to</c><00:16:52.000><c> be</c><00:16:52.160><c> able</c><00:16:52.399><c> to</c><00:16:52.959><c> then</c>
+
+00:16:53.430 --> 00:16:53.440 align:start position:0%
+sci pi is only going to be able to then
+ 
+
+00:16:53.440 --> 00:16:56.150 align:start position:0%
+sci pi is only going to be able to then
+compute<00:16:54.639><c> the</c><00:16:54.880><c> strikes</c><00:16:55.519><c> so</c><00:16:55.680><c> once</c><00:16:55.920><c> we've</c>
+
+00:16:56.150 --> 00:16:56.160 align:start position:0%
+compute the strikes so once we've
+ 
+
+00:16:56.160 --> 00:16:57.829 align:start position:0%
+compute the strikes so once we've
+actually<00:16:56.480><c> created</c><00:16:56.880><c> this</c>
+
+00:16:57.829 --> 00:16:57.839 align:start position:0%
+actually created this
+ 
+
+00:16:57.839 --> 00:17:00.150 align:start position:0%
+actually created this
+interpolation<00:16:58.560><c> method</c><00:16:59.120><c> we</c><00:16:59.360><c> can</c><00:16:59.680><c> only</c>
+
+00:17:00.150 --> 00:17:00.160 align:start position:0%
+interpolation method we can only
+ 
+
+00:17:00.160 --> 00:17:02.870 align:start position:0%
+interpolation method we can only
+actually<00:17:00.720><c> calculate</c><00:17:01.839><c> on</c><00:17:02.240><c> between</c><00:17:02.720><c> the</c>
+
+00:17:02.870 --> 00:17:02.880 align:start position:0%
+actually calculate on between the
+ 
+
+00:17:02.880 --> 00:17:04.789 align:start position:0%
+actually calculate on between the
+interval<00:17:03.360><c> of</c><00:17:03.600><c> the</c><00:17:03.759><c> data</c><00:17:04.079><c> that</c><00:17:04.160><c> we've</c><00:17:04.319><c> given</c><00:17:04.640><c> it</c>
+
+00:17:04.789 --> 00:17:04.799 align:start position:0%
+interval of the data that we've given it
+ 
+
+00:17:04.799 --> 00:17:06.630 align:start position:0%
+interval of the data that we've given it
+so<00:17:05.039><c> we</c><00:17:05.199><c> gave</c><00:17:05.520><c> it</c><00:17:05.760><c> uh</c>
+
+00:17:06.630 --> 00:17:06.640 align:start position:0%
+so we gave it uh
+ 
+
+00:17:06.640 --> 00:17:10.949 align:start position:0%
+so we gave it uh
+strikes<00:17:07.039><c> between</c><00:17:07.520><c> 60</c><00:17:08.000><c> and</c><00:17:08.160><c> 180</c><00:17:09.439><c> um</c><00:17:10.000><c> so</c><00:17:10.480><c> we</c><00:17:10.640><c> can</c>
+
+00:17:10.949 --> 00:17:10.959 align:start position:0%
+strikes between 60 and 180 um so we can
+ 
+
+00:17:10.959 --> 00:17:11.909 align:start position:0%
+strikes between 60 and 180 um so we can
+only
+
+00:17:11.909 --> 00:17:11.919 align:start position:0%
+only
+ 
+
+00:17:11.919 --> 00:17:14.870 align:start position:0%
+only
+calculate<00:17:12.799><c> uh</c><00:17:13.120><c> strikes</c><00:17:13.520><c> between</c><00:17:14.160><c> those</c><00:17:14.640><c> so</c>
+
+00:17:14.870 --> 00:17:14.880 align:start position:0%
+calculate uh strikes between those so
+ 
+
+00:17:14.880 --> 00:17:18.789 align:start position:0%
+calculate uh strikes between those so
+i've<00:17:15.120><c> gotten</c><00:17:15.360><c> from</c><00:17:15.600><c> 61</c><00:17:16.240><c> to</c><00:17:16.839><c> 179</c>
+
+00:17:18.789 --> 00:17:18.799 align:start position:0%
+i've gotten from 61 to 179
+ 
+
+00:17:18.799 --> 00:17:20.549 align:start position:0%
+i've gotten from 61 to 179
+and<00:17:18.959><c> here</c><00:17:19.199><c> we've</c><00:17:19.360><c> got</c><00:17:19.679><c> the</c>
+
+00:17:20.549 --> 00:17:20.559 align:start position:0%
+and here we've got the
+ 
+
+00:17:20.559 --> 00:17:23.029 align:start position:0%
+and here we've got the
+pdf<00:17:21.120><c> using</c><00:17:21.360><c> the</c><00:17:21.439><c> cubic</c><00:17:21.839><c> and</c><00:17:22.000><c> then</c><00:17:22.160><c> pdf</c><00:17:22.720><c> using</c>
+
+00:17:23.029 --> 00:17:23.039 align:start position:0%
+pdf using the cubic and then pdf using
+ 
+
+00:17:23.039 --> 00:17:25.829 align:start position:0%
+pdf using the cubic and then pdf using
+the<00:17:23.199><c> linear</c><00:17:23.600><c> function</c>
+
+00:17:25.829 --> 00:17:25.839 align:start position:0%
+the linear function
+ 
+
+00:17:25.839 --> 00:17:29.029 align:start position:0%
+the linear function
+so<00:17:26.079><c> as</c><00:17:26.240><c> you</c><00:17:26.400><c> can</c><00:17:26.559><c> see</c><00:17:26.880><c> our</c><00:17:27.199><c> disk</c><00:17:27.760><c> our</c><00:17:28.240><c> forward</c>
+
+00:17:29.029 --> 00:17:29.039 align:start position:0%
+so as you can see our disk our forward
+ 
+
+00:17:29.039 --> 00:17:30.950 align:start position:0%
+so as you can see our disk our forward
+multiplied<00:17:29.520><c> by</c><00:17:29.679><c> the</c><00:17:29.760><c> curvature</c><00:17:30.400><c> has</c><00:17:30.640><c> given</c>
+
+00:17:30.950 --> 00:17:30.960 align:start position:0%
+multiplied by the curvature has given
+ 
+
+00:17:30.960 --> 00:17:33.430 align:start position:0%
+multiplied by the curvature has given
+these<00:17:31.360><c> really</c><00:17:31.679><c> nice</c><00:17:32.080><c> pdfs</c>
+
+00:17:33.430 --> 00:17:33.440 align:start position:0%
+these really nice pdfs
+ 
+
+00:17:33.440 --> 00:17:36.150 align:start position:0%
+these really nice pdfs
+of<00:17:33.760><c> which</c><00:17:34.320><c> cubic</c><00:17:34.720><c> and</c><00:17:34.880><c> linear</c><00:17:35.360><c> i'm</c><00:17:35.520><c> not</c><00:17:35.760><c> seeing</c>
+
+00:17:36.150 --> 00:17:36.160 align:start position:0%
+of which cubic and linear i'm not seeing
+ 
+
+00:17:36.160 --> 00:17:37.830 align:start position:0%
+of which cubic and linear i'm not seeing
+much<00:17:36.400><c> of</c><00:17:36.480><c> a</c><00:17:36.640><c> difference</c><00:17:37.200><c> perhaps</c><00:17:37.600><c> it</c><00:17:37.760><c> would</c>
+
+00:17:37.830 --> 00:17:37.840 align:start position:0%
+much of a difference perhaps it would
+ 
+
+00:17:37.840 --> 00:17:40.230 align:start position:0%
+much of a difference perhaps it would
+have<00:17:37.919><c> made</c><00:17:38.160><c> a</c><00:17:38.240><c> difference</c><00:17:38.720><c> if</c><00:17:38.880><c> we</c><00:17:39.280><c> took</c><00:17:39.760><c> larger</c>
+
+00:17:40.230 --> 00:17:40.240 align:start position:0%
+have made a difference if we took larger
+ 
+
+00:17:40.240 --> 00:17:42.549 align:start position:0%
+have made a difference if we took larger
+step<00:17:40.640><c> sizes</c><00:17:41.120><c> in</c><00:17:41.280><c> our</c><00:17:41.520><c> strikes</c>
+
+00:17:42.549 --> 00:17:42.559 align:start position:0%
+step sizes in our strikes
+ 
+
+00:17:42.559 --> 00:17:44.150 align:start position:0%
+step sizes in our strikes
+and<00:17:42.880><c> of</c><00:17:42.960><c> course</c><00:17:43.200><c> you</c><00:17:43.360><c> might</c><00:17:43.520><c> be</c><00:17:43.679><c> limited</c><00:17:44.080><c> if</c>
+
+00:17:44.150 --> 00:17:44.160 align:start position:0%
+and of course you might be limited if
+ 
+
+00:17:44.160 --> 00:17:46.070 align:start position:0%
+and of course you might be limited if
+you're<00:17:44.320><c> using</c><00:17:44.559><c> market</c><00:17:44.880><c> data</c><00:17:45.200><c> to</c><00:17:45.360><c> imply</c><00:17:45.679><c> this</c>
+
+00:17:46.070 --> 00:17:46.080 align:start position:0%
+you're using market data to imply this
+ 
+
+00:17:46.080 --> 00:17:49.029 align:start position:0%
+you're using market data to imply this
+directly<00:17:46.799><c> but</c><00:17:47.200><c> here</c><00:17:47.760><c> i'm</c><00:17:48.320><c> pretty</c><00:17:48.480><c> comfortable</c>
+
+00:17:49.029 --> 00:17:49.039 align:start position:0%
+directly but here i'm pretty comfortable
+ 
+
+00:17:49.039 --> 00:17:51.510 align:start position:0%
+directly but here i'm pretty comfortable
+with<00:17:49.200><c> the</c><00:17:49.440><c> linear</c><00:17:50.080><c> interpolation</c>
+
+00:17:51.510 --> 00:17:51.520 align:start position:0%
+with the linear interpolation
+ 
+
+00:17:51.520 --> 00:17:54.070 align:start position:0%
+with the linear interpolation
+that<00:17:51.679><c> we've</c><00:17:51.919><c> got</c><00:17:52.240><c> here</c>
+
+00:17:54.070 --> 00:17:54.080 align:start position:0%
+that we've got here
+ 
+
+00:17:54.080 --> 00:17:55.430 align:start position:0%
+that we've got here
+so<00:17:54.240><c> how</c><00:17:54.400><c> can</c><00:17:54.559><c> i</c><00:17:54.720><c> get</c><00:17:54.880><c> the</c><00:17:54.960><c> cumulative</c>
+
+00:17:55.430 --> 00:17:55.440 align:start position:0%
+so how can i get the cumulative
+ 
+
+00:17:55.440 --> 00:17:56.789 align:start position:0%
+so how can i get the cumulative
+distribution<00:17:56.000><c> function</c><00:17:56.320><c> of</c><00:17:56.400><c> this</c><00:17:56.559><c> wrist</c>
+
+00:17:56.789 --> 00:17:56.799 align:start position:0%
+distribution function of this wrist
+ 
+
+00:17:56.799 --> 00:17:58.470 align:start position:0%
+distribution function of this wrist
+neutral<00:17:57.120><c> density</c><00:17:57.520><c> function</c><00:17:58.240><c> well</c>
+
+00:17:58.470 --> 00:17:58.480 align:start position:0%
+neutral density function well
+ 
+
+00:17:58.480 --> 00:18:01.029 align:start position:0%
+neutral density function well
+essentially<00:17:58.960><c> what</c><00:17:59.120><c> i'm</c><00:17:59.200><c> going</c><00:17:59.440><c> to</c><00:17:59.520><c> do</c>
+
+00:18:01.029 --> 00:18:01.039 align:start position:0%
+essentially what i'm going to do
+ 
+
+00:18:01.039 --> 00:18:05.110 align:start position:0%
+essentially what i'm going to do
+is<00:18:01.280><c> i'm</c><00:18:01.520><c> going</c><00:18:01.919><c> to</c><00:18:02.559><c> take</c><00:18:02.960><c> the</c><00:18:03.280><c> cumulative</c><00:18:04.400><c> sum</c>
+
+00:18:05.110 --> 00:18:05.120 align:start position:0%
+is i'm going to take the cumulative sum
+ 
+
+00:18:05.120 --> 00:18:07.830 align:start position:0%
+is i'm going to take the cumulative sum
+of<00:18:05.679><c> the</c><00:18:05.919><c> pdf</c><00:18:07.039><c> so</c>
+
+00:18:07.830 --> 00:18:07.840 align:start position:0%
+of the pdf so
+ 
+
+00:18:07.840 --> 00:18:10.310 align:start position:0%
+of the pdf so
+i've<00:18:08.080><c> got</c><00:18:08.320><c> the</c><00:18:08.480><c> pdf</c><00:18:09.120><c> linear</c><00:18:09.679><c> of</c><00:18:10.000><c> all</c><00:18:10.160><c> the</c>
+
+00:18:10.310 --> 00:18:10.320 align:start position:0%
+i've got the pdf linear of all the
+ 
+
+00:18:10.320 --> 00:18:12.950 align:start position:0%
+i've got the pdf linear of all the
+strikes<00:18:11.120><c> i'm</c><00:18:11.280><c> taking</c><00:18:11.600><c> the</c><00:18:11.760><c> cumulative</c><00:18:12.320><c> sum</c><00:18:12.720><c> of</c>
+
+00:18:12.950 --> 00:18:12.960 align:start position:0%
+strikes i'm taking the cumulative sum of
+ 
+
+00:18:12.960 --> 00:18:15.029 align:start position:0%
+strikes i'm taking the cumulative sum of
+the<00:18:13.120><c> pdf</c><00:18:13.919><c> which</c><00:18:14.320><c> is</c>
+
+00:18:15.029 --> 00:18:15.039 align:start position:0%
+the pdf which is
+ 
+
+00:18:15.039 --> 00:18:17.110 align:start position:0%
+the pdf which is
+in<00:18:15.200><c> fact</c><00:18:15.440><c> the</c><00:18:15.520><c> cdf</c><00:18:16.000><c> but</c><00:18:16.160><c> that's</c><00:18:16.400><c> the</c><00:18:16.559><c> discrete</c>
+
+00:18:17.110 --> 00:18:17.120 align:start position:0%
+in fact the cdf but that's the discrete
+ 
+
+00:18:17.120 --> 00:18:18.630 align:start position:0%
+in fact the cdf but that's the discrete
+cdf
+
+00:18:18.630 --> 00:18:18.640 align:start position:0%
+cdf
+ 
+
+00:18:18.640 --> 00:18:20.549 align:start position:0%
+cdf
+for<00:18:18.799><c> each</c><00:18:19.039><c> particular</c><00:18:19.440><c> strike</c><00:18:20.000><c> and</c><00:18:20.160><c> again</c><00:18:20.480><c> i'm</c>
+
+00:18:20.549 --> 00:18:20.559 align:start position:0%
+for each particular strike and again i'm
+ 
+
+00:18:20.559 --> 00:18:23.270 align:start position:0%
+for each particular strike and again i'm
+just<00:18:20.720><c> going</c><00:18:20.880><c> to</c><00:18:20.960><c> use</c><00:18:21.600><c> a</c><00:18:21.840><c> linear</c>
+
+00:18:23.270 --> 00:18:23.280 align:start position:0%
+just going to use a linear
+ 
+
+00:18:23.280 --> 00:18:24.549 align:start position:0%
+just going to use a linear
+function
+
+00:18:24.549 --> 00:18:24.559 align:start position:0%
+function
+ 
+
+00:18:24.559 --> 00:18:27.750 align:start position:0%
+function
+using<00:18:24.960><c> scipy</c><00:18:25.440><c> interpolate</c><00:18:26.240><c> interpo</c>
+
+00:18:27.750 --> 00:18:27.760 align:start position:0%
+using scipy interpolate interpo
+ 
+
+00:18:27.760 --> 00:18:30.150 align:start position:0%
+using scipy interpolate interpo
+one<00:18:28.000><c> dimensional</c><00:18:29.120><c> so</c><00:18:29.520><c> here</c><00:18:29.679><c> we've</c><00:18:29.919><c> got</c><00:18:30.080><c> our</c>
+
+00:18:30.150 --> 00:18:30.160 align:start position:0%
+one dimensional so here we've got our
+ 
+
+00:18:30.160 --> 00:18:31.750 align:start position:0%
+one dimensional so here we've got our
+cdf
+
+00:18:31.750 --> 00:18:31.760 align:start position:0%
+cdf
+ 
+
+00:18:31.760 --> 00:18:33.830 align:start position:0%
+cdf
+and<00:18:32.080><c> now</c><00:18:32.400><c> i'm</c><00:18:32.559><c> going</c><00:18:32.799><c> to</c><00:18:33.039><c> plot</c><00:18:33.360><c> across</c><00:18:33.760><c> all</c>
+
+00:18:33.830 --> 00:18:33.840 align:start position:0%
+and now i'm going to plot across all
+ 
+
+00:18:33.840 --> 00:18:35.270 align:start position:0%
+and now i'm going to plot across all
+those<00:18:34.000><c> strikes</c><00:18:34.400><c> and</c><00:18:34.480><c> we're</c><00:18:34.559><c> going</c><00:18:34.720><c> to</c><00:18:34.799><c> look</c><00:18:35.120><c> at</c>
+
+00:18:35.270 --> 00:18:35.280 align:start position:0%
+those strikes and we're going to look at
+ 
+
+00:18:35.280 --> 00:18:36.870 align:start position:0%
+those strikes and we're going to look at
+what<00:18:35.520><c> that</c><00:18:35.840><c> looks</c><00:18:36.160><c> like</c>
+
+00:18:36.870 --> 00:18:36.880 align:start position:0%
+what that looks like
+ 
+
+00:18:36.880 --> 00:18:39.350 align:start position:0%
+what that looks like
+so<00:18:37.200><c> here</c><00:18:37.440><c> we've</c><00:18:37.679><c> got</c><00:18:37.919><c> our</c><00:18:38.320><c> cdf</c><00:18:38.880><c> of</c><00:18:39.039><c> our</c><00:18:39.120><c> risk</c>
+
+00:18:39.350 --> 00:18:39.360 align:start position:0%
+so here we've got our cdf of our risk
+ 
+
+00:18:39.360 --> 00:18:42.070 align:start position:0%
+so here we've got our cdf of our risk
+neutral<00:18:39.679><c> distribution</c><00:18:40.480><c> at</c><00:18:40.720><c> a</c><00:18:40.840><c> particular</c>
+
+00:18:42.070 --> 00:18:42.080 align:start position:0%
+neutral distribution at a particular
+ 
+
+00:18:42.080 --> 00:18:44.870 align:start position:0%
+neutral distribution at a particular
+time<00:18:42.320><c> to</c><00:18:42.480><c> maturity</c><00:18:43.039><c> so</c><00:18:43.280><c> tau</c><00:18:44.000><c> and</c><00:18:44.160><c> you</c><00:18:44.320><c> can</c><00:18:44.640><c> plug</c>
+
+00:18:44.870 --> 00:18:44.880 align:start position:0%
+time to maturity so tau and you can plug
+ 
+
+00:18:44.880 --> 00:18:50.070 align:start position:0%
+time to maturity so tau and you can plug
+in<00:18:45.039><c> a</c><00:18:45.120><c> k</c><00:18:45.520><c> and</c><00:18:45.679><c> you</c><00:18:46.000><c> get</c><00:18:46.320><c> the</c><00:18:46.559><c> probability</c><00:18:47.280><c> back</c>
+
+00:18:50.070 --> 00:18:50.080 align:start position:0%
+ 
+ 
+
+00:18:50.080 --> 00:18:51.669 align:start position:0%
+ 
+so<00:18:50.320><c> how</c><00:18:50.480><c> do</c><00:18:50.559><c> we</c><00:18:50.640><c> actually</c><00:18:51.039><c> use</c><00:18:51.280><c> the</c><00:18:51.440><c> risk</c>
+
+00:18:51.669 --> 00:18:51.679 align:start position:0%
+so how do we actually use the risk
+ 
+
+00:18:51.679 --> 00:18:54.230 align:start position:0%
+so how do we actually use the risk
+neutral<00:18:52.559><c> pdfs</c><00:18:53.039><c> to</c><00:18:53.280><c> price</c><00:18:53.760><c> complex</c>
+
+00:18:54.230 --> 00:18:54.240 align:start position:0%
+neutral pdfs to price complex
+ 
+
+00:18:54.240 --> 00:18:56.950 align:start position:0%
+neutral pdfs to price complex
+derivatives<00:18:55.360><c> so</c><00:18:55.600><c> remember</c><00:18:56.160><c> here</c><00:18:56.559><c> that</c><00:18:56.720><c> this</c>
+
+00:18:56.950 --> 00:18:56.960 align:start position:0%
+derivatives so remember here that this
+ 
+
+00:18:56.960 --> 00:18:59.110 align:start position:0%
+derivatives so remember here that this
+wrist<00:18:57.280><c> neutral</c><00:18:57.760><c> density</c><00:18:58.320><c> function</c><00:18:58.960><c> is</c>
+
+00:18:59.110 --> 00:18:59.120 align:start position:0%
+wrist neutral density function is
+ 
+
+00:18:59.120 --> 00:19:01.430 align:start position:0%
+wrist neutral density function is
+defined<00:18:59.600><c> at</c><00:18:59.679><c> a</c><00:18:59.760><c> particular</c><00:19:00.400><c> time</c><00:19:00.720><c> to</c><00:19:00.880><c> maturity</c>
+
+00:19:01.430 --> 00:19:01.440 align:start position:0%
+defined at a particular time to maturity
+ 
+
+00:19:01.440 --> 00:19:04.230 align:start position:0%
+defined at a particular time to maturity
+time<00:19:01.679><c> to</c><00:19:02.240><c> expiry</c><00:19:03.039><c> tau</c>
+
+00:19:04.230 --> 00:19:04.240 align:start position:0%
+time to expiry tau
+ 
+
+00:19:04.240 --> 00:19:05.750 align:start position:0%
+time to expiry tau
+at<00:19:04.400><c> this</c><00:19:04.720><c> point</c>
+
+00:19:05.750 --> 00:19:05.760 align:start position:0%
+at this point
+ 
+
+00:19:05.760 --> 00:19:08.950 align:start position:0%
+at this point
+it's<00:19:06.160><c> extremely</c><00:19:06.799><c> model</c><00:19:07.280><c> independent</c>
+
+00:19:08.950 --> 00:19:08.960 align:start position:0%
+it's extremely model independent
+ 
+
+00:19:08.960 --> 00:19:11.270 align:start position:0%
+it's extremely model independent
+we<00:19:09.120><c> have</c><00:19:09.280><c> a</c><00:19:09.360><c> risk</c><00:19:09.600><c> neutral</c><00:19:10.000><c> density</c><00:19:10.400><c> function</c>
+
+00:19:11.270 --> 00:19:11.280 align:start position:0%
+we have a risk neutral density function
+ 
+
+00:19:11.280 --> 00:19:15.350 align:start position:0%
+we have a risk neutral density function
+um<00:19:12.000><c> at</c><00:19:12.160><c> a</c><00:19:12.320><c> particular</c><00:19:13.200><c> uh</c><00:19:13.679><c> time</c><00:19:14.000><c> to</c><00:19:14.160><c> maturity</c>
+
+00:19:15.350 --> 00:19:15.360 align:start position:0%
+um at a particular uh time to maturity
+ 
+
+00:19:15.360 --> 00:19:17.350 align:start position:0%
+um at a particular uh time to maturity
+that<00:19:15.600><c> has</c><00:19:15.840><c> either</c><00:19:16.160><c> taken</c><00:19:16.480><c> in</c><00:19:16.559><c> market</c><00:19:16.960><c> prices</c>
+
+00:19:17.350 --> 00:19:17.360 align:start position:0%
+that has either taken in market prices
+ 
+
+00:19:17.360 --> 00:19:19.190 align:start position:0%
+that has either taken in market prices
+or<00:19:17.520><c> taken</c><00:19:17.919><c> in</c><00:19:18.000><c> a</c><00:19:18.080><c> particular</c><00:19:18.559><c> model</c><00:19:18.960><c> like</c>
+
+00:19:19.190 --> 00:19:19.200 align:start position:0%
+or taken in a particular model like
+ 
+
+00:19:19.200 --> 00:19:21.270 align:start position:0%
+or taken in a particular model like
+we've<00:19:19.440><c> used</c><00:19:19.600><c> the</c><00:19:19.760><c> hester</c><00:19:20.080><c> model</c>
+
+00:19:21.270 --> 00:19:21.280 align:start position:0%
+we've used the hester model
+ 
+
+00:19:21.280 --> 00:19:23.190 align:start position:0%
+we've used the hester model
+and<00:19:21.600><c> now</c><00:19:22.000><c> we</c><00:19:22.160><c> can</c><00:19:22.320><c> use</c><00:19:22.480><c> that</c><00:19:22.640><c> risk</c><00:19:22.880><c> neutral</c>
+
+00:19:23.190 --> 00:19:23.200 align:start position:0%
+and now we can use that risk neutral
+ 
+
+00:19:23.200 --> 00:19:25.750 align:start position:0%
+and now we can use that risk neutral
+density<00:19:24.000><c> density</c><00:19:24.400><c> function</c><00:19:25.200><c> with</c><00:19:25.520><c> those</c>
+
+00:19:25.750 --> 00:19:25.760 align:start position:0%
+density density function with those
+ 
+
+00:19:25.760 --> 00:19:28.549 align:start position:0%
+density density function with those
+particular<00:19:26.240><c> parameters</c><00:19:26.880><c> etc</c><00:19:27.679><c> all</c><00:19:27.919><c> embedded</c>
+
+00:19:28.549 --> 00:19:28.559 align:start position:0%
+particular parameters etc all embedded
+ 
+
+00:19:28.559 --> 00:19:30.950 align:start position:0%
+particular parameters etc all embedded
+within<00:19:28.960><c> this</c><00:19:29.600><c> pdf</c><00:19:30.080><c> what</c><00:19:30.240><c> do</c><00:19:30.320><c> i</c><00:19:30.400><c> mean</c><00:19:30.640><c> by</c><00:19:30.799><c> that</c>
+
+00:19:30.950 --> 00:19:30.960 align:start position:0%
+within this pdf what do i mean by that
+ 
+
+00:19:30.960 --> 00:19:33.669 align:start position:0%
+within this pdf what do i mean by that
+well<00:19:31.200><c> i'll</c><00:19:31.360><c> show</c><00:19:31.520><c> you</c><00:19:32.080><c> here</c><00:19:32.400><c> we've</c><00:19:32.640><c> got</c><00:19:32.960><c> a</c>
+
+00:19:33.669 --> 00:19:33.679 align:start position:0%
+well i'll show you here we've got a
+ 
+
+00:19:33.679 --> 00:19:35.909 align:start position:0%
+well i'll show you here we've got a
+generic<00:19:34.240><c> pricing</c><00:19:34.640><c> formula</c><00:19:35.120><c> for</c><00:19:35.280><c> just</c><00:19:35.520><c> a</c><00:19:35.600><c> call</c>
+
+00:19:35.909 --> 00:19:35.919 align:start position:0%
+generic pricing formula for just a call
+ 
+
+00:19:35.919 --> 00:19:38.950 align:start position:0%
+generic pricing formula for just a call
+and<00:19:36.000><c> a</c><00:19:36.160><c> put</c><00:19:36.880><c> and</c><00:19:37.039><c> this</c><00:19:37.280><c> is</c><00:19:37.360><c> in</c><00:19:37.520><c> terms</c><00:19:37.919><c> of</c><00:19:38.240><c> k</c><00:19:38.640><c> and</c>
+
+00:19:38.950 --> 00:19:38.960 align:start position:0%
+and a put and this is in terms of k and
+ 
+
+00:19:38.960 --> 00:19:39.830 align:start position:0%
+and a put and this is in terms of k and
+tau
+
+00:19:39.830 --> 00:19:39.840 align:start position:0%
+tau
+ 
+
+00:19:39.840 --> 00:19:41.110 align:start position:0%
+tau
+so
+
+00:19:41.110 --> 00:19:41.120 align:start position:0%
+so
+ 
+
+00:19:41.120 --> 00:19:43.190 align:start position:0%
+so
+now<00:19:41.360><c> i</c><00:19:41.520><c> can</c><00:19:41.679><c> just</c><00:19:41.840><c> to</c><00:19:42.080><c> complete</c>
+
+00:19:43.190 --> 00:19:43.200 align:start position:0%
+now i can just to complete
+ 
+
+00:19:43.200 --> 00:19:46.549 align:start position:0%
+now i can just to complete
+this<00:19:43.440><c> numerical</c><00:19:44.080><c> integration</c><00:19:45.120><c> of</c><00:19:45.600><c> this</c><00:19:45.919><c> pdf</c>
+
+00:19:46.549 --> 00:19:46.559 align:start position:0%
+this numerical integration of this pdf
+ 
+
+00:19:46.559 --> 00:19:48.710 align:start position:0%
+this numerical integration of this pdf
+our<00:19:46.720><c> risk</c><00:19:46.960><c> neutral</c><00:19:47.280><c> pdf</c><00:19:47.840><c> for</c><00:19:48.000><c> a</c><00:19:48.080><c> particular</c>
+
+00:19:48.710 --> 00:19:48.720 align:start position:0%
+our risk neutral pdf for a particular
+ 
+
+00:19:48.720 --> 00:19:49.750 align:start position:0%
+our risk neutral pdf for a particular
+tau
+
+00:19:49.750 --> 00:19:49.760 align:start position:0%
+tau
+ 
+
+00:19:49.760 --> 00:19:50.870 align:start position:0%
+tau
+of
+
+00:19:50.870 --> 00:19:50.880 align:start position:0%
+of
+ 
+
+00:19:50.880 --> 00:19:53.590 align:start position:0%
+of
+my<00:19:51.120><c> call</c><00:19:51.360><c> payoff</c><00:19:51.760><c> which</c><00:19:52.000><c> is</c><00:19:52.080><c> just</c><00:19:52.400><c> st</c><00:19:52.880><c> minus</c><00:19:53.280><c> k</c>
+
+00:19:53.590 --> 00:19:53.600 align:start position:0%
+my call payoff which is just st minus k
+ 
+
+00:19:53.600 --> 00:19:56.710 align:start position:0%
+my call payoff which is just st minus k
+between<00:19:54.240><c> k</c><00:19:54.480><c> to</c><00:19:54.720><c> infinity</c><00:19:55.360><c> or</c><00:19:55.600><c> for</c><00:19:55.760><c> a</c><00:19:55.919><c> put</c><00:19:56.240><c> it's</c>
+
+00:19:56.710 --> 00:19:56.720 align:start position:0%
+between k to infinity or for a put it's
+ 
+
+00:19:56.720 --> 00:19:59.830 align:start position:0%
+between k to infinity or for a put it's
+uh<00:19:57.039><c> the</c><00:19:57.200><c> interval</c><00:19:57.679><c> minus</c><00:19:58.080><c> infinity</c><00:19:58.640><c> to</c><00:19:58.880><c> k</c><00:19:59.360><c> of</c><00:19:59.520><c> k</c>
+
+00:19:59.830 --> 00:19:59.840 align:start position:0%
+uh the interval minus infinity to k of k
+ 
+
+00:19:59.840 --> 00:20:01.350 align:start position:0%
+uh the interval minus infinity to k of k
+minus<00:20:00.320><c> st</c>
+
+00:20:01.350 --> 00:20:01.360 align:start position:0%
+minus st
+ 
+
+00:20:01.360 --> 00:20:03.830 align:start position:0%
+minus st
+now<00:20:02.000><c> i'm</c><00:20:02.240><c> going</c><00:20:02.480><c> to</c><00:20:02.640><c> do</c><00:20:02.960><c> both</c><00:20:03.280><c> of</c><00:20:03.360><c> those</c><00:20:03.679><c> so</c>
+
+00:20:03.830 --> 00:20:03.840 align:start position:0%
+now i'm going to do both of those so
+ 
+
+00:20:03.840 --> 00:20:05.909 align:start position:0%
+now i'm going to do both of those so
+here<00:20:04.080><c> we've</c><00:20:04.240><c> got</c><00:20:04.480><c> our</c><00:20:05.039><c> we're</c><00:20:05.280><c> defining</c><00:20:05.760><c> our</c>
+
+00:20:05.909 --> 00:20:05.919 align:start position:0%
+here we've got our we're defining our
+ 
+
+00:20:05.919 --> 00:20:09.110 align:start position:0%
+here we've got our we're defining our
+integrand<00:20:06.480><c> which</c><00:20:06.799><c> is</c><00:20:07.039><c> just</c><00:20:07.280><c> in</c><00:20:07.440><c> terms</c><00:20:07.760><c> of</c><00:20:08.400><c> x</c><00:20:08.880><c> so</c>
+
+00:20:09.110 --> 00:20:09.120 align:start position:0%
+integrand which is just in terms of x so
+ 
+
+00:20:09.120 --> 00:20:10.630 align:start position:0%
+integrand which is just in terms of x so
+our<00:20:09.440><c> us</c><00:20:09.840><c> our</c>
+
+00:20:10.630 --> 00:20:10.640 align:start position:0%
+our us our
+ 
+
+00:20:10.640 --> 00:20:12.630 align:start position:0%
+our us our
+stock<00:20:11.039><c> price</c><00:20:11.679><c> and</c><00:20:11.919><c> then</c><00:20:12.159><c> we've</c><00:20:12.320><c> got</c><00:20:12.480><c> an</c>
+
+00:20:12.630 --> 00:20:12.640 align:start position:0%
+stock price and then we've got an
+ 
+
+00:20:12.640 --> 00:20:14.630 align:start position:0%
+stock price and then we've got an
+argument<00:20:13.360><c> k</c>
+
+00:20:14.630 --> 00:20:14.640 align:start position:0%
+argument k
+ 
+
+00:20:14.640 --> 00:20:17.270 align:start position:0%
+argument k
+so<00:20:14.799><c> here</c><00:20:14.960><c> we're</c><00:20:15.200><c> returning</c><00:20:16.159><c> uh</c><00:20:16.559><c> our</c><00:20:16.880><c> stock</c>
+
+00:20:17.270 --> 00:20:17.280 align:start position:0%
+so here we're returning uh our stock
+ 
+
+00:20:17.280 --> 00:20:20.070 align:start position:0%
+so here we're returning uh our stock
+price<00:20:17.679><c> minus</c><00:20:18.080><c> k</c><00:20:18.400><c> times</c><00:20:18.799><c> by</c><00:20:18.960><c> our</c><00:20:19.039><c> wrist</c><00:20:19.360><c> neutral</c>
+
+00:20:20.070 --> 00:20:20.080 align:start position:0%
+price minus k times by our wrist neutral
+ 
+
+00:20:20.080 --> 00:20:22.149 align:start position:0%
+price minus k times by our wrist neutral
+pdf<00:20:20.799><c> now</c><00:20:21.039><c> we've</c><00:20:21.200><c> got</c><00:20:21.360><c> our</c><00:20:21.600><c> integrand</c><00:20:22.000><c> of</c>
+
+00:20:22.149 --> 00:20:22.159 align:start position:0%
+pdf now we've got our integrand of
+ 
+
+00:20:22.159 --> 00:20:23.830 align:start position:0%
+pdf now we've got our integrand of
+output<00:20:22.480><c> which</c><00:20:22.720><c> is</c><00:20:22.880><c> just</c><00:20:23.200><c> the</c><00:20:23.280><c> opposite</c><00:20:23.679><c> we've</c>
+
+00:20:23.830 --> 00:20:23.840 align:start position:0%
+output which is just the opposite we've
+ 
+
+00:20:23.840 --> 00:20:26.630 align:start position:0%
+output which is just the opposite we've
+got<00:20:24.000><c> k</c><00:20:24.240><c> minus</c><00:20:24.720><c> x</c>
+
+00:20:26.630 --> 00:20:26.640 align:start position:0%
+got k minus x
+ 
+
+00:20:26.640 --> 00:20:29.669 align:start position:0%
+got k minus x
+now<00:20:26.880><c> our</c><00:20:27.200><c> integral</c><00:20:28.159><c> for</c><00:20:28.320><c> the</c><00:20:28.480><c> call</c><00:20:28.880><c> is</c><00:20:29.039><c> defined</c>
+
+00:20:29.669 --> 00:20:29.679 align:start position:0%
+now our integral for the call is defined
+ 
+
+00:20:29.679 --> 00:20:32.470 align:start position:0%
+now our integral for the call is defined
+on<00:20:29.840><c> the</c><00:20:30.000><c> interval</c><00:20:30.559><c> from</c><00:20:30.960><c> k</c><00:20:31.200><c> to</c><00:20:31.440><c> infinity</c><00:20:32.159><c> but</c>
+
+00:20:32.470 --> 00:20:32.480 align:start position:0%
+on the interval from k to infinity but
+ 
+
+00:20:32.480 --> 00:20:34.149 align:start position:0%
+on the interval from k to infinity but
+of<00:20:32.559><c> course</c><00:20:32.799><c> we</c><00:20:32.880><c> can't</c><00:20:33.120><c> go</c><00:20:33.280><c> to</c><00:20:33.440><c> infinity</c><00:20:34.000><c> our</c>
+
+00:20:34.149 --> 00:20:34.159 align:start position:0%
+of course we can't go to infinity our
+ 
+
+00:20:34.159 --> 00:20:36.870 align:start position:0%
+of course we can't go to infinity our
+maximum<00:20:34.640><c> cdf</c><00:20:35.280><c> that</c><00:20:36.000><c> we</c><00:20:36.159><c> can</c><00:20:36.400><c> calculate</c>
+
+00:20:36.870 --> 00:20:36.880 align:start position:0%
+maximum cdf that we can calculate
+ 
+
+00:20:36.880 --> 00:20:39.430 align:start position:0%
+maximum cdf that we can calculate
+because<00:20:37.039><c> of</c><00:20:37.200><c> our</c><00:20:37.360><c> interpolation</c><00:20:38.400><c> is</c><00:20:38.799><c> uh</c><00:20:39.200><c> to</c>
+
+00:20:39.430 --> 00:20:39.440 align:start position:0%
+because of our interpolation is uh to
+ 
+
+00:20:39.440 --> 00:20:43.990 align:start position:0%
+because of our interpolation is uh to
+180<00:20:40.559><c> so</c><00:20:40.799><c> here</c><00:20:41.120><c> i've</c><00:20:41.280><c> just</c><00:20:41.440><c> gone</c><00:20:41.679><c> 178</c>
+
+00:20:43.990 --> 00:20:44.000 align:start position:0%
+180 so here i've just gone 178
+ 
+
+00:20:44.000 --> 00:20:46.070 align:start position:0%
+180 so here i've just gone 178
+and<00:20:44.240><c> then</c><00:20:44.720><c> of</c><00:20:44.880><c> course</c><00:20:45.200><c> then</c><00:20:45.440><c> we've</c><00:20:45.600><c> got</c><00:20:45.840><c> our</c>
+
+00:20:46.070 --> 00:20:46.080 align:start position:0%
+and then of course then we've got our
+ 
+
+00:20:46.080 --> 00:20:48.870 align:start position:0%
+and then of course then we've got our
+integrand<00:20:47.039><c> between</c><00:20:47.520><c> k</c><00:20:47.919><c> and</c><00:20:48.080><c> one</c><00:20:48.320><c> seven</c><00:20:48.640><c> eight</c>
+
+00:20:48.870 --> 00:20:48.880 align:start position:0%
+integrand between k and one seven eight
+ 
+
+00:20:48.880 --> 00:20:51.990 align:start position:0%
+integrand between k and one seven eight
+i've<00:20:49.039><c> limited</c><00:20:49.679><c> it</c><00:20:50.080><c> to</c><00:20:50.400><c> one</c><00:20:50.720><c> thousand</c><00:20:51.520><c> and</c><00:20:51.760><c> then</c>
+
+00:20:51.990 --> 00:20:52.000 align:start position:0%
+i've limited it to one thousand and then
+ 
+
+00:20:52.000 --> 00:20:54.310 align:start position:0%
+i've limited it to one thousand and then
+i've<00:20:52.159><c> got</c><00:20:52.400><c> my</c><00:20:52.640><c> argument</c><00:20:53.120><c> of</c><00:20:53.280><c> k</c><00:20:53.520><c> being</c><00:20:53.840><c> fed</c><00:20:54.080><c> into</c>
+
+00:20:54.310 --> 00:20:54.320 align:start position:0%
+i've got my argument of k being fed into
+ 
+
+00:20:54.320 --> 00:20:57.270 align:start position:0%
+i've got my argument of k being fed into
+that<00:20:54.559><c> integrand</c><00:20:55.280><c> function</c>
+
+00:20:57.270 --> 00:20:57.280 align:start position:0%
+that integrand function
+ 
+
+00:20:57.280 --> 00:20:59.510 align:start position:0%
+that integrand function
+i'm<00:20:57.520><c> then</c><00:20:57.679><c> going</c><00:20:58.000><c> to</c><00:20:58.080><c> compute</c><00:20:58.480><c> for</c><00:20:58.880><c> f</c><00:20:59.039><c> for</c><00:20:59.200><c> each</c>
+
+00:20:59.510 --> 00:20:59.520 align:start position:0%
+i'm then going to compute for f for each
+ 
+
+00:20:59.520 --> 00:21:02.870 align:start position:0%
+i'm then going to compute for f for each
+k<00:20:59.760><c> in</c><00:21:00.000><c> our</c><00:21:00.159><c> strikes</c><00:21:00.799><c> and</c><00:21:01.120><c> the</c><00:21:01.440><c> put</c><00:21:02.159><c> using</c><00:21:02.720><c> the</c>
+
+00:21:02.870 --> 00:21:02.880 align:start position:0%
+k in our strikes and the put using the
+ 
+
+00:21:02.880 --> 00:21:04.710 align:start position:0%
+k in our strikes and the put using the
+same<00:21:03.200><c> integrand</c><00:21:03.760><c> but</c><00:21:04.000><c> our</c><00:21:04.159><c> interval</c><00:21:04.559><c> is</c><00:21:04.640><c> going</c>
+
+00:21:04.710 --> 00:21:04.720 align:start position:0%
+same integrand but our interval is going
+ 
+
+00:21:04.720 --> 00:21:06.710 align:start position:0%
+same integrand but our interval is going
+to<00:21:04.799><c> be</c><00:21:04.960><c> from</c><00:21:05.120><c> minus</c><00:21:05.520><c> infinity</c><00:21:06.240><c> again</c><00:21:06.559><c> our</c>
+
+00:21:06.710 --> 00:21:06.720 align:start position:0%
+to be from minus infinity again our
+ 
+
+00:21:06.720 --> 00:21:08.310 align:start position:0%
+to be from minus infinity again our
+lowest<00:21:07.120><c> defined</c><00:21:07.600><c> range</c><00:21:07.919><c> which</c><00:21:08.159><c> is</c>
+
+00:21:08.310 --> 00:21:08.320 align:start position:0%
+lowest defined range which is
+ 
+
+00:21:08.320 --> 00:21:09.830 align:start position:0%
+lowest defined range which is
+essentially<00:21:08.880><c> 0</c>
+
+00:21:09.830 --> 00:21:09.840 align:start position:0%
+essentially 0
+ 
+
+00:21:09.840 --> 00:21:11.909 align:start position:0%
+essentially 0
+as<00:21:10.000><c> we</c><00:21:10.159><c> can</c><00:21:10.320><c> see</c><00:21:10.640><c> from</c><00:21:10.960><c> our</c>
+
+00:21:11.909 --> 00:21:11.919 align:start position:0%
+as we can see from our
+ 
+
+00:21:11.919 --> 00:21:14.950 align:start position:0%
+as we can see from our
+cdf<00:21:12.720><c> i've</c><00:21:12.960><c> got</c><00:21:13.280><c> 61</c>
+
+00:21:14.950 --> 00:21:14.960 align:start position:0%
+cdf i've got 61
+ 
+
+00:21:14.960 --> 00:21:17.830 align:start position:0%
+cdf i've got 61
+and<00:21:15.200><c> then</c><00:21:15.520><c> i'm</c><00:21:15.679><c> going</c><00:21:16.080><c> to</c><00:21:16.320><c> k</c><00:21:16.960><c> so</c><00:21:17.200><c> here</c><00:21:17.520><c> now</c><00:21:17.760><c> i've</c>
+
+00:21:17.830 --> 00:21:17.840 align:start position:0%
+and then i'm going to k so here now i've
+ 
+
+00:21:17.840 --> 00:21:20.230 align:start position:0%
+and then i'm going to k so here now i've
+got<00:21:18.000><c> the</c><00:21:18.080><c> discount</c><00:21:18.480><c> factor</c><00:21:19.039><c> multiplied</c><00:21:19.840><c> by</c>
+
+00:21:20.230 --> 00:21:20.240 align:start position:0%
+got the discount factor multiplied by
+ 
+
+00:21:20.240 --> 00:21:23.190 align:start position:0%
+got the discount factor multiplied by
+our<00:21:20.559><c> integral</c><00:21:21.360><c> and</c><00:21:21.679><c> then</c><00:21:22.000><c> i've</c><00:21:22.240><c> done</c><00:21:22.480><c> the</c><00:21:22.640><c> same</c>
+
+00:21:23.190 --> 00:21:23.200 align:start position:0%
+our integral and then i've done the same
+ 
+
+00:21:23.200 --> 00:21:24.950 align:start position:0%
+our integral and then i've done the same
+for<00:21:23.600><c> the</c><00:21:23.840><c> put</c>
+
+00:21:24.950 --> 00:21:24.960 align:start position:0%
+for the put
+ 
+
+00:21:24.960 --> 00:21:28.070 align:start position:0%
+for the put
+so<00:21:25.360><c> we</c><00:21:25.520><c> can</c><00:21:25.679><c> append</c><00:21:26.640><c> those</c><00:21:26.960><c> values</c><00:21:27.679><c> and</c><00:21:27.840><c> then</c>
+
+00:21:28.070 --> 00:21:28.080 align:start position:0%
+so we can append those values and then
+ 
+
+00:21:28.080 --> 00:21:30.070 align:start position:0%
+so we can append those values and then
+we<00:21:28.240><c> can</c><00:21:28.480><c> display</c><00:21:28.880><c> them</c><00:21:29.039><c> in</c><00:21:29.200><c> a</c><00:21:29.280><c> pandas</c><00:21:29.760><c> data</c>
+
+00:21:30.070 --> 00:21:30.080 align:start position:0%
+we can display them in a pandas data
+ 
+
+00:21:30.080 --> 00:21:31.350 align:start position:0%
+we can display them in a pandas data
+frame
+
+00:21:31.350 --> 00:21:31.360 align:start position:0%
+frame
+ 
+
+00:21:31.360 --> 00:21:32.870 align:start position:0%
+frame
+and<00:21:31.520><c> here</c><00:21:31.760><c> i'm</c><00:21:31.840><c> just</c><00:21:32.000><c> showing</c><00:21:32.320><c> you</c><00:21:32.559><c> how</c><00:21:32.720><c> we've</c>
+
+00:21:32.870 --> 00:21:32.880 align:start position:0%
+and here i'm just showing you how we've
+ 
+
+00:21:32.880 --> 00:21:35.110 align:start position:0%
+and here i'm just showing you how we've
+been<00:21:33.120><c> able</c><00:21:33.280><c> to</c><00:21:33.440><c> price</c><00:21:34.159><c> both</c>
+
+00:21:35.110 --> 00:21:35.120 align:start position:0%
+been able to price both
+ 
+
+00:21:35.120 --> 00:21:37.990 align:start position:0%
+been able to price both
+puts<00:21:35.760><c> and</c><00:21:36.080><c> calls</c>
+
+00:21:37.990 --> 00:21:38.000 align:start position:0%
+puts and calls
+ 
+
+00:21:38.000 --> 00:21:39.110 align:start position:0%
+puts and calls
+within
+
+00:21:39.110 --> 00:21:39.120 align:start position:0%
+within
+ 
+
+00:21:39.120 --> 00:21:41.430 align:start position:0%
+within
+for<00:21:39.280><c> different</c><00:21:39.600><c> strikes</c><00:21:40.400><c> as</c><00:21:40.640><c> easily</c><00:21:40.960><c> as</c><00:21:41.120><c> that</c>
+
+00:21:41.430 --> 00:21:41.440 align:start position:0%
+for different strikes as easily as that
+ 
+
+00:21:41.440 --> 00:21:43.510 align:start position:0%
+for different strikes as easily as that
+and<00:21:41.600><c> if</c><00:21:41.760><c> it</c><00:21:41.840><c> was</c><00:21:42.320><c> really</c><00:21:42.559><c> high</c><00:21:42.799><c> dimensions</c><00:21:43.360><c> we</c>
+
+00:21:43.510 --> 00:21:43.520 align:start position:0%
+and if it was really high dimensions we
+ 
+
+00:21:43.520 --> 00:21:45.270 align:start position:0%
+and if it was really high dimensions we
+had<00:21:43.679><c> high</c><00:21:44.000><c> time</c><00:21:44.240><c> steps</c><00:21:44.559><c> it</c><00:21:44.720><c> takes</c><00:21:45.039><c> high</c>
+
+00:21:45.270 --> 00:21:45.280 align:start position:0%
+had high time steps it takes high
+ 
+
+00:21:45.280 --> 00:21:47.669 align:start position:0%
+had high time steps it takes high
+complexity<00:21:45.840><c> to</c><00:21:45.919><c> be</c><00:21:46.080><c> able</c><00:21:46.240><c> to</c><00:21:46.400><c> calculate</c><00:21:46.960><c> this</c>
+
+00:21:47.669 --> 00:21:47.679 align:start position:0%
+complexity to be able to calculate this
+ 
+
+00:21:47.679 --> 00:21:50.310 align:start position:0%
+complexity to be able to calculate this
+whether<00:21:48.000><c> it's</c><00:21:48.159><c> model</c><00:21:48.400><c> dependent</c><00:21:49.280><c> um</c><00:21:50.000><c> the</c>
+
+00:21:50.310 --> 00:21:50.320 align:start position:0%
+whether it's model dependent um the
+ 
+
+00:21:50.320 --> 00:21:52.149 align:start position:0%
+whether it's model dependent um the
+actually<00:21:50.880><c> pricing</c><00:21:51.360><c> things</c><00:21:51.679><c> off</c><00:21:51.840><c> the</c><00:21:52.000><c> wrist</c>
+
+00:21:52.149 --> 00:21:52.159 align:start position:0%
+actually pricing things off the wrist
+ 
+
+00:21:52.159 --> 00:21:54.390 align:start position:0%
+actually pricing things off the wrist
+neutral<00:21:52.480><c> density</c><00:21:52.880><c> functions</c><00:21:53.360><c> is</c><00:21:53.679><c> very</c><00:21:54.000><c> very</c>
+
+00:21:54.390 --> 00:21:54.400 align:start position:0%
+neutral density functions is very very
+ 
+
+00:21:54.400 --> 00:21:57.430 align:start position:0%
+neutral density functions is very very
+efficient<00:21:55.280><c> so</c><00:21:55.520><c> i</c><00:21:55.600><c> would</c><00:21:55.760><c> encourage</c><00:21:56.159><c> you</c><00:21:56.480><c> to</c><00:21:57.200><c> go</c>
+
+00:21:57.430 --> 00:21:57.440 align:start position:0%
+efficient so i would encourage you to go
+ 
+
+00:21:57.440 --> 00:22:00.390 align:start position:0%
+efficient so i would encourage you to go
+out<00:21:57.679><c> and</c><00:21:57.760><c> try</c><00:21:58.080><c> and</c><00:21:58.640><c> derive</c><00:21:59.600><c> wrist</c><00:21:59.840><c> neutral</c>
+
+00:22:00.390 --> 00:22:00.400 align:start position:0%
+out and try and derive wrist neutral
+ 
+
+00:22:00.400 --> 00:22:02.070 align:start position:0%
+out and try and derive wrist neutral
+density<00:22:00.960><c> functions</c><00:22:01.360><c> for</c><00:22:01.520><c> whatever</c><00:22:01.840><c> you're</c>
+
+00:22:02.070 --> 00:22:02.080 align:start position:0%
+density functions for whatever you're
+ 
+
+00:22:02.080 --> 00:22:03.990 align:start position:0%
+density functions for whatever you're
+interested<00:22:02.480><c> in</c><00:22:02.960><c> in</c><00:22:03.200><c> one</c><00:22:03.360><c> of</c><00:22:03.440><c> the</c><00:22:03.520><c> next</c><00:22:03.679><c> videos</c>
+
+00:22:03.990 --> 00:22:04.000 align:start position:0%
+interested in in one of the next videos
+ 
+
+00:22:04.000 --> 00:22:04.950 align:start position:0%
+interested in in one of the next videos
+we're<00:22:04.159><c> going</c><00:22:04.240><c> to</c><00:22:04.400><c> look</c><00:22:04.480><c> at</c><00:22:04.559><c> how</c><00:22:04.799><c> we</c><00:22:04.880><c> can</c>
+
+00:22:04.950 --> 00:22:04.960 align:start position:0%
+we're going to look at how we can
+ 
+
+00:22:04.960 --> 00:22:07.510 align:start position:0%
+we're going to look at how we can
+actually<00:22:05.280><c> take</c><00:22:05.440><c> market</c><00:22:05.840><c> prices</c><00:22:06.480><c> and</c><00:22:06.880><c> do</c><00:22:07.200><c> model</c>
+
+00:22:07.510 --> 00:22:07.520 align:start position:0%
+actually take market prices and do model
+ 
+
+00:22:07.520 --> 00:22:09.110 align:start position:0%
+actually take market prices and do model
+independent<00:22:08.159><c> risk</c><00:22:08.480><c> neutral</c><00:22:08.720><c> density</c>
+
+00:22:09.110 --> 00:22:09.120 align:start position:0%
+independent risk neutral density
+ 
+
+00:22:09.120 --> 00:22:11.909 align:start position:0%
+independent risk neutral density
+functions<00:22:09.840><c> from</c><00:22:10.159><c> the</c><00:22:10.320><c> market</c><00:22:10.720><c> implied</c><00:22:11.120><c> prices</c>
+
+00:22:11.909 --> 00:22:11.919 align:start position:0%
+functions from the market implied prices
+ 
+
+00:22:11.919 --> 00:22:13.430 align:start position:0%
+functions from the market implied prices
+so<00:22:12.320><c> thank</c><00:22:12.480><c> you</c><00:22:12.640><c> very</c><00:22:12.720><c> much</c><00:22:12.880><c> for</c><00:22:13.039><c> listening</c>
+
+00:22:13.430 --> 00:22:13.440 align:start position:0%
+so thank you very much for listening
+ 
+
+00:22:13.440 --> 00:22:17.679 align:start position:0%
+so thank you very much for listening
+until<00:22:13.679><c> next</c><00:22:13.840><c> time</c><00:22:14.080><c> youtube</c><00:22:14.559><c> see</c><00:22:14.799><c> you</c><00:22:14.880><c> later</c>
+

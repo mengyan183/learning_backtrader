@@ -1,0 +1,2056 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.800 --> 00:00:06.000
+People think that trading automated is, you&nbsp;
+know, unemotional. There's a lot of emotion&nbsp;&nbsp;
+
+00:00:06.000 --> 00:00:10.160
+and it's exactly what you just described there.&nbsp;
+What do I do here? I'm in this draw down. What&nbsp;&nbsp;
+
+00:00:10.160 --> 00:00:14.240
+do I do? That's an emotional thing. You're not&nbsp;
+making a decision during the day about that,&nbsp;&nbsp;
+
+00:00:14.240 --> 00:00:20.240
+but it's definitely an emotional decision.&nbsp;
+And every trader that ever quit trading did&nbsp;&nbsp;
+
+00:00:20.240 --> 00:00:24.480
+so during a draw down, right? They're not&nbsp;
+they're not quitting at alltime highs. So&nbsp;&nbsp;
+
+00:00:24.480 --> 00:00:32.640
+that's the hardest part of trading is having&nbsp;
+the confidence to trade through a draw down
+
+00:00:32.640 --> 00:00:42.720
+markets speculation and risk. This&nbsp;
+is the chat with traders podcast.
+
+00:00:42.720 --> 00:00:48.800
+Hey traders, Tessa here. As always, thank you&nbsp;
+for tuning in to Chat with Traders. You know,&nbsp;&nbsp;
+
+00:00:48.800 --> 00:00:54.480
+since 2015, we're one of the longestrunn&nbsp;
+long- form podcasts in the world dedicated&nbsp;&nbsp;
+
+00:00:54.480 --> 00:01:00.320
+to trading. We've had in-depth conversations&nbsp;
+with professional traders and industry experts&nbsp;&nbsp;
+
+00:01:00.320 --> 00:01:06.000
+exploring the realities of markets, speculation,&nbsp;
+risk, and what it truly takes to achieve sustained&nbsp;&nbsp;
+
+00:01:06.000 --> 00:01:12.640
+performance. Today's episode 318 is another strong&nbsp;
+example of that. What happens when the thing you&nbsp;&nbsp;
+
+00:01:12.640 --> 00:01:19.520
+believe is your edge, your intuition, gets beaten&nbsp;
+by your own back test? Today, my co-host Ian&nbsp;&nbsp;
+
+00:01:19.520 --> 00:01:25.040
+speaks with Dave Mabe, a trader of over two&nbsp;
+decades who began trading during the dotcom&nbsp;&nbsp;
+
+00:01:25.040 --> 00:01:31.120
+era, moved from swing trading into day trading,&nbsp;
+and built a rule-based gapping breakout framework&nbsp;&nbsp;
+
+00:01:31.120 --> 00:01:37.120
+centered on defined risk, position sizing, and&nbsp;
+expectancy. But the real turning point in his&nbsp;&nbsp;
+
+00:01:37.120 --> 00:01:43.840
+career wasn't the strategy itself. It was the&nbsp;
+moment he tested it and discovered a systematic&nbsp;&nbsp;
+
+00:01:43.840 --> 00:01:49.440
+version that outperformed his own discretionary&nbsp;
+trading. That humbling realization pushed him&nbsp;&nbsp;
+
+00:01:49.440 --> 00:01:55.680
+toward automation, scaling from hundreds of trades&nbsp;
+a year to thousands and rethinking how to manage&nbsp;&nbsp;
+
+00:01:55.680 --> 00:02:02.320
+draw downs and diversification. We also dig into&nbsp;
+gapping breakouts, R multiples, why traders often&nbsp;&nbsp;
+
+00:02:02.320 --> 00:02:08.240
+misunderstand back testing, the gap between&nbsp;
+simulation and live results, and how to build&nbsp;&nbsp;
+
+00:02:08.240 --> 00:02:13.120
+real confidence in a system before sizing up.&nbsp;
+You'll find additional background and resources&nbsp;&nbsp;
+
+00:02:13.120 --> 00:02:19.680
+from Dave in the show notes. Now, let's get to&nbsp;
+the conversation. Ladies and gentlemen, we're so&nbsp;&nbsp;
+
+00:02:19.680 --> 00:02:26.880
+pleased to present Dave Mabe from North Carolina.&nbsp;
+Well, Dave, I'd like to welcome you to uh Chat&nbsp;&nbsp;
+
+00:02:26.880 --> 00:02:33.360
+with Traders. Thanks very much for having me. This&nbsp;
+is uh quite an honor. Yeah. Uh so, where where&nbsp;&nbsp;
+
+00:02:33.360 --> 00:02:39.840
+you at now and where did you grow up? I live in&nbsp;
+Carbor, North Carolina, which is just outside of&nbsp;&nbsp;
+
+00:02:39.840 --> 00:02:46.640
+Chapel Hill, which is sort of near Raleigh. I grew&nbsp;
+up not far away in a small town called Pofftown&nbsp;&nbsp;
+
+00:02:46.640 --> 00:02:52.880
+which is near Winston Salem, North Carolina. So&nbsp;
+yeah, I'm a lifetime North Carolinian. Uh with&nbsp;&nbsp;
+
+00:02:52.880 --> 00:03:00.720
+the accent, too. Yeah. Yep. How did you first&nbsp;
+get introduced to the financial markets? So my&nbsp;&nbsp;
+
+00:03:00.720 --> 00:03:09.120
+dad was always investing in some way. In fact, we&nbsp;
+had cattle uh for a couple years as an investment.&nbsp;&nbsp;
+
+00:03:09.120 --> 00:03:16.160
+So he was always kind of dabbling around. He was&nbsp;
+very conservative with money but always sort of&nbsp;&nbsp;
+
+00:03:16.160 --> 00:03:23.040
+uh dabbling around investing and uh you know very&nbsp;
+much a saver instilled that mindset in me. So,&nbsp;&nbsp;
+
+00:03:23.040 --> 00:03:29.120
+I had a the sort of exposed to it at kind&nbsp;
+of an early age and when I went to college,&nbsp;&nbsp;
+
+00:03:29.120 --> 00:03:35.200
+I went to UNCC uh go heels. I had a modest&nbsp;
+scholarship at the time and my dad said,&nbsp;&nbsp;
+
+00:03:35.200 --> 00:03:40.080
+"Hey, if you get a scholarship, I'll give you&nbsp;
+the money that we've saved for you, you know,&nbsp;&nbsp;
+
+00:03:40.080 --> 00:03:46.480
+at when you graduate." So, he did that, which was&nbsp;
+a great idea. I did the same for my daughter. And&nbsp;&nbsp;
+
+00:03:46.480 --> 00:03:53.120
+the first thing I did when I graduated was put&nbsp;
+it into a mutual fund. So that was my first real&nbsp;&nbsp;
+
+00:03:53.120 --> 00:04:01.360
+trade so to speak and over the years my time frame&nbsp;
+just got shorter and shorter and but but that was&nbsp;&nbsp;
+
+00:04:01.360 --> 00:04:08.560
+my very first uh interaction with the markets and&nbsp;
+uh were you pleased with its performance over the&nbsp;&nbsp;
+
+00:04:08.560 --> 00:04:14.880
+years and and did you track it frequently? So I I&nbsp;
+held it for about a year. This is right during the&nbsp;&nbsp;
+
+00:04:14.880 --> 00:04:23.040
+dot era, so it worked pretty well. But I something&nbsp;
+in the back of my mind, I felt like I didn't have&nbsp;&nbsp;
+
+00:04:23.040 --> 00:04:30.720
+control. I I wanted I just wanted to be more in&nbsp;
+control of what was going on. I at that point I&nbsp;&nbsp;
+
+00:04:30.720 --> 00:04:36.640
+started doing a little bit of research and started&nbsp;
+swing trading. And were you um following much what&nbsp;&nbsp;
+
+00:04:36.640 --> 00:04:42.560
+was going on there in the in the dotcom mania? And&nbsp;
+what kind of uh stocks did you get into? You know,&nbsp;&nbsp;
+
+00:04:42.560 --> 00:04:50.720
+growing up with my father who was, like I said,&nbsp;
+very conservative, I didn't I wasn't very risky at&nbsp;&nbsp;
+
+00:04:50.720 --> 00:04:59.360
+all. So, like this mutual fund purchase was kind&nbsp;
+of a big deal. So, I I knew that my dad like the&nbsp;&nbsp;
+
+00:04:59.360 --> 00:05:04.320
+more I started inching toward trading, the more he&nbsp;
+was going to sort of raise his eyebrows and like,&nbsp;&nbsp;
+
+00:05:04.320 --> 00:05:11.120
+"What in the world are you doing? This seems&nbsp;
+so crazy." So I was always very skeptical,&nbsp;&nbsp;
+
+00:05:11.120 --> 00:05:16.880
+very just uber prepared. I kept thinking&nbsp;
+through worst case scenarios all the time.&nbsp;&nbsp;
+
+00:05:16.880 --> 00:05:22.960
+But I started swing trading and I actually was&nbsp;
+just following somebody who was giving me picks,&nbsp;&nbsp;
+
+00:05:22.960 --> 00:05:27.840
+right? Like a like a trading room sort of&nbsp;
+at the time. That it worked pretty well,&nbsp;&nbsp;
+
+00:05:27.840 --> 00:05:33.520
+but all of a sudden the guy went on vacation. So&nbsp;
+there were no stock picks. I was like, "Well, this&nbsp;&nbsp;
+
+00:05:33.520 --> 00:05:40.240
+is not going to work." like I I can't be relying&nbsp;
+on somebody's somebody else's schedule to take&nbsp;&nbsp;
+
+00:05:40.240 --> 00:05:47.360
+trades or not. So that got me just thinking about&nbsp;
+okay, what might the next step be? And I remember&nbsp;&nbsp;
+
+00:05:47.360 --> 00:05:53.360
+I remember a particular trade at the time. I&nbsp;
+was in I think it I'm pretty sure it was RFMD,&nbsp;&nbsp;
+
+00:05:53.360 --> 00:05:59.280
+which was a local North Carolina company, sort of&nbsp;
+a darling company at the time. And people that I&nbsp;&nbsp;
+
+00:05:59.280 --> 00:06:04.720
+respected were it's oh yeah, this is a great uh&nbsp;
+a great thing to buy. So, I bought some I think&nbsp;&nbsp;
+
+00:06:04.720 --> 00:06:10.880
+right before earnings and earnings came out. Lo&nbsp;
+and behold, they beat earnings and I was like,&nbsp;&nbsp;
+
+00:06:10.880 --> 00:06:16.560
+man, this is going to be great. And then, of&nbsp;
+course, the stock tanks. So, I'm like, okay,&nbsp;&nbsp;
+
+00:06:16.560 --> 00:06:23.840
+this makes no sense. I'll never be able to predict&nbsp;
+that. So, just like with one trade, I was like,&nbsp;&nbsp;
+
+00:06:23.840 --> 00:06:29.920
+okay, I I need to take some other approach that&nbsp;
+I can really get my mind around and feel like I&nbsp;&nbsp;
+
+00:06:29.920 --> 00:06:33.840
+have some sort of edge. I knew I didn't I knew I&nbsp;
+was never going to have an edge in like predicting&nbsp;&nbsp;
+
+00:06:33.840 --> 00:06:38.800
+how the market was going to react to an earnings&nbsp;
+thing. That just didn't make any sense to me. So,&nbsp;&nbsp;
+
+00:06:38.800 --> 00:06:46.240
+at the time there was sort of a vibrant a very&nbsp;
+vibrant trading blogosphere and there are a lot&nbsp;&nbsp;
+
+00:06:46.240 --> 00:06:53.360
+of people sharing different ideas. So, I sort of&nbsp;
+dove in there, you know, exchanged ideas with uh&nbsp;&nbsp;
+
+00:06:53.360 --> 00:06:59.440
+some well-known bloggers at the time and came upon&nbsp;
+this day trading system that they were trading.&nbsp;&nbsp;
+
+00:06:59.440 --> 00:07:07.040
+So I I looked closely into that and said, "Okay,&nbsp;
+let me see how this would work." And like I said,&nbsp;&nbsp;
+
+00:07:07.040 --> 00:07:10.480
+conservative background. I knew I was going&nbsp;
+to tell my dad I was going to be day trading&nbsp;&nbsp;
+
+00:07:10.480 --> 00:07:18.000
+now. So I really wanted to cross my tees, dot&nbsp;
+all my eyes, and really think through, okay,&nbsp;&nbsp;
+
+00:07:18.000 --> 00:07:23.440
+does this make sense? There's a lot of snake oil&nbsp;
+out there. Let me think through this and and make&nbsp;&nbsp;
+
+00:07:23.440 --> 00:07:29.440
+sure I've I I think of every sort of scenario&nbsp;
+that could happen. And a a lot of it made sense&nbsp;&nbsp;
+
+00:07:29.440 --> 00:07:36.240
+to me when I started making trades. This is&nbsp;
+probably 2005 when I made my first day trade.&nbsp;&nbsp;
+
+00:07:36.240 --> 00:07:42.000
+And I really feel like that was kind of the first&nbsp;
+real trade I made. You know, the more I thought&nbsp;&nbsp;
+
+00:07:42.000 --> 00:07:46.720
+about it and the more I was interacting with other&nbsp;
+people, I was like, well, this this makes so much&nbsp;&nbsp;
+
+00:07:46.720 --> 00:07:54.400
+sense because I'm not holding overnight. At the&nbsp;
+time, there was not much after hours trading. So&nbsp;&nbsp;
+
+00:07:54.400 --> 00:07:58.160
+that's when all the news came out. I knew there&nbsp;
+was going to be times where I couldn't avoid an&nbsp;&nbsp;
+
+00:07:58.160 --> 00:08:04.000
+overnight gap. It just made a lot more sense&nbsp;
+and then plus you have four times your buying,&nbsp;&nbsp;
+
+00:08:04.000 --> 00:08:08.640
+you know, your equity and buying power&nbsp;
+intraday versus overnight. So I was like, "Wow,&nbsp;&nbsp;
+
+00:08:08.640 --> 00:08:15.120
+this this makes a ton of sense to me." And so I&nbsp;
+started doing that, you know, very cautiously to&nbsp;&nbsp;
+
+00:08:15.120 --> 00:08:21.760
+start and it worked well right from the beginning.&nbsp;
+define well like like how h how h how how uh did&nbsp;&nbsp;
+
+00:08:21.760 --> 00:08:28.720
+it perform compared to uh your previous trading&nbsp;
+that you had done in the preceding years? So the&nbsp;&nbsp;
+
+00:08:28.720 --> 00:08:34.800
+swing trading I had done was actually it was not&nbsp;
+bad but but what I realized pretty quickly was it&nbsp;&nbsp;
+
+00:08:34.800 --> 00:08:41.360
+was going to be many months really before I could&nbsp;
+get enough at bats or enough trades to really see&nbsp;&nbsp;
+
+00:08:41.360 --> 00:08:46.400
+if it works or not to really convince myself that&nbsp;
+it works. So that was another thing that drew me&nbsp;&nbsp;
+
+00:08:46.400 --> 00:08:51.600
+to day trading was, okay, I'm going to get a ton&nbsp;
+of at bats here, the potential for a ton of at&nbsp;&nbsp;
+
+00:08:51.600 --> 00:08:56.240
+bats. So I could see much more quickly whether&nbsp;
+something was going to work or not. And that&nbsp;&nbsp;
+
+00:08:56.240 --> 00:09:02.240
+just really resonated with me. So even though the&nbsp;
+swing trading was did fine and it did it did well,&nbsp;&nbsp;
+
+00:09:02.240 --> 00:09:07.680
+I really felt like this was a better path&nbsp;
+for me and I could get away from, you know,&nbsp;&nbsp;
+
+00:09:07.680 --> 00:09:13.840
+following a guru and really taking full control&nbsp;
+of what I was doing. Um, how did you go about the&nbsp;&nbsp;
+
+00:09:13.840 --> 00:09:19.440
+stock selection of of what to day trade? Uh, did&nbsp;
+you just wait for this group to tell you what to&nbsp;&nbsp;
+
+00:09:19.440 --> 00:09:26.240
+day trade or did you venture out on your own? So,&nbsp;
+so that they were trading a very specific system&nbsp;&nbsp;
+
+00:09:26.240 --> 00:09:33.200
+and I just I mean the rules were out there and&nbsp;
+I just you know started following the rules and&nbsp;&nbsp;
+
+00:09:33.200 --> 00:09:39.440
+interacting with one of the bloggers who was was&nbsp;
+somewhat of a mentor at the time for this system.&nbsp;&nbsp;
+
+00:09:39.440 --> 00:09:45.040
+I started trading the system and I would you know&nbsp;
+follow up with the trader at the end of the day&nbsp;&nbsp;
+
+00:09:45.040 --> 00:09:51.120
+say you know the mentor hey you know was a good&nbsp;
+day or bad day what do you think about this trade&nbsp;&nbsp;
+
+00:09:51.120 --> 00:09:57.760
+that trade so while it was I didn't realize at the&nbsp;
+time but it was pretty it was pretty systematic&nbsp;&nbsp;
+
+00:09:57.760 --> 00:10:03.440
+there was there was a little bit of discretion in&nbsp;
+there in like what trades you would you know what&nbsp;&nbsp;
+
+00:10:03.440 --> 00:10:09.280
+names you would put on the list or or take off&nbsp;
+the list based on some intuition but but it was&nbsp;&nbsp;
+
+00:10:09.280 --> 00:10:15.920
+really good to have these rules. Thinking back&nbsp;
+like the big part of it was rules that I didn't&nbsp;&nbsp;
+
+00:10:15.920 --> 00:10:21.520
+have to make decisions during the day or that&nbsp;
+many decisions during the trading day. Humans are&nbsp;&nbsp;
+
+00:10:21.520 --> 00:10:28.240
+just hardwired to do the least profitable thing&nbsp;
+if you're if you don't have a plan. Now, why is&nbsp;&nbsp;
+
+00:10:28.240 --> 00:10:34.000
+that? What what is it about human psychology? Why&nbsp;
+would we want to do the most unprofitable path?&nbsp;&nbsp;
+
+00:10:34.000 --> 00:10:41.040
+I I think that there's just so much emotion with&nbsp;
+money and the way people think about money and&nbsp;&nbsp;
+
+00:10:41.040 --> 00:10:49.040
+their history with money. You're always wanting&nbsp;
+to get out early or or hold on too long and coming&nbsp;&nbsp;
+
+00:10:49.040 --> 00:10:53.760
+up with a plan is hard. You have to look at a&nbsp;
+lot of data and figure out what works across a&nbsp;&nbsp;
+
+00:10:53.760 --> 00:10:58.160
+large number of trades. I mean, just think about&nbsp;
+how long that takes after hours. Now, if you try&nbsp;&nbsp;
+
+00:10:58.160 --> 00:11:03.040
+to do that during the day when you're in a trade&nbsp;
+and you got this uh, you know, you're seeing your&nbsp;&nbsp;
+
+00:11:03.040 --> 00:11:08.880
+P&amp;L bounce up and down waiting on you to make a&nbsp;
+decision, like you're really like coming up with&nbsp;&nbsp;
+
+00:11:08.880 --> 00:11:15.600
+a strategy on the fly, which is really that's just&nbsp;
+too hard. It's not going to work. It may work for&nbsp;&nbsp;
+
+00:11:15.600 --> 00:11:22.320
+a little bit, but it's just a way harder approach&nbsp;
+for a lot of people. What were some of the u kind&nbsp;&nbsp;
+
+00:11:22.320 --> 00:11:30.080
+of socalled rules or systematic approaches that&nbsp;
+uh this group had that you learned early on? I&nbsp;&nbsp;
+
+00:11:30.080 --> 00:11:35.280
+actually trade a version of this strategy still&nbsp;
+to this day. So they're basically trading gapping&nbsp;&nbsp;
+
+00:11:35.280 --> 00:11:43.120
+stocks and looking for a narrowing range after&nbsp;
+the open after they've they're gapping up looking,&nbsp;&nbsp;
+
+00:11:43.120 --> 00:11:48.240
+you know, they would get in on a break out of&nbsp;
+the range and use a stop on the other side of the&nbsp;&nbsp;
+
+00:11:48.240 --> 00:11:55.120
+tightening range and then they would just hold all&nbsp;
+day. And it wasn't, you know, a group to call this&nbsp;&nbsp;
+
+00:11:55.120 --> 00:12:01.440
+group a group was sort of uh uh maybe a little too&nbsp;
+much. It was sort of just a loose conglomeration&nbsp;&nbsp;
+
+00:12:01.440 --> 00:12:08.240
+of blogs at the time which it's kind of a shame&nbsp;
+that the that blogosphere disappeared. I mean a&nbsp;&nbsp;
+
+00:12:08.240 --> 00:12:13.840
+lot of social media has sort of taken the place&nbsp;
+of that but it was a pretty vibrant blogosphere&nbsp;&nbsp;
+
+00:12:13.840 --> 00:12:18.880
+where a lot of people sharing ideas at the time.&nbsp;
+What was your approach to or what was what did&nbsp;&nbsp;
+
+00:12:18.880 --> 00:12:26.080
+you learn about uh position sizing and when&nbsp;
+or when when or whether to add to a position?&nbsp;&nbsp;
+
+00:12:26.080 --> 00:12:32.800
+That's one of the things that I knew from my&nbsp;
+research before I even made the first day trade&nbsp;&nbsp;
+
+00:12:32.800 --> 00:12:38.080
+that I had to get position sizing down pat.&nbsp;
+There was no that was like non-negotiable. So&nbsp;&nbsp;
+
+00:12:38.080 --> 00:12:44.880
+that's one of the things I was uber prepared for&nbsp;
+is how to compute position size. And that's sort&nbsp;&nbsp;
+
+00:12:44.880 --> 00:12:50.720
+of the one of the reasons this strategy works is&nbsp;
+when the range is pretty tight, you get to take&nbsp;&nbsp;
+
+00:12:50.720 --> 00:12:57.520
+a large position size. You're risking the same&nbsp;
+amount of money. And with the tightening range,&nbsp;&nbsp;
+
+00:12:57.520 --> 00:13:02.320
+you could take a lot of shares. So you end up with&nbsp;
+these pretty large position sizes for and and you&nbsp;&nbsp;
+
+00:13:02.320 --> 00:13:08.160
+can make a lot of money on a pretty small move.&nbsp;
+That's sort of the reason this strategy works.&nbsp;&nbsp;
+
+00:13:08.160 --> 00:13:14.240
+You know, another thing that I had down pat before&nbsp;
+I made the trade was uh the concept of expectancy&nbsp;&nbsp;
+
+00:13:14.240 --> 00:13:20.960
+and R multiples and evaluating your performance&nbsp;
+in terms of R. So important. And there there's&nbsp;&nbsp;
+
+00:13:20.960 --> 00:13:27.440
+just so many benefits to doing that. And this&nbsp;
+particular strategy lends itself really well to&nbsp;&nbsp;
+
+00:13:27.440 --> 00:13:33.520
+using that approach for evaluating it. And uh so&nbsp;
+what were your uh uh riskmanagement uh strategies?&nbsp;&nbsp;
+
+00:13:33.520 --> 00:13:39.440
+Did do you just set a stop at a percentage below&nbsp;
+your current price or was it contingent on what&nbsp;&nbsp;
+
+00:13:39.440 --> 00:13:48.240
+you saw in the in the charts at that moment and&nbsp;
+it would vary significantly? So the setups would&nbsp;&nbsp;
+
+00:13:48.240 --> 00:13:55.920
+come along and and materialize and then the setup&nbsp;
+was would determine the stop distance and then I&nbsp;&nbsp;
+
+00:13:55.920 --> 00:14:02.320
+had my criteria was you know I was going to I was&nbsp;
+going to risk a certain dollar amount per trade&nbsp;&nbsp;
+
+00:14:02.320 --> 00:14:09.120
+and then over time as I got more confident I would&nbsp;
+raise that over time slowly. Yeah. Once the signal&nbsp;&nbsp;
+
+00:14:09.120 --> 00:14:14.160
+came along it was there was no discretion about&nbsp;
+what to do. Okay you take it you take it with&nbsp;&nbsp;
+
+00:14:14.160 --> 00:14:20.480
+size X. So you you traded this one strategy for&nbsp;
+a while. You were you happy with the performance&nbsp;&nbsp;
+
+00:14:20.480 --> 00:14:28.160
+and just kept milking it until until something&nbsp;
+happened. So I yeah kept trading it and I I&nbsp;&nbsp;
+
+00:14:28.160 --> 00:14:33.040
+traded it for probably three or four years and&nbsp;
+you know it wouldn't make money every month but&nbsp;&nbsp;
+
+00:14:33.040 --> 00:14:39.920
+it was making money each year and I would notice&nbsp;
+some things like like one of the first things that&nbsp;&nbsp;
+
+00:14:39.920 --> 00:14:46.080
+I realized was the people that I was interacting&nbsp;
+with were essentially trading the same system sort&nbsp;&nbsp;
+
+00:14:46.080 --> 00:14:52.000
+of but there were days where I would say okay&nbsp;
+here you know man we had a really bad day today&nbsp;&nbsp;
+
+00:14:52.000 --> 00:14:57.760
+and the other guy would say oh I made money what's&nbsp;
+what happened? And I realized that I said, "Well,&nbsp;&nbsp;
+
+00:14:57.760 --> 00:15:04.800
+you didn't take trade XYZ." And he would say, "No,&nbsp;
+no, I've got a rule that where I exclude trades&nbsp;&nbsp;
+
+00:15:04.800 --> 00:15:10.000
+like that based on, you know, I think it was like&nbsp;
+relative volume above three or something." And I&nbsp;&nbsp;
+
+00:15:10.000 --> 00:15:13.760
+was like, "Oh, well, that's interesting. So, how'd&nbsp;
+you come up with that rule?" And he he told me,&nbsp;&nbsp;
+
+00:15:13.760 --> 00:15:19.120
+you know, just basic intuition or, you know,&nbsp;
+some experience, blah, blah, blah. But it made me&nbsp;&nbsp;
+
+00:15:19.120 --> 00:15:25.920
+realize that that's why people who think they're&nbsp;
+trading the same system can end up with so so much&nbsp;&nbsp;
+
+00:15:25.920 --> 00:15:32.320
+different results. It's because some people are&nbsp;
+better at skipping the right trades and taking&nbsp;&nbsp;
+
+00:15:32.320 --> 00:15:38.640
+the right trades, right? So when you see people&nbsp;
+trading this basically the same strategy and&nbsp;&nbsp;
+
+00:15:38.640 --> 00:15:44.000
+having different results, somebody is just just&nbsp;
+has a much better way of figuring out which trades&nbsp;&nbsp;
+
+00:15:44.000 --> 00:15:50.480
+to skip and which ones to take. So how often were&nbsp;
+you taking trades that in retrospect uh you felt&nbsp;&nbsp;
+
+00:15:50.480 --> 00:15:56.480
+you should have skipped even though they met the&nbsp;
+criteria for that strategy? I think the whole name&nbsp;&nbsp;
+
+00:15:56.480 --> 00:16:04.640
+of the game and what I what I came to realize was&nbsp;
+that is the entire point like h that that was that&nbsp;&nbsp;
+
+00:16:04.640 --> 00:16:10.080
+was a path for me to come up with strategies was&nbsp;
+come up with the initial idea don't really worry&nbsp;&nbsp;
+
+00:16:10.080 --> 00:16:16.400
+about applying too many rules like you've got a&nbsp;
+general concept and then figure out what rules&nbsp;&nbsp;
+
+00:16:16.400 --> 00:16:23.440
+to apply to figure out okay I'm I'm skipping these&nbsp;
+but I'm taking these and it wasn't until I started&nbsp;&nbsp;
+
+00:16:23.440 --> 00:16:30.880
+back testing where this really dawned on me as&nbsp;
+a way to really create my own strategies. At the&nbsp;&nbsp;
+
+00:16:30.880 --> 00:16:37.120
+time this there was uh you know back testing was&nbsp;
+a little bit I would say frowned upon that. Um it&nbsp;&nbsp;
+
+00:16:37.120 --> 00:16:42.400
+didn't reflect reality. So a lot of the people&nbsp;
+in this group were sort of kind of down on it.&nbsp;&nbsp;
+
+00:16:42.400 --> 00:16:47.680
+Why why is that? Why why would they be down on&nbsp;
+on collecting more data to improve their system?&nbsp;&nbsp;
+
+00:16:47.680 --> 00:16:53.200
+I think they thought that, you know, it just&nbsp;
+didn't reflect reality enough, like there was&nbsp;&nbsp;
+
+00:16:53.200 --> 00:17:00.000
+and probably they had some discretionary intuition&nbsp;
+that they didn't feel like could be recreated. And&nbsp;&nbsp;
+
+00:17:00.000 --> 00:17:04.640
+that's kind of what I thought, too. You know, I&nbsp;
+would have, you know, stocks that would meet the&nbsp;&nbsp;
+
+00:17:04.640 --> 00:17:09.280
+loose criteria. I would sort of use my intuition&nbsp;
+to say, "Yes, this one should go on the list. This&nbsp;&nbsp;
+
+00:17:09.280 --> 00:17:14.880
+one shouldn't go on the list." And I was doing&nbsp;
+that in real time. My assumption was I had been&nbsp;&nbsp;
+
+00:17:14.880 --> 00:17:19.600
+doing this for a while. I've been doing it, you&nbsp;
+know, making money with it. So I was like, well,&nbsp;&nbsp;
+
+00:17:19.600 --> 00:17:26.640
+there's no possible way you could capture my&nbsp;
+awesome intuition with the back test, right? So&nbsp;&nbsp;
+
+00:17:26.640 --> 00:17:33.200
+also at the time I was working for AT&amp;T, a job on&nbsp;
+the side and I was doing a lot of automation work&nbsp;&nbsp;
+
+00:17:33.200 --> 00:17:40.000
+there. So I was doing a lot of development and the&nbsp;
+more I did that, the more I realized, you know,&nbsp;&nbsp;
+
+00:17:40.000 --> 00:17:45.840
+back testing makes a ton of sense. Why would I not&nbsp;
+do that? Why? Why would I not try it? I was like,&nbsp;&nbsp;
+
+00:17:45.840 --> 00:17:50.240
+"Okay, I don't care what these other people&nbsp;
+are saying. I'm gonna I'm gonna try it." I&nbsp;&nbsp;
+
+00:17:50.240 --> 00:17:56.800
+did the work to create my first back test and I&nbsp;
+was trying to recreate what I was doing. And my&nbsp;&nbsp;
+
+00:17:56.800 --> 00:18:01.360
+thought process was, well, yeah, I've got&nbsp;
+some discretion in there, but let me see,&nbsp;&nbsp;
+
+00:18:01.360 --> 00:18:07.440
+maybe there's and and whatever back test I come up&nbsp;
+with can't possibly be as good as that, but let me&nbsp;&nbsp;
+
+00:18:07.440 --> 00:18:14.560
+see maybe there's something I can learn to apply&nbsp;
+to this. So the what shocked me was the very first&nbsp;&nbsp;
+
+00:18:14.560 --> 00:18:23.200
+back test I ran was better than my manual trading.&nbsp;
+Why is that? I think what I found was just like a&nbsp;&nbsp;
+
+00:18:23.200 --> 00:18:31.360
+a methodical way to figure out which trades to&nbsp;
+skip and which ones to take and comparing that&nbsp;&nbsp;
+
+00:18:31.360 --> 00:18:38.000
+to my intuition. And I and I was keeping track&nbsp;
+keeping meticulous records of all the trades I&nbsp;&nbsp;
+
+00:18:38.000 --> 00:18:44.880
+was taking. And I was keeping meticulous records&nbsp;
+of the discretion I was using for okay does does&nbsp;&nbsp;
+
+00:18:44.880 --> 00:18:51.120
+this meet the criteria? Does it not? And and&nbsp;
+you know does this meet my sniff test? And what&nbsp;&nbsp;
+
+00:18:51.120 --> 00:18:58.160
+I found was my discretion wasn't nearly as good&nbsp;
+as I thought it was. So I was like okay which as&nbsp;&nbsp;
+
+00:18:58.160 --> 00:19:04.720
+you can imagine is pretty humbling right here. You&nbsp;
+were still doing good with it anyway, right? But&nbsp;&nbsp;
+
+00:19:04.720 --> 00:19:10.320
+you found your in your back test it was better.&nbsp;
+It was better. So yeah, my thought was, okay,&nbsp;&nbsp;
+
+00:19:10.320 --> 00:19:15.040
+well this is crazy. I never thought this would&nbsp;
+be the outcome. The very first back test I did&nbsp;&nbsp;
+
+00:19:15.040 --> 00:19:21.520
+that seems insane. But it really opened my eyes&nbsp;
+to, wow, there's a whole world out here that I'm&nbsp;&nbsp;
+
+00:19:21.520 --> 00:19:29.600
+ignoring by not back testing. And there's paths&nbsp;
+to new strategies, paths to improve the strategies&nbsp;&nbsp;
+
+00:19:29.600 --> 00:19:38.000
+I'm trading by like really diving in and taking a&nbsp;
+a fully automated approach with how I was trading.&nbsp;&nbsp;
+
+00:19:38.000 --> 00:19:43.760
+Are you ready to get serious about trading? Then&nbsp;
+join Tasty Trade, Investopedia's best platform for&nbsp;&nbsp;
+
+00:19:43.760 --> 00:19:50.640
+options trading in 2026. Stocks, options, futures,&nbsp;
+and more. Tasty Trade has everything you trade all&nbsp;&nbsp;
+
+00:19:50.640 --> 00:19:56.080
+in one platform. Get low commissions, including&nbsp;
+zero commission on stocks, so you can keep more of&nbsp;&nbsp;
+
+00:19:56.080 --> 00:20:01.600
+what you earn. Tasty Trade is packed with advanced&nbsp;
+charting tools, back testing, a pre-built strategy&nbsp;&nbsp;
+
+00:20:01.600 --> 00:20:07.440
+selector, risk analysis tools, and more features&nbsp;
+to help you trade smarter. See equities and&nbsp;&nbsp;
+
+00:20:07.440 --> 00:20:12.960
+derivatives with high trading volumes, dividends,&nbsp;
+upcoming earnings reports, and more with their&nbsp;&nbsp;
+
+00:20:12.960 --> 00:20:18.240
+pre-built watch list. Or create a custom watch&nbsp;
+list to keep an eye on the companies and sectors&nbsp;&nbsp;
+
+00:20:18.240 --> 00:20:24.160
+that matter to you. Manage your positions with&nbsp;
+speed and precision using active trader mode,&nbsp;&nbsp;
+
+00:20:24.160 --> 00:20:30.480
+one-click trading, and smart order tracking. Plus,&nbsp;
+Tasty Trade's stellar trade desk team offers live&nbsp;&nbsp;
+
+00:20:30.480 --> 00:20:37.760
+support during trading hours if you need it. Visit&nbsp;
+tastyrade.com/hat for more info. Tastyrade, Inc.&nbsp;&nbsp;
+
+00:20:37.760 --> 00:20:45.440
+is a registered broker dealer and member of FINRA,&nbsp;
+NFA, and SIPC. Mhm. So, speaking of U, so for back&nbsp;&nbsp;
+
+00:20:45.440 --> 00:20:52.080
+tests, uh what are the essentials uh in a back&nbsp;
+test and how do we know if we're just cramming&nbsp;&nbsp;
+
+00:20:52.080 --> 00:20:58.560
+too many things in the back test, always trying to&nbsp;
+perfect it and tweak it and what have you? Yeah,&nbsp;&nbsp;
+
+00:20:58.560 --> 00:21:06.560
+it's a bit of an art. Um I I think the best way to&nbsp;
+approach it is to do to create a back test that's&nbsp;&nbsp;
+
+00:21:06.560 --> 00:21:12.480
+sort of tangential to what you're already trading.&nbsp;
+You know, a lot of traders will try to completely&nbsp;&nbsp;
+
+00:21:12.480 --> 00:21:16.960
+replace what what's already working. Like maybe&nbsp;
+there's a they're a discretionary trader. They&nbsp;&nbsp;
+
+00:21:16.960 --> 00:21:22.000
+want to completely replace what they're doing.&nbsp;
+But I don't think that's the right approach. A&nbsp;&nbsp;
+
+00:21:22.000 --> 00:21:26.480
+much better approach is to keep doing what's&nbsp;
+working. Create something from the ground up&nbsp;&nbsp;
+
+00:21:26.480 --> 00:21:33.360
+to be automated. And so that way it's completely&nbsp;
+additive to what you're doing. And there's not&nbsp;&nbsp;
+
+00:21:33.360 --> 00:21:39.520
+this cut off point where you say, "Okay, I'm&nbsp;
+discretionary now and then tomorrow I'm going&nbsp;&nbsp;
+
+00:21:39.520 --> 00:21:44.320
+to be automated with the same thing." I mean,&nbsp;
+it's like software projects in general. They take&nbsp;&nbsp;
+
+00:21:44.320 --> 00:21:49.920
+way longer than you imagine they will. Uh there's&nbsp;
+always going to be problems that come up that you&nbsp;&nbsp;
+
+00:21:49.920 --> 00:21:54.160
+haven't thought about. So, there's just a lot of&nbsp;
+pressure, especially with something that's working&nbsp;&nbsp;
+
+00:21:54.160 --> 00:22:00.080
+already and you want to cut over. And you know, a&nbsp;
+lot of discretionary traders I work with will they&nbsp;&nbsp;
+
+00:22:00.080 --> 00:22:09.040
+don't realize how much intuition and experience&nbsp;
+they have to create ideas that are automated from&nbsp;&nbsp;
+
+00:22:09.040 --> 00:22:15.520
+the ground up. You know, if you've been able to&nbsp;
+trade discretionarily and you've had some success,&nbsp;&nbsp;
+
+00:22:15.520 --> 00:22:21.600
+you have more intuition and experience&nbsp;
+that you can draw from than people realize.&nbsp;&nbsp;
+
+00:22:21.600 --> 00:22:27.280
+Uh so after you did this um first back test and&nbsp;
+you say wow this is better than what I'm doing&nbsp;&nbsp;
+
+00:22:27.280 --> 00:22:33.200
+now. Uh did you just run with that say great I I&nbsp;
+found the solution and and here we go let's let's&nbsp;&nbsp;
+
+00:22:33.200 --> 00:22:40.480
+uh let's maybe even increase the position size.&nbsp;
+What I did there was I I I didn't do it overnight&nbsp;&nbsp;
+
+00:22:40.480 --> 00:22:45.840
+but I realized okay this is going to this is&nbsp;
+this has to be better than what I'm doing. So I I&nbsp;&nbsp;
+
+00:22:45.840 --> 00:22:53.760
+didn't switch overnight, but I did start gradually&nbsp;
+automating some parts of what I was doing to get&nbsp;&nbsp;
+
+00:22:53.760 --> 00:23:00.480
+closer to that back test. You know, I would um you&nbsp;
+know, automatically compute the position size for&nbsp;&nbsp;
+
+00:23:00.480 --> 00:23:06.800
+a while and then I would automatically enter&nbsp;
+my exit orders um after entering a position.&nbsp;&nbsp;
+
+00:23:06.800 --> 00:23:13.360
+Then maybe another the step would be, you know,&nbsp;
+actually entering the entry orders and have those&nbsp;&nbsp;
+
+00:23:13.360 --> 00:23:19.600
+submitted by the computer, but then have to&nbsp;
+manually hit transmit in my broker to actually&nbsp;&nbsp;
+
+00:23:19.600 --> 00:23:25.840
+make them live. So there was this whole series of&nbsp;
+steps that I was going through to sort of get more&nbsp;&nbsp;
+
+00:23:25.840 --> 00:23:31.680
+and more confident so that it wasn't just, you&nbsp;
+know, wake up day one and have the software that&nbsp;&nbsp;
+
+00:23:31.680 --> 00:23:37.040
+I'd written try to make all the trades with with&nbsp;
+a lot of size, right? that would I knew enough&nbsp;&nbsp;
+
+00:23:37.040 --> 00:23:43.920
+about software to know that that would was not&nbsp;
+the right approach. And so how did the early live&nbsp;&nbsp;
+
+00:23:43.920 --> 00:23:50.640
+uh trading experiences uh compare to what the back&nbsp;
+test uh showed? There were they were pretty close,&nbsp;&nbsp;
+
+00:23:50.640 --> 00:23:56.160
+but it's never going to be perfect and I knew that&nbsp;
+going in. Like I I knew that having a back test is&nbsp;&nbsp;
+
+00:23:56.160 --> 00:24:02.560
+a was a great reference, but I also knew that,&nbsp;
+you know, you're never going to get all those&nbsp;&nbsp;
+
+00:24:02.560 --> 00:24:07.680
+fills that the back test can get. But, you know,&nbsp;
+the back test was good enough where I knew there&nbsp;&nbsp;
+
+00:24:07.680 --> 00:24:13.040
+was I had a lot of leeway there. So, even if I&nbsp;
+got just some portion of them, it was going to be&nbsp;&nbsp;
+
+00:24:13.040 --> 00:24:21.360
+worth it. At at the time, I had created a online&nbsp;
+trading journal. This was the first online trading&nbsp;&nbsp;
+
+00:24:21.360 --> 00:24:28.800
+journal that existed as as far as I know. Uh, it&nbsp;
+was called Stock Ticker. So, I had an API for that&nbsp;&nbsp;
+
+00:24:28.800 --> 00:24:34.560
+and I hooked up the my software to it. So, it was&nbsp;
+automatically entering trades into my journal with&nbsp;&nbsp;
+
+00:24:34.560 --> 00:24:40.480
+all the slippage accounted for. And it it gave me&nbsp;
+a way to very easily do a back test at the end of&nbsp;&nbsp;
+
+00:24:40.480 --> 00:24:46.000
+the day and compare my actual trades to the back&nbsp;
+test. So, I could see I was in a report that was&nbsp;&nbsp;
+
+00:24:46.000 --> 00:24:50.720
+automatically generated for me. Here's the trades&nbsp;
+you missed that were in the back test. And then&nbsp;&nbsp;
+
+00:24:50.720 --> 00:24:56.480
+I would go back and look and see, okay, well, how&nbsp;
+could I have gotten that one? Like, could I adjust&nbsp;&nbsp;
+
+00:24:56.480 --> 00:25:01.920
+my entry order to be able to capture that trade&nbsp;
+that I missed? It's like why did I miss it? It was&nbsp;&nbsp;
+
+00:25:01.920 --> 00:25:08.880
+just this feedback loop that I created for myself&nbsp;
+that I I I I knew was a path to confidence for me&nbsp;&nbsp;
+
+00:25:08.880 --> 00:25:15.840
+because if you think about discretionary trading,&nbsp;
+it's you don't really have your only reference is&nbsp;&nbsp;
+
+00:25:15.840 --> 00:25:22.800
+your experience or what somebody's told you.&nbsp;
+And it's really important to have a path to&nbsp;&nbsp;
+
+00:25:22.800 --> 00:25:27.440
+confidence. I I like to say that it's, you know,&nbsp;
+trading is not super hard if you're trading with&nbsp;&nbsp;
+
+00:25:27.440 --> 00:25:33.360
+small amounts of money, but as soon as you start&nbsp;
+really trying to scale up to make lots of money,&nbsp;&nbsp;
+
+00:25:33.360 --> 00:25:40.400
+that's when things get really difficult. Um, why&nbsp;
+is that? I mean, why shouldn't it be the same? Uh,&nbsp;&nbsp;
+
+00:25:40.400 --> 00:25:47.920
+uh, is it because we're trying to uh, trade large&nbsp;
+sizes relative to these securities or I mean,&nbsp;&nbsp;
+
+00:25:47.920 --> 00:25:51.840
+there's a whole host of reasons. That's that's&nbsp;
+one of them. But another is just the way you think&nbsp;&nbsp;
+
+00:25:51.840 --> 00:25:56.480
+about money. As as you trade higher and higher,&nbsp;
+the numbers get bigger and bigger. It takes a&nbsp;&nbsp;
+
+00:25:56.480 --> 00:26:02.640
+certain kind of mindset to be good with that. And&nbsp;
+still at some point once you reach a certain size,&nbsp;&nbsp;
+
+00:26:02.640 --> 00:26:08.480
+sometimes you you sort of have to earn your keep&nbsp;
+at that size before you and spend some time at&nbsp;&nbsp;
+
+00:26:08.480 --> 00:26:14.480
+that size before you can go higher. A lot of times&nbsp;
+you'll see mistakes that you made earlier kind&nbsp;&nbsp;
+
+00:26:14.480 --> 00:26:22.480
+of crop back up when you go to a higher size. And&nbsp;
+the mistakes with automated trading are different&nbsp;&nbsp;
+
+00:26:22.480 --> 00:26:27.280
+than discretionary. You know, a lot of traders&nbsp;
+will will try to to go completely automated to&nbsp;&nbsp;
+
+00:26:27.280 --> 00:26:32.800
+get rid of their emotional, you know, emotions&nbsp;
+that they think is affecting their trading. But,&nbsp;&nbsp;
+
+00:26:32.800 --> 00:26:39.600
+you know, there's a lot of sizing mistakes that&nbsp;
+are emotional and uh can crop up when even with&nbsp;&nbsp;
+
+00:26:39.600 --> 00:26:46.320
+automated trading. Uh often I hear uh people talk&nbsp;
+about how important it is to get uh live uh to do&nbsp;&nbsp;
+
+00:26:46.320 --> 00:26:52.640
+the live training and compare it to the the back&nbsp;
+testing and how uh how often how different it can&nbsp;&nbsp;
+
+00:26:52.640 --> 00:27:00.400
+be. What are the scenarios that um people can use&nbsp;
+to narrow that difference? Why do you think that&nbsp;&nbsp;
+
+00:27:00.400 --> 00:27:06.560
+some people experience huge differences between&nbsp;
+the live and the back test? Uh and how can we get&nbsp;&nbsp;
+
+00:27:06.560 --> 00:27:15.920
+those two to be more similar? So it varies a lot&nbsp;
+by strategy. So some strategies are really fast,&nbsp;&nbsp;
+
+00:27:15.920 --> 00:27:23.840
+some are slow, and so the the differences you see&nbsp;
+are going to vary a lot by strategy. But there's&nbsp;&nbsp;
+
+00:27:23.840 --> 00:27:31.760
+typically things you can do to to to get a handle&nbsp;
+on it and and make some adjustments to capture&nbsp;&nbsp;
+
+00:27:31.760 --> 00:27:37.040
+more of the trades that the back test is taking&nbsp;
+that maybe you're missing live. really before you&nbsp;&nbsp;
+
+00:27:37.040 --> 00:27:43.200
+make your first automated trade ha have a process&nbsp;
+for reconciling so you so you're at least seeing&nbsp;&nbsp;
+
+00:27:43.200 --> 00:27:48.560
+the differences and brainstorming okay what could&nbsp;
+I have done differently here or how can I adjust&nbsp;&nbsp;
+
+00:27:48.560 --> 00:27:55.360
+the the entry technique I'm using to capture&nbsp;
+more of these so is one back test usually uh&nbsp;&nbsp;
+
+00:27:55.360 --> 00:28:02.880
+good enough or I mean uh to get some statistical&nbsp;
+significance um um how many would be optimal well&nbsp;&nbsp;
+
+00:28:02.880 --> 00:28:08.480
+I think about it as the number of trades in&nbsp;
+the back test a and and that varies a lot of&nbsp;&nbsp;
+
+00:28:08.480 --> 00:28:15.120
+course by strategy and depending on the number&nbsp;
+of trades that your signal produces, you may&nbsp;&nbsp;
+
+00:28:15.120 --> 00:28:22.560
+have to go further back in history to create a big&nbsp;
+enough sample set to really uh come up with a good&nbsp;&nbsp;
+
+00:28:22.560 --> 00:28:28.880
+strategy for and and those are the things you can&nbsp;
+vary it by. But the in general, the more trades&nbsp;&nbsp;
+
+00:28:28.880 --> 00:28:37.120
+you have in a system, the more profitable it could&nbsp;
+be. So, and I realized that pretty quickly when I&nbsp;&nbsp;
+
+00:28:37.120 --> 00:28:42.800
+was introducing this automation, it was making&nbsp;
+no mistakes. Like, you know, all the mistakes&nbsp;&nbsp;
+
+00:28:42.800 --> 00:28:47.360
+that I was making, it was not making. Like, you&nbsp;
+know, I don't know if you've you've probably made&nbsp;&nbsp;
+
+00:28:47.360 --> 00:28:52.800
+a trade with with a size that has one too many&nbsp;
+zeros or one too few zeros. You're like, "Wow,&nbsp;&nbsp;
+
+00:28:52.800 --> 00:28:58.960
+this is I think the one too few zeros is a lot&nbsp;
+more frustrating than one too many zeros." So,&nbsp;&nbsp;
+
+00:28:58.960 --> 00:29:04.240
+all those mistakes were eliminated. It was getting&nbsp;
+better fills because it's just much faster than I&nbsp;&nbsp;
+
+00:29:04.240 --> 00:29:11.680
+could have been. Just it felt like I was coming up&nbsp;
+on a ceiling discretionarily with how many trades&nbsp;&nbsp;
+
+00:29:11.680 --> 00:29:17.920
+I could take. All of a sudden, that went away with&nbsp;
+automation. So, I could take like I was taking I&nbsp;&nbsp;
+
+00:29:17.920 --> 00:29:23.520
+I went I was just looking at my results recently&nbsp;
+and there was one year where I took I don't know&nbsp;&nbsp;
+
+00:29:23.520 --> 00:29:29.040
+300 trades and then the next year I took 3,000 and&nbsp;
+it was right around the time that I introduced the&nbsp;&nbsp;
+
+00:29:29.040 --> 00:29:35.840
+automation. So it just opened up so many things&nbsp;
+for me to think about and it allowed me to use my&nbsp;&nbsp;
+
+00:29:35.840 --> 00:29:42.480
+you know more efficiently use the buying power I&nbsp;
+had in a in a way that was just great and really&nbsp;&nbsp;
+
+00:29:42.480 --> 00:29:50.320
+resonated with me. How did your performance vary&nbsp;
+uh just prior to implementing uh this and then the&nbsp;&nbsp;
+
+00:29:50.320 --> 00:29:57.040
+year after um using the your your strategy? What&nbsp;
+um you know what was the difference there? I mean,&nbsp;&nbsp;
+
+00:29:57.040 --> 00:30:03.520
+it was probably five times the profit based on&nbsp;
+this. It was a lot. Yeah. And it was, you know,&nbsp;&nbsp;
+
+00:30:03.520 --> 00:30:10.160
+I think about I I wouldn't think about this at&nbsp;
+the time, but really I was scaling wide versus&nbsp;&nbsp;
+
+00:30:10.160 --> 00:30:15.120
+scaling up. That's the way I like to think about&nbsp;
+it. You know, you can you can have one system and,&nbsp;&nbsp;
+
+00:30:15.120 --> 00:30:19.680
+you know, just keep increasing the position size.&nbsp;
+The better it get the better it does and just get&nbsp;&nbsp;
+
+00:30:19.680 --> 00:30:24.480
+bigger and bigger and bigger and bigger. That's&nbsp;
+what I call scaling up. But then you could you&nbsp;&nbsp;
+
+00:30:24.480 --> 00:30:29.680
+could also take another approach and scale wide.&nbsp;
+That's another way to scale your trading business.&nbsp;&nbsp;
+
+00:30:29.680 --> 00:30:34.960
+Just take more trades, find more profitable trades&nbsp;
+and maybe at the same size, but just take more&nbsp;&nbsp;
+
+00:30:34.960 --> 00:30:40.720
+trades and you that's that's another way to scale.&nbsp;
+Uh using the same strategy or I mean you were very&nbsp;&nbsp;
+
+00:30:40.720 --> 00:30:46.960
+content obviously probably with that that that&nbsp;
+single breakout strategy, right? Yeah. So, I I&nbsp;&nbsp;
+
+00:30:46.960 --> 00:30:54.160
+just felt like uh being able to take more trades&nbsp;
+would be a better long-term approach. Um so,&nbsp;&nbsp;
+
+00:30:54.160 --> 00:31:02.000
+I remember having a significant draw down one&nbsp;
+year in this particular strategy and I finally&nbsp;&nbsp;
+
+00:31:02.000 --> 00:31:09.440
+came out of it and and I scaled back my size and&nbsp;
+I ran the back test afterwards and I thought, man,&nbsp;&nbsp;
+
+00:31:09.440 --> 00:31:16.160
+if I had not reduced my size, I would have&nbsp;
+made a lot more money. And so the next year,&nbsp;&nbsp;
+
+00:31:16.160 --> 00:31:20.960
+the next year, another draw down comes. But I&nbsp;
+was like, "No, I I've I've learned my lesson&nbsp;&nbsp;
+
+00:31:20.960 --> 00:31:26.160
+here. I'm not reducing my size because I know&nbsp;
+that it it's going to take me a while to get my&nbsp;&nbsp;
+
+00:31:26.160 --> 00:31:31.280
+size back up when I come out of this draw down. So&nbsp;
+I'm not going to reduce my size." And of course,&nbsp;&nbsp;
+
+00:31:31.280 --> 00:31:37.200
+you can imagine what happens. The draw down just&nbsp;
+gets deeper and deeper, right? So that was kind&nbsp;&nbsp;
+
+00:31:37.200 --> 00:31:43.200
+of the low point of my career, I'd say, because&nbsp;
+I almost quit. I mean here I you know imagine&nbsp;&nbsp;
+
+00:31:43.200 --> 00:31:48.560
+you know I had this basically this one strategy&nbsp;
+and I put a lot of work into it I made a lot of&nbsp;&nbsp;
+
+00:31:48.560 --> 00:31:53.520
+money from it this is what I was this is what I&nbsp;
+did right and then I've got this huge draw down&nbsp;&nbsp;
+
+00:31:53.520 --> 00:31:58.800
+so I really I thought about quitting because you&nbsp;
+know here you are doing all this work and you're&nbsp;&nbsp;
+
+00:31:58.800 --> 00:32:06.320
+losing money that's terrible um I mean that it's a&nbsp;
+it's a horrible feeling so I knew that I needed to&nbsp;&nbsp;
+
+00:32:06.320 --> 00:32:12.880
+come up with some way to have more strategies so&nbsp;
+how important is to find the reason for the draw&nbsp;&nbsp;
+
+00:32:12.880 --> 00:32:18.640
+downs. Uh, you know, when is I don't know why,&nbsp;
+but the stats say, you know, it happens, you know,&nbsp;&nbsp;
+
+00:32:18.640 --> 00:32:25.600
+good enough. Um, I think the the more back testing&nbsp;
+you do and the longer your back test window,&nbsp;&nbsp;
+
+00:32:25.600 --> 00:32:30.000
+the better and and easier it is for you to&nbsp;
+make decisions about that. Uh, and that's&nbsp;&nbsp;
+
+00:32:30.000 --> 00:32:34.160
+another huge difference between discretionary&nbsp;
+trading and automated trading. You just don't&nbsp;&nbsp;
+
+00:32:34.160 --> 00:32:40.240
+have that reference to see, okay, is this unusual&nbsp;
+or not. And sometimes there is a there's a bit of&nbsp;&nbsp;
+
+00:32:40.240 --> 00:32:47.440
+a randomness element to matching the back test and&nbsp;
+draw downs in general. Uh that's why I say it's&nbsp;&nbsp;
+
+00:32:47.440 --> 00:32:57.280
+it's a bit of an art. And as much as people want&nbsp;
+it to be a science, there's still some uh kind of&nbsp;&nbsp;
+
+00:32:57.280 --> 00:33:04.800
+unknowable or something that you just can't reduce&nbsp;
+down to numbers sometimes in in trading like this.&nbsp;&nbsp;
+
+00:33:04.800 --> 00:33:10.800
+What what gave you the confidence to stick stick&nbsp;
+with it? I mean, did you um discover something in&nbsp;&nbsp;
+
+00:33:10.800 --> 00:33:16.720
+a new back test or did you create a new strategy&nbsp;
+or was did I imagine you probably felt tempted&nbsp;&nbsp;
+
+00:33:16.720 --> 00:33:24.640
+to tweak the system, right? Sure. Yeah, I was&nbsp;
+tweaking the system pretty regularly. I I think&nbsp;&nbsp;
+
+00:33:24.640 --> 00:33:34.000
+a lot of traders are aren't quick enough to do&nbsp;
+that. they get stuck with a certain system and&nbsp;&nbsp;
+
+00:33:34.000 --> 00:33:39.280
+don't want to change it for fear of curve fitting.&nbsp;
+I I see people all the time that are sort of too&nbsp;&nbsp;
+
+00:33:39.280 --> 00:33:45.760
+scared of curve fitting, I think. And as long as I&nbsp;
+I don't think curve fitting is that hard to avoid,&nbsp;&nbsp;
+
+00:33:45.760 --> 00:33:53.600
+but you need to start from a back test with a lot&nbsp;
+of trades. And each rule you add to the strategy,&nbsp;&nbsp;
+
+00:33:53.600 --> 00:33:59.600
+you need to make sure I call it needs to tell&nbsp;
+a coherent story. So, you need to think deeply&nbsp;&nbsp;
+
+00:33:59.600 --> 00:34:05.280
+about the rules you apply to the strategy and&nbsp;
+why you're adding them and what makes you think&nbsp;&nbsp;
+
+00:34:05.280 --> 00:34:10.640
+they're going to continue into the future. Yeah,&nbsp;
+that that's a such a critical piece. You know,&nbsp;&nbsp;
+
+00:34:10.640 --> 00:34:15.600
+I realized during that draw down, every trader&nbsp;
+that ever quit trading did so during a draw down,&nbsp;&nbsp;
+
+00:34:15.600 --> 00:34:19.520
+right? They're not they're not quitting&nbsp;
+at all time highs, right? Right. So,&nbsp;&nbsp;
+
+00:34:19.520 --> 00:34:25.840
+that's the hardest part of trading is having the&nbsp;
+confidence to trade through a draw down. Do we set&nbsp;&nbsp;
+
+00:34:25.840 --> 00:34:32.400
+the amount of the draw down? like the percentage&nbsp;
+in advance say okay if I have a a 10 15 20% draw&nbsp;&nbsp;
+
+00:34:32.400 --> 00:34:38.000
+down once it hits that level of a draw down then&nbsp;
+I will do this do you pre-plan that ahead of time&nbsp;&nbsp;
+
+00:34:38.000 --> 00:34:45.040
+um so that you don't get your emotions involved in&nbsp;
+that's a definitely helps a lot because you know&nbsp;&nbsp;
+
+00:34:45.040 --> 00:34:51.280
+like I said earlier that people think that trading&nbsp;
+automated is you know unemotional there's a lot of&nbsp;&nbsp;
+
+00:34:51.280 --> 00:34:55.680
+emotion and it's exactly what you just described&nbsp;
+there what do I do here I'm in this draw down&nbsp;&nbsp;
+
+00:34:55.680 --> 00:35:01.120
+what do I do that's an emotional thing. You're not&nbsp;
+making a decision during the day about that, but&nbsp;&nbsp;
+
+00:35:01.120 --> 00:35:08.800
+it's definitely an emotional decision and um yeah,&nbsp;
+anytime you can have some sort of pre-planned way&nbsp;&nbsp;
+
+00:35:08.800 --> 00:35:16.480
+to handle that is is great. Can you give us a a&nbsp;
+concrete example of back testing a strategy like&nbsp;&nbsp;
+
+00:35:16.480 --> 00:35:24.640
+just a few of the things that go into that? Right.&nbsp;
+So the this original strategy that I traded and I&nbsp;&nbsp;
+
+00:35:24.640 --> 00:35:31.520
+created a back test from you know the rules were&nbsp;
+already it was pretty much a systematic strategy&nbsp;&nbsp;
+
+00:35:31.520 --> 00:35:38.160
+already. It was just applying the rules to it and&nbsp;
+realizing that yeah I had this discretion involved&nbsp;&nbsp;
+
+00:35:38.160 --> 00:35:44.800
+but okay what if I had to trade it without the&nbsp;
+discretion what would that have been? So I created&nbsp;&nbsp;
+
+00:35:44.800 --> 00:35:51.600
+a back test in Amma broker which is software that&nbsp;
+I use to to back test and trade and I I still use&nbsp;&nbsp;
+
+00:35:51.600 --> 00:35:57.280
+that same software to this day. And then it's&nbsp;
+just about you know clearly defining the rules&nbsp;&nbsp;
+
+00:35:57.280 --> 00:36:03.120
+and that's a lot of times discretionary traders&nbsp;
+that's that's a hard part but the really good&nbsp;&nbsp;
+
+00:36:03.120 --> 00:36:12.240
+traders really have a keen sense of what ideas&nbsp;
+are modelable and which ones are discretionary.&nbsp;&nbsp;
+
+00:36:12.240 --> 00:36:17.520
+So they're constantly looking for ideas that could&nbsp;
+be modelable that they could put to the side and&nbsp;&nbsp;
+
+00:36:17.520 --> 00:36:23.600
+automate and you know have that be part of their&nbsp;
+business. It's helpful to have a programming&nbsp;&nbsp;
+
+00:36:23.600 --> 00:36:29.520
+mindset but it's not a requirement especially&nbsp;
+these days with LLMs and chat GBT and such. It's&nbsp;&nbsp;
+
+00:36:29.520 --> 00:36:38.080
+it's a lot easier time to to do back testing. Oh&nbsp;
+I see. So, do you use uh AI uh uh currently or in&nbsp;&nbsp;
+
+00:36:38.080 --> 00:36:44.960
+the recent years in and how and if so, how do you&nbsp;
+use it exactly? Sure. I I use it all the time. I&nbsp;&nbsp;
+
+00:36:44.960 --> 00:36:51.680
+think you're kind of silly to not use it. It It's&nbsp;
+really helpful as a programmer to be able to sort&nbsp;&nbsp;
+
+00:36:51.680 --> 00:36:57.840
+of audit what it does and step in when it when&nbsp;
+it's doing the wrong thing. I see a lot of people&nbsp;&nbsp;
+
+00:36:57.840 --> 00:37:05.600
+kind of create spaghetti code using LLMs these&nbsp;
+days, but um because they don't you need to have&nbsp;&nbsp;
+
+00:37:05.600 --> 00:37:10.480
+a basic understanding of what you're asking it to&nbsp;
+do. And the better the more understanding you have&nbsp;&nbsp;
+
+00:37:10.480 --> 00:37:15.680
+of it, the better your outcomes are going to be&nbsp;
+from using it. So yeah, I use it to create code.&nbsp;&nbsp;
+
+00:37:15.680 --> 00:37:23.280
+I mean, I've created code for 30 years now, but&nbsp;
+I absolutely use chat gpt and claw to create code&nbsp;&nbsp;
+
+00:37:23.280 --> 00:37:28.560
+for me. Yeah. Um, you mentioned about uh something&nbsp;
+about working with traders. Um, I don't know if&nbsp;&nbsp;
+
+00:37:28.560 --> 00:37:34.880
+you've worked with uh traditional prop traders&nbsp;
+and uh uh some of the challenges that they might&nbsp;&nbsp;
+
+00:37:34.880 --> 00:37:43.520
+have uh transitioning to a systematic trading.&nbsp;
+Yeah. So, there are traders that trade uh with&nbsp;&nbsp;
+
+00:37:43.520 --> 00:37:49.600
+proprietary trading firms that I work with and&nbsp;
+in varying levels. You know, the the prop space&nbsp;&nbsp;
+
+00:37:49.600 --> 00:37:53.760
+has changed pretty dramatically over the last&nbsp;
+several years. I mean there's a lot more players&nbsp;&nbsp;
+
+00:37:53.760 --> 00:37:59.040
+in the space. Yeah. So I think it's a I think&nbsp;
+it's an interesting model. I I work with a lot&nbsp;&nbsp;
+
+00:37:59.040 --> 00:38:07.440
+of traders at SMB Capital and which is you know a&nbsp;
+well-known firm. Yeah. And it's it's definitely a&nbsp;&nbsp;
+
+00:38:07.440 --> 00:38:13.040
+different mindset to to trade prop versus trading&nbsp;
+your own money. And there's uh advantages and&nbsp;&nbsp;
+
+00:38:13.040 --> 00:38:18.720
+disadvantages of doing it. But yeah, I think it's&nbsp;
+a it's an approach that a lot of traders could&nbsp;&nbsp;
+
+00:38:18.720 --> 00:38:24.480
+uh could benefit from and should think about. Um,&nbsp;
+in some of your earlier videos that I saw, uh, you&nbsp;&nbsp;
+
+00:38:24.480 --> 00:38:29.040
+mentioned that the majority of your profits come&nbsp;
+from shorting. What do you think are the unique&nbsp;&nbsp;
+
+00:38:29.040 --> 00:38:34.800
+practical problems uh, of shorting that back tests&nbsp;
+often ignore? Like for example, borrow costs,&nbsp;&nbsp;
+
+00:38:34.800 --> 00:38:42.320
+locate availability, hard to borrow spikes and&nbsp;
+buyins. Sure. Yeah, those are definitely issues.&nbsp;&nbsp;
+
+00:38:42.320 --> 00:38:50.400
+The way I think about it is a back test should be&nbsp;
+like the perfection that you're trying to achieve.&nbsp;&nbsp;
+
+00:38:50.400 --> 00:38:57.440
+You're never going to achieve it perfectly, but I&nbsp;
+like having a back test that is sort of pristine.&nbsp;&nbsp;
+
+00:38:57.440 --> 00:39:04.160
+So, I include commissions in the back test, but I&nbsp;
+don't try to model slippage directly in the back&nbsp;&nbsp;
+
+00:39:04.160 --> 00:39:10.720
+test. I just know that after the back test,&nbsp;
+I'm going to uh I know that I I'll lose some&nbsp;&nbsp;
+
+00:39:10.720 --> 00:39:16.400
+money to to slippage and miss trades, but I'm&nbsp;
+doing that after the fact. And the same thing&nbsp;&nbsp;
+
+00:39:16.400 --> 00:39:22.400
+with locate costs. can't predict exactly with your&nbsp;
+back test what the locate costs are going to be,&nbsp;&nbsp;
+
+00:39:22.400 --> 00:39:28.320
+but that's fine. You can you can do that after&nbsp;
+the fact and depending on the strategy, you&nbsp;&nbsp;
+
+00:39:28.320 --> 00:39:35.360
+may or may not have significant locate costs. So&nbsp;
+that's that's going to vary by strategy. So yeah,&nbsp;&nbsp;
+
+00:39:35.360 --> 00:39:42.240
+just I find it better to have the back test as&nbsp;
+sort of this pristine thing that I'm trying to&nbsp;&nbsp;
+
+00:39:42.240 --> 00:39:47.600
+achieve knowing that I'll never quite achieve it.&nbsp;
+But I I like I think that's a better approach. A&nbsp;&nbsp;
+
+00:39:47.600 --> 00:39:54.000
+lot of people get stuck trying to model slippage&nbsp;
+in like the perfect way and try to make their&nbsp;&nbsp;
+
+00:39:54.000 --> 00:39:59.040
+back test reflect reality exactly. But I think&nbsp;
+there's it's sort of a fool's errand. You're&nbsp;&nbsp;
+
+00:39:59.040 --> 00:40:03.680
+never going to be able to model it exactly. But&nbsp;
+but that's fine. You don't need to model exactly.&nbsp;&nbsp;
+
+00:40:03.680 --> 00:40:10.800
+You don't have to have a perfect simulation to&nbsp;
+make money. And you don't need to have perfect&nbsp;&nbsp;
+
+00:40:10.800 --> 00:40:17.040
+confidence to go live with something. It's a lot&nbsp;
+of what you'll learn when you go live. You know,&nbsp;&nbsp;
+
+00:40:17.040 --> 00:40:21.840
+a lot of people think that their work is done when&nbsp;
+the back test is complete, but really that's when&nbsp;&nbsp;
+
+00:40:21.840 --> 00:40:28.880
+the work starts, right? You're going to learn&nbsp;
+a lot after you even take tiny amounts of uh&nbsp;&nbsp;
+
+00:40:28.880 --> 00:40:34.320
+you know, tiny position sizes trading live. What&nbsp;
+are some of the a few things that you learn? And&nbsp;&nbsp;
+
+00:40:34.320 --> 00:40:39.280
+then what do you do? Do you do you do more back&nbsp;
+tests and tweak this and that and like kind of&nbsp;&nbsp;
+
+00:40:39.280 --> 00:40:45.680
+what what's that process look like? So there's a&nbsp;
+there's an economist that goes that that works at&nbsp;&nbsp;
+
+00:40:45.680 --> 00:40:49.680
+Duke University that's got a really good analogy&nbsp;
+here. He's got a thought experiment that says,&nbsp;&nbsp;
+
+00:40:49.680 --> 00:40:55.360
+"Okay, let's say you're building a university.&nbsp;
+You've got plans for the big ornate buildings.&nbsp;&nbsp;
+
+00:40:55.360 --> 00:41:01.280
+You've got plans for your quads, you know, your&nbsp;
+uh grassy areas that are so beautiful, but then&nbsp;&nbsp;
+
+00:41:01.280 --> 00:41:07.600
+where are you going to put the sidewalks?" So, one&nbsp;
+thing you could do is you could form a committee&nbsp;&nbsp;
+
+00:41:07.600 --> 00:41:13.680
+of the professors and the students and like have&nbsp;
+them sort of vote by committee where the sidewalk&nbsp;&nbsp;
+
+00:41:13.680 --> 00:41:18.640
+should go. Or you could hire an engineer to figure&nbsp;
+out where they should go, right? But he says, "No,&nbsp;&nbsp;
+
+00:41:18.640 --> 00:41:23.360
+there's a much better way to do it, and that's&nbsp;
+uh build a university, put a bunch of grass&nbsp;&nbsp;
+
+00:41:23.360 --> 00:41:28.960
+everywhere, no sidewalks, wait two years, and then&nbsp;
+go and look at where the brown spots have formed&nbsp;&nbsp;
+
+00:41:28.960 --> 00:41:34.160
+for people walking and put the sidewalks there.&nbsp;
+that's where you should put them. So, there's a&nbsp;&nbsp;
+
+00:41:34.160 --> 00:41:39.040
+little bit of an analogy there with with trading&nbsp;
+strategies. A lot of people want to really come up&nbsp;&nbsp;
+
+00:41:39.040 --> 00:41:44.000
+with the perfect back test, tweak it to get it&nbsp;
+exactly right, but you're not going to be able&nbsp;&nbsp;
+
+00:41:44.000 --> 00:41:51.200
+to you're missing out on a lot of learning by not&nbsp;
+going live and trying to make a perfect back test.&nbsp;&nbsp;
+
+00:41:51.200 --> 00:41:56.960
+The quicker you can go live, even at very tiny&nbsp;
+amounts, the quicker you're going to learn and be&nbsp;&nbsp;
+
+00:41:56.960 --> 00:42:02.160
+able to apply back to your back test some things&nbsp;
+you discover by seeing the live trades. Even&nbsp;&nbsp;
+
+00:42:02.160 --> 00:42:09.760
+at minuscule size, what are some of the common&nbsp;
+wisdoms uh that you found that you debunked when&nbsp;&nbsp;
+
+00:42:09.760 --> 00:42:15.760
+you uh did back testing? You find that there's a&nbsp;
+lot of BS out there. Back testing, I felt like, is&nbsp;&nbsp;
+
+00:42:15.760 --> 00:42:21.440
+a superpower for traders. like you you don't have&nbsp;
+to believe you don't have to take things at face&nbsp;&nbsp;
+
+00:42:21.440 --> 00:42:28.720
+value that you hear everywhere. I mean there's&nbsp;
+all sorts of um things that that traders say or&nbsp;&nbsp;
+
+00:42:28.720 --> 00:42:35.200
+you know gurus say that are just completely false.&nbsp;
+Like like one of the one of my favorite ones is&nbsp;&nbsp;
+
+00:42:35.200 --> 00:42:40.160
+let's say you're in a profitable trade and you're&nbsp;
+not sure what to do. A lot of people will say,&nbsp;&nbsp;
+
+00:42:40.160 --> 00:42:46.240
+"All right, take half off, move your stop to&nbsp;
+break even." And uh that's what you should do,&nbsp;&nbsp;
+
+00:42:46.240 --> 00:42:51.760
+like take a partial profit. But if you ever go&nbsp;
+and do the back test on that and compare it to not&nbsp;&nbsp;
+
+00:42:51.760 --> 00:42:57.360
+taking a partial profit, it's like night and day.&nbsp;
+Like you're losing so much money by doing that&nbsp;&nbsp;
+
+00:42:57.360 --> 00:43:05.440
+um and not carrying your full position size to a&nbsp;
+natural your natural exit. you can just go and do&nbsp;&nbsp;
+
+00:43:05.440 --> 00:43:09.680
+the back test and see that it's a it's a terrible&nbsp;
+idea if you do that over and over and over and&nbsp;&nbsp;
+
+00:43:09.680 --> 00:43:17.600
+what what about uh setting stops uh is um what&nbsp;
+have you learned about that? So I learned that&nbsp;&nbsp;
+
+00:43:17.600 --> 00:43:25.360
+stops in general make strategies worse. Of course&nbsp;
+they're required to actually for mere mortals to&nbsp;&nbsp;
+
+00:43:25.360 --> 00:43:31.280
+to trade a strategy, right? You have to limit your&nbsp;
+risk. But one of the things I like doing with the&nbsp;&nbsp;
+
+00:43:31.280 --> 00:43:38.000
+back test is making sure the back test works&nbsp;
+without stops and targets initially. Like run&nbsp;&nbsp;
+
+00:43:38.000 --> 00:43:44.240
+a version without stops and it should work then&nbsp;
+it it better work then because the stop applying&nbsp;&nbsp;
+
+00:43:44.240 --> 00:43:50.640
+stops which you should always do um is going to&nbsp;
+make that worse. But I like running it without&nbsp;&nbsp;
+
+00:43:50.640 --> 00:43:57.440
+stops because you're going to avoid some of the&nbsp;
+biases that come with with back testing. you know,&nbsp;&nbsp;
+
+00:43:57.440 --> 00:44:02.800
+using a a very tight stop. A lot of times you can&nbsp;
+make a strategy appear to be good when you use a&nbsp;&nbsp;
+
+00:44:02.800 --> 00:44:08.080
+really tight stop, but in reality, you're going&nbsp;
+to that stop is going to get hit, but the back&nbsp;&nbsp;
+
+00:44:08.080 --> 00:44:15.440
+test doesn't suggest that it would. Why is that?&nbsp;
+It's because the precision on the back test isn't&nbsp;&nbsp;
+
+00:44:15.440 --> 00:44:21.920
+precise enough. So, like, let's say you're back&nbsp;
+testing on one minute bars and you got a really&nbsp;&nbsp;
+
+00:44:21.920 --> 00:44:26.880
+tight stop in there. Well, on the entry bar,&nbsp;
+there's a decision you have to make. Are you&nbsp;&nbsp;
+
+00:44:26.880 --> 00:44:31.600
+gonna let yourself in the back test get stopped&nbsp;
+out on that initial bar or you gonna wait one&nbsp;&nbsp;
+
+00:44:31.600 --> 00:44:37.920
+bar? A lot of traders choose to wait one bar and&nbsp;
+if they got a really tight stop that would have&nbsp;&nbsp;
+
+00:44:37.920 --> 00:44:44.320
+gotten hit on that entry bar and the next bar it&nbsp;
+it's not going to get reached. So a lot of those&nbsp;&nbsp;
+
+00:44:44.320 --> 00:44:51.200
+trades that you would get stopped out in real life&nbsp;
+end up looking good in the back test. So having&nbsp;&nbsp;
+
+00:44:51.200 --> 00:44:56.880
+you know understanding that is really important&nbsp;
+and a lot of traders will say okay well I I'll&nbsp;&nbsp;
+
+00:44:56.880 --> 00:45:03.360
+just I need to create a tick by tick back tester&nbsp;
+that's the answer and there's some back testers&nbsp;&nbsp;
+
+00:45:03.360 --> 00:45:10.560
+like that that exist but it's a really hard and&nbsp;
+resource intensive thing to create. So there's&nbsp;&nbsp;
+
+00:45:10.560 --> 00:45:18.880
+a costbenefit analysis there and you could get&nbsp;
+by without that extreme level of precision a and&nbsp;&nbsp;
+
+00:45:18.880 --> 00:45:27.040
+as long as you understand how the back test works&nbsp;
+and how those precision issues will sometimes make&nbsp;&nbsp;
+
+00:45:27.040 --> 00:45:32.480
+the back test look too optimistic. Uh do you ever&nbsp;
+do forward testing? I mean and if so kind of what&nbsp;&nbsp;
+
+00:45:32.480 --> 00:45:38.080
+are your thoughts on forward testing? I I think&nbsp;
+about forward testing as just taking live trades&nbsp;&nbsp;
+
+00:45:38.080 --> 00:45:45.520
+with really small size. As long as you have a good&nbsp;
+process for reconciling and and noticing where the&nbsp;&nbsp;
+
+00:45:45.520 --> 00:45:51.920
+the back test isn't measuring up and why, then you&nbsp;
+can learn very quickly and you have a much quicker&nbsp;&nbsp;
+
+00:45:51.920 --> 00:45:57.840
+path to confidence. I only know of two ways to&nbsp;
+gain confidence in a trading system and that's&nbsp;&nbsp;
+
+00:45:57.840 --> 00:46:02.560
+when one is just trade it over and over for a&nbsp;
+long period of time and the other one is back&nbsp;&nbsp;
+
+00:46:02.560 --> 00:46:09.200
+testing. So it's sort of a shortcut to confidence&nbsp;
+and that and and confidence is really that it's so&nbsp;&nbsp;
+
+00:46:09.200 --> 00:46:13.360
+important because if you don't have confidence in&nbsp;
+a strategy you're not going to be able to trade it&nbsp;&nbsp;
+
+00:46:13.360 --> 00:46:19.600
+with significant size which is required to make&nbsp;
+a lot of money with it. So having a I talk a&nbsp;&nbsp;
+
+00:46:19.600 --> 00:46:23.760
+lot about a path to confidence like what is your&nbsp;
+path to confidence? Why are you not trading the&nbsp;&nbsp;
+
+00:46:23.760 --> 00:46:28.720
+strategy now with your full account size? there's&nbsp;
+probably good reasons why you're not. Figure out&nbsp;&nbsp;
+
+00:46:28.720 --> 00:46:33.920
+what those are and see if you can get answers&nbsp;
+for some of those to alleviate those concerns&nbsp;&nbsp;
+
+00:46:33.920 --> 00:46:39.280
+and continue to get more and more confident in&nbsp;
+your strategy. What about like uh draw downs&nbsp;&nbsp;
+
+00:46:39.280 --> 00:46:46.480
+and say diversification? Uh what are your thoughts&nbsp;
+on having multiple different strategies uh and so&nbsp;&nbsp;
+
+00:46:46.480 --> 00:46:53.920
+that uh maybe you have uncorrelated um strategies&nbsp;
+hopefully to smooth out that equity curve. Yeah,&nbsp;&nbsp;
+
+00:46:53.920 --> 00:46:59.920
+that's exactly why I when I was in that big draw&nbsp;
+down, I knew that's what I needed. Like I was too&nbsp;&nbsp;
+
+00:46:59.920 --> 00:47:06.480
+reliant on this particular strategy that could&nbsp;
+go away. So I knew I needed more strategies and I&nbsp;&nbsp;
+
+00:47:06.480 --> 00:47:12.000
+needed a very, you know, a much faster way to come&nbsp;
+up with them. So I really buckled down and created&nbsp;&nbsp;
+
+00:47:12.000 --> 00:47:17.760
+tools for myself to be able to quickly come up&nbsp;
+with ideas and quickly back test them and figure&nbsp;&nbsp;
+
+00:47:17.760 --> 00:47:24.240
+out how to create strategies that I could go live&nbsp;
+with. So that that was really a key insight for&nbsp;&nbsp;
+
+00:47:24.240 --> 00:47:31.120
+me and and I see it I see it so frequently&nbsp;
+now traders that have one good strategy. The&nbsp;&nbsp;
+
+00:47:31.120 --> 00:47:35.360
+only thing harder than coming up with their first&nbsp;
+profitable strategy is coming up with your second&nbsp;&nbsp;
+
+00:47:35.360 --> 00:47:40.480
+because you feel like you have you feel like you&nbsp;
+have it figured out and you're like okay well&nbsp;&nbsp;
+
+00:47:40.480 --> 00:47:46.240
+I don't I don't care what anybody says. This is&nbsp;
+working for me now. this is how trading works and&nbsp;&nbsp;
+
+00:47:46.240 --> 00:47:50.560
+you kind of you can't even you don't even allow&nbsp;
+you don't even realize it but you're not even&nbsp;&nbsp;
+
+00:47:50.560 --> 00:47:56.400
+allowing yourself to think of other ideas. you&nbsp;
+kind of get fossilized and one way of thinking,&nbsp;&nbsp;
+
+00:47:56.400 --> 00:48:03.760
+but really the way to scale is to add additional&nbsp;
+strategies and that are uncorrelated and and&nbsp;&nbsp;
+
+00:48:03.760 --> 00:48:10.640
+that's um you know I see that day in and day out&nbsp;
+and but it but it is really surprisingly hard for&nbsp;&nbsp;
+
+00:48:10.640 --> 00:48:16.720
+people that have are successful with a single&nbsp;
+strategy to come up with that second one. Well,&nbsp;&nbsp;
+
+00:48:16.720 --> 00:48:22.720
+um there's aren't there a lot of strategies uh off&nbsp;
+the shelf that um one that's already been created&nbsp;&nbsp;
+
+00:48:22.720 --> 00:48:29.200
+that one could uh tap into and say, "Hey, this&nbsp;
+strategy here looks good. Let me add that." Um&nbsp;&nbsp;
+
+00:48:29.200 --> 00:48:34.880
+uh why is it why would it be necessary to always&nbsp;
+have to come up with your own strategy as opposed&nbsp;&nbsp;
+
+00:48:34.880 --> 00:48:40.080
+to adopting one that's already on the shelf?&nbsp;
+Because the one that's already on the shelf&nbsp;&nbsp;
+
+00:48:40.080 --> 00:48:46.480
+probably isn't that good because it wouldn't be&nbsp;
+on the shelf otherwise. Well, do they ever come&nbsp;&nbsp;
+
+00:48:46.480 --> 00:48:51.200
+back into does a strategy that goes dead for a&nbsp;
+while, does it ever come back into vogue? Have&nbsp;&nbsp;
+
+00:48:51.200 --> 00:48:57.760
+you ever seen that? Sure. I I I see that. And I&nbsp;
+see, you know, the tools that I created for myself&nbsp;&nbsp;
+
+00:48:57.760 --> 00:49:05.520
+are basically give me a way to make adjustments to&nbsp;
+a strategy over time so that as it deteriorates,&nbsp;&nbsp;
+
+00:49:05.520 --> 00:49:15.120
+I've got a way to apply another rule to get rid&nbsp;
+of the poorest trades in the system. So over time,&nbsp;&nbsp;
+
+00:49:15.120 --> 00:49:20.320
+I've so when I go live with a strategy, I've&nbsp;
+gone through my optimization process where&nbsp;&nbsp;
+
+00:49:20.320 --> 00:49:25.040
+I've selected my rules and then I've selected&nbsp;
+the the set that I'm going to go live with,&nbsp;&nbsp;
+
+00:49:25.040 --> 00:49:31.040
+but then I continue with the optimization process.&nbsp;
+So I've got another rule kind of in my back pocket&nbsp;&nbsp;
+
+00:49:31.040 --> 00:49:37.680
+so that a few months from now or however long when&nbsp;
+the strategy goes in draw down, I can say, okay,&nbsp;&nbsp;
+
+00:49:37.680 --> 00:49:42.720
+I've got I'm not like caught flatfooted. That&nbsp;
+was the problem with that that big draw down I&nbsp;&nbsp;
+
+00:49:42.720 --> 00:49:48.000
+was in. I was flat foot. I didn't have I was at a&nbsp;
+dead end and didn't know where to go and I never&nbsp;&nbsp;
+
+00:49:48.000 --> 00:49:53.920
+wanted that feeling again. So I keep like kind&nbsp;
+of a rule in my back pocket that okay here's one&nbsp;&nbsp;
+
+00:49:53.920 --> 00:49:59.200
+that I I could apply because I've already done&nbsp;
+the research for that and I'm not completely&nbsp;&nbsp;
+
+00:49:59.200 --> 00:50:04.480
+starting from ground zero with the strategy&nbsp;
+at that point. And that's just a much better&nbsp;&nbsp;
+
+00:50:04.480 --> 00:50:11.920
+it's a much better mindset for discretionary&nbsp;
+traders. uh what's a simple first step toward&nbsp;&nbsp;
+
+00:50:11.920 --> 00:50:18.880
+um automation or being more systematized uh they&nbsp;
+can do say this week to get started? Yeah. So I&nbsp;&nbsp;
+
+00:50:18.880 --> 00:50:28.160
+would say brainstorm some ideas that you probably&nbsp;
+already have beneath the surface related to the&nbsp;&nbsp;
+
+00:50:28.160 --> 00:50:34.720
+strategy you're already trading. Like what's&nbsp;
+what's some set of of trades that almost meet your&nbsp;&nbsp;
+
+00:50:34.720 --> 00:50:41.200
+criteria but not quite? That's a good area because&nbsp;
+you're already probably pretty familiar with that&nbsp;&nbsp;
+
+00:50:41.200 --> 00:50:47.280
+universe. Figure out how to create a strategy&nbsp;
+from those. Like come up with just an initial idea&nbsp;&nbsp;
+
+00:50:47.280 --> 00:50:54.080
+and create a back test from it. Get in a habit of&nbsp;
+coming up with ideas like this and creating a list&nbsp;&nbsp;
+
+00:50:54.080 --> 00:51:00.480
+and prioritizing those ideas for which ones to&nbsp;
+work on next. You know, a lot of traders have uh&nbsp;&nbsp;
+
+00:51:00.480 --> 00:51:07.440
+lots more ideas than they realize they do. Great.&nbsp;
+So to uh wrap up uh for those wanting to get into&nbsp;&nbsp;
+
+00:51:07.440 --> 00:51:14.160
+back testing and who are not programmers uh any&nbsp;
+particular software that you'd recommend? I have a&nbsp;&nbsp;
+
+00:51:14.160 --> 00:51:22.720
+free uh back testing course that goes through the&nbsp;
+ones I recommend. It's called better back testing.&nbsp;&nbsp;
+
+00:51:22.720 --> 00:51:28.160
+So you can go to betterbacktesting.com and sign up&nbsp;
+for that. But the ones I recommend are on there.&nbsp;&nbsp;
+
+00:51:28.160 --> 00:51:35.280
+Um Amroker is one I really like. trade ideas.&nbsp;
+I I worked for I was a CTO for trade ideas for&nbsp;&nbsp;
+
+00:51:35.280 --> 00:51:40.320
+many years. It's it's great because you don't have&nbsp;
+to write code and you can do some back testing in&nbsp;&nbsp;
+
+00:51:40.320 --> 00:51:49.200
+it. Uh the other one is real test. Real test is&nbsp;
+the only problem is it's daily data only. If you&nbsp;&nbsp;
+
+00:51:49.200 --> 00:51:54.080
+need intraday data and you need to back test on&nbsp;
+intraday data, then you're not going to be able&nbsp;&nbsp;
+
+00:51:54.080 --> 00:51:58.720
+to use it for that. But yeah, those are the ones&nbsp;
+I recommend. That's that's probably the best way&nbsp;&nbsp;
+
+00:51:58.720 --> 00:52:04.000
+to get started. Well, Dave, I'd like to uh thank&nbsp;
+you for coming on Chat with Traders. Yeah. Well,&nbsp;&nbsp;
+
+00:52:04.000 --> 00:52:10.560
+you I appreciate you having me on. There was&nbsp;
+uh you there been many hours where I've spent&nbsp;&nbsp;
+
+00:52:10.560 --> 00:52:16.000
+cycling in my shed listening to this podcast over&nbsp;
+the years. So, yeah, it's kind of it's it's an&nbsp;&nbsp;
+
+00:52:16.000 --> 00:52:22.640
+honor to be on here. Appreciate the invite. Yeah.&nbsp;
+And how can our listeners uh reach you? Yeah,&nbsp;&nbsp;
+
+00:52:22.640 --> 00:52:28.080
+the best ways to sign up for that uh email&nbsp;
+course is totally free. You'll get emails&nbsp;&nbsp;
+
+00:52:28.080 --> 00:52:34.560
+directly from my personal email. So, and that's&nbsp;
+betterbacktesting.com and yeah, feel free to reply&nbsp;&nbsp;
+
+00:52:34.560 --> 00:52:42.800
+and yeah, I'm I read all those emails. Fantastic.&nbsp;
+Thanks for coming on the show. Thank you.
+
+00:52:42.800 --> 00:52:47.120
+You've reached the end of this episode&nbsp;
+of Chat with Traders, but rest assured,&nbsp;&nbsp;
+
+00:52:47.120 --> 00:52:53.520
+there are more episodes loaded with real market&nbsp;
+insight and zero hype on the way soon. So,&nbsp;&nbsp;
+
+00:52:53.520 --> 00:52:58.800
+to stay updated with each great new release,&nbsp;
+subscribe to the podcast in iTunes. and we'd&nbsp;&nbsp;
+
+00:52:58.800 --> 00:53:22.320
+love it if you'd leave a rating and review.&nbsp;
+We'll catch you next time on Chat with Traders.
+

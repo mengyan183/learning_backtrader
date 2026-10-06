@@ -42,13 +42,13 @@ def load_meta():
     yt = subprocess.run(
         [".venv/bin/yt-dlp", "--proxy", PROXY, "--flat-playlist",
          "--print", "%(channel)s|%(id)s|%(title)s|%(upload_date)s",
-         "--playlist-end", "10", "CH_URL"],
+         "--playlist-end", "30", "CH_URL"],
         capture_output=True, text=True, cwd=REPO)
     for name, url in CHANNELS.items():
         r = subprocess.run(
             [".venv/bin/yt-dlp", "--proxy", PROXY, "--flat-playlist",
              "--print", "%(id)s|%(title)s|%(upload_date)s",
-             "--playlist-end", "10", url],
+             "--playlist-end", "30", url],
             capture_output=True, text=True, cwd=REPO)
         for line in r.stdout.splitlines():
             parts = line.split("|")

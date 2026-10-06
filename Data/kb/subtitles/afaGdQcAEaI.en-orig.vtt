@@ -1,0 +1,1504 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.080 --> 00:00:01.510 align:start position:0%
+ 
+in<00:00:00.240><c> this</c><00:00:00.399><c> video</c><00:00:00.719><c> we're</c><00:00:00.880><c> going</c><00:00:00.960><c> to</c><00:00:01.120><c> be</c><00:00:01.199><c> talking</c>
+
+00:00:01.510 --> 00:00:01.520 align:start position:0%
+in this video we're going to be talking
+ 
+
+00:00:01.520 --> 00:00:03.909 align:start position:0%
+in this video we're going to be talking
+about<00:00:01.760><c> stochastic</c><00:00:02.240><c> volatility</c><00:00:02.879><c> models</c><00:00:03.600><c> in</c>
+
+00:00:03.909 --> 00:00:03.919 align:start position:0%
+about stochastic volatility models in
+ 
+
+00:00:03.919 --> 00:00:05.910 align:start position:0%
+about stochastic volatility models in
+quantitative<00:00:04.560><c> finance</c><00:00:05.440><c> here</c><00:00:05.600><c> we'll</c><00:00:05.759><c> be</c>
+
+00:00:05.910 --> 00:00:05.920 align:start position:0%
+quantitative finance here we'll be
+ 
+
+00:00:05.920 --> 00:00:07.269 align:start position:0%
+quantitative finance here we'll be
+talking<00:00:06.240><c> about</c><00:00:06.480><c> the</c><00:00:06.640><c> people</c><00:00:06.960><c> that</c><00:00:07.120><c> have</c>
+
+00:00:07.269 --> 00:00:07.279 align:start position:0%
+talking about the people that have
+ 
+
+00:00:07.279 --> 00:00:09.669 align:start position:0%
+talking about the people that have
+contributed<00:00:07.919><c> the</c><00:00:08.000><c> who</c><00:00:08.320><c> what</c><00:00:08.559><c> why</c><00:00:08.880><c> and</c><00:00:09.040><c> when</c>
+
+00:00:09.669 --> 00:00:09.679 align:start position:0%
+contributed the who what why and when
+ 
+
+00:00:09.679 --> 00:00:11.589 align:start position:0%
+contributed the who what why and when
+and<00:00:09.920><c> we're</c><00:00:10.080><c> going</c><00:00:10.160><c> to</c><00:00:10.240><c> be</c><00:00:10.559><c> investigating</c><00:00:11.360><c> some</c>
+
+00:00:11.589 --> 00:00:11.599 align:start position:0%
+and we're going to be investigating some
+ 
+
+00:00:11.599 --> 00:00:12.950 align:start position:0%
+and we're going to be investigating some
+aspects<00:00:12.080><c> of</c><00:00:12.160><c> the</c><00:00:12.240><c> models</c><00:00:12.480><c> that</c><00:00:12.639><c> are</c><00:00:12.719><c> most</c>
+
+00:00:12.950 --> 00:00:12.960 align:start position:0%
+aspects of the models that are most
+ 
+
+00:00:12.960 --> 00:00:13.910 align:start position:0%
+aspects of the models that are most
+important
+
+00:00:13.910 --> 00:00:13.920 align:start position:0%
+important
+ 
+
+00:00:13.920 --> 00:00:17.269 align:start position:0%
+important
+it<00:00:14.080><c> all</c><00:00:14.320><c> started</c><00:00:14.719><c> in</c><00:00:14.960><c> 1973</c><00:00:16.240><c> where</c><00:00:16.560><c> investors</c>
+
+00:00:17.269 --> 00:00:17.279 align:start position:0%
+it all started in 1973 where investors
+ 
+
+00:00:17.279 --> 00:00:19.269 align:start position:0%
+it all started in 1973 where investors
+for<00:00:17.520><c> many</c><00:00:17.760><c> decades</c><00:00:18.320><c> would</c><00:00:18.560><c> be</c><00:00:18.800><c> thanking</c><00:00:19.199><c> the</c>
+
+00:00:19.269 --> 00:00:19.279 align:start position:0%
+for many decades would be thanking the
+ 
+
+00:00:19.279 --> 00:00:21.830 align:start position:0%
+for many decades would be thanking the
+work<00:00:19.600><c> that</c><00:00:19.760><c> went</c><00:00:20.080><c> on</c><00:00:20.400><c> in</c><00:00:20.560><c> this</c><00:00:20.800><c> year</c>
+
+00:00:21.830 --> 00:00:21.840 align:start position:0%
+work that went on in this year
+ 
+
+00:00:21.840 --> 00:00:23.670 align:start position:0%
+work that went on in this year
+this<00:00:22.160><c> of</c><00:00:22.320><c> course</c><00:00:22.640><c> is</c><00:00:22.800><c> the</c><00:00:22.960><c> option</c><00:00:23.279><c> pricing</c>
+
+00:00:23.670 --> 00:00:23.680 align:start position:0%
+this of course is the option pricing
+ 
+
+00:00:23.680 --> 00:00:25.429 align:start position:0%
+this of course is the option pricing
+model<00:00:24.000><c> that</c><00:00:24.160><c> was</c><00:00:24.320><c> proposed</c><00:00:24.800><c> by</c><00:00:25.039><c> black</c><00:00:25.279><c> and</c>
+
+00:00:25.429 --> 00:00:25.439 align:start position:0%
+model that was proposed by black and
+ 
+
+00:00:25.439 --> 00:00:27.189 align:start position:0%
+model that was proposed by black and
+shoals<00:00:25.840><c> that</c><00:00:26.000><c> actually</c><00:00:26.240><c> had</c><00:00:26.480><c> a</c><00:00:26.560><c> closed</c><00:00:26.880><c> form</c>
+
+00:00:27.189 --> 00:00:27.199 align:start position:0%
+shoals that actually had a closed form
+ 
+
+00:00:27.199 --> 00:00:29.349 align:start position:0%
+shoals that actually had a closed form
+solution<00:00:28.080><c> of</c><00:00:28.240><c> course</c><00:00:28.480><c> the</c><00:00:28.640><c> assumption</c><00:00:29.039><c> here</c>
+
+00:00:29.349 --> 00:00:29.359 align:start position:0%
+solution of course the assumption here
+ 
+
+00:00:29.359 --> 00:00:32.150 align:start position:0%
+solution of course the assumption here
+is<00:00:29.439><c> constant</c><00:00:29.840><c> volatility</c>
+
+00:00:32.150 --> 00:00:32.160 align:start position:0%
+is constant volatility
+ 
+
+00:00:32.160 --> 00:00:35.110 align:start position:0%
+is constant volatility
+in<00:00:32.440><c> 1976</c><00:00:33.520><c> the</c><00:00:33.680><c> first</c><00:00:33.920><c> stochastic</c><00:00:34.480><c> volatility</c>
+
+00:00:35.110 --> 00:00:35.120 align:start position:0%
+in 1976 the first stochastic volatility
+ 
+
+00:00:35.120 --> 00:00:37.590 align:start position:0%
+in 1976 the first stochastic volatility
+models<00:00:35.600><c> were</c><00:00:35.840><c> actually</c><00:00:36.160><c> produced</c><00:00:36.640><c> by</c><00:00:36.880><c> merton</c>
+
+00:00:37.590 --> 00:00:37.600 align:start position:0%
+models were actually produced by merton
+ 
+
+00:00:37.600 --> 00:00:39.590 align:start position:0%
+models were actually produced by merton
+and<00:00:37.920><c> cox</c><00:00:38.239><c> and</c><00:00:38.399><c> ross</c>
+
+00:00:39.590 --> 00:00:39.600 align:start position:0%
+and cox and ross
+ 
+
+00:00:39.600 --> 00:00:41.590 align:start position:0%
+and cox and ross
+merton<00:00:40.239><c> actually</c><00:00:40.559><c> assumed</c><00:00:41.040><c> a</c><00:00:41.120><c> mixture</c><00:00:41.520><c> of</c>
+
+00:00:41.590 --> 00:00:41.600 align:start position:0%
+merton actually assumed a mixture of
+ 
+
+00:00:41.600 --> 00:00:44.310 align:start position:0%
+merton actually assumed a mixture of
+continuous<00:00:42.320><c> and</c><00:00:42.480><c> jump</c><00:00:42.800><c> processes</c><00:00:43.680><c> while</c><00:00:44.000><c> cox</c>
+
+00:00:44.310 --> 00:00:44.320 align:start position:0%
+continuous and jump processes while cox
+ 
+
+00:00:44.320 --> 00:00:47.110 align:start position:0%
+continuous and jump processes while cox
+and<00:00:44.480><c> ross</c><00:00:44.960><c> actually</c><00:00:45.440><c> allowed</c><00:00:46.239><c> for</c><00:00:46.559><c> return</c>
+
+00:00:47.110 --> 00:00:47.120 align:start position:0%
+and ross actually allowed for return
+ 
+
+00:00:47.120 --> 00:00:49.430 align:start position:0%
+and ross actually allowed for return
+volatility<00:00:47.840><c> to</c><00:00:48.000><c> be</c><00:00:48.320><c> a</c><00:00:48.399><c> deterministic</c>
+
+00:00:49.430 --> 00:00:49.440 align:start position:0%
+volatility to be a deterministic
+ 
+
+00:00:49.440 --> 00:00:52.950 align:start position:0%
+volatility to be a deterministic
+function<00:00:50.079><c> of</c><00:00:50.320><c> underlying</c><00:00:50.800><c> stock</c><00:00:51.120><c> price</c>
+
+00:00:52.950 --> 00:00:52.960 align:start position:0%
+function of underlying stock price
+ 
+
+00:00:52.960 --> 00:00:56.389 align:start position:0%
+function of underlying stock price
+in<00:00:53.480><c> 1976</c><00:00:54.719><c> the</c><00:00:54.960><c> leverage</c><00:00:55.360><c> effect</c><00:00:55.760><c> was</c><00:00:56.000><c> actually</c>
+
+00:00:56.389 --> 00:00:56.399 align:start position:0%
+in 1976 the leverage effect was actually
+ 
+
+00:00:56.399 --> 00:00:59.270 align:start position:0%
+in 1976 the leverage effect was actually
+found<00:00:56.719><c> by</c><00:00:56.960><c> black</c><00:00:58.079><c> this</c><00:00:58.239><c> is</c><00:00:58.399><c> where</c><00:00:58.640><c> we</c><00:00:58.879><c> actually</c>
+
+00:00:59.270 --> 00:00:59.280 align:start position:0%
+found by black this is where we actually
+ 
+
+00:00:59.280 --> 00:01:01.990 align:start position:0%
+found by black this is where we actually
+compare<00:00:59.920><c> the</c><00:01:00.079><c> returns</c><00:01:00.960><c> and</c><00:01:01.120><c> the</c><00:01:01.280><c> volatility</c>
+
+00:01:01.990 --> 00:01:02.000 align:start position:0%
+compare the returns and the volatility
+ 
+
+00:01:02.000 --> 00:01:04.469 align:start position:0%
+compare the returns and the volatility
+distributions<00:01:03.199><c> and</c><00:01:03.359><c> black</c><00:01:03.680><c> worked</c><00:01:04.000><c> out</c><00:01:04.239><c> that</c>
+
+00:01:04.469 --> 00:01:04.479 align:start position:0%
+distributions and black worked out that
+ 
+
+00:01:04.479 --> 00:01:06.149 align:start position:0%
+distributions and black worked out that
+there's<00:01:04.720><c> a</c><00:01:04.879><c> negatively</c><00:01:05.600><c> correlated</c>
+
+00:01:06.149 --> 00:01:06.159 align:start position:0%
+there's a negatively correlated
+ 
+
+00:01:06.159 --> 00:01:07.670 align:start position:0%
+there's a negatively correlated
+relationship<00:01:06.799><c> between</c><00:01:07.200><c> returns</c><00:01:07.600><c> and</c>
+
+00:01:07.670 --> 00:01:07.680 align:start position:0%
+relationship between returns and
+ 
+
+00:01:07.680 --> 00:01:09.510 align:start position:0%
+relationship between returns and
+volatility<00:01:08.240><c> although</c><00:01:08.560><c> not</c><00:01:08.799><c> really</c><00:01:09.040><c> used</c><00:01:09.360><c> for</c>
+
+00:01:09.510 --> 00:01:09.520 align:start position:0%
+volatility although not really used for
+ 
+
+00:01:09.520 --> 00:01:12.469 align:start position:0%
+volatility although not really used for
+evaluation<00:01:10.560><c> in</c><00:01:10.720><c> 1982</c><00:01:11.600><c> the</c><00:01:11.760><c> arch</c><00:01:12.000><c> model</c><00:01:12.320><c> was</c>
+
+00:01:12.469 --> 00:01:12.479 align:start position:0%
+evaluation in 1982 the arch model was
+ 
+
+00:01:12.479 --> 00:01:14.789 align:start position:0%
+evaluation in 1982 the arch model was
+developed<00:01:12.799><c> by</c><00:01:13.119><c> engel</c><00:01:13.520><c> to</c><00:01:13.760><c> actually</c><00:01:14.240><c> account</c>
+
+00:01:14.789 --> 00:01:14.799 align:start position:0%
+developed by engel to actually account
+ 
+
+00:01:14.799 --> 00:01:17.030 align:start position:0%
+developed by engel to actually account
+for<00:01:14.960><c> the</c><00:01:15.119><c> non-constant</c><00:01:15.759><c> volatility</c>
+
+00:01:17.030 --> 00:01:17.040 align:start position:0%
+for the non-constant volatility
+ 
+
+00:01:17.040 --> 00:01:19.390 align:start position:0%
+for the non-constant volatility
+non-constant<00:01:17.680><c> volatility</c><00:01:18.320><c> is</c><00:01:18.479><c> also</c><00:01:18.799><c> called</c>
+
+00:01:19.390 --> 00:01:19.400 align:start position:0%
+non-constant volatility is also called
+ 
+
+00:01:19.400 --> 00:01:21.270 align:start position:0%
+non-constant volatility is also called
+heteroskedasticity<00:01:20.479><c> and</c><00:01:20.640><c> that's</c><00:01:20.880><c> why</c><00:01:21.119><c> the</c>
+
+00:01:21.270 --> 00:01:21.280 align:start position:0%
+heteroskedasticity and that's why the
+ 
+
+00:01:21.280 --> 00:01:22.789 align:start position:0%
+heteroskedasticity and that's why the
+model<00:01:21.520><c> was</c><00:01:21.680><c> called</c><00:01:22.000><c> auto-regressive</c>
+
+00:01:22.789 --> 00:01:22.799 align:start position:0%
+model was called auto-regressive
+ 
+
+00:01:22.799 --> 00:01:23.789 align:start position:0%
+model was called auto-regressive
+conditional
+
+00:01:23.789 --> 00:01:23.799 align:start position:0%
+conditional
+ 
+
+00:01:23.799 --> 00:01:25.910 align:start position:0%
+conditional
+heteroscedasticity<00:01:24.960><c> and</c><00:01:25.119><c> this</c><00:01:25.360><c> really</c><00:01:25.600><c> tried</c>
+
+00:01:25.910 --> 00:01:25.920 align:start position:0%
+heteroscedasticity and this really tried
+ 
+
+00:01:25.920 --> 00:01:28.390 align:start position:0%
+heteroscedasticity and this really tried
+to<00:01:26.000><c> model</c><00:01:26.560><c> the</c><00:01:26.799><c> realized</c><00:01:27.360><c> variances</c><00:01:28.080><c> over</c>
+
+00:01:28.390 --> 00:01:28.400 align:start position:0%
+to model the realized variances over
+ 
+
+00:01:28.400 --> 00:01:29.350 align:start position:0%
+to model the realized variances over
+time
+
+00:01:29.350 --> 00:01:29.360 align:start position:0%
+time
+ 
+
+00:01:29.360 --> 00:01:31.510 align:start position:0%
+time
+engel<00:01:29.840><c> received</c><00:01:30.240><c> the</c><00:01:30.400><c> nobel</c><00:01:30.799><c> prize</c><00:01:31.200><c> for</c><00:01:31.360><c> his</c>
+
+00:01:31.510 --> 00:01:31.520 align:start position:0%
+engel received the nobel prize for his
+ 
+
+00:01:31.520 --> 00:01:33.350 align:start position:0%
+engel received the nobel prize for his
+work
+
+00:01:33.350 --> 00:01:33.360 align:start position:0%
+work
+ 
+
+00:01:33.360 --> 00:01:35.670 align:start position:0%
+work
+now<00:01:33.600><c> an</c><00:01:33.840><c> extension</c><00:01:34.240><c> to</c><00:01:34.400><c> the</c><00:01:34.479><c> arch</c><00:01:34.799><c> model</c><00:01:35.439><c> was</c>
+
+00:01:35.670 --> 00:01:35.680 align:start position:0%
+now an extension to the arch model was
+ 
+
+00:01:35.680 --> 00:01:38.390 align:start position:0%
+now an extension to the arch model was
+actually<00:01:36.079><c> developed</c><00:01:36.720><c> by</c><00:01:36.960><c> engel's</c><00:01:37.439><c> phd</c>
+
+00:01:38.390 --> 00:01:38.400 align:start position:0%
+actually developed by engel's phd
+ 
+
+00:01:38.400 --> 00:01:40.710 align:start position:0%
+actually developed by engel's phd
+student<00:01:39.040><c> boler's</c><00:01:39.600><c> sleeve</c>
+
+00:01:40.710 --> 00:01:40.720 align:start position:0%
+student boler's sleeve
+ 
+
+00:01:40.720 --> 00:01:43.510 align:start position:0%
+student boler's sleeve
+now<00:01:40.960><c> below</c><00:01:41.360><c> sleeve</c><00:01:42.240><c> tried</c><00:01:42.640><c> to</c><00:01:42.799><c> think</c><00:01:43.119><c> about</c>
+
+00:01:43.510 --> 00:01:43.520 align:start position:0%
+now below sleeve tried to think about
+ 
+
+00:01:43.520 --> 00:01:46.389 align:start position:0%
+now below sleeve tried to think about
+how<00:01:43.920><c> price</c><00:01:44.399><c> changes</c><00:01:45.119><c> not</c><00:01:45.439><c> only</c><00:01:45.759><c> depend</c><00:01:46.159><c> on</c>
+
+00:01:46.389 --> 00:01:46.399 align:start position:0%
+how price changes not only depend on
+ 
+
+00:01:46.399 --> 00:01:48.630 align:start position:0%
+how price changes not only depend on
+past<00:01:46.799><c> price</c><00:01:47.119><c> changes</c><00:01:47.520><c> but</c><00:01:47.680><c> also</c><00:01:48.000><c> on</c><00:01:48.159><c> past</c>
+
+00:01:48.630 --> 00:01:48.640 align:start position:0%
+past price changes but also on past
+ 
+
+00:01:48.640 --> 00:01:51.350 align:start position:0%
+past price changes but also on past
+estimated<00:01:49.439><c> volatility</c><00:01:50.479><c> this</c><00:01:50.720><c> extension</c><00:01:51.200><c> to</c>
+
+00:01:51.350 --> 00:01:51.360 align:start position:0%
+estimated volatility this extension to
+ 
+
+00:01:51.360 --> 00:01:53.270 align:start position:0%
+estimated volatility this extension to
+the<00:01:51.439><c> arch</c><00:01:51.840><c> model</c><00:01:52.240><c> involve</c><00:01:52.560><c> using</c><00:01:52.880><c> moving</c>
+
+00:01:53.270 --> 00:01:53.280 align:start position:0%
+the arch model involve using moving
+ 
+
+00:01:53.280 --> 00:01:54.710 align:start position:0%
+the arch model involve using moving
+averages
+
+00:01:54.710 --> 00:01:54.720 align:start position:0%
+averages
+ 
+
+00:01:54.720 --> 00:01:57.510 align:start position:0%
+averages
+in<00:01:54.960><c> 1987</c><00:01:56.000><c> the</c><00:01:56.159><c> first</c><00:01:56.399><c> stochastic</c><00:01:56.960><c> volatility</c>
+
+00:01:57.510 --> 00:01:57.520 align:start position:0%
+in 1987 the first stochastic volatility
+ 
+
+00:01:57.520 --> 00:01:59.590 align:start position:0%
+in 1987 the first stochastic volatility
+model<00:01:57.759><c> was</c><00:01:57.920><c> made</c><00:01:58.079><c> by</c><00:01:58.240><c> helen</c><00:01:58.640><c> white</c><00:01:59.280><c> they</c>
+
+00:01:59.590 --> 00:01:59.600 align:start position:0%
+model was made by helen white they
+ 
+
+00:01:59.600 --> 00:02:01.510 align:start position:0%
+model was made by helen white they
+analyzed<00:02:00.159><c> european</c><00:02:00.640><c> call</c><00:02:00.960><c> options</c><00:02:01.280><c> on</c><00:02:01.439><c> a</c>
+
+00:02:01.510 --> 00:02:01.520 align:start position:0%
+analyzed european call options on a
+ 
+
+00:02:01.520 --> 00:02:03.270 align:start position:0%
+analyzed european call options on a
+stock<00:02:01.759><c> price</c><00:02:02.079><c> subject</c><00:02:02.399><c> to</c><00:02:02.640><c> stochastic</c>
+
+00:02:03.270 --> 00:02:03.280 align:start position:0%
+stock price subject to stochastic
+ 
+
+00:02:03.280 --> 00:02:05.270 align:start position:0%
+stock price subject to stochastic
+volatility<00:02:04.079><c> and</c><00:02:04.240><c> using</c><00:02:04.560><c> taylor</c><00:02:04.880><c> series</c>
+
+00:02:05.270 --> 00:02:05.280 align:start position:0%
+volatility and using taylor series
+ 
+
+00:02:05.280 --> 00:02:06.950 align:start position:0%
+volatility and using taylor series
+expansion<00:02:05.840><c> they</c><00:02:06.079><c> derived</c><00:02:06.479><c> an</c><00:02:06.640><c> accurate</c>
+
+00:02:06.950 --> 00:02:06.960 align:start position:0%
+expansion they derived an accurate
+ 
+
+00:02:06.960 --> 00:02:08.869 align:start position:0%
+expansion they derived an accurate
+formula<00:02:07.439><c> for</c><00:02:07.600><c> call</c><00:02:07.920><c> options</c><00:02:08.479><c> this</c><00:02:08.720><c> was</c>
+
+00:02:08.869 --> 00:02:08.879 align:start position:0%
+formula for call options this was
+ 
+
+00:02:08.879 --> 00:02:11.350 align:start position:0%
+formula for call options this was
+semi-closed<00:02:09.759><c> with</c><00:02:10.080><c> no</c><00:02:10.479><c> correlation</c><00:02:11.039><c> between</c>
+
+00:02:11.350 --> 00:02:11.360 align:start position:0%
+semi-closed with no correlation between
+ 
+
+00:02:11.360 --> 00:02:13.270 align:start position:0%
+semi-closed with no correlation between
+returns<00:02:11.760><c> of</c><00:02:11.840><c> volatility</c><00:02:12.640><c> their</c><00:02:12.879><c> assumption</c>
+
+00:02:13.270 --> 00:02:13.280 align:start position:0%
+returns of volatility their assumption
+ 
+
+00:02:13.280 --> 00:02:15.830 align:start position:0%
+returns of volatility their assumption
+was<00:02:13.440><c> relaxed</c><00:02:13.840><c> in</c><00:02:14.000><c> 1988</c>
+
+00:02:15.830 --> 00:02:15.840 align:start position:0%
+was relaxed in 1988
+ 
+
+00:02:15.840 --> 00:02:19.910 align:start position:0%
+was relaxed in 1988
+now<00:02:16.319><c> on</c><00:02:16.560><c> monday</c><00:02:16.959><c> the</c><00:02:17.120><c> 19th</c><00:02:17.520><c> of</c><00:02:17.599><c> october</c><00:02:18.160><c> 1987</c>
+
+00:02:19.910 --> 00:02:19.920 align:start position:0%
+now on monday the 19th of october 1987
+ 
+
+00:02:19.920 --> 00:02:21.910 align:start position:0%
+now on monday the 19th of october 1987
+the<00:02:20.080><c> dow</c><00:02:20.480><c> jones</c><00:02:20.800><c> dropped</c><00:02:21.040><c> more</c><00:02:21.200><c> than</c><00:02:21.520><c> 20</c>
+
+00:02:21.910 --> 00:02:21.920 align:start position:0%
+the dow jones dropped more than 20
+ 
+
+00:02:21.920 --> 00:02:24.150 align:start position:0%
+the dow jones dropped more than 20
+percent<00:02:22.400><c> within</c><00:02:22.800><c> one</c><00:02:23.120><c> day</c><00:02:23.599><c> and</c><00:02:23.760><c> this</c><00:02:24.000><c> would</c>
+
+00:02:24.150 --> 00:02:24.160 align:start position:0%
+percent within one day and this would
+ 
+
+00:02:24.160 --> 00:02:26.470 align:start position:0%
+percent within one day and this would
+later<00:02:24.480><c> be</c><00:02:24.720><c> called</c><00:02:25.040><c> black</c><00:02:25.440><c> monday</c>
+
+00:02:26.470 --> 00:02:26.480 align:start position:0%
+later be called black monday
+ 
+
+00:02:26.480 --> 00:02:28.150 align:start position:0%
+later be called black monday
+and<00:02:26.720><c> since</c><00:02:27.040><c> then</c><00:02:27.280><c> the</c><00:02:27.440><c> prevalence</c><00:02:28.080><c> of</c>
+
+00:02:28.150 --> 00:02:28.160 align:start position:0%
+and since then the prevalence of
+ 
+
+00:02:28.160 --> 00:02:30.229 align:start position:0%
+and since then the prevalence of
+volatility<00:02:28.879><c> smiles</c><00:02:29.280><c> and</c><00:02:29.440><c> smirks</c><00:02:29.840><c> has</c><00:02:30.000><c> been</c>
+
+00:02:30.229 --> 00:02:30.239 align:start position:0%
+volatility smiles and smirks has been
+ 
+
+00:02:30.239 --> 00:02:33.030 align:start position:0%
+volatility smiles and smirks has been
+evident<00:02:30.560><c> in</c><00:02:30.720><c> option</c><00:02:31.040><c> markets</c><00:02:31.920><c> and</c><00:02:32.160><c> hence</c><00:02:32.720><c> why</c>
+
+00:02:33.030 --> 00:02:33.040 align:start position:0%
+evident in option markets and hence why
+ 
+
+00:02:33.040 --> 00:02:35.190 align:start position:0%
+evident in option markets and hence why
+black<00:02:33.360><c> shoals</c><00:02:33.680><c> model</c><00:02:34.000><c> in</c><00:02:34.160><c> the</c><00:02:34.319><c> use</c><00:02:34.640><c> is</c><00:02:34.879><c> very</c>
+
+00:02:35.190 --> 00:02:35.200 align:start position:0%
+black shoals model in the use is very
+ 
+
+00:02:35.200 --> 00:02:37.350 align:start position:0%
+black shoals model in the use is very
+controversial
+
+00:02:37.350 --> 00:02:37.360 align:start position:0%
+controversial
+ 
+
+00:02:37.360 --> 00:02:40.630 align:start position:0%
+controversial
+in<00:02:37.959><c> 1991</c><00:02:39.200><c> another</c><00:02:39.599><c> stochastic</c><00:02:40.080><c> volatility</c>
+
+00:02:40.630 --> 00:02:40.640 align:start position:0%
+in 1991 another stochastic volatility
+ 
+
+00:02:40.640 --> 00:02:43.270 align:start position:0%
+in 1991 another stochastic volatility
+model<00:02:40.959><c> was</c><00:02:41.120><c> created</c><00:02:41.440><c> by</c><00:02:41.599><c> stan</c><00:02:41.920><c> and</c><00:02:42.080><c> stein</c>
+
+00:02:43.270 --> 00:02:43.280 align:start position:0%
+model was created by stan and stein
+ 
+
+00:02:43.280 --> 00:02:45.910 align:start position:0%
+model was created by stan and stein
+these<00:02:43.760><c> two</c><00:02:44.080><c> worked</c><00:02:44.480><c> on</c><00:02:44.560><c> a</c><00:02:44.720><c> unique</c><00:02:45.360><c> method</c><00:02:45.760><c> of</c>
+
+00:02:45.910 --> 00:02:45.920 align:start position:0%
+these two worked on a unique method of
+ 
+
+00:02:45.920 --> 00:02:48.390 align:start position:0%
+these two worked on a unique method of
+using<00:02:46.640><c> a</c><00:02:46.879><c> mean</c><00:02:47.120><c> reverting</c><00:02:47.599><c> process</c><00:02:48.160><c> called</c>
+
+00:02:48.390 --> 00:02:48.400 align:start position:0%
+using a mean reverting process called
+ 
+
+00:02:48.400 --> 00:02:51.110 align:start position:0%
+using a mean reverting process called
+the<00:02:48.640><c> einstein</c><00:02:49.360><c> ulenbek</c><00:02:50.000><c> process</c><00:02:50.480><c> to</c><00:02:50.720><c> actually</c>
+
+00:02:51.110 --> 00:02:51.120 align:start position:0%
+the einstein ulenbek process to actually
+ 
+
+00:02:51.120 --> 00:02:52.630 align:start position:0%
+the einstein ulenbek process to actually
+model<00:02:51.599><c> variants</c>
+
+00:02:52.630 --> 00:02:52.640 align:start position:0%
+model variants
+ 
+
+00:02:52.640 --> 00:02:54.710 align:start position:0%
+model variants
+their<00:02:52.879><c> original</c><00:02:53.519><c> works</c><00:02:54.000><c> assume</c><00:02:54.400><c> no</c>
+
+00:02:54.710 --> 00:02:54.720 align:start position:0%
+their original works assume no
+ 
+
+00:02:54.720 --> 00:02:56.150 align:start position:0%
+their original works assume no
+correlation<00:02:55.280><c> between</c><00:02:55.599><c> returns</c><00:02:56.080><c> and</c>
+
+00:02:56.150 --> 00:02:56.160 align:start position:0%
+correlation between returns and
+ 
+
+00:02:56.160 --> 00:02:58.070 align:start position:0%
+correlation between returns and
+volatilities
+
+00:02:58.070 --> 00:02:58.080 align:start position:0%
+volatilities
+ 
+
+00:02:58.080 --> 00:03:01.430 align:start position:0%
+volatilities
+now<00:02:58.400><c> in</c><00:02:58.840><c> 1993</c><00:03:00.319><c> there</c><00:03:00.480><c> was</c><00:03:00.640><c> a</c><00:03:00.800><c> very</c><00:03:01.040><c> important</c>
+
+00:03:01.430 --> 00:03:01.440 align:start position:0%
+now in 1993 there was a very important
+ 
+
+00:03:01.440 --> 00:03:03.589 align:start position:0%
+now in 1993 there was a very important
+concept<00:03:02.000><c> and</c><00:03:02.080><c> this</c><00:03:02.319><c> was</c><00:03:02.480><c> the</c><00:03:02.720><c> introduction</c><00:03:03.440><c> of</c>
+
+00:03:03.589 --> 00:03:03.599 align:start position:0%
+concept and this was the introduction of
+ 
+
+00:03:03.599 --> 00:03:06.710 align:start position:0%
+concept and this was the introduction of
+the<00:03:03.920><c> vix</c><00:03:04.400><c> index</c><00:03:05.200><c> at</c><00:03:05.360><c> the</c><00:03:05.519><c> time</c><00:03:06.000><c> they</c><00:03:06.159><c> were</c><00:03:06.400><c> only</c>
+
+00:03:06.710 --> 00:03:06.720 align:start position:0%
+the vix index at the time they were only
+ 
+
+00:03:06.720 --> 00:03:10.710 align:start position:0%
+the vix index at the time they were only
+using<00:03:07.200><c> the</c><00:03:07.360><c> s</c><00:03:07.599><c> p</c><00:03:07.920><c> 100</c><00:03:09.040><c> and</c><00:03:09.280><c> eight</c><00:03:09.680><c> strikes</c><00:03:10.400><c> on</c>
+
+00:03:10.710 --> 00:03:10.720 align:start position:0%
+using the s p 100 and eight strikes on
+ 
+
+00:03:10.720 --> 00:03:13.750 align:start position:0%
+using the s p 100 and eight strikes on
+puts<00:03:11.040><c> and</c><00:03:11.200><c> calls</c><00:03:11.760><c> to</c><00:03:12.000><c> determine</c><00:03:12.560><c> the</c><00:03:12.800><c> index</c>
+
+00:03:13.750 --> 00:03:13.760 align:start position:0%
+puts and calls to determine the index
+ 
+
+00:03:13.760 --> 00:03:17.670 align:start position:0%
+puts and calls to determine the index
+as<00:03:14.080><c> well</c><00:03:14.319><c> in</c><00:03:14.760><c> 1993</c><00:03:16.239><c> a</c><00:03:16.319><c> stochastic</c><00:03:16.959><c> volatility</c>
+
+00:03:17.670 --> 00:03:17.680 align:start position:0%
+as well in 1993 a stochastic volatility
+ 
+
+00:03:17.680 --> 00:03:20.149 align:start position:0%
+as well in 1993 a stochastic volatility
+model<00:03:18.000><c> was</c><00:03:18.239><c> created</c><00:03:18.640><c> by</c><00:03:18.959><c> heston</c><00:03:19.840><c> this</c>
+
+00:03:20.149 --> 00:03:20.159 align:start position:0%
+model was created by heston this
+ 
+
+00:03:20.159 --> 00:03:23.190 align:start position:0%
+model was created by heston this
+incorporated<00:03:21.440><c> modeling</c><00:03:22.000><c> a</c><00:03:22.319><c> square</c><00:03:22.879><c> root</c>
+
+00:03:23.190 --> 00:03:23.200 align:start position:0%
+incorporated modeling a square root
+ 
+
+00:03:23.200 --> 00:03:25.830 align:start position:0%
+incorporated modeling a square root
+process<00:03:23.760><c> of</c><00:03:23.920><c> variants</c><00:03:24.879><c> the</c><00:03:25.040><c> hester</c><00:03:25.360><c> model</c><00:03:25.680><c> is</c>
+
+00:03:25.830 --> 00:03:25.840 align:start position:0%
+process of variants the hester model is
+ 
+
+00:03:25.840 --> 00:03:27.589 align:start position:0%
+process of variants the hester model is
+a<00:03:25.920><c> popular</c><00:03:26.319><c> choice</c><00:03:26.720><c> because</c><00:03:27.040><c> of</c><00:03:27.120><c> its</c><00:03:27.280><c> easy</c>
+
+00:03:27.589 --> 00:03:27.599 align:start position:0%
+a popular choice because of its easy
+ 
+
+00:03:27.599 --> 00:03:29.589 align:start position:0%
+a popular choice because of its easy
+closed<00:03:27.920><c> form</c><00:03:28.159><c> solution</c><00:03:28.640><c> that</c><00:03:28.879><c> does</c><00:03:29.120><c> require</c>
+
+00:03:29.589 --> 00:03:29.599 align:start position:0%
+closed form solution that does require
+ 
+
+00:03:29.599 --> 00:03:32.470 align:start position:0%
+closed form solution that does require
+numerical<00:03:30.159><c> integration</c><00:03:31.280><c> it</c><00:03:31.440><c> has</c><00:03:31.760><c> no</c><00:03:32.080><c> negative</c>
+
+00:03:32.470 --> 00:03:32.480 align:start position:0%
+numerical integration it has no negative
+ 
+
+00:03:32.480 --> 00:03:34.070 align:start position:0%
+numerical integration it has no negative
+variances
+
+00:03:34.070 --> 00:03:34.080 align:start position:0%
+variances
+ 
+
+00:03:34.080 --> 00:03:37.190 align:start position:0%
+variances
+and<00:03:34.560><c> it</c><00:03:34.799><c> incorporates</c><00:03:35.599><c> the</c><00:03:35.760><c> leverage</c><00:03:36.159><c> effect</c>
+
+00:03:37.190 --> 00:03:37.200 align:start position:0%
+and it incorporates the leverage effect
+ 
+
+00:03:37.200 --> 00:03:40.869 align:start position:0%
+and it incorporates the leverage effect
+first<00:03:37.519><c> identified</c><00:03:38.080><c> by</c><00:03:38.319><c> black</c><00:03:39.120><c> in</c><00:03:39.400><c> 1994</c><00:03:40.720><c> a</c>
+
+00:03:40.869 --> 00:03:40.879 align:start position:0%
+first identified by black in 1994 a
+ 
+
+00:03:40.879 --> 00:03:43.190 align:start position:0%
+first identified by black in 1994 a
+local<00:03:41.360><c> volatility</c><00:03:42.000><c> model</c><00:03:42.319><c> was</c><00:03:42.480><c> proposed</c><00:03:43.040><c> by</c>
+
+00:03:43.190 --> 00:03:43.200 align:start position:0%
+local volatility model was proposed by
+ 
+
+00:03:43.200 --> 00:03:44.470 align:start position:0%
+local volatility model was proposed by
+de<00:03:43.440><c> pere</c>
+
+00:03:44.470 --> 00:03:44.480 align:start position:0%
+de pere
+ 
+
+00:03:44.480 --> 00:03:46.390 align:start position:0%
+de pere
+now<00:03:44.640><c> this</c><00:03:44.879><c> is</c><00:03:44.959><c> where</c><00:03:45.200><c> market</c><00:03:45.680><c> prices</c><00:03:46.159><c> were</c>
+
+00:03:46.390 --> 00:03:46.400 align:start position:0%
+now this is where market prices were
+ 
+
+00:03:46.400 --> 00:03:48.309 align:start position:0%
+now this is where market prices were
+used<00:03:46.799><c> to</c><00:03:46.959><c> actually</c><00:03:47.360><c> determine</c><00:03:47.840><c> this</c><00:03:48.000><c> local</c>
+
+00:03:48.309 --> 00:03:48.319 align:start position:0%
+used to actually determine this local
+ 
+
+00:03:48.319 --> 00:03:50.630 align:start position:0%
+used to actually determine this local
+volatility<00:03:49.040><c> surface</c><00:03:49.440><c> in</c><00:03:49.519><c> terms</c><00:03:49.840><c> of</c><00:03:50.000><c> time</c><00:03:50.400><c> and</c>
+
+00:03:50.630 --> 00:03:50.640 align:start position:0%
+volatility surface in terms of time and
+ 
+
+00:03:50.640 --> 00:03:52.789 align:start position:0%
+volatility surface in terms of time and
+strike<00:03:51.280><c> this</c><00:03:51.440><c> deterministic</c><00:03:52.239><c> surface</c><00:03:52.640><c> could</c>
+
+00:03:52.789 --> 00:03:52.799 align:start position:0%
+strike this deterministic surface could
+ 
+
+00:03:52.799 --> 00:03:54.710 align:start position:0%
+strike this deterministic surface could
+be<00:03:52.959><c> used</c><00:03:53.280><c> to</c><00:03:53.439><c> value</c><00:03:53.840><c> other</c><00:03:54.159><c> options</c>
+
+00:03:54.710 --> 00:03:54.720 align:start position:0%
+be used to value other options
+ 
+
+00:03:54.720 --> 00:03:57.030 align:start position:0%
+be used to value other options
+incredibly<00:03:55.280><c> at</c><00:03:55.439><c> the</c><00:03:55.519><c> same</c><00:03:55.920><c> time</c><00:03:56.400><c> derman</c><00:03:56.879><c> and</c>
+
+00:03:57.030 --> 00:03:57.040 align:start position:0%
+incredibly at the same time derman and
+ 
+
+00:03:57.040 --> 00:03:59.429 align:start position:0%
+incredibly at the same time derman and
+carney<00:03:57.360><c> were</c><00:03:57.519><c> working</c><00:03:57.920><c> on</c><00:03:58.080><c> a</c><00:03:58.159><c> similar</c><00:03:58.560><c> model</c>
+
+00:03:59.429 --> 00:03:59.439 align:start position:0%
+carney were working on a similar model
+ 
+
+00:03:59.439 --> 00:04:01.589 align:start position:0%
+carney were working on a similar model
+this<00:03:59.760><c> perfectly</c><00:04:00.319><c> fits</c><00:04:00.640><c> observed</c><00:04:00.959><c> volatility</c>
+
+00:04:01.589 --> 00:04:01.599 align:start position:0%
+this perfectly fits observed volatility
+ 
+
+00:04:01.599 --> 00:04:03.270 align:start position:0%
+this perfectly fits observed volatility
+surface
+
+00:04:03.270 --> 00:04:03.280 align:start position:0%
+surface
+ 
+
+00:04:03.280 --> 00:04:05.589 align:start position:0%
+surface
+in<00:04:03.959><c> 1996</c>
+
+00:04:05.589 --> 00:04:05.599 align:start position:0%
+in 1996
+ 
+
+00:04:05.599 --> 00:04:07.670 align:start position:0%
+in 1996
+this<00:04:05.920><c> man</c><00:04:06.159><c> on</c><00:04:06.319><c> the</c><00:04:06.400><c> left-hand</c><00:04:06.959><c> side</c><00:04:07.280><c> came</c><00:04:07.519><c> up</c>
+
+00:04:07.670 --> 00:04:07.680 align:start position:0%
+this man on the left-hand side came up
+ 
+
+00:04:07.680 --> 00:04:09.190 align:start position:0%
+this man on the left-hand side came up
+with<00:04:07.840><c> a</c><00:04:07.920><c> new</c><00:04:08.159><c> way</c><00:04:08.400><c> of</c><00:04:08.480><c> thinking</c><00:04:08.799><c> about</c>
+
+00:04:09.190 --> 00:04:09.200 align:start position:0%
+with a new way of thinking about
+ 
+
+00:04:09.200 --> 00:04:11.030 align:start position:0%
+with a new way of thinking about
+stochastic<00:04:09.680><c> volatility</c>
+
+00:04:11.030 --> 00:04:11.040 align:start position:0%
+stochastic volatility
+ 
+
+00:04:11.040 --> 00:04:13.429 align:start position:0%
+stochastic volatility
+he<00:04:11.280><c> actually</c><00:04:11.599><c> created</c><00:04:12.080><c> a</c><00:04:12.159><c> jump</c><00:04:12.400><c> diffusion</c><00:04:13.200><c> and</c>
+
+00:04:13.429 --> 00:04:13.439 align:start position:0%
+he actually created a jump diffusion and
+ 
+
+00:04:13.439 --> 00:04:16.550 align:start position:0%
+he actually created a jump diffusion and
+stochastic<00:04:14.000><c> volatility</c><00:04:14.640><c> model</c>
+
+00:04:16.550 --> 00:04:16.560 align:start position:0%
+stochastic volatility model
+ 
+
+00:04:16.560 --> 00:04:18.550 align:start position:0%
+stochastic volatility model
+bates<00:04:17.120><c> used</c><00:04:17.440><c> the</c><00:04:17.519><c> best</c><00:04:17.840><c> aspects</c><00:04:18.320><c> of</c><00:04:18.400><c> the</c>
+
+00:04:18.550 --> 00:04:18.560 align:start position:0%
+bates used the best aspects of the
+ 
+
+00:04:18.560 --> 00:04:21.670 align:start position:0%
+bates used the best aspects of the
+heston's<00:04:19.160><c> 1993</c><00:04:20.160><c> model</c><00:04:20.639><c> in</c><00:04:20.799><c> merton's</c><00:04:21.359><c> jump</c>
+
+00:04:21.670 --> 00:04:21.680 align:start position:0%
+heston's 1993 model in merton's jump
+ 
+
+00:04:21.680 --> 00:04:24.070 align:start position:0%
+heston's 1993 model in merton's jump
+model<00:04:22.000><c> in</c><00:04:22.160><c> 1994</c>
+
+00:04:24.070 --> 00:04:24.080 align:start position:0%
+model in 1994
+ 
+
+00:04:24.080 --> 00:04:26.469 align:start position:0%
+model in 1994
+and<00:04:24.320><c> then</c><00:04:24.639><c> incorporated</c><00:04:25.520><c> this</c><00:04:25.919><c> in-between</c>
+
+00:04:26.469 --> 00:04:26.479 align:start position:0%
+and then incorporated this in-between
+ 
+
+00:04:26.479 --> 00:04:28.629 align:start position:0%
+and then incorporated this in-between
+stochastic<00:04:27.120><c> volatility</c><00:04:27.919><c> with</c><00:04:28.240><c> jump</c>
+
+00:04:28.629 --> 00:04:28.639 align:start position:0%
+stochastic volatility with jump
+ 
+
+00:04:28.639 --> 00:04:30.150 align:start position:0%
+stochastic volatility with jump
+diffusion
+
+00:04:30.150 --> 00:04:30.160 align:start position:0%
+diffusion
+ 
+
+00:04:30.160 --> 00:04:34.230 align:start position:0%
+diffusion
+this<00:04:30.400><c> led</c><00:04:30.639><c> to</c><00:04:30.800><c> a</c><00:04:30.880><c> new</c><00:04:31.120><c> area</c><00:04:31.360><c> of</c><00:04:31.520><c> research</c>
+
+00:04:34.230 --> 00:04:34.240 align:start position:0%
+ 
+ 
+
+00:04:34.240 --> 00:04:36.390 align:start position:0%
+ 
+in<00:04:34.759><c> 1998</c>
+
+00:04:36.390 --> 00:04:36.400 align:start position:0%
+in 1998
+ 
+
+00:04:36.400 --> 00:04:38.950 align:start position:0%
+in 1998
+rough<00:04:36.720><c> volatility</c><00:04:37.440><c> models</c><00:04:37.840><c> were</c><00:04:38.000><c> created</c><00:04:38.639><c> by</c>
+
+00:04:38.950 --> 00:04:38.960 align:start position:0%
+rough volatility models were created by
+ 
+
+00:04:38.960 --> 00:04:41.189 align:start position:0%
+rough volatility models were created by
+compti<00:04:39.520><c> and</c><00:04:39.759><c> renault</c>
+
+00:04:41.189 --> 00:04:41.199 align:start position:0%
+compti and renault
+ 
+
+00:04:41.199 --> 00:04:42.390 align:start position:0%
+compti and renault
+this<00:04:41.440><c> is</c><00:04:41.680><c> where</c>
+
+00:04:42.390 --> 00:04:42.400 align:start position:0%
+this is where
+ 
+
+00:04:42.400 --> 00:04:45.189 align:start position:0%
+this is where
+the<00:04:42.639><c> use</c><00:04:43.040><c> of</c><00:04:43.199><c> fractional</c><00:04:43.759><c> brownian</c><00:04:44.400><c> motion</c>
+
+00:04:45.189 --> 00:04:45.199 align:start position:0%
+the use of fractional brownian motion
+ 
+
+00:04:45.199 --> 00:04:48.150 align:start position:0%
+the use of fractional brownian motion
+was<00:04:45.520><c> used</c><00:04:45.919><c> to</c><00:04:46.160><c> actually</c><00:04:46.720><c> measure</c><00:04:47.360><c> long-term</c>
+
+00:04:48.150 --> 00:04:48.160 align:start position:0%
+was used to actually measure long-term
+ 
+
+00:04:48.160 --> 00:04:54.150 align:start position:0%
+was used to actually measure long-term
+persistent<00:04:49.040><c> memory</c><00:04:49.600><c> in</c><00:04:49.919><c> markets</c>
+
+00:04:54.150 --> 00:04:54.160 align:start position:0%
+ 
+ 
+
+00:04:54.160 --> 00:04:54.830 align:start position:0%
+ 
+in
+
+00:04:54.830 --> 00:04:54.840 align:start position:0%
+in
+ 
+
+00:04:54.840 --> 00:04:58.150 align:start position:0%
+in
+2002<00:04:56.240><c> realized</c><00:04:56.800><c> variants</c><00:04:57.280><c> was</c><00:04:57.440><c> investigated</c>
+
+00:04:58.150 --> 00:04:58.160 align:start position:0%
+2002 realized variants was investigated
+ 
+
+00:04:58.160 --> 00:05:00.870 align:start position:0%
+2002 realized variants was investigated
+by<00:04:58.400><c> bond</c><00:04:58.720><c> off</c><00:04:58.880><c> nielsen</c><00:04:59.440><c> and</c><00:04:59.600><c> shepard</c>
+
+00:05:00.870 --> 00:05:00.880 align:start position:0%
+by bond off nielsen and shepard
+ 
+
+00:05:00.880 --> 00:05:02.870 align:start position:0%
+by bond off nielsen and shepard
+they<00:05:01.199><c> created</c><00:05:01.680><c> a</c><00:05:01.759><c> new</c><00:05:02.080><c> way</c><00:05:02.320><c> to</c><00:05:02.479><c> actually</c>
+
+00:05:02.870 --> 00:05:02.880 align:start position:0%
+they created a new way to actually
+ 
+
+00:05:02.880 --> 00:05:06.390 align:start position:0%
+they created a new way to actually
+estimate<00:05:03.440><c> real</c><00:05:03.680><c> world</c><00:05:04.000><c> variances</c>
+
+00:05:06.390 --> 00:05:06.400 align:start position:0%
+estimate real world variances
+ 
+
+00:05:06.400 --> 00:05:08.310 align:start position:0%
+estimate real world variances
+this<00:05:06.720><c> was</c><00:05:06.960><c> incredible</c><00:05:07.600><c> because</c><00:05:07.919><c> of</c><00:05:08.080><c> the</c>
+
+00:05:08.310 --> 00:05:08.320 align:start position:0%
+this was incredible because of the
+ 
+
+00:05:08.320 --> 00:05:14.870 align:start position:0%
+this was incredible because of the
+incorporation<00:05:09.280><c> of</c><00:05:09.520><c> high</c><00:05:10.000><c> frequency</c><00:05:10.639><c> data</c>
+
+00:05:14.870 --> 00:05:14.880 align:start position:0%
+ 
+ 
+
+00:05:14.880 --> 00:05:16.950 align:start position:0%
+ 
+in<00:05:15.320><c> 2003</c>
+
+00:05:16.950 --> 00:05:16.960 align:start position:0%
+in 2003
+ 
+
+00:05:16.960 --> 00:05:19.749 align:start position:0%
+in 2003
+a<00:05:17.360><c> new</c><00:05:17.680><c> way</c><00:05:18.080><c> and</c><00:05:18.240><c> methodology</c><00:05:19.039><c> of</c><00:05:19.280><c> actually</c>
+
+00:05:19.749 --> 00:05:19.759 align:start position:0%
+a new way and methodology of actually
+ 
+
+00:05:19.759 --> 00:05:23.189 align:start position:0%
+a new way and methodology of actually
+creating<00:05:20.240><c> the</c><00:05:20.400><c> vix</c><00:05:20.800><c> index</c><00:05:21.280><c> came</c><00:05:21.600><c> about</c>
+
+00:05:23.189 --> 00:05:23.199 align:start position:0%
+creating the vix index came about
+ 
+
+00:05:23.199 --> 00:05:25.830 align:start position:0%
+creating the vix index came about
+this<00:05:23.600><c> was</c><00:05:23.840><c> an</c><00:05:24.080><c> update</c><00:05:24.479><c> from</c><00:05:24.639><c> the</c><00:05:24.800><c> previous</c><00:05:25.520><c> use</c>
+
+00:05:25.830 --> 00:05:25.840 align:start position:0%
+this was an update from the previous use
+ 
+
+00:05:25.840 --> 00:05:28.469 align:start position:0%
+this was an update from the previous use
+of<00:05:26.080><c> s</c><00:05:26.400><c> p</c><00:05:26.639><c> 100</c><00:05:27.440><c> options</c>
+
+00:05:28.469 --> 00:05:28.479 align:start position:0%
+of s p 100 options
+ 
+
+00:05:28.479 --> 00:05:31.590 align:start position:0%
+of s p 100 options
+and<00:05:28.800><c> now</c><00:05:29.280><c> incorporated</c><00:05:29.919><c> s</c><00:05:30.160><c> p</c><00:05:30.400><c> 500</c><00:05:31.199><c> as</c><00:05:31.440><c> the</c>
+
+00:05:31.590 --> 00:05:31.600 align:start position:0%
+and now incorporated s p 500 as the
+ 
+
+00:05:31.600 --> 00:05:33.510 align:start position:0%
+and now incorporated s p 500 as the
+weighted<00:05:32.080><c> prices</c><00:05:32.560><c> of</c><00:05:32.720><c> different</c><00:05:33.120><c> puts</c><00:05:33.440><c> and</c>
+
+00:05:33.510 --> 00:05:33.520 align:start position:0%
+weighted prices of different puts and
+ 
+
+00:05:33.520 --> 00:05:36.629 align:start position:0%
+weighted prices of different puts and
+calls
+
+00:05:36.629 --> 00:05:36.639 align:start position:0%
+ 
+ 
+
+00:05:36.639 --> 00:05:39.830 align:start position:0%
+ 
+in<00:05:36.840><c> 2004</c><00:05:38.080><c> the</c><00:05:38.320><c> introduction</c><00:05:38.880><c> of</c><00:05:38.960><c> vix</c><00:05:39.360><c> futures</c>
+
+00:05:39.830 --> 00:05:39.840 align:start position:0%
+in 2004 the introduction of vix futures
+ 
+
+00:05:39.840 --> 00:05:44.310 align:start position:0%
+in 2004 the introduction of vix futures
+by<00:05:40.080><c> cboe</c><00:05:41.360><c> was</c><00:05:41.680><c> based</c><00:05:42.080><c> on</c><00:05:42.240><c> the</c><00:05:42.479><c> fix</c><00:05:42.960><c> index</c><00:05:43.919><c> and</c>
+
+00:05:44.310 --> 00:05:44.320 align:start position:0%
+by cboe was based on the fix index and
+ 
+
+00:05:44.320 --> 00:05:46.550 align:start position:0%
+by cboe was based on the fix index and
+suddenly<00:05:44.800><c> allowed</c><00:05:45.280><c> for</c><00:05:45.440><c> an</c><00:05:45.680><c> increased</c><00:05:46.160><c> amount</c>
+
+00:05:46.550 --> 00:05:46.560 align:start position:0%
+suddenly allowed for an increased amount
+ 
+
+00:05:46.560 --> 00:05:48.550 align:start position:0%
+suddenly allowed for an increased amount
+of<00:05:46.800><c> risk</c><00:05:47.120><c> management</c><00:05:47.680><c> and</c><00:05:47.840><c> volatility</c>
+
+00:05:48.550 --> 00:05:48.560 align:start position:0%
+of risk management and volatility
+ 
+
+00:05:48.560 --> 00:05:52.150 align:start position:0%
+of risk management and volatility
+trading
+
+00:05:52.150 --> 00:05:52.160 align:start position:0%
+ 
+ 
+
+00:05:52.160 --> 00:05:57.350 align:start position:0%
+ 
+in<00:05:52.440><c> 2006</c><00:05:53.759><c> cboe</c><00:05:54.720><c> introduced</c><00:05:55.680><c> vix</c><00:05:56.160><c> options</c><00:05:57.120><c> and</c>
+
+00:05:57.350 --> 00:05:57.360 align:start position:0%
+in 2006 cboe introduced vix options and
+ 
+
+00:05:57.360 --> 00:05:59.830 align:start position:0%
+in 2006 cboe introduced vix options and
+this<00:05:57.680><c> also</c><00:05:58.080><c> increased</c><00:05:58.639><c> the</c><00:05:58.960><c> pool</c><00:05:59.360><c> of</c><00:05:59.520><c> which</c>
+
+00:05:59.830 --> 00:05:59.840 align:start position:0%
+this also increased the pool of which
+ 
+
+00:05:59.840 --> 00:06:01.909 align:start position:0%
+this also increased the pool of which
+trading<00:06:00.160><c> strategies</c><00:06:00.720><c> could</c><00:06:00.880><c> be</c><00:06:01.120><c> developed</c>
+
+00:06:01.909 --> 00:06:01.919 align:start position:0%
+trading strategies could be developed
+ 
+
+00:06:01.919 --> 00:06:04.070 align:start position:0%
+trading strategies could be developed
+for<00:06:02.160><c> risk</c><00:06:02.479><c> management</c><00:06:02.960><c> purposes</c><00:06:03.840><c> and</c>
+
+00:06:04.070 --> 00:06:04.080 align:start position:0%
+for risk management purposes and
+ 
+
+00:06:04.080 --> 00:06:08.029 align:start position:0%
+for risk management purposes and
+volatility<00:06:04.800><c> trading</c>
+
+00:06:08.029 --> 00:06:08.039 align:start position:0%
+ 
+ 
+
+00:06:08.039 --> 00:06:10.950 align:start position:0%
+ 
+2008<00:06:09.120><c> was</c><00:06:09.360><c> very</c><00:06:09.600><c> historic</c><00:06:10.240><c> in</c><00:06:10.400><c> terms</c><00:06:10.720><c> of</c><00:06:10.800><c> the</c>
+
+00:06:10.950 --> 00:06:10.960 align:start position:0%
+2008 was very historic in terms of the
+ 
+
+00:06:10.960 --> 00:06:12.629 align:start position:0%
+2008 was very historic in terms of the
+vix<00:06:11.440><c> index</c>
+
+00:06:12.629 --> 00:06:12.639 align:start position:0%
+vix index
+ 
+
+00:06:12.639 --> 00:06:15.430 align:start position:0%
+vix index
+whereby<00:06:13.199><c> the</c><00:06:13.440><c> index</c><00:06:13.919><c> reached</c><00:06:14.400><c> its</c><00:06:14.800><c> highest</c>
+
+00:06:15.430 --> 00:06:15.440 align:start position:0%
+whereby the index reached its highest
+ 
+
+00:06:15.440 --> 00:06:19.350 align:start position:0%
+whereby the index reached its highest
+intraday<00:06:16.080><c> point</c><00:06:16.560><c> at</c><00:06:16.960><c> 89.53</c>
+
+00:06:19.350 --> 00:06:19.360 align:start position:0%
+intraday point at 89.53
+ 
+
+00:06:19.360 --> 00:06:20.950 align:start position:0%
+intraday point at 89.53
+on<00:06:19.520><c> october</c><00:06:20.000><c> the</c><00:06:20.160><c> 24th</c>
+
+00:06:20.950 --> 00:06:20.960 align:start position:0%
+on october the 24th
+ 
+
+00:06:20.960 --> 00:06:25.670 align:start position:0%
+on october the 24th
+[Music]
+
+00:06:25.670 --> 00:06:25.680 align:start position:0%
+ 
+ 
+
+00:06:25.680 --> 00:06:28.390 align:start position:0%
+ 
+in<00:06:25.919><c> 2009</c><00:06:26.960><c> the</c><00:06:27.120><c> double</c><00:06:27.440><c> heston</c><00:06:27.840><c> model</c><00:06:28.160><c> by</c>
+
+00:06:28.390 --> 00:06:28.400 align:start position:0%
+in 2009 the double heston model by
+ 
+
+00:06:28.400 --> 00:06:30.790 align:start position:0%
+in 2009 the double heston model by
+christopherson<00:06:29.440><c> heston</c><00:06:29.919><c> and</c><00:06:30.160><c> jacobs</c><00:06:30.639><c> was</c>
+
+00:06:30.790 --> 00:06:30.800 align:start position:0%
+christopherson heston and jacobs was
+ 
+
+00:06:30.800 --> 00:06:31.830 align:start position:0%
+christopherson heston and jacobs was
+developed
+
+00:06:31.830 --> 00:06:31.840 align:start position:0%
+developed
+ 
+
+00:06:31.840 --> 00:06:34.629 align:start position:0%
+developed
+this<00:06:32.080><c> is</c><00:06:32.319><c> where</c><00:06:32.960><c> model</c><00:06:33.360><c> in</c><00:06:33.600><c> two</c><00:06:33.919><c> variances</c>
+
+00:06:34.629 --> 00:06:34.639 align:start position:0%
+this is where model in two variances
+ 
+
+00:06:34.639 --> 00:06:37.430 align:start position:0%
+this is where model in two variances
+processes<00:06:35.759><c> and</c><00:06:36.080><c> one</c><00:06:36.560><c> actually</c><00:06:36.960><c> turns</c><00:06:37.280><c> the</c>
+
+00:06:37.430 --> 00:06:37.440 align:start position:0%
+processes and one actually turns the
+ 
+
+00:06:37.440 --> 00:06:39.270 align:start position:0%
+processes and one actually turns the
+correlation<00:06:38.080><c> between</c><00:06:38.560><c> returns</c><00:06:39.120><c> and</c>
+
+00:06:39.270 --> 00:06:39.280 align:start position:0%
+correlation between returns and
+ 
+
+00:06:39.280 --> 00:06:42.550 align:start position:0%
+correlation between returns and
+volatility<00:06:40.240><c> stochastic</c><00:06:41.440><c> this</c><00:06:41.759><c> was</c><00:06:42.000><c> a</c><00:06:42.080><c> major</c>
+
+00:06:42.550 --> 00:06:42.560 align:start position:0%
+volatility stochastic this was a major
+ 
+
+00:06:42.560 --> 00:06:44.550 align:start position:0%
+volatility stochastic this was a major
+advancement<00:06:43.120><c> in</c><00:06:43.280><c> stochastic</c><00:06:43.919><c> volatility</c>
+
+00:06:44.550 --> 00:06:44.560 align:start position:0%
+advancement in stochastic volatility
+ 
+
+00:06:44.560 --> 00:06:46.230 align:start position:0%
+advancement in stochastic volatility
+models<00:06:44.880><c> now</c><00:06:45.039><c> although</c><00:06:45.440><c> we've</c><00:06:45.680><c> covered</c><00:06:45.919><c> a</c><00:06:46.000><c> lot</c>
+
+00:06:46.230 --> 00:06:46.240 align:start position:0%
+models now although we've covered a lot
+ 
+
+00:06:46.240 --> 00:06:48.830 align:start position:0%
+models now although we've covered a lot
+in<00:06:46.319><c> this</c><00:06:46.479><c> video</c><00:06:46.880><c> from</c><00:06:47.120><c> 1973</c><00:06:48.319><c> all</c><00:06:48.400><c> the</c><00:06:48.479><c> way</c><00:06:48.639><c> to</c>
+
+00:06:48.830 --> 00:06:48.840 align:start position:0%
+in this video from 1973 all the way to
+ 
+
+00:06:48.840 --> 00:06:51.430 align:start position:0%
+in this video from 1973 all the way to
+2009<00:06:50.000><c> there</c><00:06:50.240><c> are</c><00:06:50.400><c> many</c><00:06:50.720><c> more</c><00:06:50.960><c> models</c>
+
+00:06:51.430 --> 00:06:51.440 align:start position:0%
+2009 there are many more models
+ 
+
+00:06:51.440 --> 00:06:54.790 align:start position:0%
+2009 there are many more models
+including<00:06:51.840><c> the</c><00:06:52.080><c> cev</c><00:06:53.039><c> and</c><00:06:53.199><c> sabah</c><00:06:53.680><c> models</c><00:06:54.479><c> the</c>
+
+00:06:54.790 --> 00:06:54.800 align:start position:0%
+including the cev and sabah models the
+ 
+
+00:06:54.800 --> 00:06:58.070 align:start position:0%
+including the cev and sabah models the
+3-2<00:06:55.599><c> and</c><00:06:55.759><c> the</c><00:06:55.919><c> 4-2</c><00:06:56.479><c> models</c><00:06:57.199><c> local</c><00:06:57.520><c> stochastic</c>
+
+00:06:58.070 --> 00:06:58.080 align:start position:0%
+3-2 and the 4-2 models local stochastic
+ 
+
+00:06:58.080 --> 00:07:00.629 align:start position:0%
+3-2 and the 4-2 models local stochastic
+volatility<00:06:58.639><c> models</c><00:06:59.440><c> stochastic</c><00:07:00.000><c> volatility</c>
+
+00:07:00.629 --> 00:07:00.639 align:start position:0%
+volatility models stochastic volatility
+ 
+
+00:07:00.639 --> 00:07:02.790 align:start position:0%
+volatility models stochastic volatility
+models<00:07:00.960><c> with</c><00:07:01.280><c> jumps</c><00:07:01.840><c> exponential</c><00:07:02.479><c> levy</c>
+
+00:07:02.790 --> 00:07:02.800 align:start position:0%
+models with jumps exponential levy
+ 
+
+00:07:02.800 --> 00:07:06.309 align:start position:0%
+models with jumps exponential levy
+models<00:07:03.199><c> and</c><00:07:03.440><c> svi</c><00:07:04.000><c> parameterization</c><00:07:05.199><c> etc</c>
+
+00:07:06.309 --> 00:07:06.319 align:start position:0%
+models and svi parameterization etc
+ 
+
+00:07:06.319 --> 00:07:07.909 align:start position:0%
+models and svi parameterization etc
+the<00:07:06.479><c> current</c><00:07:06.880><c> benchmarks</c><00:07:07.440><c> seem</c><00:07:07.680><c> to</c><00:07:07.759><c> be</c>
+
+00:07:07.909 --> 00:07:07.919 align:start position:0%
+the current benchmarks seem to be
+ 
+
+00:07:07.919 --> 00:07:09.670 align:start position:0%
+the current benchmarks seem to be
+modelers<00:07:08.479><c> that</c><00:07:08.639><c> are</c><00:07:08.800><c> actually</c><00:07:09.120><c> based</c><00:07:09.520><c> on</c>
+
+00:07:09.670 --> 00:07:09.680 align:start position:0%
+modelers that are actually based on
+ 
+
+00:07:09.680 --> 00:07:12.230 align:start position:0%
+modelers that are actually based on
+variance<00:07:10.160><c> curves</c><00:07:10.560><c> and</c><00:07:10.720><c> skew</c><00:07:11.039><c> modeling</c><00:07:12.000><c> now</c>
+
+00:07:12.230 --> 00:07:12.240 align:start position:0%
+variance curves and skew modeling now
+ 
+
+00:07:12.240 --> 00:07:14.469 align:start position:0%
+variance curves and skew modeling now
+creating<00:07:12.720><c> a</c><00:07:12.800><c> video</c><00:07:13.120><c> that</c><00:07:13.360><c> incorporated</c><00:07:14.240><c> all</c>
+
+00:07:14.469 --> 00:07:14.479 align:start position:0%
+creating a video that incorporated all
+ 
+
+00:07:14.479 --> 00:07:16.230 align:start position:0%
+creating a video that incorporated all
+of<00:07:14.560><c> the</c><00:07:14.720><c> stochastic</c><00:07:15.199><c> volatility</c><00:07:15.919><c> models</c>
+
+00:07:16.230 --> 00:07:16.240 align:start position:0%
+of the stochastic volatility models
+ 
+
+00:07:16.240 --> 00:07:17.909 align:start position:0%
+of the stochastic volatility models
+would<00:07:16.400><c> have</c><00:07:16.479><c> been</c><00:07:16.720><c> a</c><00:07:16.800><c> fool's</c><00:07:17.199><c> errand</c><00:07:17.759><c> but</c>
+
+00:07:17.909 --> 00:07:17.919 align:start position:0%
+would have been a fool's errand but
+ 
+
+00:07:17.919 --> 00:07:20.230 align:start position:0%
+would have been a fool's errand but
+hopefully<00:07:18.400><c> this</c><00:07:18.880><c> actually</c><00:07:19.280><c> served</c><00:07:19.759><c> to</c><00:07:19.919><c> just</c>
+
+00:07:20.230 --> 00:07:20.240 align:start position:0%
+hopefully this actually served to just
+ 
+
+00:07:20.240 --> 00:07:22.070 align:start position:0%
+hopefully this actually served to just
+introduce<00:07:20.880><c> the</c><00:07:21.039><c> concept</c><00:07:21.440><c> of</c><00:07:21.520><c> stochastic</c>
+
+00:07:22.070 --> 00:07:22.080 align:start position:0%
+introduce the concept of stochastic
+ 
+
+00:07:22.080 --> 00:07:24.629 align:start position:0%
+introduce the concept of stochastic
+volatility<00:07:22.720><c> models</c><00:07:23.360><c> since</c><00:07:23.599><c> the</c><00:07:23.840><c> start</c><00:07:24.400><c> of</c>
+
+00:07:24.629 --> 00:07:24.639 align:start position:0%
+volatility models since the start of
+ 
+
+00:07:24.639 --> 00:07:27.589 align:start position:0%
+volatility models since the start of
+option<00:07:25.039><c> valuation</c><00:07:25.759><c> in</c><00:07:26.039><c> 1973</c><00:07:27.039><c> with</c><00:07:27.199><c> a</c><00:07:27.280><c> black</c>
+
+00:07:27.589 --> 00:07:27.599 align:start position:0%
+option valuation in 1973 with a black
+ 
+
+00:07:27.599 --> 00:07:28.870 align:start position:0%
+option valuation in 1973 with a black
+shoals<00:07:28.000><c> model</c>
+
+00:07:28.870 --> 00:07:28.880 align:start position:0%
+shoals model
+ 
+
+00:07:28.880 --> 00:07:30.550 align:start position:0%
+shoals model
+now<00:07:29.120><c> if</c><00:07:29.199><c> you</c><00:07:29.360><c> enjoyed</c><00:07:29.599><c> the</c><00:07:29.680><c> video</c><00:07:30.160><c> please</c><00:07:30.400><c> give</c>
+
+00:07:30.550 --> 00:07:30.560 align:start position:0%
+now if you enjoyed the video please give
+ 
+
+00:07:30.560 --> 00:07:32.629 align:start position:0%
+now if you enjoyed the video please give
+it<00:07:30.720><c> a</c><00:07:30.800><c> thumbs</c><00:07:31.199><c> up</c><00:07:31.360><c> and</c><00:07:31.599><c> check</c><00:07:31.840><c> out</c><00:07:32.080><c> my</c><00:07:32.319><c> channel</c>
+
+00:07:32.629 --> 00:07:32.639 align:start position:0%
+it a thumbs up and check out my channel
+ 
+
+00:07:32.639 --> 00:07:34.390 align:start position:0%
+it a thumbs up and check out my channel
+where<00:07:32.800><c> we</c><00:07:32.960><c> actually</c><00:07:33.280><c> go</c><00:07:33.440><c> through</c><00:07:33.759><c> all</c><00:07:34.000><c> things</c>
+
+00:07:34.390 --> 00:07:34.400 align:start position:0%
+where we actually go through all things
+ 
+
+00:07:34.400 --> 00:07:38.039 align:start position:0%
+where we actually go through all things
+quantitative<00:07:35.039><c> finance</c>
+

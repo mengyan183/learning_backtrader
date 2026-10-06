@@ -1,0 +1,900 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.080 --> 00:00:06.240
+so today you're going to learn how you can&nbsp;
+actually price arithmetic asian options on&nbsp;&nbsp;
+
+00:00:06.240 --> 00:00:11.680
+electricity futures so we're going to be using the&nbsp;
+australian electricity market and not the traded&nbsp;&nbsp;
+
+00:00:11.680 --> 00:00:17.120
+asx average rate product but we're actually&nbsp;
+going to be computing an over-the-counter&nbsp;&nbsp;
+
+00:00:17.120 --> 00:00:22.400
+bespoke product which is dependent on the&nbsp;
+average of the closing price of the futures&nbsp;&nbsp;
+
+00:00:22.400 --> 00:00:27.040
+in the contract period now we'll explain all&nbsp;
+that shortly we're also going to be looking at&nbsp;&nbsp;
+
+00:00:27.040 --> 00:00:35.120
+how you can use variance reduction methods to get&nbsp;
+a more accurate monte carlo options price without&nbsp;&nbsp;
+
+00:00:35.120 --> 00:00:39.840
+increasing the complexity or the number of&nbsp;
+simulations in your calculation we're going&nbsp;&nbsp;
+
+00:00:39.840 --> 00:00:46.160
+to look at a control variant which is going to&nbsp;
+be the analytical solution for a geometric asian&nbsp;&nbsp;
+
+00:00:46.160 --> 00:00:52.080
+option so the geometric asian option actually&nbsp;
+has a closed form solution and we're going&nbsp;&nbsp;
+
+00:00:52.080 --> 00:00:57.280
+to use that as a good static hedge for our&nbsp;
+arithmetic option that we're trying to price&nbsp;&nbsp;
+
+00:00:57.280 --> 00:01:01.520
+we're also going to look at what happens&nbsp;
+when we have a combination of antithetic&nbsp;&nbsp;
+
+00:01:01.520 --> 00:01:07.360
+and that control variant into our simulation and&nbsp;
+what benefits we get in terms of a reduction in&nbsp;&nbsp;
+
+00:01:07.360 --> 00:01:13.680
+the standard error around our option price and the&nbsp;
+computation time increase so without further ado&nbsp;&nbsp;
+
+00:01:13.680 --> 00:01:18.880
+let's jump into it so again we're using this risk&nbsp;
+neutral pricing framework to be able to simulate&nbsp;&nbsp;
+
+00:01:18.880 --> 00:01:24.080
+risk neutral asset parts in our monte carlo&nbsp;
+simulation so that we can get a fair price for&nbsp;&nbsp;
+
+00:01:24.080 --> 00:01:29.520
+our asian option so let's import the dependencies&nbsp;
+here we've got time numpy pandas scipy date time&nbsp;&nbsp;
+
+00:01:29.520 --> 00:01:34.960
+and matplot lib now for a path dependent options&nbsp;
+asians in this example we're going to be pricing a&nbsp;&nbsp;
+
+00:01:34.960 --> 00:01:40.240
+european arithmetic asian call option so here the&nbsp;
+option pays the difference between the arithmetic&nbsp;&nbsp;
+
+00:01:40.240 --> 00:01:45.760
+average of the price that we're going to call&nbsp;
+80 and the strike price k and maturity t so the&nbsp;&nbsp;
+
+00:01:45.760 --> 00:01:51.680
+arithmetic average is taken as the set of&nbsp;
+observations of the asset price sti which&nbsp;&nbsp;
+
+00:01:51.680 --> 00:02:00.080
+follows a gbm at dates t 1 3 to n so here the&nbsp;
+asian average price option has this arithmetic&nbsp;&nbsp;
+
+00:02:00.080 --> 00:02:07.280
+average of all the observed prices at these&nbsp;
+observable dates 1 through to n so that means that&nbsp;&nbsp;
+
+00:02:07.280 --> 00:02:13.600
+here we have the payoff between our times where&nbsp;
+we're going to be having these average prices&nbsp;&nbsp;
+
+00:02:13.600 --> 00:02:21.840
+between t1 and t2 the payoff is going to be the&nbsp;
+max of this arithmetic average minus k so here's&nbsp;&nbsp;
+
+00:02:21.840 --> 00:02:29.680
+our asian call option sitting here at time t we&nbsp;
+want to take the average between time 1 and time 2&nbsp;&nbsp;
+
+00:02:30.320 --> 00:02:38.320
+and we want to take the risk neutral expectation&nbsp;
+of this payoff discounted back to the current time&nbsp;&nbsp;
+
+00:02:38.320 --> 00:02:44.000
+when we're paid so we're paid at time two and&nbsp;
+we're currently sitting here at time t so this&nbsp;&nbsp;
+
+00:02:44.000 --> 00:02:52.080
+payoff here ct between t1 and t2 is dependent&nbsp;
+on the forward prices that we're observing our&nbsp;&nbsp;
+
+00:02:52.080 --> 00:02:56.880
+underlying between these two times so here&nbsp;
+we're going to be considering the australian&nbsp;&nbsp;
+
+00:02:56.880 --> 00:03:02.320
+electricity market and we're going to be&nbsp;
+looking at average rate options for q1 2023&nbsp;&nbsp;
+
+00:03:02.320 --> 00:03:06.560
+now in the national electricity market the nem&nbsp;
+there are five separate markets for each state&nbsp;&nbsp;
+
+00:03:06.560 --> 00:03:12.480
+and we're going to be valuing q1 2023 electricity&nbsp;
+asian options in the new south wales market&nbsp;&nbsp;
+
+00:03:13.200 --> 00:03:19.200
+so what we can see is that we've got the futures&nbsp;
+contract price for q123 the last settled price&nbsp;&nbsp;
+
+00:03:19.200 --> 00:03:32.080
+was 135.89 our current futures price for q123&nbsp;
+is the 135.89 now our time currently is the 22nd&nbsp;&nbsp;
+
+00:03:32.080 --> 00:03:37.520
+of april 2020 and the actual period that&nbsp;
+we're going to be taking the average&nbsp;&nbsp;
+
+00:03:37.520 --> 00:03:46.480
+over is our q1 so that's a starting time t1 of&nbsp;
+the 1st of january 2023 and then an ending time a&nbsp;&nbsp;
+
+00:03:46.480 --> 00:03:55.200
+maturity date an expiry date t2 which is the 31st&nbsp;
+of march 2023 now this is a 90-day contract period&nbsp;&nbsp;
+
+00:03:55.200 --> 00:04:01.120
+so for the actual asx exchange product which is&nbsp;
+the average rate option what you're actually doing&nbsp;&nbsp;
+
+00:04:01.120 --> 00:04:07.440
+is you've got your average rate option that's&nbsp;
+settled on the end price of the futures contract&nbsp;&nbsp;
+
+00:04:07.440 --> 00:04:13.200
+now the contract specification has an average&nbsp;
+taken over all of the wholesale prices so it takes&nbsp;&nbsp;
+
+00:04:13.200 --> 00:04:18.640
+the arithmetic average of the wholesale prices and&nbsp;
+that's how you settle against the futures contract&nbsp;&nbsp;
+
+00:04:19.200 --> 00:04:26.720
+so this is an average taken on 288 trading&nbsp;
+intervals for each day over that contract period&nbsp;&nbsp;
+
+00:04:26.720 --> 00:04:31.280
+so that's 90 days over 288&nbsp;
+trading intervals per day&nbsp;&nbsp;
+
+00:04:31.280 --> 00:04:38.640
+which leads to an arithmetic average on your&nbsp;
+wholesale price over 25 920 observations&nbsp;&nbsp;
+
+00:04:39.680 --> 00:04:48.560
+so again we get our our current futures contract&nbsp;
+price for the q123 which is settled at 135.89
+
+00:04:49.440 --> 00:04:54.720
+now for the asian call price we're going to be&nbsp;
+considering the strike that is being traded here&nbsp;&nbsp;
+
+00:04:54.720 --> 00:05:02.400
+at 165 so we've got 50 50 megs here that have been&nbsp;
+traded and the previous close was 18 dollars and&nbsp;&nbsp;
+
+00:05:02.400 --> 00:05:09.600
+eight cents and that traded for an implied&nbsp;
+volatility of 53.07 so that is the percentage&nbsp;&nbsp;
+
+00:05:09.600 --> 00:05:13.760
+volatility that we're going to be using here in&nbsp;
+this model so our initial parameters are going&nbsp;&nbsp;
+
+00:05:13.760 --> 00:05:18.000
+to be the time which is today our start time for&nbsp;
+the averaging which is the start of the contract&nbsp;&nbsp;
+
+00:05:18.000 --> 00:05:24.320
+period and then we've got the expiry that will&nbsp;
+stop averaging over so that's our end date our t2&nbsp;&nbsp;
+
+00:05:24.320 --> 00:05:29.520
+then we've got the total amount of days over&nbsp;
+this contract period 90. we have to add one&nbsp;&nbsp;
+
+00:05:29.520 --> 00:05:35.680
+because when we take the difference we lose&nbsp;
+one day and then we're going to initialize&nbsp;&nbsp;
+
+00:05:35.680 --> 00:05:41.680
+the parameters so we've got our initial stock&nbsp;
+price or our futures price so we've got 135.89&nbsp;&nbsp;
+
+00:05:41.680 --> 00:05:45.680
+which is the current price we've got our&nbsp;
+strike price which is 1.65 we've got the&nbsp;&nbsp;
+
+00:05:45.680 --> 00:05:51.200
+time to maturity which is the difference between&nbsp;
+today and then the end average period t2 we've&nbsp;&nbsp;
+
+00:05:51.200 --> 00:05:54.960
+got the annual risk free rate which we're&nbsp;
+calling zero and we've got the volatility&nbsp;&nbsp;
+
+00:05:54.960 --> 00:05:58.960
+which we've seen in the market the implied&nbsp;
+volatility of that traded product which is 53&nbsp;&nbsp;
+
+00:06:00.800 --> 00:06:05.520
+the number of time steps here is the&nbsp;
+90 days times 288 which is the 225&nbsp;&nbsp;
+
+00:06:06.480 --> 00:06:11.440
+and 920 observations now we're&nbsp;
+going to be simulating 1 000&nbsp;&nbsp;
+
+00:06:11.440 --> 00:06:17.520
+prices now in reality it's really important like&nbsp;
+i said that this electricity average rate options&nbsp;&nbsp;
+
+00:06:17.520 --> 00:06:22.720
+in australia and the new zealand markets are&nbsp;
+actually settled against the final futures prices&nbsp;&nbsp;
+
+00:06:22.720 --> 00:06:28.320
+so as futures are settled against the arithmetic&nbsp;
+average of the wholesale energy market price&nbsp;&nbsp;
+
+00:06:28.320 --> 00:06:34.800
+the final futures prices as you get to the end of&nbsp;
+the quarter actually converges on the arithmetic&nbsp;&nbsp;
+
+00:06:34.800 --> 00:06:39.520
+average of the wholesale energy price what does&nbsp;
+that mean well that means that the reference price&nbsp;&nbsp;
+
+00:06:39.520 --> 00:06:45.600
+for the asian style option exercise is actually&nbsp;
+in accordance with this final settlement price of&nbsp;&nbsp;
+
+00:06:45.600 --> 00:06:51.120
+the underlying futures and it's determined on the&nbsp;
+third business day after the final day of trading&nbsp;&nbsp;
+
+00:06:51.120 --> 00:06:57.440
+so the method of option exercise is that at&nbsp;
+this time if it's in the money all all asian&nbsp;&nbsp;
+
+00:06:57.440 --> 00:07:02.080
+average rate options are actually automatically&nbsp;
+exercised into the underlying futures contracts&nbsp;&nbsp;
+
+00:07:02.080 --> 00:07:06.960
+and cash settled now if they are not in the money&nbsp;
+and they're out of the money you're at the money&nbsp;&nbsp;
+
+00:07:06.960 --> 00:07:12.960
+then this transfer is not uh permitted so what&nbsp;
+does this mean well this means that options can&nbsp;&nbsp;
+
+00:07:12.960 --> 00:07:18.080
+be priced actually using the black shoals until&nbsp;
+the end of the quarter and we'll demonstrate that&nbsp;&nbsp;
+
+00:07:18.080 --> 00:07:23.040
+here so here's our regular black shoals pricing&nbsp;
+formula with our futures information and here&nbsp;&nbsp;
+
+00:07:23.040 --> 00:07:29.840
+you can see that that was the traded price with&nbsp;
+those parameters eighteen dollars and eight cents&nbsp;&nbsp;
+
+00:07:31.520 --> 00:07:37.360
+now to actually make this more interesting and to&nbsp;
+actually demonstrate the price even of an average&nbsp;&nbsp;
+
+00:07:37.360 --> 00:07:43.600
+rate option because some futures are not pegged&nbsp;
+to the arithmetic average like the australian&nbsp;&nbsp;
+
+00:07:43.600 --> 00:07:48.560
+electricity market futures so let's make this more&nbsp;
+interesting let's say that we're going to trade&nbsp;&nbsp;
+
+00:07:48.560 --> 00:07:55.120
+over-the-counter a bespoke average rate option&nbsp;
+over this q 123 period with the underlying as&nbsp;&nbsp;
+
+00:07:55.120 --> 00:08:00.640
+the same futures contract now let's say that the&nbsp;
+average rate option prices are actually determined&nbsp;&nbsp;
+
+00:08:00.640 --> 00:08:07.840
+by the average of the daily futures across the q&nbsp;
+123 period so what do i mean i mean that we have&nbsp;&nbsp;
+
+00:08:07.840 --> 00:08:12.080
+now this otc bespoke product that we're going&nbsp;
+to trade over the counter with someone else&nbsp;&nbsp;
+
+00:08:12.080 --> 00:08:18.240
+where we've got our futures price today and we're&nbsp;
+going to speculate what the futures price is into&nbsp;&nbsp;
+
+00:08:18.240 --> 00:08:23.520
+the future so we'll use our monte carlo simulation&nbsp;
+and we're going to take the arithmetic average&nbsp;&nbsp;
+
+00:08:23.520 --> 00:08:29.840
+across every day in the quarter of that futures&nbsp;
+price and that's going to be used to calculate&nbsp;&nbsp;
+
+00:08:29.840 --> 00:08:35.440
+our asian call option so here's our slow step&nbsp;
+we're actually going to step through things&nbsp;&nbsp;
+
+00:08:35.440 --> 00:08:43.760
+day by day so now an n is not 25 920 here it's&nbsp;
+just discretized every day so we've got 90 days&nbsp;&nbsp;
+
+00:08:44.560 --> 00:08:52.720
+so here we've got the time from now till time two&nbsp;
+is what we're going to call time t to t2 and from&nbsp;&nbsp;
+
+00:08:52.720 --> 00:09:00.160
+time t to t 1 is the time before we actually start&nbsp;
+averaging so the observed times is going to be&nbsp;&nbsp;
+
+00:09:00.960 --> 00:09:08.240
+90 days between time 1 and time 2. so these are&nbsp;
+called our observed starting times we're actually&nbsp;&nbsp;
+
+00:09:08.240 --> 00:09:14.080
+going to append zero to the start of this so that&nbsp;
+we can get a difference array so we can calculate&nbsp;&nbsp;
+
+00:09:14.080 --> 00:09:19.360
+the time between each one of our observation&nbsp;
+times so here we're going to have two empty&nbsp;&nbsp;
+
+00:09:19.360 --> 00:09:25.280
+numpy arrays fulls of zeros where we've got our&nbsp;
+new dt so our drift term and then our volatility&nbsp;&nbsp;
+
+00:09:26.320 --> 00:09:31.440
+squared with time so here we're going to&nbsp;
+pre-compute the constants so over this time&nbsp;&nbsp;
+
+00:09:31.440 --> 00:09:36.240
+period we're going to calculate our respective&nbsp;
+constants and the reason that they're not&nbsp;&nbsp;
+
+00:09:36.240 --> 00:09:43.200
+the same every period is because we're jumping&nbsp;
+from time 0 all the way to time 0.7 before&nbsp;&nbsp;
+
+00:09:43.200 --> 00:09:49.280
+actually taking the average so hopefully that&nbsp;
+makes sense we've got uneven time steps between&nbsp;&nbsp;
+
+00:09:49.280 --> 00:09:57.280
+our observation we're going all the way from&nbsp;
+time 0 to time 0.7 so we're computing all our&nbsp;&nbsp;
+
+00:09:57.280 --> 00:10:04.320
+respective drift and then volatility terms between&nbsp;
+these time periods our observations which are then&nbsp;&nbsp;
+
+00:10:04.320 --> 00:10:10.560
+the same frequency every day in that 90 day period&nbsp;
+in the quarter we've then got our monte carlo&nbsp;&nbsp;
+
+00:10:10.560 --> 00:10:17.200
+simulation where each monte carlo simulation eye&nbsp;
+we're initializing with our futures price today&nbsp;&nbsp;
+
+00:10:17.200 --> 00:10:23.520
+and we've got our arithmetic sum that's&nbsp;
+initialized at zero then for all time&nbsp;&nbsp;
+
+00:10:23.520 --> 00:10:29.920
+periods we're just going to simulate our epsilon&nbsp;
+so our random normal our whiner process and we're&nbsp;&nbsp;
+
+00:10:29.920 --> 00:10:37.280
+going to calculate our new futures price at that&nbsp;
+time step so we just take the respective drift&nbsp;&nbsp;
+
+00:10:37.280 --> 00:10:45.120
+and then volatility term multiplied by our whiner&nbsp;
+process we can then add this to the arithmetic sum&nbsp;&nbsp;
+
+00:10:45.120 --> 00:10:51.600
+and we continue doing this for the entire time&nbsp;
+of this particular simulation now at the end&nbsp;&nbsp;
+
+00:10:51.600 --> 00:10:58.560
+of time t2 so a 90-day period we then take the&nbsp;
+arithmetic average so we just divide that sum and&nbsp;&nbsp;
+
+00:10:58.560 --> 00:11:05.040
+divide it by n so for the call price we just take&nbsp;
+the max then of zero and the difference between&nbsp;&nbsp;
+
+00:11:05.040 --> 00:11:11.520
+this arithmetic uh average and k so here we're&nbsp;
+going to be using this sum of ct so we can store&nbsp;&nbsp;
+
+00:11:11.520 --> 00:11:16.960
+our the total sum of all the ct variables and&nbsp;
+we'll use that to calculate the expectation we've&nbsp;&nbsp;
+
+00:11:16.960 --> 00:11:22.880
+also get the sum of ct squared so we can be able&nbsp;
+to calculate the standard error so we're going to&nbsp;&nbsp;
+
+00:11:22.880 --> 00:11:28.560
+compute the expectation which is we just take over&nbsp;
+all of these monte carlo simulations a thousand&nbsp;&nbsp;
+
+00:11:28.560 --> 00:11:35.360
+what is the average discounted expectation uh&nbsp;
+price of this arithmetic average rate option&nbsp;&nbsp;
+
+00:11:36.080 --> 00:11:45.760
+and here we've got that it's 15.60 with a standard&nbsp;
+error of 0.1 1.3 with a computation time of 0.39&nbsp;&nbsp;
+
+00:11:45.760 --> 00:11:49.680
+so now we're actually going to vectorize&nbsp;
+this so we're going to use numpy arrays to&nbsp;&nbsp;
+
+00:11:49.680 --> 00:11:55.120
+make it a little bit cleaner so exactly the same&nbsp;
+initialization over that 90-day period here we're&nbsp;&nbsp;
+
+00:11:55.120 --> 00:12:01.680
+actually going to have our numpy arrays um in&nbsp;
+actually indexed in terms of n which is the time&nbsp;&nbsp;
+
+00:12:01.680 --> 00:12:08.160
+steps and then m as well which is our simulations&nbsp;
+so our drift and volatility coefficients&nbsp;&nbsp;
+
+00:12:08.160 --> 00:12:15.200
+for each time period is going to be the exact same&nbsp;
+for each simulation so that's why we're indexing&nbsp;&nbsp;
+
+00:12:15.200 --> 00:12:21.520
+by i for the time but then keeping it the same&nbsp;
+for the simulation then for the monte carlo method&nbsp;&nbsp;
+
+00:12:21.520 --> 00:12:29.680
+we've got this random normal of size by the number&nbsp;
+of time steps by the number of simulations so here&nbsp;&nbsp;
+
+00:12:29.680 --> 00:12:35.040
+we've got an array of our deterministic plus our&nbsp;
+diffusion multiplied by this whiner process for&nbsp;&nbsp;
+
+00:12:35.040 --> 00:12:42.720
+each respective time period at each simulation so&nbsp;
+this is our changes in the stock price over time&nbsp;&nbsp;
+
+00:12:42.720 --> 00:12:47.520
+and what we need to do is then we just need&nbsp;
+to take the cumulative prod of all of these&nbsp;&nbsp;
+
+00:12:47.520 --> 00:12:56.080
+exponential changes across each path so we're&nbsp;
+taking the cumulative prod of these exponential&nbsp;&nbsp;
+
+00:12:57.120 --> 00:13:04.800
+terms across each simulation path and multiplying&nbsp;
+by s0 this means that when we index by our final&nbsp;&nbsp;
+
+00:13:04.800 --> 00:13:10.320
+time point at each of the simulations we get in&nbsp;
+the final stock price outcome or futures price&nbsp;&nbsp;
+
+00:13:10.320 --> 00:13:17.440
+outcome now to calculate the average across all&nbsp;
+of the simulation paths we're going to use not q&nbsp;&nbsp;
+
+00:13:17.440 --> 00:13:23.760
+prod vacuum sum so now we're taking the cumulative&nbsp;
+sum across all these price paths on axis equals&nbsp;&nbsp;
+
+00:13:23.760 --> 00:13:30.560
+zero and then we're dividing by n so that the&nbsp;
+final index point is the arithmetic sum so now&nbsp;&nbsp;
+
+00:13:30.560 --> 00:13:36.480
+for all our simulations we can use the numpy&nbsp;
+maximum between 0 and then our final index time&nbsp;&nbsp;
+
+00:13:36.480 --> 00:13:44.480
+arithmetic average minus k we can then compute&nbsp;
+the discounted expectation of this payoff and&nbsp;&nbsp;
+
+00:13:44.480 --> 00:13:52.080
+then the standard error so as you can see we've&nbsp;
+got 15.8 with a standard error same as before&nbsp;&nbsp;
+
+00:13:52.080 --> 00:13:56.640
+it's just been computed faster at point zero zero&nbsp;
+eight so now we're going to be looking at ways&nbsp;&nbsp;
+
+00:13:56.640 --> 00:14:02.000
+that we can actually complete variance reduction&nbsp;
+techniques on this monte carlo simulation so the&nbsp;&nbsp;
+
+00:14:02.000 --> 00:14:07.360
+first one i'm going to look at is the antithetic&nbsp;
+variance reduction technique so here we've got our&nbsp;&nbsp;
+
+00:14:07.360 --> 00:14:13.280
+fast simulation but in our monte carlo method&nbsp;
+here we're pricing the complete version of a&nbsp;&nbsp;
+
+00:14:13.280 --> 00:14:18.640
+negatively correlated variable so here you can&nbsp;
+see that the diffusion component we have the&nbsp;&nbsp;
+
+00:14:18.640 --> 00:14:24.240
+case where what happens if the future price was&nbsp;
+completely simulated as the negative correlation&nbsp;&nbsp;
+
+00:14:24.240 --> 00:14:29.840
+so we're decreasing the complexity again and the&nbsp;
+computation time because we've already simulated&nbsp;&nbsp;
+
+00:14:30.800 --> 00:14:36.480
+the outcome of this whiner process but we're using&nbsp;
+it again and imagining a perfectly negatively&nbsp;&nbsp;
+
+00:14:36.480 --> 00:14:42.400
+correlated product so we simulate these for&nbsp;
+every simulation for every 1000 simulations&nbsp;&nbsp;
+
+00:14:42.400 --> 00:14:47.920
+and remember it's kind of like two for the price&nbsp;
+of one so what we're doing here is we're reducing&nbsp;&nbsp;
+
+00:14:47.920 --> 00:14:55.280
+our variance by only simulating the same number&nbsp;
+of random variables so then we compute the uh the&nbsp;&nbsp;
+
+00:14:55.280 --> 00:15:01.120
+prices along all the paths so again we just take&nbsp;
+the cumulative prod for these two different cases&nbsp;&nbsp;
+
+00:15:01.120 --> 00:15:07.200
+and then we take the arithmetic average for these&nbsp;
+two different cases by using numpy [ __ ] sum then&nbsp;&nbsp;
+
+00:15:07.200 --> 00:15:13.600
+we just take the average between these two&nbsp;
+payoffs so just 0.5 times the maximum of the&nbsp;&nbsp;
+
+00:15:13.600 --> 00:15:20.560
+first arithmetic average minus this k and&nbsp;
+then the plus the numpy maximum between 0&nbsp;&nbsp;
+
+00:15:20.560 --> 00:15:26.160
+and then the arithmetic average of the second&nbsp;
+case minus k then we compute this enthalpic&nbsp;&nbsp;
+
+00:15:26.880 --> 00:15:35.280
+discounted expectation of these prices and then&nbsp;
+we get a call value which is similar 15.909 but&nbsp;&nbsp;
+
+00:15:35.280 --> 00:15:42.080
+we get a reduction in our standard error down from&nbsp;
+1.3 to .86 so every time we run this simulation&nbsp;&nbsp;
+
+00:15:42.720 --> 00:15:49.440
+we're getting an improved accuracy around our&nbsp;
+call value now one of the best ways is to actually&nbsp;&nbsp;
+
+00:15:49.440 --> 00:15:54.320
+use a control variant and one of the control&nbsp;
+variants we can use is a geometric asian option&nbsp;&nbsp;
+
+00:15:54.320 --> 00:15:59.680
+so obviously there's no analytical solution for&nbsp;
+the arithmetic asian option however there is for&nbsp;&nbsp;
+
+00:15:59.680 --> 00:16:07.840
+the geometric asian option and this is because the&nbsp;
+geometric asian option is the average of a product&nbsp;&nbsp;
+
+00:16:07.840 --> 00:16:12.880
+of normally distributed variables and therefore&nbsp;
+itself is normally log normally distributed&nbsp;&nbsp;
+
+00:16:13.520 --> 00:16:22.720
+so for a geometric average price we've got this gt&nbsp;
+which is the product of all of these prices across&nbsp;&nbsp;
+
+00:16:22.720 --> 00:16:31.040
+this time to the power of 1 over n so this is&nbsp;
+the geometric average over this series of prices&nbsp;&nbsp;
+
+00:16:31.840 --> 00:16:36.560
+so the payoff at maturity is again going&nbsp;
+to be priced the exact same way except&nbsp;&nbsp;
+
+00:16:36.560 --> 00:16:41.280
+we're going to be substituting that arithmetic&nbsp;
+average for the geometric average now this has&nbsp;&nbsp;
+
+00:16:41.280 --> 00:16:48.080
+a closed form solution because essentially we can&nbsp;
+rearrange the black shells formula to incorporate&nbsp;&nbsp;
+
+00:16:48.080 --> 00:16:53.200
+this aspect that the geometric average is the&nbsp;
+product of log normally distributed prices which&nbsp;&nbsp;
+
+00:16:53.200 --> 00:16:59.840
+is log normally distributed so we get this&nbsp;
+closed form solution of this price here now&nbsp;&nbsp;
+
+00:17:00.720 --> 00:17:05.760
+this is for the discrete monitoring case where&nbsp;
+we're actually monitoring at discrete times&nbsp;&nbsp;
+
+00:17:05.760 --> 00:17:11.440
+not continuously monitoring and that's important&nbsp;
+because the option that we're pricing has discrete&nbsp;&nbsp;
+
+00:17:11.440 --> 00:17:16.480
+monitoring for the closing price of the&nbsp;
+futures at every day in that contract period&nbsp;&nbsp;
+
+00:17:17.040 --> 00:17:23.840
+so here for all of these variables n there's an&nbsp;
+n number of observations to form the average h&nbsp;&nbsp;
+
+00:17:23.840 --> 00:17:28.560
+is the observation frequency and j is the number&nbsp;
+of observations that are passed and in our case&nbsp;&nbsp;
+
+00:17:28.560 --> 00:17:36.000
+that's zero so we can program that up and we can&nbsp;
+call a function that's discrete geometric asian&nbsp;&nbsp;
+
+00:17:36.000 --> 00:17:42.560
+where we're actually passing all of our conditions&nbsp;
+for the n h and j and then computing our geometric&nbsp;&nbsp;
+
+00:17:42.560 --> 00:17:52.160
+discrete asian option price and here you can see&nbsp;
+that's about 15.95 for our case scenario here so&nbsp;&nbsp;
+
+00:17:52.160 --> 00:17:57.280
+our tactic now for our control variant is actually&nbsp;
+not going to be for a delta control variant so&nbsp;&nbsp;
+
+00:17:57.840 --> 00:18:02.880
+like we've done in the past we're actually going&nbsp;
+to compute a portfolio now the portfolio is going&nbsp;&nbsp;
+
+00:18:02.880 --> 00:18:08.880
+to be the difference between the arithmetic and&nbsp;
+the geometric asian option so this is a very good&nbsp;&nbsp;
+
+00:18:08.880 --> 00:18:14.880
+static hedge for the arithmetic option and instead&nbsp;
+of actually computing the delta at each time&nbsp;&nbsp;
+
+00:18:14.880 --> 00:18:20.640
+period which would be increased computation we're&nbsp;
+going to simulate this portfolio that's long the&nbsp;&nbsp;
+
+00:18:20.640 --> 00:18:26.240
+arithmetic option and short the geometric asian&nbsp;
+option then at the end when we've computed the&nbsp;&nbsp;
+
+00:18:27.040 --> 00:18:32.880
+discounted expectation of the price all we need to&nbsp;
+do is add back on the analytical solution of the&nbsp;&nbsp;
+
+00:18:32.880 --> 00:18:39.520
+geometric asian option price to our monte carlo&nbsp;
+portfolio simulation so let's get into it we price&nbsp;&nbsp;
+
+00:18:39.520 --> 00:18:45.280
+exactly the same way so now we're calculating&nbsp;
+gt which is just the geometric average so we're&nbsp;&nbsp;
+
+00:18:45.280 --> 00:18:51.840
+taking the cumulative product of all these&nbsp;
+stock prices along each path to the power of&nbsp;&nbsp;
+
+00:18:51.840 --> 00:18:58.960
+one over n and again we're going to index by the&nbsp;
+final time period so here is our portfolio we've&nbsp;&nbsp;
+
+00:18:58.960 --> 00:19:07.200
+got our arithmetic option minus our geometric&nbsp;
+option payoff and we're doing that for 1 000 monte&nbsp;&nbsp;
+
+00:19:07.200 --> 00:19:13.920
+carlo simulations here we take the discounted&nbsp;
+expectation of this portfolio payoff and then&nbsp;&nbsp;
+
+00:19:13.920 --> 00:19:21.200
+we add back on the discrete geometric asian price&nbsp;
+so now what you'll see is that our call value has&nbsp;&nbsp;
+
+00:19:21.200 --> 00:19:28.160
+is around the same now as 16.25 but our standard&nbsp;
+error has been in incredibly reduced from 0.8 all&nbsp;&nbsp;
+
+00:19:28.160 --> 00:19:34.000
+the way down to 0.02 so an incredible reduction&nbsp;
+in the standard error so now we're going to look&nbsp;&nbsp;
+
+00:19:34.000 --> 00:19:40.640
+at the antithetic and the control variant of the&nbsp;
+geometric average option and see how that helps&nbsp;&nbsp;
+
+00:19:40.640 --> 00:19:44.560
+in terms of variance reduction for our monte&nbsp;
+carlo technique so now we're simulating we're&nbsp;&nbsp;
+
+00:19:44.560 --> 00:19:49.920
+pre-computing the constants just as we have done&nbsp;
+before for our monte carlo simulation we have two&nbsp;&nbsp;
+
+00:19:49.920 --> 00:19:55.200
+price paths which are negatively correlated with&nbsp;
+each other so that's the antithetic component here&nbsp;&nbsp;
+
+00:19:55.200 --> 00:20:00.560
+so we've got two price paths one and two and we're&nbsp;
+computing the arithmetic average for each of those&nbsp;&nbsp;
+
+00:20:00.560 --> 00:20:05.600
+prices and we're computing the geometric average&nbsp;
+for both of those price paths for each of the&nbsp;&nbsp;
+
+00:20:05.600 --> 00:20:10.640
+1000 simulations so then we're going to calculate&nbsp;
+our portfolio payoff so we're going to take the&nbsp;&nbsp;
+
+00:20:10.640 --> 00:20:18.080
+average between the two portfolios remember each&nbsp;
+portfolio holds a it's long an arithmetic option&nbsp;&nbsp;
+
+00:20:18.080 --> 00:20:25.520
+and short the geometric option and then it's got&nbsp;
+two price paths one and two so we're just taking&nbsp;&nbsp;
+
+00:20:25.520 --> 00:20:32.000
+the average between those two portfolios now we're&nbsp;
+going to calculate the discounted expectation&nbsp;&nbsp;
+
+00:20:32.000 --> 00:20:38.560
+of this portfolio payoff over all these 1000&nbsp;
+simulations and then we can compute our standard&nbsp;&nbsp;
+
+00:20:38.560 --> 00:20:45.920
+error and then we add back our discrete geometric&nbsp;
+asian price to this portfolio and now we've got a&nbsp;&nbsp;
+
+00:20:45.920 --> 00:20:54.320
+very accurate price of 16.27 with a standard error&nbsp;
+of 0.02 now the computation time has gone up so&nbsp;&nbsp;
+
+00:20:54.320 --> 00:21:00.560
+let's compare these variants reduction methods and&nbsp;
+the computation time that it's taken because again&nbsp;&nbsp;
+
+00:21:00.560 --> 00:21:05.360
+you know we've decreased the standard error but&nbsp;
+we've increased the relative computation time&nbsp;&nbsp;
+
+00:21:06.720 --> 00:21:14.720
+so just for a um an idea of what the slow estimate&nbsp;
+took so here are all our asian call option value&nbsp;&nbsp;
+
+00:21:14.720 --> 00:21:19.920
+prices on the left hand side here we've got the&nbsp;
+standard errors that have been reduced as we've&nbsp;&nbsp;
+
+00:21:19.920 --> 00:21:26.480
+introduced these measures so we've used the fast&nbsp;
+estimate so our vectorized array to benchmark&nbsp;&nbsp;
+
+00:21:26.480 --> 00:21:32.160
+our variance reaction methods and we did this&nbsp;
+because this is a fairer comparison as these have&nbsp;&nbsp;
+
+00:21:32.160 --> 00:21:38.800
+been vectorized so just so you know that if you&nbsp;
+do not vectorize it it's about 50 times slower to&nbsp;&nbsp;
+
+00:21:38.800 --> 00:21:46.320
+run our for loops for all the time periods&nbsp;
+and for all those simulations so much better&nbsp;&nbsp;
+
+00:21:46.320 --> 00:21:54.160
+to use numpy arrays for this as we move to the&nbsp;
+antithetic variant what you get is a reduction&nbsp;&nbsp;
+
+00:21:54.160 --> 00:22:02.960
+in your standard error by about 1.5 for a relative&nbsp;
+computation time of 1.25 multiple so the geometric&nbsp;&nbsp;
+
+00:22:02.960 --> 00:22:10.960
+control variant is where you see very significant&nbsp;
+gains for a time relative time computation of only&nbsp;&nbsp;
+
+00:22:10.960 --> 00:22:19.680
+1.4 so just a little bit more than doing the&nbsp;
+antithetic variate you can actually get a 55 56&nbsp;&nbsp;
+
+00:22:19.680 --> 00:22:26.160
+magnitude decrease in your standard error and&nbsp;
+that's because the geometric average option is&nbsp;&nbsp;
+
+00:22:26.160 --> 00:22:34.560
+such a good price indication of your arithmetic&nbsp;
+average option so it's a very very good static&nbsp;&nbsp;
+
+00:22:34.560 --> 00:22:41.120
+hedge therefore we get very significant gains in&nbsp;
+terms of this reduction in the standard error now&nbsp;&nbsp;
+
+00:22:41.120 --> 00:22:47.840
+obviously you can see the benefit when then you&nbsp;
+add the antithetic variate with the geometric&nbsp;&nbsp;
+
+00:22:47.840 --> 00:22:56.080
+control variant you get this further increased&nbsp;
+reduction of a multiple of 66 but that does take&nbsp;&nbsp;
+
+00:22:56.080 --> 00:23:03.200
+an increased computation time of two times uh just&nbsp;
+what our normal vectorized estimation was so again&nbsp;&nbsp;
+
+00:23:03.200 --> 00:23:10.000
+just to summarize we took our own interpretation&nbsp;
+of an over the counter bespoke energy traded&nbsp;&nbsp;
+
+00:23:10.000 --> 00:23:15.440
+product which was the average of the futures&nbsp;
+contract between over the time period of that&nbsp;&nbsp;
+
+00:23:15.440 --> 00:23:22.400
+quarter and we took the average of the closing&nbsp;
+price of the futures each day so we used monte&nbsp;&nbsp;
+
+00:23:22.400 --> 00:23:27.840
+carlo simulation to be able to get the ford prices&nbsp;
+our futures prices between those periods and take&nbsp;&nbsp;
+
+00:23:27.840 --> 00:23:34.000
+the average over those price parts and compute&nbsp;
+the asian call payoffs and then we actually used&nbsp;&nbsp;
+
+00:23:34.000 --> 00:23:40.880
+a variety of variance reduction techniques to&nbsp;
+be able to get a more accurate price over this&nbsp;&nbsp;
+
+00:23:40.880 --> 00:23:46.000
+asian option so hopefully you learnt a lot and&nbsp;
+i look forward to seeing you in the next episode
+

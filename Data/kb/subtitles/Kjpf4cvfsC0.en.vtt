@@ -1,0 +1,4112 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.160 --> 00:00:01.110 align:start position:0%
+ 
+in<00:00:00.240><c> this</c><00:00:00.480><c> video</c><00:00:00.719><c> we're</c><00:00:00.880><c> going</c><00:00:00.960><c> to</c><00:00:01.040><c> be</c>
+
+00:00:01.110 --> 00:00:01.120 align:start position:0%
+in this video we're going to be
+ 
+
+00:00:01.120 --> 00:00:02.310 align:start position:0%
+in this video we're going to be
+continuing<00:00:01.680><c> on</c><00:00:01.839><c> with</c><00:00:02.000><c> our</c><00:00:02.080><c> weather</c>
+
+00:00:02.310 --> 00:00:02.320 align:start position:0%
+continuing on with our weather
+ 
+
+00:00:02.320 --> 00:00:03.909 align:start position:0%
+continuing on with our weather
+derivative<00:00:02.800><c> series</c><00:00:03.199><c> and</c><00:00:03.360><c> specifically</c>
+
+00:00:03.909 --> 00:00:03.919 align:start position:0%
+derivative series and specifically
+ 
+
+00:00:03.919 --> 00:00:05.510 align:start position:0%
+derivative series and specifically
+looking<00:00:04.240><c> at</c><00:00:04.400><c> ways</c><00:00:04.720><c> that</c><00:00:04.880><c> we</c><00:00:04.960><c> can</c><00:00:05.120><c> actually</c>
+
+00:00:05.510 --> 00:00:05.520 align:start position:0%
+looking at ways that we can actually
+ 
+
+00:00:05.520 --> 00:00:09.110 align:start position:0%
+looking at ways that we can actually
+model<00:00:06.319><c> the</c><00:00:06.560><c> temperature</c><00:00:07.120><c> volatility</c><00:00:08.320><c> now</c><00:00:08.800><c> we</c>
+
+00:00:09.110 --> 00:00:09.120 align:start position:0%
+model the temperature volatility now we
+ 
+
+00:00:09.120 --> 00:00:11.910 align:start position:0%
+model the temperature volatility now we
+have<00:00:09.440><c> a</c><00:00:09.599><c> modified</c><00:00:10.400><c> ulnstein</c><00:00:11.200><c> erlenbeck</c>
+
+00:00:11.910 --> 00:00:11.920 align:start position:0%
+have a modified ulnstein erlenbeck
+ 
+
+00:00:11.920 --> 00:00:13.270 align:start position:0%
+have a modified ulnstein erlenbeck
+process
+
+00:00:13.270 --> 00:00:13.280 align:start position:0%
+process
+ 
+
+00:00:13.280 --> 00:00:14.950 align:start position:0%
+process
+that<00:00:13.519><c> we've</c><00:00:13.840><c> actually</c><00:00:14.320><c> defined</c><00:00:14.880><c> the</c>
+
+00:00:14.950 --> 00:00:14.960 align:start position:0%
+that we've actually defined the
+ 
+
+00:00:14.960 --> 00:00:17.510 align:start position:0%
+that we've actually defined the
+parameters<00:00:15.519><c> for</c><00:00:15.839><c> in</c><00:00:15.920><c> previous</c><00:00:16.400><c> videos</c><00:00:17.199><c> and</c>
+
+00:00:17.510 --> 00:00:17.520 align:start position:0%
+parameters for in previous videos and
+ 
+
+00:00:17.520 --> 00:00:20.070 align:start position:0%
+parameters for in previous videos and
+now<00:00:17.840><c> we're</c><00:00:18.160><c> trying</c><00:00:18.400><c> to</c><00:00:18.480><c> specify</c><00:00:19.119><c> models</c><00:00:19.760><c> for</c>
+
+00:00:20.070 --> 00:00:20.080 align:start position:0%
+now we're trying to specify models for
+ 
+
+00:00:20.080 --> 00:00:22.870 align:start position:0%
+now we're trying to specify models for
+our<00:00:20.320><c> time</c><00:00:20.720><c> varying</c><00:00:21.199><c> volatility</c><00:00:21.920><c> parameter</c>
+
+00:00:22.870 --> 00:00:22.880 align:start position:0%
+our time varying volatility parameter
+ 
+
+00:00:22.880 --> 00:00:24.790 align:start position:0%
+our time varying volatility parameter
+now<00:00:23.199><c> if</c><00:00:23.359><c> you</c><00:00:23.439><c> can</c><00:00:23.600><c> remember</c><00:00:23.920><c> from</c><00:00:24.080><c> last</c><00:00:24.400><c> time</c>
+
+00:00:24.790 --> 00:00:24.800 align:start position:0%
+now if you can remember from last time
+ 
+
+00:00:24.800 --> 00:00:26.550 align:start position:0%
+now if you can remember from last time
+using<00:00:25.279><c> our</c><00:00:25.439><c> model</c><00:00:25.840><c> we</c><00:00:26.000><c> created</c><00:00:26.320><c> this</c>
+
+00:00:26.550 --> 00:00:26.560 align:start position:0%
+using our model we created this
+ 
+
+00:00:26.560 --> 00:00:28.070 align:start position:0%
+using our model we created this
+simulation
+
+00:00:28.070 --> 00:00:28.080 align:start position:0%
+simulation
+ 
+
+00:00:28.080 --> 00:00:30.230 align:start position:0%
+simulation
+across<00:00:28.400><c> a</c><00:00:28.560><c> number</c><00:00:28.800><c> of</c><00:00:28.880><c> periods</c><00:00:29.359><c> where</c><00:00:29.679><c> t</c><00:00:30.000><c> is</c>
+
+00:00:30.230 --> 00:00:30.240 align:start position:0%
+across a number of periods where t is
+ 
+
+00:00:30.240 --> 00:00:33.910 align:start position:0%
+across a number of periods where t is
+our<00:00:30.640><c> real</c><00:00:31.039><c> temperature</c><00:00:31.840><c> and</c><00:00:32.079><c> then</c><00:00:32.640><c> this</c><00:00:33.120><c> line</c>
+
+00:00:33.910 --> 00:00:33.920 align:start position:0%
+our real temperature and then this line
+ 
+
+00:00:33.920 --> 00:00:36.549 align:start position:0%
+our real temperature and then this line
+yellow<00:00:34.320><c> line</c><00:00:34.640><c> is</c><00:00:34.800><c> the</c><00:00:35.040><c> model</c><00:00:35.600><c> so</c><00:00:35.840><c> our</c><00:00:36.000><c> model</c><00:00:36.399><c> is</c>
+
+00:00:36.549 --> 00:00:36.559 align:start position:0%
+yellow line is the model so our model is
+ 
+
+00:00:36.559 --> 00:00:38.950 align:start position:0%
+yellow line is the model so our model is
+now<00:00:36.800><c> capturing</c><00:00:37.440><c> those</c><00:00:37.760><c> average</c><00:00:38.160><c> temperatures</c>
+
+00:00:38.950 --> 00:00:38.960 align:start position:0%
+now capturing those average temperatures
+ 
+
+00:00:38.960 --> 00:00:42.470 align:start position:0%
+now capturing those average temperatures
+um<00:00:39.360><c> throughout</c><00:00:40.239><c> the</c><00:00:40.480><c> periods</c><00:00:41.360><c> however</c><00:00:42.239><c> we</c>
+
+00:00:42.470 --> 00:00:42.480 align:start position:0%
+um throughout the periods however we
+ 
+
+00:00:42.480 --> 00:00:44.389 align:start position:0%
+um throughout the periods however we
+need<00:00:42.719><c> to</c><00:00:42.960><c> capture</c>
+
+00:00:44.389 --> 00:00:44.399 align:start position:0%
+need to capture
+ 
+
+00:00:44.399 --> 00:00:47.190 align:start position:0%
+need to capture
+that<00:00:44.879><c> difference</c><00:00:45.600><c> in</c><00:00:45.840><c> volatility</c><00:00:46.559><c> between</c>
+
+00:00:47.190 --> 00:00:47.200 align:start position:0%
+that difference in volatility between
+ 
+
+00:00:47.200 --> 00:00:48.229 align:start position:0%
+that difference in volatility between
+seasons
+
+00:00:48.229 --> 00:00:48.239 align:start position:0%
+seasons
+ 
+
+00:00:48.239 --> 00:00:49.990 align:start position:0%
+seasons
+so<00:00:48.480><c> we</c><00:00:48.640><c> have</c><00:00:48.800><c> a</c><00:00:48.960><c> number</c><00:00:49.200><c> of</c><00:00:49.280><c> ways</c><00:00:49.600><c> of</c><00:00:49.680><c> doing</c>
+
+00:00:49.990 --> 00:00:50.000 align:start position:0%
+so we have a number of ways of doing
+ 
+
+00:00:50.000 --> 00:00:51.590 align:start position:0%
+so we have a number of ways of doing
+that<00:00:50.480><c> we</c><00:00:50.719><c> have</c>
+
+00:00:51.590 --> 00:00:51.600 align:start position:0%
+that we have
+ 
+
+00:00:51.600 --> 00:00:53.590 align:start position:0%
+that we have
+piecewise<00:00:52.320><c> constant</c><00:00:52.800><c> functions</c><00:00:53.199><c> so</c><00:00:53.360><c> this</c><00:00:53.520><c> is</c>
+
+00:00:53.590 --> 00:00:53.600 align:start position:0%
+piecewise constant functions so this is
+ 
+
+00:00:53.600 --> 00:00:54.549 align:start position:0%
+piecewise constant functions so this is
+where<00:00:53.760><c> we</c><00:00:53.840><c> can</c><00:00:54.000><c> try</c><00:00:54.160><c> and</c><00:00:54.239><c> capture</c><00:00:54.480><c> the</c>
+
+00:00:54.549 --> 00:00:54.559 align:start position:0%
+where we can try and capture the
+ 
+
+00:00:54.559 --> 00:00:56.709 align:start position:0%
+where we can try and capture the
+volatility<00:00:55.120><c> for</c><00:00:55.280><c> each</c><00:00:55.600><c> specific</c><00:00:56.000><c> season</c><00:00:56.399><c> say</c>
+
+00:00:56.709 --> 00:00:56.719 align:start position:0%
+volatility for each specific season say
+ 
+
+00:00:56.719 --> 00:00:58.790 align:start position:0%
+volatility for each specific season say
+months<00:00:57.280><c> we've</c><00:00:57.520><c> got</c><00:00:57.680><c> parametric</c><00:00:58.239><c> regression</c>
+
+00:00:58.790 --> 00:00:58.800 align:start position:0%
+months we've got parametric regression
+ 
+
+00:00:58.800 --> 00:01:00.790 align:start position:0%
+months we've got parametric regression
+polynomial<00:00:59.600><c> we've</c><00:00:59.760><c> got</c><00:01:00.000><c> non-parametric</c>
+
+00:01:00.790 --> 00:01:00.800 align:start position:0%
+polynomial we've got non-parametric
+ 
+
+00:01:00.800 --> 00:01:03.189 align:start position:0%
+polynomial we've got non-parametric
+regression<00:01:01.359><c> like</c><00:01:01.600><c> splines</c><00:01:02.640><c> we've</c><00:01:02.879><c> got</c>
+
+00:01:03.189 --> 00:01:03.199 align:start position:0%
+regression like splines we've got
+ 
+
+00:01:03.199 --> 00:01:05.350 align:start position:0%
+regression like splines we've got
+fourier<00:01:03.600><c> series</c><00:01:04.000><c> to</c><00:01:04.159><c> model</c><00:01:04.559><c> the</c><00:01:04.720><c> volatility</c>
+
+00:01:05.350 --> 00:01:05.360 align:start position:0%
+fourier series to model the volatility
+ 
+
+00:01:05.360 --> 00:01:07.429 align:start position:0%
+fourier series to model the volatility
+of<00:01:05.439><c> temperature</c><00:01:06.000><c> and</c><00:01:06.080><c> we've</c><00:01:06.320><c> got</c><00:01:06.640><c> stochastic</c>
+
+00:01:07.429 --> 00:01:07.439 align:start position:0%
+of temperature and we've got stochastic
+ 
+
+00:01:07.439 --> 00:01:09.270 align:start position:0%
+of temperature and we've got stochastic
+differential<00:01:08.000><c> equations</c>
+
+00:01:09.270 --> 00:01:09.280 align:start position:0%
+differential equations
+ 
+
+00:01:09.280 --> 00:01:10.390 align:start position:0%
+differential equations
+so
+
+00:01:10.390 --> 00:01:10.400 align:start position:0%
+so
+ 
+
+00:01:10.400 --> 00:01:13.030 align:start position:0%
+so
+let's<00:01:10.640><c> get</c><00:01:10.880><c> into</c><00:01:11.119><c> it</c><00:01:11.520><c> and</c><00:01:12.159><c> we'll</c><00:01:12.479><c> first</c><00:01:12.799><c> look</c>
+
+00:01:13.030 --> 00:01:13.040 align:start position:0%
+let's get into it and we'll first look
+ 
+
+00:01:13.040 --> 00:01:15.670 align:start position:0%
+let's get into it and we'll first look
+at<00:01:13.200><c> the</c><00:01:13.360><c> piecewise</c><00:01:14.000><c> constant</c><00:01:14.560><c> functions</c><00:01:15.520><c> just</c>
+
+00:01:15.670 --> 00:01:15.680 align:start position:0%
+at the piecewise constant functions just
+ 
+
+00:01:15.680 --> 00:01:17.030 align:start position:0%
+at the piecewise constant functions just
+a<00:01:15.759><c> reminder</c><00:01:16.159><c> that</c><00:01:16.400><c> we've</c><00:01:16.560><c> got</c><00:01:16.720><c> temperature</c>
+
+00:01:17.030 --> 00:01:17.040 align:start position:0%
+a reminder that we've got temperature
+ 
+
+00:01:17.040 --> 00:01:20.230 align:start position:0%
+a reminder that we've got temperature
+data<00:01:17.360><c> going</c><00:01:17.600><c> all</c><00:01:17.759><c> the</c><00:01:17.840><c> way</c><00:01:18.000><c> back</c><00:01:18.240><c> to</c><00:01:18.759><c> 1860</c><00:01:20.080><c> all</c>
+
+00:01:20.230 --> 00:01:20.240 align:start position:0%
+data going all the way back to 1860 all
+ 
+
+00:01:20.240 --> 00:01:22.789 align:start position:0%
+data going all the way back to 1860 all
+the<00:01:20.320><c> way</c><00:01:20.560><c> through</c><00:01:20.960><c> to</c><00:01:21.280><c> today</c><00:01:21.680><c> for</c><00:01:21.920><c> sydney</c><00:01:22.640><c> so</c>
+
+00:01:22.789 --> 00:01:22.799 align:start position:0%
+the way through to today for sydney so
+ 
+
+00:01:22.799 --> 00:01:24.469 align:start position:0%
+the way through to today for sydney so
+what<00:01:22.960><c> we</c><00:01:23.040><c> can</c><00:01:23.119><c> do</c><00:01:23.360><c> is</c><00:01:23.520><c> we</c><00:01:23.680><c> can</c><00:01:23.840><c> get</c><00:01:24.159><c> the</c>
+
+00:01:24.469 --> 00:01:24.479 align:start position:0%
+what we can do is we can get the
+ 
+
+00:01:24.479 --> 00:01:26.630 align:start position:0%
+what we can do is we can get the
+unbiased<00:01:25.280><c> estimator</c>
+
+00:01:26.630 --> 00:01:26.640 align:start position:0%
+unbiased estimator
+ 
+
+00:01:26.640 --> 00:01:29.190 align:start position:0%
+unbiased estimator
+for<00:01:26.799><c> the</c><00:01:26.960><c> quadratic</c><00:01:28.080><c> variation</c><00:01:28.880><c> of</c><00:01:29.040><c> this</c>
+
+00:01:29.190 --> 00:01:29.200 align:start position:0%
+for the quadratic variation of this
+ 
+
+00:01:29.200 --> 00:01:30.950 align:start position:0%
+for the quadratic variation of this
+temperature<00:01:29.680><c> process</c><00:01:30.320><c> and</c><00:01:30.479><c> that's</c><00:01:30.799><c> just</c>
+
+00:01:30.950 --> 00:01:30.960 align:start position:0%
+temperature process and that's just
+ 
+
+00:01:30.960 --> 00:01:33.429 align:start position:0%
+temperature process and that's just
+going<00:01:31.119><c> to</c><00:01:31.200><c> be</c><00:01:31.439><c> the</c><00:01:31.600><c> standard</c><00:01:31.920><c> deviation</c><00:01:33.040><c> of</c>
+
+00:01:33.429 --> 00:01:33.439 align:start position:0%
+going to be the standard deviation of
+ 
+
+00:01:33.439 --> 00:01:36.310 align:start position:0%
+going to be the standard deviation of
+this<00:01:34.000><c> process</c><00:01:34.720><c> so</c><00:01:34.880><c> i've</c><00:01:35.119><c> done</c><00:01:35.360><c> this</c><00:01:35.680><c> for</c><00:01:36.000><c> each</c>
+
+00:01:36.310 --> 00:01:36.320 align:start position:0%
+this process so i've done this for each
+ 
+
+00:01:36.320 --> 00:01:38.789 align:start position:0%
+this process so i've done this for each
+day<00:01:36.720><c> and</c><00:01:36.880><c> that's</c><00:01:37.200><c> the</c><00:01:37.439><c> line</c><00:01:37.840><c> in</c><00:01:38.000><c> blue</c><00:01:38.560><c> i've</c>
+
+00:01:38.789 --> 00:01:38.799 align:start position:0%
+day and that's the line in blue i've
+ 
+
+00:01:38.799 --> 00:01:40.630 align:start position:0%
+day and that's the line in blue i've
+then<00:01:39.119><c> shown</c><00:01:39.439><c> with</c><00:01:39.759><c> reference</c><00:01:40.159><c> of</c><00:01:40.240><c> the</c><00:01:40.320><c> mean</c>
+
+00:01:40.630 --> 00:01:40.640 align:start position:0%
+then shown with reference of the mean
+ 
+
+00:01:40.640 --> 00:01:41.830 align:start position:0%
+then shown with reference of the mean
+temperature<00:01:41.040><c> what</c><00:01:41.200><c> the</c><00:01:41.280><c> percentage</c>
+
+00:01:41.830 --> 00:01:41.840 align:start position:0%
+temperature what the percentage
+ 
+
+00:01:41.840 --> 00:01:44.710 align:start position:0%
+temperature what the percentage
+volatility<00:01:42.640><c> is</c><00:01:43.040><c> here</c><00:01:43.520><c> in</c><00:01:43.840><c> orange</c><00:01:44.320><c> and</c><00:01:44.479><c> as</c><00:01:44.640><c> you</c>
+
+00:01:44.710 --> 00:01:44.720 align:start position:0%
+volatility is here in orange and as you
+ 
+
+00:01:44.720 --> 00:01:46.550 align:start position:0%
+volatility is here in orange and as you
+can<00:01:44.880><c> see</c><00:01:45.439><c> as</c><00:01:45.600><c> we</c><00:01:45.759><c> progress</c><00:01:46.079><c> throughout</c><00:01:46.399><c> the</c>
+
+00:01:46.550 --> 00:01:46.560 align:start position:0%
+can see as we progress throughout the
+ 
+
+00:01:46.560 --> 00:01:47.429 align:start position:0%
+can see as we progress throughout the
+year
+
+00:01:47.429 --> 00:01:47.439 align:start position:0%
+year
+ 
+
+00:01:47.439 --> 00:01:50.069 align:start position:0%
+year
+this<00:01:47.759><c> value</c><00:01:48.240><c> has</c><00:01:48.560><c> changed</c><00:01:49.280><c> so</c><00:01:49.439><c> what</c><00:01:49.600><c> we</c><00:01:49.759><c> really</c>
+
+00:01:50.069 --> 00:01:50.079 align:start position:0%
+this value has changed so what we really
+ 
+
+00:01:50.079 --> 00:01:52.789 align:start position:0%
+this value has changed so what we really
+want<00:01:50.399><c> is</c><00:01:50.560><c> we</c><00:01:50.720><c> want</c><00:01:50.960><c> models</c><00:01:51.439><c> to</c><00:01:51.600><c> try</c><00:01:51.920><c> and</c>
+
+00:01:52.789 --> 00:01:52.799 align:start position:0%
+want is we want models to try and
+ 
+
+00:01:52.799 --> 00:01:55.590 align:start position:0%
+want is we want models to try and
+given<00:01:53.280><c> a</c><00:01:53.520><c> day</c><00:01:53.759><c> in</c><00:01:53.920><c> the</c><00:01:54.079><c> year</c><00:01:54.479><c> or</c><00:01:54.799><c> a</c><00:01:55.040><c> specific</c>
+
+00:01:55.590 --> 00:01:55.600 align:start position:0%
+given a day in the year or a specific
+ 
+
+00:01:55.600 --> 00:01:57.749 align:start position:0%
+given a day in the year or a specific
+period<00:01:56.079><c> we</c><00:01:56.320><c> want</c><00:01:56.479><c> to</c><00:01:56.640><c> be</c><00:01:56.799><c> able</c><00:01:57.040><c> to</c><00:01:57.280><c> model</c><00:01:57.600><c> this</c>
+
+00:01:57.749 --> 00:01:57.759 align:start position:0%
+period we want to be able to model this
+ 
+
+00:01:57.759 --> 00:01:59.749 align:start position:0%
+period we want to be able to model this
+volatility<00:01:58.479><c> this</c><00:01:58.640><c> standard</c><00:01:59.040><c> deviation</c><00:01:59.680><c> that</c>
+
+00:01:59.749 --> 00:01:59.759 align:start position:0%
+volatility this standard deviation that
+ 
+
+00:01:59.759 --> 00:02:02.310 align:start position:0%
+volatility this standard deviation that
+we<00:01:59.920><c> have</c><00:02:00.159><c> in</c><00:02:00.399><c> blue</c><00:02:00.960><c> again</c><00:02:01.439><c> our</c><00:02:01.680><c> summary</c><00:02:02.000><c> of</c><00:02:02.159><c> our</c>
+
+00:02:02.310 --> 00:02:02.320 align:start position:0%
+we have in blue again our summary of our
+ 
+
+00:02:02.320 --> 00:02:05.109 align:start position:0%
+we have in blue again our summary of our
+modified<00:02:02.960><c> um</c><00:02:03.280><c> einstein</c><00:02:03.840><c> ulembek</c><00:02:04.479><c> process</c><00:02:04.960><c> is</c>
+
+00:02:05.109 --> 00:02:05.119 align:start position:0%
+modified um einstein ulembek process is
+ 
+
+00:02:05.119 --> 00:02:08.389 align:start position:0%
+modified um einstein ulembek process is
+that<00:02:05.360><c> we've</c><00:02:05.680><c> got</c><00:02:06.159><c> this</c><00:02:06.719><c> modified</c>
+
+00:02:08.389 --> 00:02:08.399 align:start position:0%
+that we've got this modified
+ 
+
+00:02:08.399 --> 00:02:10.309 align:start position:0%
+that we've got this modified
+dynamics<00:02:08.959><c> here</c><00:02:09.280><c> where</c><00:02:09.440><c> we've</c><00:02:09.679><c> defined</c><00:02:10.160><c> the</c>
+
+00:02:10.309 --> 00:02:10.319 align:start position:0%
+dynamics here where we've defined the
+ 
+
+00:02:10.319 --> 00:02:12.869 align:start position:0%
+dynamics here where we've defined the
+mean<00:02:10.560><c> reversion</c><00:02:11.039><c> parameter</c><00:02:11.840><c> we</c><00:02:12.160><c> have</c><00:02:12.560><c> our</c>
+
+00:02:12.869 --> 00:02:12.879 align:start position:0%
+mean reversion parameter we have our
+ 
+
+00:02:12.879 --> 00:02:15.510 align:start position:0%
+mean reversion parameter we have our
+change<00:02:13.440><c> in</c><00:02:13.599><c> daily</c><00:02:14.000><c> average</c><00:02:14.400><c> temperature</c>
+
+00:02:15.510 --> 00:02:15.520 align:start position:0%
+change in daily average temperature
+ 
+
+00:02:15.520 --> 00:02:17.670 align:start position:0%
+change in daily average temperature
+t<00:02:15.840><c> bar</c><00:02:16.560><c> and</c><00:02:16.800><c> then</c><00:02:16.959><c> we've</c><00:02:17.120><c> got</c><00:02:17.280><c> the</c><00:02:17.440><c> first</c>
+
+00:02:17.670 --> 00:02:17.680 align:start position:0%
+t bar and then we've got the first
+ 
+
+00:02:17.680 --> 00:02:19.430 align:start position:0%
+t bar and then we've got the first
+derivative<00:02:18.160><c> which</c><00:02:18.400><c> is</c><00:02:18.560><c> captured</c><00:02:18.959><c> here</c><00:02:19.200><c> hence</c>
+
+00:02:19.430 --> 00:02:19.440 align:start position:0%
+derivative which is captured here hence
+ 
+
+00:02:19.440 --> 00:02:22.869 align:start position:0%
+derivative which is captured here hence
+the<00:02:19.599><c> modified</c><00:02:20.480><c> ou</c><00:02:20.959><c> dynamics</c><00:02:21.920><c> now</c><00:02:22.160><c> we</c><00:02:22.400><c> want</c><00:02:22.640><c> to</c>
+
+00:02:22.869 --> 00:02:22.879 align:start position:0%
+the modified ou dynamics now we want to
+ 
+
+00:02:22.879 --> 00:02:25.110 align:start position:0%
+the modified ou dynamics now we want to
+actually<00:02:23.200><c> define</c><00:02:23.920><c> what</c><00:02:24.160><c> this</c><00:02:24.400><c> volatility</c>
+
+00:02:25.110 --> 00:02:25.120 align:start position:0%
+actually define what this volatility
+ 
+
+00:02:25.120 --> 00:02:27.270 align:start position:0%
+actually define what this volatility
+parameter<00:02:26.160><c> sigma</c>
+
+00:02:27.270 --> 00:02:27.280 align:start position:0%
+parameter sigma
+ 
+
+00:02:27.280 --> 00:02:30.550 align:start position:0%
+parameter sigma
+that's<00:02:27.520><c> varying</c><00:02:28.000><c> with</c><00:02:28.239><c> time</c><00:02:28.640><c> is</c>
+
+00:02:30.550 --> 00:02:30.560 align:start position:0%
+that's varying with time is
+ 
+
+00:02:30.560 --> 00:02:32.390 align:start position:0%
+that's varying with time is
+so<00:02:30.800><c> the</c><00:02:31.040><c> volatility</c><00:02:31.680><c> of</c><00:02:31.760><c> the</c><00:02:31.920><c> temperature</c>
+
+00:02:32.390 --> 00:02:32.400 align:start position:0%
+so the volatility of the temperature
+ 
+
+00:02:32.400 --> 00:02:34.470 align:start position:0%
+so the volatility of the temperature
+process<00:02:32.959><c> like</c><00:02:33.200><c> i've</c><00:02:33.360><c> just</c><00:02:33.599><c> said</c>
+
+00:02:34.470 --> 00:02:34.480 align:start position:0%
+process like i've just said
+ 
+
+00:02:34.480 --> 00:02:36.550 align:start position:0%
+process like i've just said
+the<00:02:34.720><c> estimator</c><00:02:35.360><c> is</c><00:02:35.519><c> based</c><00:02:35.760><c> on</c><00:02:35.920><c> the</c><00:02:36.000><c> quadratic</c>
+
+00:02:36.550 --> 00:02:36.560 align:start position:0%
+the estimator is based on the quadratic
+ 
+
+00:02:36.560 --> 00:02:38.710 align:start position:0%
+the estimator is based on the quadratic
+variation<00:02:37.120><c> of</c><00:02:37.200><c> this</c><00:02:37.440><c> temperature</c><00:02:37.920><c> process</c>
+
+00:02:38.710 --> 00:02:38.720 align:start position:0%
+variation of this temperature process
+ 
+
+00:02:38.720 --> 00:02:42.309 align:start position:0%
+variation of this temperature process
+and<00:02:38.959><c> that's</c><00:02:39.440><c> our</c><00:02:40.000><c> our</c><00:02:40.239><c> best</c><00:02:40.560><c> estimate</c><00:02:41.360><c> is</c><00:02:42.000><c> uh</c>
+
+00:02:42.309 --> 00:02:42.319 align:start position:0%
+and that's our our best estimate is uh
+ 
+
+00:02:42.319 --> 00:02:44.390 align:start position:0%
+and that's our our best estimate is uh
+the<00:02:42.480><c> standard</c><00:02:42.879><c> deviation</c><00:02:43.760><c> or</c><00:02:43.920><c> the</c><00:02:44.080><c> biased</c>
+
+00:02:44.390 --> 00:02:44.400 align:start position:0%
+the standard deviation or the biased
+ 
+
+00:02:44.400 --> 00:02:47.830 align:start position:0%
+the standard deviation or the biased
+standard<00:02:44.720><c> deviation</c><00:02:45.760><c> of</c><00:02:46.000><c> this</c><00:02:46.319><c> process</c><00:02:47.200><c> so</c>
+
+00:02:47.830 --> 00:02:47.840 align:start position:0%
+standard deviation of this process so
+ 
+
+00:02:47.840 --> 00:02:50.790 align:start position:0%
+standard deviation of this process so
+our<00:02:48.080><c> volatility</c><00:02:48.879><c> is</c><00:02:49.120><c> a</c><00:02:49.680><c> dynamic</c><00:02:50.160><c> volatility</c>
+
+00:02:50.790 --> 00:02:50.800 align:start position:0%
+our volatility is a dynamic volatility
+ 
+
+00:02:50.800 --> 00:02:52.869 align:start position:0%
+our volatility is a dynamic volatility
+of<00:02:50.959><c> this</c><00:02:51.120><c> temperature</c><00:02:51.519><c> process</c><00:02:52.319><c> and</c><00:02:52.640><c> this</c>
+
+00:02:52.869 --> 00:02:52.879 align:start position:0%
+of this temperature process and this
+ 
+
+00:02:52.879 --> 00:02:56.790 align:start position:0%
+of this temperature process and this
+could<00:02:53.120><c> be</c><00:02:53.519><c> seasonal</c><00:02:54.319><c> daily</c><00:02:55.040><c> monthly</c><00:02:55.599><c> etc</c>
+
+00:02:56.790 --> 00:02:56.800 align:start position:0%
+could be seasonal daily monthly etc
+ 
+
+00:02:56.800 --> 00:03:00.309 align:start position:0%
+could be seasonal daily monthly etc
+so<00:02:57.120><c> if</c><00:02:57.280><c> we</c><00:02:57.599><c> first</c><00:02:58.159><c> take</c><00:02:58.560><c> a</c><00:02:58.959><c> look</c><00:02:59.599><c> and</c><00:02:59.840><c> we</c><00:03:00.000><c> just</c>
+
+00:03:00.309 --> 00:03:00.319 align:start position:0%
+so if we first take a look and we just
+ 
+
+00:03:00.319 --> 00:03:03.110 align:start position:0%
+so if we first take a look and we just
+group<00:03:00.720><c> on</c><00:03:00.879><c> the</c><00:03:01.120><c> day</c><00:03:01.599><c> again</c><00:03:01.920><c> we</c><00:03:02.080><c> get</c><00:03:02.319><c> that</c><00:03:02.640><c> blue</c>
+
+00:03:03.110 --> 00:03:03.120 align:start position:0%
+group on the day again we get that blue
+ 
+
+00:03:03.120 --> 00:03:04.869 align:start position:0%
+group on the day again we get that blue
+line<00:03:03.599><c> and</c><00:03:03.760><c> i've</c><00:03:03.920><c> just</c><00:03:04.159><c> plotted</c><00:03:04.560><c> standard</c>
+
+00:03:04.869 --> 00:03:04.879 align:start position:0%
+line and i've just plotted standard
+ 
+
+00:03:04.879 --> 00:03:06.710 align:start position:0%
+line and i've just plotted standard
+deviation<00:03:05.440><c> on</c><00:03:05.519><c> the</c><00:03:05.599><c> left</c><00:03:05.760><c> hand</c><00:03:06.000><c> side</c><00:03:06.319><c> with</c>
+
+00:03:06.710 --> 00:03:06.720 align:start position:0%
+deviation on the left hand side with
+ 
+
+00:03:06.720 --> 00:03:08.270 align:start position:0%
+deviation on the left hand side with
+days
+
+00:03:08.270 --> 00:03:08.280 align:start position:0%
+days
+ 
+
+00:03:08.280 --> 00:03:13.509 align:start position:0%
+days
+366<00:03:09.440><c> to</c><00:03:09.599><c> include</c><00:03:10.080><c> the</c><00:03:10.239><c> leap</c><00:03:10.560><c> years</c><00:03:11.120><c> there</c>
+
+00:03:13.509 --> 00:03:13.519 align:start position:0%
+ 
+ 
+
+00:03:13.519 --> 00:03:14.390 align:start position:0%
+ 
+now
+
+00:03:14.390 --> 00:03:14.400 align:start position:0%
+now
+ 
+
+00:03:14.400 --> 00:03:16.149 align:start position:0%
+now
+let's<00:03:14.640><c> look</c><00:03:14.879><c> at</c><00:03:14.959><c> the</c><00:03:15.120><c> first</c><00:03:15.599><c> method</c><00:03:16.000><c> for</c>
+
+00:03:16.149 --> 00:03:16.159 align:start position:0%
+let's look at the first method for
+ 
+
+00:03:16.159 --> 00:03:17.589 align:start position:0%
+let's look at the first method for
+modeling<00:03:16.480><c> this</c><00:03:16.640><c> so</c><00:03:16.800><c> we've</c><00:03:16.879><c> got</c><00:03:17.040><c> piecewise</c>
+
+00:03:17.589 --> 00:03:17.599 align:start position:0%
+modeling this so we've got piecewise
+ 
+
+00:03:17.599 --> 00:03:19.030 align:start position:0%
+modeling this so we've got piecewise
+constant<00:03:18.080><c> functions</c><00:03:18.480><c> so</c><00:03:18.640><c> what</c><00:03:18.800><c> i'm</c><00:03:18.879><c> going</c><00:03:18.959><c> to</c>
+
+00:03:19.030 --> 00:03:19.040 align:start position:0%
+constant functions so what i'm going to
+ 
+
+00:03:19.040 --> 00:03:20.550 align:start position:0%
+constant functions so what i'm going to
+do<00:03:19.280><c> here</c><00:03:19.519><c> is</c><00:03:19.599><c> i'm</c><00:03:19.760><c> going</c><00:03:19.760><c> to</c><00:03:19.840><c> come</c><00:03:20.000><c> up</c><00:03:20.159><c> with</c><00:03:20.319><c> two</c>
+
+00:03:20.550 --> 00:03:20.560 align:start position:0%
+do here is i'm going to come up with two
+ 
+
+00:03:20.560 --> 00:03:22.790 align:start position:0%
+do here is i'm going to come up with two
+data<00:03:20.879><c> frames</c><00:03:21.280><c> so</c><00:03:21.440><c> i'm</c><00:03:21.599><c> going</c><00:03:21.760><c> to</c><00:03:21.920><c> group</c><00:03:22.159><c> on</c><00:03:22.400><c> day</c>
+
+00:03:22.790 --> 00:03:22.800 align:start position:0%
+data frames so i'm going to group on day
+ 
+
+00:03:22.800 --> 00:03:24.229 align:start position:0%
+data frames so i'm going to group on day
+and<00:03:22.959><c> get</c><00:03:23.120><c> the</c><00:03:23.280><c> standard</c><00:03:23.519><c> deviation</c><00:03:24.000><c> and</c><00:03:24.159><c> i'm</c>
+
+00:03:24.229 --> 00:03:24.239 align:start position:0%
+and get the standard deviation and i'm
+ 
+
+00:03:24.239 --> 00:03:25.830 align:start position:0%
+and get the standard deviation and i'm
+going<00:03:24.319><c> to</c><00:03:24.480><c> group</c><00:03:24.720><c> on</c><00:03:24.879><c> month</c><00:03:25.440><c> and</c><00:03:25.519><c> get</c><00:03:25.760><c> the</c>
+
+00:03:25.830 --> 00:03:25.840 align:start position:0%
+going to group on month and get the
+ 
+
+00:03:25.840 --> 00:03:28.710 align:start position:0%
+going to group on month and get the
+standard<00:03:26.159><c> deviation</c><00:03:27.120><c> i'm</c><00:03:27.440><c> then</c><00:03:27.680><c> going</c><00:03:28.000><c> to</c><00:03:28.400><c> add</c>
+
+00:03:28.710 --> 00:03:28.720 align:start position:0%
+standard deviation i'm then going to add
+ 
+
+00:03:28.720 --> 00:03:31.190 align:start position:0%
+standard deviation i'm then going to add
+these<00:03:29.040><c> two</c><00:03:29.280><c> data</c><00:03:29.599><c> frames</c><00:03:30.000><c> together</c><00:03:30.640><c> and</c><00:03:30.879><c> plot</c>
+
+00:03:31.190 --> 00:03:31.200 align:start position:0%
+these two data frames together and plot
+ 
+
+00:03:31.200 --> 00:03:33.430 align:start position:0%
+these two data frames together and plot
+that<00:03:31.440><c> in</c><00:03:31.599><c> a</c><00:03:31.680><c> row</c><00:03:32.080><c> and</c><00:03:32.239><c> here</c><00:03:32.480><c> you</c><00:03:32.640><c> can</c><00:03:32.799><c> see</c><00:03:33.120><c> that</c>
+
+00:03:33.430 --> 00:03:33.440 align:start position:0%
+that in a row and here you can see that
+ 
+
+00:03:33.440 --> 00:03:34.470 align:start position:0%
+that in a row and here you can see that
+in
+
+00:03:34.470 --> 00:03:34.480 align:start position:0%
+in
+ 
+
+00:03:34.480 --> 00:03:36.309 align:start position:0%
+in
+the<00:03:34.959><c> orange</c><00:03:35.440><c> i</c><00:03:35.599><c> have</c><00:03:35.840><c> that</c><00:03:36.000><c> standard</c>
+
+00:03:36.309 --> 00:03:36.319 align:start position:0%
+the orange i have that standard
+ 
+
+00:03:36.319 --> 00:03:37.589 align:start position:0%
+the orange i have that standard
+deviation
+
+00:03:37.589 --> 00:03:37.599 align:start position:0%
+deviation
+ 
+
+00:03:37.599 --> 00:03:39.430 align:start position:0%
+deviation
+for<00:03:37.840><c> all</c><00:03:38.080><c> the</c><00:03:38.400><c> days</c>
+
+00:03:39.430 --> 00:03:39.440 align:start position:0%
+for all the days
+ 
+
+00:03:39.440 --> 00:03:43.190 align:start position:0%
+for all the days
+over<00:03:39.840><c> our</c><00:03:40.080><c> time</c><00:03:40.400><c> period</c><00:03:40.799><c> from</c><00:03:41.319><c> 1860</c>
+
+00:03:43.190 --> 00:03:43.200 align:start position:0%
+over our time period from 1860
+ 
+
+00:03:43.200 --> 00:03:45.270 align:start position:0%
+over our time period from 1860
+all<00:03:43.360><c> the</c><00:03:43.519><c> way</c><00:03:43.680><c> through</c><00:03:43.920><c> to</c><00:03:44.080><c> today</c><00:03:44.720><c> and</c><00:03:44.959><c> then</c>
+
+00:03:45.270 --> 00:03:45.280 align:start position:0%
+all the way through to today and then
+ 
+
+00:03:45.280 --> 00:03:47.750 align:start position:0%
+all the way through to today and then
+we've<00:03:45.440><c> got</c><00:03:45.599><c> the</c><00:03:45.760><c> standard</c><00:03:46.080><c> deviation</c><00:03:46.879><c> of</c>
+
+00:03:47.750 --> 00:03:47.760 align:start position:0%
+we've got the standard deviation of
+ 
+
+00:03:47.760 --> 00:03:50.149 align:start position:0%
+we've got the standard deviation of
+the<00:03:47.920><c> different</c><00:03:48.319><c> periods</c><00:03:48.959><c> in</c><00:03:49.200><c> terms</c><00:03:49.519><c> of</c><00:03:49.760><c> months</c>
+
+00:03:50.149 --> 00:03:50.159 align:start position:0%
+the different periods in terms of months
+ 
+
+00:03:50.159 --> 00:03:53.190 align:start position:0%
+the different periods in terms of months
+so<00:03:50.400><c> january</c><00:03:51.040><c> february</c><00:03:51.519><c> march</c><00:03:51.920><c> etc</c><00:03:52.799><c> and</c><00:03:52.879><c> that's</c>
+
+00:03:53.190 --> 00:03:53.200 align:start position:0%
+so january february march etc and that's
+ 
+
+00:03:53.200 --> 00:03:54.789 align:start position:0%
+so january february march etc and that's
+there<00:03:53.439><c> in</c><00:03:53.599><c> blue</c>
+
+00:03:54.789 --> 00:03:54.799 align:start position:0%
+there in blue
+ 
+
+00:03:54.799 --> 00:03:56.710 align:start position:0%
+there in blue
+so<00:03:55.040><c> as</c><00:03:55.120><c> you</c><00:03:55.280><c> can</c><00:03:55.439><c> see</c><00:03:55.920><c> this</c><00:03:56.080><c> is</c><00:03:56.239><c> what</c><00:03:56.400><c> you</c><00:03:56.480><c> would</c>
+
+00:03:56.710 --> 00:03:56.720 align:start position:0%
+so as you can see this is what you would
+ 
+
+00:03:56.720 --> 00:04:00.149 align:start position:0%
+so as you can see this is what you would
+call<00:03:57.439><c> a</c><00:03:57.680><c> piecewise</c><00:03:58.640><c> constant</c><00:03:59.200><c> function</c><00:03:59.760><c> we</c>
+
+00:04:00.149 --> 00:04:00.159 align:start position:0%
+call a piecewise constant function we
+ 
+
+00:04:00.159 --> 00:04:02.470 align:start position:0%
+call a piecewise constant function we
+could<00:04:00.480><c> fit</c><00:04:00.799><c> this</c><00:04:01.120><c> and</c><00:04:01.280><c> make</c><00:04:01.519><c> it</c><00:04:01.680><c> non-constant</c>
+
+00:04:02.470 --> 00:04:02.480 align:start position:0%
+could fit this and make it non-constant
+ 
+
+00:04:02.480 --> 00:04:04.789 align:start position:0%
+could fit this and make it non-constant
+but<00:04:02.879><c> i</c><00:04:03.120><c> left</c><00:04:03.360><c> this</c><00:04:03.599><c> as</c><00:04:03.760><c> the</c><00:04:03.840><c> simplest</c><00:04:04.319><c> option</c>
+
+00:04:04.789 --> 00:04:04.799 align:start position:0%
+but i left this as the simplest option
+ 
+
+00:04:04.799 --> 00:04:06.789 align:start position:0%
+but i left this as the simplest option
+for<00:04:05.120><c> now</c><00:04:05.439><c> we</c><00:04:05.680><c> are</c><00:04:05.840><c> capturing</c><00:04:06.560><c> that</c>
+
+00:04:06.789 --> 00:04:06.799 align:start position:0%
+for now we are capturing that
+ 
+
+00:04:06.799 --> 00:04:08.630 align:start position:0%
+for now we are capturing that
+seasonality
+
+00:04:08.630 --> 00:04:08.640 align:start position:0%
+seasonality
+ 
+
+00:04:08.640 --> 00:04:10.550 align:start position:0%
+seasonality
+that<00:04:08.799><c> volatility</c>
+
+00:04:10.550 --> 00:04:10.560 align:start position:0%
+that volatility
+ 
+
+00:04:10.560 --> 00:04:14.149 align:start position:0%
+that volatility
+has<00:04:11.200><c> for</c><00:04:11.519><c> temperature</c>
+
+00:04:14.149 --> 00:04:14.159 align:start position:0%
+has for temperature
+ 
+
+00:04:14.159 --> 00:04:16.390 align:start position:0%
+has for temperature
+now<00:04:14.400><c> parametric</c><00:04:15.040><c> regression</c><00:04:15.680><c> we</c><00:04:16.000><c> have</c><00:04:16.239><c> a</c>
+
+00:04:16.390 --> 00:04:16.400 align:start position:0%
+now parametric regression we have a
+ 
+
+00:04:16.400 --> 00:04:17.749 align:start position:0%
+now parametric regression we have a
+number<00:04:16.639><c> of</c><00:04:16.799><c> options</c><00:04:17.120><c> but</c><00:04:17.280><c> here</c><00:04:17.519><c> we're</c><00:04:17.680><c> going</c>
+
+00:04:17.749 --> 00:04:17.759 align:start position:0%
+number of options but here we're going
+ 
+
+00:04:17.759 --> 00:04:20.069 align:start position:0%
+number of options but here we're going
+to<00:04:17.840><c> look</c><00:04:18.079><c> at</c><00:04:18.320><c> fitting</c><00:04:18.720><c> polynomials</c><00:04:19.680><c> for</c><00:04:19.840><c> this</c>
+
+00:04:20.069 --> 00:04:20.079 align:start position:0%
+to look at fitting polynomials for this
+ 
+
+00:04:20.079 --> 00:04:22.069 align:start position:0%
+to look at fitting polynomials for this
+i'm<00:04:20.239><c> going</c><00:04:20.479><c> to</c><00:04:20.560><c> be</c><00:04:20.720><c> using</c><00:04:21.359><c> the</c><00:04:21.440><c> stats</c><00:04:21.759><c> models</c>
+
+00:04:22.069 --> 00:04:22.079 align:start position:0%
+i'm going to be using the stats models
+ 
+
+00:04:22.079 --> 00:04:24.790 align:start position:0%
+i'm going to be using the stats models
+api<00:04:22.800><c> and</c><00:04:23.040><c> then</c><00:04:23.360><c> sky</c><00:04:23.759><c> learn</c><00:04:24.000><c> pre-processing</c>
+
+00:04:24.790 --> 00:04:24.800 align:start position:0%
+api and then sky learn pre-processing
+ 
+
+00:04:24.800 --> 00:04:26.550 align:start position:0%
+api and then sky learn pre-processing
+polynomial<00:04:25.440><c> features</c>
+
+00:04:26.550 --> 00:04:26.560 align:start position:0%
+polynomial features
+ 
+
+00:04:26.560 --> 00:04:28.150 align:start position:0%
+polynomial features
+so<00:04:26.800><c> here</c><00:04:26.960><c> what</c><00:04:27.120><c> i'm</c><00:04:27.280><c> going</c><00:04:27.360><c> to</c><00:04:27.440><c> do</c><00:04:27.680><c> is</c><00:04:27.919><c> i'm</c>
+
+00:04:28.150 --> 00:04:28.160 align:start position:0%
+so here what i'm going to do is i'm
+ 
+
+00:04:28.160 --> 00:04:30.070 align:start position:0%
+so here what i'm going to do is i'm
+going<00:04:28.320><c> to</c><00:04:28.560><c> set</c><00:04:28.800><c> and</c><00:04:29.040><c> initialize</c><00:04:29.520><c> my</c><00:04:29.680><c> degrees</c>
+
+00:04:30.070 --> 00:04:30.080 align:start position:0%
+going to set and initialize my degrees
+ 
+
+00:04:30.080 --> 00:04:31.909 align:start position:0%
+going to set and initialize my degrees
+of<00:04:30.160><c> freedom</c><00:04:30.479><c> i'm</c><00:04:30.639><c> going</c><00:04:30.720><c> to</c><00:04:30.800><c> go</c><00:04:31.440><c> and</c><00:04:31.600><c> test</c>
+
+00:04:31.909 --> 00:04:31.919 align:start position:0%
+of freedom i'm going to go and test
+ 
+
+00:04:31.919 --> 00:04:35.430 align:start position:0%
+of freedom i'm going to go and test
+polynomials<00:04:32.800><c> with</c><00:04:33.040><c> order</c><00:04:33.520><c> 3</c><00:04:33.840><c> to</c><00:04:34.080><c> 7</c><00:04:34.880><c> i'm</c><00:04:35.120><c> going</c>
+
+00:04:35.430 --> 00:04:35.440 align:start position:0%
+polynomials with order 3 to 7 i'm going
+ 
+
+00:04:35.440 --> 00:04:38.310 align:start position:0%
+polynomials with order 3 to 7 i'm going
+to<00:04:35.759><c> fit</c><00:04:36.240><c> my</c><00:04:36.639><c> our</c><00:04:36.800><c> transform</c><00:04:37.440><c> our</c><00:04:37.680><c> original</c>
+
+00:04:38.310 --> 00:04:38.320 align:start position:0%
+to fit my our transform our original
+ 
+
+00:04:38.320 --> 00:04:39.670 align:start position:0%
+to fit my our transform our original
+data
+
+00:04:39.670 --> 00:04:39.680 align:start position:0%
+data
+ 
+
+00:04:39.680 --> 00:04:42.950 align:start position:0%
+data
+and<00:04:39.919><c> then</c><00:04:40.160><c> i'm</c><00:04:40.400><c> going</c><00:04:40.720><c> to</c><00:04:41.199><c> fit</c><00:04:41.680><c> using</c><00:04:42.320><c> ordinary</c>
+
+00:04:42.950 --> 00:04:42.960 align:start position:0%
+and then i'm going to fit using ordinary
+ 
+
+00:04:42.960 --> 00:04:45.030 align:start position:0%
+and then i'm going to fit using ordinary
+least<00:04:43.440><c> squares</c>
+
+00:04:45.030 --> 00:04:45.040 align:start position:0%
+least squares
+ 
+
+00:04:45.040 --> 00:04:46.790 align:start position:0%
+least squares
+once<00:04:45.360><c> i've</c><00:04:45.440><c> done</c><00:04:45.600><c> that</c><00:04:45.840><c> i</c><00:04:45.919><c> can</c><00:04:46.080><c> predict</c><00:04:46.560><c> using</c>
+
+00:04:46.790 --> 00:04:46.800 align:start position:0%
+once i've done that i can predict using
+ 
+
+00:04:46.800 --> 00:04:48.629 align:start position:0%
+once i've done that i can predict using
+my<00:04:46.960><c> original</c><00:04:47.360><c> data</c><00:04:47.840><c> and</c><00:04:47.919><c> fit</c><00:04:48.160><c> the</c><00:04:48.240><c> model</c><00:04:48.560><c> and</c>
+
+00:04:48.629 --> 00:04:48.639 align:start position:0%
+my original data and fit the model and
+ 
+
+00:04:48.639 --> 00:04:50.870 align:start position:0%
+my original data and fit the model and
+i'll<00:04:48.800><c> show</c><00:04:48.960><c> you</c><00:04:49.280><c> the</c><00:04:49.520><c> plots</c><00:04:50.080><c> here</c><00:04:50.560><c> so</c><00:04:50.720><c> by</c>
+
+00:04:50.870 --> 00:04:50.880 align:start position:0%
+i'll show you the plots here so by
+ 
+
+00:04:50.880 --> 00:04:52.629 align:start position:0%
+i'll show you the plots here so by
+looking<00:04:51.120><c> at</c><00:04:51.280><c> this</c><00:04:51.520><c> graph</c><00:04:51.919><c> we</c><00:04:52.080><c> can</c><00:04:52.240><c> actually</c>
+
+00:04:52.629 --> 00:04:52.639 align:start position:0%
+looking at this graph we can actually
+ 
+
+00:04:52.639 --> 00:04:54.629 align:start position:0%
+looking at this graph we can actually
+see<00:04:53.040><c> that</c><00:04:53.680><c> there</c><00:04:53.840><c> are</c><00:04:54.000><c> some</c><00:04:54.160><c> models</c><00:04:54.400><c> that</c><00:04:54.560><c> have</c>
+
+00:04:54.629 --> 00:04:54.639 align:start position:0%
+see that there are some models that have
+ 
+
+00:04:54.639 --> 00:04:56.629 align:start position:0%
+see that there are some models that have
+been<00:04:54.880><c> very</c><00:04:55.199><c> overfitted</c><00:04:55.759><c> and</c><00:04:55.919><c> some</c><00:04:56.160><c> that</c><00:04:56.400><c> have</c>
+
+00:04:56.629 --> 00:04:56.639 align:start position:0%
+been very overfitted and some that have
+ 
+
+00:04:56.639 --> 00:04:58.710 align:start position:0%
+been very overfitted and some that have
+potentially<00:04:57.120><c> underfitted</c><00:04:57.919><c> underfitted</c><00:04:58.560><c> for</c>
+
+00:04:58.710 --> 00:04:58.720 align:start position:0%
+potentially underfitted underfitted for
+ 
+
+00:04:58.720 --> 00:05:00.950 align:start position:0%
+potentially underfitted underfitted for
+example<00:04:59.199><c> the</c><00:04:59.360><c> three</c><00:04:59.600><c> degree</c><00:04:59.919><c> model</c><00:05:00.240><c> in</c><00:05:00.560><c> red</c>
+
+00:05:00.950 --> 00:05:00.960 align:start position:0%
+example the three degree model in red
+ 
+
+00:05:00.960 --> 00:05:02.390 align:start position:0%
+example the three degree model in red
+doesn't<00:05:01.199><c> really</c><00:05:01.520><c> capture</c><00:05:01.919><c> some</c><00:05:02.080><c> of</c><00:05:02.160><c> these</c>
+
+00:05:02.390 --> 00:05:02.400 align:start position:0%
+doesn't really capture some of these
+ 
+
+00:05:02.400 --> 00:05:04.629 align:start position:0%
+doesn't really capture some of these
+dynamics<00:05:03.440><c> during</c><00:05:03.759><c> the</c><00:05:03.919><c> low</c><00:05:04.160><c> points</c><00:05:04.479><c> in</c><00:05:04.560><c> the</c>
+
+00:05:04.629 --> 00:05:04.639 align:start position:0%
+dynamics during the low points in the
+ 
+
+00:05:04.639 --> 00:05:06.710 align:start position:0%
+dynamics during the low points in the
+season<00:05:04.960><c> and</c><00:05:05.120><c> doesn't</c><00:05:05.360><c> capture</c><00:05:06.080><c> this</c><00:05:06.400><c> high</c>
+
+00:05:06.710 --> 00:05:06.720 align:start position:0%
+season and doesn't capture this high
+ 
+
+00:05:06.720 --> 00:05:07.830 align:start position:0%
+season and doesn't capture this high
+point
+
+00:05:07.830 --> 00:05:07.840 align:start position:0%
+point
+ 
+
+00:05:07.840 --> 00:05:10.390 align:start position:0%
+point
+in<00:05:07.919><c> the</c><00:05:08.080><c> season</c><00:05:08.560><c> during</c><00:05:08.960><c> summer</c><00:05:09.680><c> whereas</c>
+
+00:05:10.390 --> 00:05:10.400 align:start position:0%
+in the season during summer whereas
+ 
+
+00:05:10.400 --> 00:05:11.909 align:start position:0%
+in the season during summer whereas
+we've<00:05:10.560><c> got</c><00:05:10.720><c> some</c><00:05:10.960><c> overfitting</c><00:05:11.520><c> here</c><00:05:11.680><c> with</c><00:05:11.840><c> the</c>
+
+00:05:11.909 --> 00:05:11.919 align:start position:0%
+we've got some overfitting here with the
+ 
+
+00:05:11.919 --> 00:05:14.070 align:start position:0%
+we've got some overfitting here with the
+higher<00:05:12.160><c> degree</c><00:05:12.400><c> polynomials</c><00:05:13.280><c> maybe</c><00:05:13.680><c> six</c><00:05:13.919><c> and</c>
+
+00:05:14.070 --> 00:05:14.080 align:start position:0%
+higher degree polynomials maybe six and
+ 
+
+00:05:14.080 --> 00:05:15.749 align:start position:0%
+higher degree polynomials maybe six and
+seven<00:05:14.639><c> where</c><00:05:14.960><c> we're</c><00:05:15.360><c> completely</c>
+
+00:05:15.749 --> 00:05:15.759 align:start position:0%
+seven where we're completely
+ 
+
+00:05:15.759 --> 00:05:17.510 align:start position:0%
+seven where we're completely
+misrepresenting<00:05:16.639><c> the</c><00:05:16.800><c> first</c><00:05:17.120><c> part</c><00:05:17.280><c> of</c><00:05:17.440><c> the</c>
+
+00:05:17.510 --> 00:05:17.520 align:start position:0%
+misrepresenting the first part of the
+ 
+
+00:05:17.520 --> 00:05:18.870 align:start position:0%
+misrepresenting the first part of the
+year
+
+00:05:18.870 --> 00:05:18.880 align:start position:0%
+year
+ 
+
+00:05:18.880 --> 00:05:20.150 align:start position:0%
+year
+so
+
+00:05:20.150 --> 00:05:20.160 align:start position:0%
+so
+ 
+
+00:05:20.160 --> 00:05:22.790 align:start position:0%
+so
+how<00:05:20.320><c> are</c><00:05:20.400><c> we</c><00:05:20.560><c> going</c><00:05:20.639><c> to</c><00:05:20.720><c> get</c><00:05:21.120><c> the</c><00:05:21.280><c> best</c><00:05:21.600><c> fit</c>
+
+00:05:22.790 --> 00:05:22.800 align:start position:0%
+how are we going to get the best fit
+ 
+
+00:05:22.800 --> 00:05:24.790 align:start position:0%
+how are we going to get the best fit
+in<00:05:22.960><c> a</c><00:05:23.039><c> personal</c><00:05:23.759><c> way</c><00:05:24.000><c> and</c><00:05:24.080><c> what</c><00:05:24.240><c> i</c><00:05:24.400><c> mean</c><00:05:24.560><c> by</c>
+
+00:05:24.790 --> 00:05:24.800 align:start position:0%
+in a personal way and what i mean by
+ 
+
+00:05:24.800 --> 00:05:26.870 align:start position:0%
+in a personal way and what i mean by
+that<00:05:25.120><c> is</c><00:05:25.440><c> with</c><00:05:25.759><c> the</c><00:05:25.919><c> least</c><00:05:26.160><c> number</c><00:05:26.400><c> of</c><00:05:26.479><c> degrees</c>
+
+00:05:26.870 --> 00:05:26.880 align:start position:0%
+that is with the least number of degrees
+ 
+
+00:05:26.880 --> 00:05:30.310 align:start position:0%
+that is with the least number of degrees
+of<00:05:26.960><c> freedom</c><00:05:27.600><c> well</c><00:05:28.000><c> we</c><00:05:28.240><c> can</c><00:05:28.479><c> use</c><00:05:28.960><c> the</c><00:05:29.440><c> aka</c>
+
+00:05:30.310 --> 00:05:30.320 align:start position:0%
+of freedom well we can use the aka
+ 
+
+00:05:30.320 --> 00:05:33.510 align:start position:0%
+of freedom well we can use the aka
+information<00:05:30.880><c> criterion</c><00:05:31.520><c> the</c><00:05:31.840><c> aic</c><00:05:32.639><c> criterion</c>
+
+00:05:33.510 --> 00:05:33.520 align:start position:0%
+information criterion the aic criterion
+ 
+
+00:05:33.520 --> 00:05:35.830 align:start position:0%
+information criterion the aic criterion
+to<00:05:33.680><c> judge</c><00:05:33.919><c> the</c><00:05:34.080><c> tarsonomy</c><00:05:34.800><c> between</c><00:05:35.280><c> model</c><00:05:35.520><c> fit</c>
+
+00:05:35.830 --> 00:05:35.840 align:start position:0%
+to judge the tarsonomy between model fit
+ 
+
+00:05:35.840 --> 00:05:37.350 align:start position:0%
+to judge the tarsonomy between model fit
+and<00:05:36.000><c> complexity</c>
+
+00:05:37.350 --> 00:05:37.360 align:start position:0%
+and complexity
+ 
+
+00:05:37.360 --> 00:05:39.590 align:start position:0%
+and complexity
+so<00:05:37.759><c> all</c><00:05:37.919><c> i</c><00:05:38.000><c> need</c><00:05:38.240><c> to</c><00:05:38.320><c> do</c><00:05:38.639><c> is</c><00:05:38.880><c> that</c><00:05:39.120><c> because</c><00:05:39.360><c> i've</c>
+
+00:05:39.590 --> 00:05:39.600 align:start position:0%
+so all i need to do is that because i've
+ 
+
+00:05:39.600 --> 00:05:40.629 align:start position:0%
+so all i need to do is that because i've
+used<00:05:39.759><c> the</c>
+
+00:05:40.629 --> 00:05:40.639 align:start position:0%
+used the
+ 
+
+00:05:40.639 --> 00:05:43.670 align:start position:0%
+used the
+ols<00:05:41.680><c> module</c><00:05:42.240><c> using</c><00:05:42.560><c> the</c><00:05:42.639><c> stats</c><00:05:42.960><c> models</c><00:05:43.360><c> i</c><00:05:43.520><c> can</c>
+
+00:05:43.670 --> 00:05:43.680 align:start position:0%
+ols module using the stats models i can
+ 
+
+00:05:43.680 --> 00:05:47.029 align:start position:0%
+ols module using the stats models i can
+just<00:05:43.919><c> print</c><00:05:44.240><c> out</c><00:05:44.720><c> um</c><00:05:45.360><c> the</c><00:05:45.600><c> aic</c><00:05:46.160><c> criterion</c><00:05:46.880><c> and</c>
+
+00:05:47.029 --> 00:05:47.039 align:start position:0%
+just print out um the aic criterion and
+ 
+
+00:05:47.039 --> 00:05:49.270 align:start position:0%
+just print out um the aic criterion and
+of<00:05:47.120><c> course</c><00:05:47.600><c> we</c><00:05:47.840><c> want</c><00:05:48.080><c> to</c><00:05:48.320><c> go</c><00:05:48.560><c> for</c><00:05:48.720><c> the</c><00:05:48.880><c> lowest</c>
+
+00:05:49.270 --> 00:05:49.280 align:start position:0%
+of course we want to go for the lowest
+ 
+
+00:05:49.280 --> 00:05:50.629 align:start position:0%
+of course we want to go for the lowest
+aic
+
+00:05:50.629 --> 00:05:50.639 align:start position:0%
+aic
+ 
+
+00:05:50.639 --> 00:05:52.710 align:start position:0%
+aic
+which<00:05:50.880><c> is</c><00:05:50.960><c> parsonamous</c><00:05:51.680><c> so</c><00:05:51.919><c> here</c><00:05:52.240><c> i'm</c><00:05:52.400><c> going</c>
+
+00:05:52.710 --> 00:05:52.720 align:start position:0%
+which is parsonamous so here i'm going
+ 
+
+00:05:52.720 --> 00:05:56.150 align:start position:0%
+which is parsonamous so here i'm going
+to<00:05:52.800><c> pick</c><00:05:53.520><c> um</c><00:05:54.080><c> the</c><00:05:54.320><c> order</c><00:05:54.960><c> the</c><00:05:55.120><c> fifth</c><00:05:55.520><c> order</c>
+
+00:05:56.150 --> 00:05:56.160 align:start position:0%
+to pick um the order the fifth order
+ 
+
+00:05:56.160 --> 00:05:58.230 align:start position:0%
+to pick um the order the fifth order
+polynomial<00:05:56.960><c> and</c><00:05:57.199><c> obviously</c><00:05:57.600><c> in</c><00:05:57.680><c> the</c><00:05:57.759><c> graph</c><00:05:58.160><c> we</c>
+
+00:05:58.230 --> 00:05:58.240 align:start position:0%
+polynomial and obviously in the graph we
+ 
+
+00:05:58.240 --> 00:06:00.309 align:start position:0%
+polynomial and obviously in the graph we
+can<00:05:58.400><c> see</c><00:05:58.560><c> that</c><00:05:58.720><c> that</c><00:05:58.880><c> fits</c><00:05:59.199><c> quite</c><00:05:59.520><c> well</c><00:06:00.000><c> if</c><00:06:00.160><c> we</c>
+
+00:06:00.309 --> 00:06:00.319 align:start position:0%
+can see that that fits quite well if we
+ 
+
+00:06:00.319 --> 00:06:02.150 align:start position:0%
+can see that that fits quite well if we
+then<00:06:00.479><c> print</c><00:06:00.720><c> that</c><00:06:00.960><c> out</c><00:06:01.199><c> more</c><00:06:01.440><c> explicitly</c><00:06:02.080><c> you</c>
+
+00:06:02.150 --> 00:06:02.160 align:start position:0%
+then print that out more explicitly you
+ 
+
+00:06:02.160 --> 00:06:04.790 align:start position:0%
+then print that out more explicitly you
+can<00:06:02.400><c> see</c><00:06:02.720><c> that</c><00:06:03.280><c> here's</c><00:06:03.680><c> our</c><00:06:03.840><c> polynomial</c><00:06:04.479><c> fit</c>
+
+00:06:04.790 --> 00:06:04.800 align:start position:0%
+can see that here's our polynomial fit
+ 
+
+00:06:04.800 --> 00:06:08.550 align:start position:0%
+can see that here's our polynomial fit
+with<00:06:05.440><c> five</c><00:06:06.319><c> fifth</c><00:06:06.720><c> order</c><00:06:07.120><c> polynomial</c><00:06:08.160><c> in</c><00:06:08.319><c> the</c>
+
+00:06:08.550 --> 00:06:08.560 align:start position:0%
+with five fifth order polynomial in the
+ 
+
+00:06:08.560 --> 00:06:11.749 align:start position:0%
+with five fifth order polynomial in the
+red<00:06:09.039><c> and</c><00:06:09.199><c> that</c><00:06:09.520><c> fits</c><00:06:09.919><c> our</c><00:06:10.160><c> volatility</c><00:06:11.039><c> nicely</c>
+
+00:06:11.749 --> 00:06:11.759 align:start position:0%
+red and that fits our volatility nicely
+ 
+
+00:06:11.759 --> 00:06:13.270 align:start position:0%
+red and that fits our volatility nicely
+now<00:06:12.000><c> let's</c><00:06:12.240><c> take</c><00:06:12.400><c> a</c><00:06:12.479><c> look</c><00:06:12.720><c> at</c><00:06:12.880><c> another</c>
+
+00:06:13.270 --> 00:06:13.280 align:start position:0%
+now let's take a look at another
+ 
+
+00:06:13.280 --> 00:06:15.110 align:start position:0%
+now let's take a look at another
+methodology<00:06:13.919><c> and</c><00:06:14.000><c> this</c><00:06:14.240><c> is</c><00:06:14.319><c> the</c><00:06:14.560><c> local</c><00:06:14.960><c> and</c>
+
+00:06:15.110 --> 00:06:15.120 align:start position:0%
+methodology and this is the local and
+ 
+
+00:06:15.120 --> 00:06:17.029 align:start position:0%
+methodology and this is the local and
+non-parametric<00:06:15.919><c> regression</c><00:06:16.400><c> so</c><00:06:16.560><c> here</c><00:06:16.800><c> we</c><00:06:16.880><c> can</c>
+
+00:06:17.029 --> 00:06:17.039 align:start position:0%
+non-parametric regression so here we can
+ 
+
+00:06:17.039 --> 00:06:19.189 align:start position:0%
+non-parametric regression so here we can
+use<00:06:17.280><c> spline</c><00:06:17.840><c> so</c><00:06:18.080><c> interpolation</c><00:06:18.720><c> is</c><00:06:18.800><c> a</c><00:06:18.880><c> method</c>
+
+00:06:19.189 --> 00:06:19.199 align:start position:0%
+use spline so interpolation is a method
+ 
+
+00:06:19.199 --> 00:06:20.950 align:start position:0%
+use spline so interpolation is a method
+of<00:06:19.360><c> estimating</c><00:06:19.919><c> unknown</c><00:06:20.240><c> data</c><00:06:20.560><c> points</c><00:06:20.800><c> in</c><00:06:20.880><c> a</c>
+
+00:06:20.950 --> 00:06:20.960 align:start position:0%
+of estimating unknown data points in a
+ 
+
+00:06:20.960 --> 00:06:23.350 align:start position:0%
+of estimating unknown data points in a
+given<00:06:21.280><c> range</c><00:06:22.000><c> spline</c><00:06:22.400><c> interpolation</c><00:06:23.120><c> is</c><00:06:23.280><c> a</c>
+
+00:06:23.350 --> 00:06:23.360 align:start position:0%
+given range spline interpolation is a
+ 
+
+00:06:23.360 --> 00:06:24.870 align:start position:0%
+given range spline interpolation is a
+type<00:06:23.680><c> of</c><00:06:23.759><c> piecewise</c><00:06:24.240><c> polynomial</c>
+
+00:06:24.870 --> 00:06:24.880 align:start position:0%
+type of piecewise polynomial
+ 
+
+00:06:24.880 --> 00:06:26.629 align:start position:0%
+type of piecewise polynomial
+interpolation<00:06:25.520><c> method</c><00:06:26.080><c> so</c><00:06:26.319><c> spline</c>
+
+00:06:26.629 --> 00:06:26.639 align:start position:0%
+interpolation method so spline
+ 
+
+00:06:26.639 --> 00:06:28.629 align:start position:0%
+interpolation method so spline
+interpolation<00:06:27.440><c> is</c><00:06:27.520><c> a</c><00:06:27.680><c> useful</c><00:06:28.000><c> method</c><00:06:28.400><c> in</c>
+
+00:06:28.629 --> 00:06:28.639 align:start position:0%
+interpolation is a useful method in
+ 
+
+00:06:28.639 --> 00:06:31.189 align:start position:0%
+interpolation is a useful method in
+smoothing<00:06:29.039><c> the</c><00:06:29.199><c> curve</c><00:06:29.520><c> of</c><00:06:29.600><c> surface</c><00:06:30.080><c> data</c><00:06:30.800><c> now</c>
+
+00:06:31.189 --> 00:06:31.199 align:start position:0%
+smoothing the curve of surface data now
+ 
+
+00:06:31.199 --> 00:06:34.070 align:start position:0%
+smoothing the curve of surface data now
+a<00:06:31.360><c> b</c><00:06:31.680><c> spline</c><00:06:32.400><c> curve</c><00:06:32.720><c> fitting</c><00:06:33.120><c> specifically</c><00:06:33.919><c> or</c>
+
+00:06:34.070 --> 00:06:34.080 align:start position:0%
+a b spline curve fitting specifically or
+ 
+
+00:06:34.080 --> 00:06:36.230 align:start position:0%
+a b spline curve fitting specifically or
+basis<00:06:34.479><c> spline</c><00:06:35.039><c> is</c><00:06:35.199><c> a</c><00:06:35.280><c> curve</c><00:06:35.600><c> approximation</c>
+
+00:06:36.230 --> 00:06:36.240 align:start position:0%
+basis spline is a curve approximation
+ 
+
+00:06:36.240 --> 00:06:38.550 align:start position:0%
+basis spline is a curve approximation
+method<00:06:36.800><c> that</c><00:06:37.039><c> requires</c><00:06:37.600><c> parameters</c><00:06:38.080><c> such</c><00:06:38.319><c> as</c>
+
+00:06:38.550 --> 00:06:38.560 align:start position:0%
+method that requires parameters such as
+ 
+
+00:06:38.560 --> 00:06:41.270 align:start position:0%
+method that requires parameters such as
+knots<00:06:39.280><c> spline</c><00:06:39.680><c> coefficients</c><00:06:40.479><c> and</c><00:06:40.560><c> degree</c><00:06:41.199><c> of</c>
+
+00:06:41.270 --> 00:06:41.280 align:start position:0%
+knots spline coefficients and degree of
+ 
+
+00:06:41.280 --> 00:06:43.749 align:start position:0%
+knots spline coefficients and degree of
+the<00:06:41.440><c> spline</c><00:06:42.160><c> so</c><00:06:42.479><c> to</c><00:06:42.720><c> construct</c><00:06:43.280><c> a</c><00:06:43.360><c> smoother</c>
+
+00:06:43.749 --> 00:06:43.759 align:start position:0%
+the spline so to construct a smoother
+ 
+
+00:06:43.759 --> 00:06:45.749 align:start position:0%
+the spline so to construct a smoother
+spline<00:06:44.240><c> fit</c><00:06:44.479><c> we</c><00:06:44.639><c> need</c><00:06:44.800><c> to</c><00:06:44.960><c> specify</c><00:06:45.360><c> the</c><00:06:45.520><c> number</c>
+
+00:06:45.749 --> 00:06:45.759 align:start position:0%
+spline fit we need to specify the number
+ 
+
+00:06:45.759 --> 00:06:48.150 align:start position:0%
+spline fit we need to specify the number
+of<00:06:46.160><c> knots</c><00:06:46.720><c> and</c><00:06:46.880><c> this</c><00:06:47.039><c> is</c><00:06:47.120><c> the</c><00:06:47.280><c> number</c><00:06:47.520><c> of</c><00:06:47.759><c> knots</c>
+
+00:06:48.150 --> 00:06:48.160 align:start position:0%
+of knots and this is the number of knots
+ 
+
+00:06:48.160 --> 00:06:50.309 align:start position:0%
+of knots and this is the number of knots
+within<00:06:48.720><c> our</c><00:06:48.960><c> given</c><00:06:49.360><c> data</c><00:06:49.680><c> set</c><00:06:49.919><c> that</c><00:06:50.080><c> we're</c>
+
+00:06:50.309 --> 00:06:50.319 align:start position:0%
+within our given data set that we're
+ 
+
+00:06:50.319 --> 00:06:53.909 align:start position:0%
+within our given data set that we're
+actually<00:06:50.800><c> defining</c><00:06:51.840><c> um</c><00:06:52.400><c> to</c><00:06:52.639><c> smooth</c><00:06:53.280><c> out</c><00:06:53.680><c> our</c>
+
+00:06:53.909 --> 00:06:53.919 align:start position:0%
+actually defining um to smooth out our
+ 
+
+00:06:53.919 --> 00:06:56.309 align:start position:0%
+actually defining um to smooth out our
+curve<00:06:54.639><c> so</c><00:06:54.960><c> knots</c><00:06:55.280><c> are</c><00:06:55.440><c> the</c><00:06:55.599><c> joints</c><00:06:56.080><c> on</c><00:06:56.160><c> the</c>
+
+00:06:56.309 --> 00:06:56.319 align:start position:0%
+curve so knots are the joints on the
+ 
+
+00:06:56.319 --> 00:06:58.550 align:start position:0%
+curve so knots are the joints on the
+polynomial<00:06:57.120><c> segments</c><00:06:57.520><c> and</c><00:06:57.599><c> we</c><00:06:57.759><c> get</c><00:06:57.919><c> to</c><00:06:58.080><c> define</c>
+
+00:06:58.550 --> 00:06:58.560 align:start position:0%
+polynomial segments and we get to define
+ 
+
+00:06:58.560 --> 00:07:00.790 align:start position:0%
+polynomial segments and we get to define
+the<00:06:58.800><c> number</c><00:06:59.120><c> of</c><00:06:59.280><c> them</c><00:06:59.520><c> that</c><00:06:59.680><c> they</c><00:06:59.919><c> are</c><00:07:00.400><c> so</c><00:07:00.639><c> the</c>
+
+00:07:00.790 --> 00:07:00.800 align:start position:0%
+the number of them that they are so the
+ 
+
+00:07:00.800 --> 00:07:03.110 align:start position:0%
+the number of them that they are so the
+steps<00:07:01.199><c> in</c><00:07:01.440><c> b-spline</c><00:07:02.080><c> curve</c><00:07:02.319><c> fitting</c><00:07:02.720><c> is</c><00:07:02.880><c> that</c>
+
+00:07:03.110 --> 00:07:03.120 align:start position:0%
+steps in b-spline curve fitting is that
+ 
+
+00:07:03.120 --> 00:07:05.189 align:start position:0%
+steps in b-spline curve fitting is that
+based<00:07:03.440><c> on</c><00:07:03.520><c> the</c><00:07:03.680><c> knots</c><00:07:03.919><c> number</c><00:07:04.240><c> that</c><00:07:04.400><c> we</c><00:07:04.560><c> define</c>
+
+00:07:05.189 --> 00:07:05.199 align:start position:0%
+based on the knots number that we define
+ 
+
+00:07:05.199 --> 00:07:07.749 align:start position:0%
+based on the knots number that we define
+we'll<00:07:05.360><c> determine</c><00:07:05.840><c> the</c><00:07:06.000><c> new</c><00:07:06.400><c> x-data</c><00:07:07.039><c> vector</c><00:07:07.520><c> by</c>
+
+00:07:07.749 --> 00:07:07.759 align:start position:0%
+we'll determine the new x-data vector by
+ 
+
+00:07:07.759 --> 00:07:09.830 align:start position:0%
+we'll determine the new x-data vector by
+using<00:07:08.080><c> the</c><00:07:08.240><c> quantile</c><00:07:08.800><c> function</c>
+
+00:07:09.830 --> 00:07:09.840 align:start position:0%
+using the quantile function
+ 
+
+00:07:09.840 --> 00:07:12.870 align:start position:0%
+using the quantile function
+then<00:07:10.319><c> we'll</c><00:07:10.479><c> be</c><00:07:10.639><c> using</c><00:07:10.960><c> the</c><00:07:11.199><c> spl</c><00:07:11.840><c> rep</c><00:07:12.160><c> function</c>
+
+00:07:12.870 --> 00:07:12.880 align:start position:0%
+then we'll be using the spl rep function
+ 
+
+00:07:12.880 --> 00:07:14.950 align:start position:0%
+then we'll be using the spl rep function
+and<00:07:13.039><c> it</c><00:07:13.120><c> returns</c><00:07:13.840><c> a</c><00:07:14.000><c> tuple</c><00:07:14.400><c> containing</c><00:07:14.880><c> the</c>
+
+00:07:14.950 --> 00:07:14.960 align:start position:0%
+and it returns a tuple containing the
+ 
+
+00:07:14.960 --> 00:07:16.790 align:start position:0%
+and it returns a tuple containing the
+vector<00:07:15.360><c> of</c><00:07:15.680><c> you</c><00:07:15.840><c> guessed</c><00:07:16.160><c> it</c><00:07:16.240><c> the</c><00:07:16.319><c> parameters</c>
+
+00:07:16.790 --> 00:07:16.800 align:start position:0%
+vector of you guessed it the parameters
+ 
+
+00:07:16.800 --> 00:07:19.510 align:start position:0%
+vector of you guessed it the parameters
+that<00:07:16.880><c> we</c><00:07:17.039><c> need</c><00:07:17.599><c> not</c><00:07:17.919><c> spline</c><00:07:18.319><c> coefficients</c><00:07:19.120><c> and</c>
+
+00:07:19.510 --> 00:07:19.520 align:start position:0%
+that we need not spline coefficients and
+ 
+
+00:07:19.520 --> 00:07:21.990 align:start position:0%
+that we need not spline coefficients and
+the<00:07:19.680><c> degree</c><00:07:20.400><c> of</c><00:07:20.639><c> the</c><00:07:20.800><c> spline</c>
+
+00:07:21.990 --> 00:07:22.000 align:start position:0%
+the degree of the spline
+ 
+
+00:07:22.000 --> 00:07:24.390 align:start position:0%
+the degree of the spline
+so<00:07:22.400><c> then</c><00:07:22.639><c> we're</c><00:07:22.800><c> going</c><00:07:22.960><c> to</c><00:07:23.120><c> use</c><00:07:23.520><c> the</c><00:07:23.759><c> b</c><00:07:24.000><c> spline</c>
+
+00:07:24.390 --> 00:07:24.400 align:start position:0%
+so then we're going to use the b spline
+ 
+
+00:07:24.400 --> 00:07:27.270 align:start position:0%
+so then we're going to use the b spline
+class<00:07:24.720><c> to</c><00:07:24.880><c> construct</c><00:07:25.520><c> spline</c><00:07:25.919><c> fit</c><00:07:26.240><c> on</c><00:07:26.560><c> this</c><00:07:26.880><c> x</c>
+
+00:07:27.270 --> 00:07:27.280 align:start position:0%
+class to construct spline fit on this x
+ 
+
+00:07:27.280 --> 00:07:28.790 align:start position:0%
+class to construct spline fit on this x
+vector<00:07:27.840><c> data</c>
+
+00:07:28.790 --> 00:07:28.800 align:start position:0%
+vector data
+ 
+
+00:07:28.800 --> 00:07:31.270 align:start position:0%
+vector data
+so<00:07:29.039><c> from</c><00:07:29.360><c> scipy</c><00:07:29.840><c> we're</c><00:07:30.000><c> going</c><00:07:30.319><c> to</c><00:07:30.720><c> import</c>
+
+00:07:31.270 --> 00:07:31.280 align:start position:0%
+so from scipy we're going to import
+ 
+
+00:07:31.280 --> 00:07:33.589 align:start position:0%
+so from scipy we're going to import
+interpolate<00:07:32.160><c> and</c><00:07:32.400><c> we're</c><00:07:32.560><c> going</c><00:07:32.800><c> to</c><00:07:32.960><c> use</c><00:07:33.280><c> our</c>
+
+00:07:33.589 --> 00:07:33.599 align:start position:0%
+interpolate and we're going to use our
+ 
+
+00:07:33.599 --> 00:07:35.110 align:start position:0%
+interpolate and we're going to use our
+data<00:07:34.160><c> of</c>
+
+00:07:35.110 --> 00:07:35.120 align:start position:0%
+data of
+ 
+
+00:07:35.120 --> 00:07:36.790 align:start position:0%
+data of
+the<00:07:35.440><c> temperature</c><00:07:35.840><c> volatility</c><00:07:36.560><c> and</c><00:07:36.720><c> the</c>
+
+00:07:36.790 --> 00:07:36.800 align:start position:0%
+the temperature volatility and the
+ 
+
+00:07:36.800 --> 00:07:39.110 align:start position:0%
+the temperature volatility and the
+standard<00:07:37.120><c> deviation</c><00:07:37.840><c> over</c><00:07:38.160><c> those</c>
+
+00:07:39.110 --> 00:07:39.120 align:start position:0%
+standard deviation over those
+ 
+
+00:07:39.120 --> 00:07:41.110 align:start position:0%
+standard deviation over those
+days<00:07:39.440><c> in</c><00:07:39.599><c> the</c><00:07:39.680><c> year</c>
+
+00:07:41.110 --> 00:07:41.120 align:start position:0%
+days in the year
+ 
+
+00:07:41.120 --> 00:07:42.790 align:start position:0%
+days in the year
+we're<00:07:41.280><c> going</c><00:07:41.520><c> to</c><00:07:41.759><c> first</c><00:07:42.080><c> off</c><00:07:42.240><c> just</c><00:07:42.400><c> to</c><00:07:42.560><c> find</c>
+
+00:07:42.790 --> 00:07:42.800 align:start position:0%
+we're going to first off just to find
+ 
+
+00:07:42.800 --> 00:07:45.350 align:start position:0%
+we're going to first off just to find
+the<00:07:42.880><c> not</c><00:07:43.120><c> number</c><00:07:43.520><c> as</c><00:07:43.759><c> 5</c><00:07:44.400><c> to</c><00:07:44.560><c> show</c><00:07:44.720><c> you</c><00:07:44.879><c> how</c><00:07:45.120><c> this</c>
+
+00:07:45.350 --> 00:07:45.360 align:start position:0%
+the not number as 5 to show you how this
+ 
+
+00:07:45.360 --> 00:07:47.990 align:start position:0%
+the not number as 5 to show you how this
+works<00:07:45.840><c> we're</c><00:07:46.080><c> then</c><00:07:46.240><c> going</c><00:07:46.479><c> to</c><00:07:46.720><c> find</c><00:07:47.199><c> the</c><00:07:47.440><c> new</c>
+
+00:07:47.990 --> 00:07:48.000 align:start position:0%
+works we're then going to find the new
+ 
+
+00:07:48.000 --> 00:07:51.189 align:start position:0%
+works we're then going to find the new
+quartile<00:07:48.639><c> representation</c><00:07:49.680><c> of</c><00:07:50.080><c> this</c><00:07:50.400><c> number</c>
+
+00:07:51.189 --> 00:07:51.199 align:start position:0%
+quartile representation of this number
+ 
+
+00:07:51.199 --> 00:07:52.869 align:start position:0%
+quartile representation of this number
+and<00:07:51.440><c> then</c><00:07:51.680><c> we're</c><00:07:51.840><c> going</c><00:07:52.080><c> to</c><00:07:52.319><c> pass</c><00:07:52.639><c> that</c>
+
+00:07:52.869 --> 00:07:52.879 align:start position:0%
+and then we're going to pass that
+ 
+
+00:07:52.879 --> 00:07:56.150 align:start position:0%
+and then we're going to pass that
+through<00:07:53.280><c> into</c><00:07:53.520><c> our</c><00:07:53.759><c> spl</c><00:07:54.639><c> rep</c><00:07:54.960><c> function</c><00:07:55.440><c> in</c><00:07:55.919><c> sci</c>
+
+00:07:56.150 --> 00:07:56.160 align:start position:0%
+through into our spl rep function in sci
+ 
+
+00:07:56.160 --> 00:07:58.710 align:start position:0%
+through into our spl rep function in sci
+pi<00:07:56.560><c> interpolate</c><00:07:57.440><c> that</c><00:07:57.599><c> gives</c><00:07:57.840><c> us</c><00:07:58.000><c> back</c><00:07:58.400><c> the</c>
+
+00:07:58.710 --> 00:07:58.720 align:start position:0%
+pi interpolate that gives us back the
+ 
+
+00:07:58.720 --> 00:08:02.230 align:start position:0%
+pi interpolate that gives us back the
+tuple<00:07:59.440><c> of</c><00:07:59.680><c> which</c><00:08:00.080><c> we</c><00:08:00.240><c> get</c><00:08:00.560><c> the</c><00:08:00.879><c> not</c><00:08:01.199><c> number</c>
+
+00:08:02.230 --> 00:08:02.240 align:start position:0%
+tuple of which we get the not number
+ 
+
+00:08:02.240 --> 00:08:04.390 align:start position:0%
+tuple of which we get the not number
+we<00:08:02.319><c> get</c><00:08:02.479><c> the</c><00:08:02.639><c> coefficients</c><00:08:03.520><c> and</c><00:08:03.680><c> then</c><00:08:03.840><c> we</c><00:08:04.000><c> get</c>
+
+00:08:04.390 --> 00:08:04.400 align:start position:0%
+we get the coefficients and then we get
+ 
+
+00:08:04.400 --> 00:08:06.790 align:start position:0%
+we get the coefficients and then we get
+the<00:08:05.120><c> degrees</c>
+
+00:08:06.790 --> 00:08:06.800 align:start position:0%
+the degrees
+ 
+
+00:08:06.800 --> 00:08:09.110 align:start position:0%
+the degrees
+of<00:08:06.960><c> complexity</c><00:08:07.520><c> of</c><00:08:07.599><c> the</c><00:08:07.680><c> b-spline</c><00:08:08.479><c> so</c><00:08:08.720><c> then</c>
+
+00:08:09.110 --> 00:08:09.120 align:start position:0%
+of complexity of the b-spline so then
+ 
+
+00:08:09.120 --> 00:08:12.469 align:start position:0%
+of complexity of the b-spline so then
+now<00:08:09.440><c> we</c><00:08:09.599><c> can</c><00:08:09.919><c> fit</c><00:08:10.479><c> this</c><00:08:10.800><c> b-spline</c><00:08:11.520><c> model</c><00:08:12.000><c> using</c>
+
+00:08:12.469 --> 00:08:12.479 align:start position:0%
+now we can fit this b-spline model using
+ 
+
+00:08:12.479 --> 00:08:13.990 align:start position:0%
+now we can fit this b-spline model using
+that<00:08:12.800><c> tuple</c>
+
+00:08:13.990 --> 00:08:14.000 align:start position:0%
+that tuple
+ 
+
+00:08:14.000 --> 00:08:16.150 align:start position:0%
+that tuple
+that<00:08:14.160><c> we've</c><00:08:14.400><c> just</c><00:08:14.639><c> said</c><00:08:15.120><c> with</c><00:08:15.440><c> our</c><00:08:15.680><c> original</c>
+
+00:08:16.150 --> 00:08:16.160 align:start position:0%
+that we've just said with our original
+ 
+
+00:08:16.160 --> 00:08:18.710 align:start position:0%
+that we've just said with our original
+data<00:08:16.479><c> set</c><00:08:16.960><c> and</c><00:08:17.120><c> what</c><00:08:17.280><c> you</c><00:08:17.520><c> get</c><00:08:17.919><c> is</c>
+
+00:08:18.710 --> 00:08:18.720 align:start position:0%
+data set and what you get is
+ 
+
+00:08:18.720 --> 00:08:21.430 align:start position:0%
+data set and what you get is
+essentially<00:08:19.280><c> a</c><00:08:19.440><c> spline</c><00:08:19.919><c> fit</c><00:08:20.240><c> as</c><00:08:20.479><c> we</c><00:08:20.639><c> have</c><00:08:20.960><c> here</c>
+
+00:08:21.430 --> 00:08:21.440 align:start position:0%
+essentially a spline fit as we have here
+ 
+
+00:08:21.440 --> 00:08:24.550 align:start position:0%
+essentially a spline fit as we have here
+in<00:08:21.759><c> red</c><00:08:22.319><c> so</c><00:08:22.560><c> this</c><00:08:22.720><c> is</c><00:08:22.879><c> with</c><00:08:23.199><c> a</c><00:08:23.840><c> five</c><00:08:24.160><c> number</c><00:08:24.400><c> of</c>
+
+00:08:24.550 --> 00:08:24.560 align:start position:0%
+in red so this is with a five number of
+ 
+
+00:08:24.560 --> 00:08:26.469 align:start position:0%
+in red so this is with a five number of
+knots<00:08:24.879><c> but</c><00:08:25.039><c> what</c><00:08:25.199><c> happens</c><00:08:25.599><c> when</c><00:08:25.840><c> we</c><00:08:26.080><c> want</c><00:08:26.240><c> to</c>
+
+00:08:26.469 --> 00:08:26.479 align:start position:0%
+knots but what happens when we want to
+ 
+
+00:08:26.479 --> 00:08:28.869 align:start position:0%
+knots but what happens when we want to
+test<00:08:26.800><c> different</c><00:08:27.199><c> number</c><00:08:27.440><c> of</c><00:08:27.680><c> knots</c><00:08:28.319><c> aka</c>
+
+00:08:28.869 --> 00:08:28.879 align:start position:0%
+test different number of knots aka
+ 
+
+00:08:28.879 --> 00:08:31.510 align:start position:0%
+test different number of knots aka
+adding<00:08:29.199><c> complexity</c><00:08:30.000><c> to</c><00:08:30.240><c> our</c><00:08:30.479><c> model</c><00:08:31.120><c> well</c><00:08:31.280><c> now</c>
+
+00:08:31.510 --> 00:08:31.520 align:start position:0%
+adding complexity to our model well now
+ 
+
+00:08:31.520 --> 00:08:34.790 align:start position:0%
+adding complexity to our model well now
+i<00:08:31.680><c> can</c><00:08:31.840><c> define</c><00:08:32.320><c> a</c><00:08:32.560><c> spline</c><00:08:32.959><c> function</c><00:08:33.599><c> when</c>
+
+00:08:34.790 --> 00:08:34.800 align:start position:0%
+i can define a spline function when
+ 
+
+00:08:34.800 --> 00:08:37.670 align:start position:0%
+i can define a spline function when
+i've<00:08:35.039><c> actually</c><00:08:35.519><c> defined</c><00:08:36.159><c> my</c><00:08:36.479><c> number</c><00:08:36.719><c> of</c><00:08:36.959><c> knots</c>
+
+00:08:37.670 --> 00:08:37.680 align:start position:0%
+i've actually defined my number of knots
+ 
+
+00:08:37.680 --> 00:08:39.589 align:start position:0%
+i've actually defined my number of knots
+the<00:08:37.839><c> reason</c><00:08:38.240><c> that</c><00:08:38.320><c> we</c><00:08:38.479><c> have</c><00:08:38.719><c> plus</c><00:08:39.039><c> two</c><00:08:39.200><c> here</c><00:08:39.519><c> is</c>
+
+00:08:39.589 --> 00:08:39.599 align:start position:0%
+the reason that we have plus two here is
+ 
+
+00:08:39.599 --> 00:08:42.550 align:start position:0%
+the reason that we have plus two here is
+because<00:08:39.919><c> you</c><00:08:40.159><c> always</c><00:08:40.560><c> have</c><00:08:40.959><c> two</c><00:08:41.440><c> knots</c><00:08:41.839><c> at</c><00:08:42.000><c> the</c>
+
+00:08:42.550 --> 00:08:42.560 align:start position:0%
+because you always have two knots at the
+ 
+
+00:08:42.560 --> 00:08:46.790 align:start position:0%
+because you always have two knots at the
+start<00:08:43.039><c> and</c><00:08:43.200><c> the</c><00:08:43.519><c> end</c><00:08:44.240><c> of</c><00:08:44.640><c> your</c><00:08:44.959><c> data</c><00:08:45.360><c> series</c>
+
+00:08:46.790 --> 00:08:46.800 align:start position:0%
+start and the end of your data series
+ 
+
+00:08:46.800 --> 00:08:49.990 align:start position:0%
+start and the end of your data series
+so<00:08:47.360><c> here</c><00:08:47.760><c> we've</c><00:08:48.160><c> um</c><00:08:48.640><c> just</c><00:08:48.880><c> getting</c><00:08:49.279><c> our</c><00:08:49.519><c> y</c><00:08:49.760><c> fit</c>
+
+00:08:49.990 --> 00:08:50.000 align:start position:0%
+so here we've um just getting our y fit
+ 
+
+00:08:50.000 --> 00:08:51.590 align:start position:0%
+so here we've um just getting our y fit
+for<00:08:50.160><c> each</c><00:08:50.480><c> different</c><00:08:50.800><c> interpolation</c><00:08:51.440><c> with</c>
+
+00:08:51.590 --> 00:08:51.600 align:start position:0%
+for each different interpolation with
+ 
+
+00:08:51.600 --> 00:08:53.350 align:start position:0%
+for each different interpolation with
+the<00:08:51.680><c> number</c><00:08:51.920><c> of</c><00:08:52.080><c> knots</c><00:08:52.320><c> given</c><00:08:52.720><c> so</c><00:08:53.040><c> here</c><00:08:53.279><c> the</c>
+
+00:08:53.350 --> 00:08:53.360 align:start position:0%
+the number of knots given so here the
+ 
+
+00:08:53.360 --> 00:08:55.829 align:start position:0%
+the number of knots given so here the
+number<00:08:53.600><c> of</c><00:08:53.680><c> knots</c><00:08:53.920><c> i'm</c><00:08:54.080><c> testing</c><00:08:54.480><c> is</c><00:08:54.640><c> 3</c><00:08:55.040><c> 10</c><00:08:55.440><c> 20</c>
+
+00:08:55.829 --> 00:08:55.839 align:start position:0%
+number of knots i'm testing is 3 10 20
+ 
+
+00:08:55.839 --> 00:08:58.949 align:start position:0%
+number of knots i'm testing is 3 10 20
+30<00:08:56.320><c> 50</c><00:08:56.720><c> and</c><00:08:56.880><c> 80</c><00:08:57.519><c> and</c><00:08:57.760><c> i'm</c><00:08:57.920><c> going</c><00:08:58.080><c> to</c><00:08:58.240><c> plot</c><00:08:58.560><c> those</c>
+
+00:08:58.949 --> 00:08:58.959 align:start position:0%
+30 50 and 80 and i'm going to plot those
+ 
+
+00:08:58.959 --> 00:09:01.350 align:start position:0%
+30 50 and 80 and i'm going to plot those
+out<00:08:59.760><c> now</c><00:09:00.080><c> the</c><00:09:00.320><c> other</c><00:09:00.480><c> number</c><00:09:00.800><c> i've</c><00:09:00.959><c> plotted</c>
+
+00:09:01.350 --> 00:09:01.360 align:start position:0%
+out now the other number i've plotted
+ 
+
+00:09:01.360 --> 00:09:03.910 align:start position:0%
+out now the other number i've plotted
+here<00:09:01.839><c> is</c><00:09:02.480><c> the</c><00:09:02.640><c> residual</c><00:09:03.200><c> sum</c><00:09:03.360><c> of</c><00:09:03.519><c> squares</c><00:09:03.839><c> the</c>
+
+00:09:03.910 --> 00:09:03.920 align:start position:0%
+here is the residual sum of squares the
+ 
+
+00:09:03.920 --> 00:09:05.670 align:start position:0%
+here is the residual sum of squares the
+mean<00:09:04.160><c> squared</c><00:09:04.480><c> error</c>
+
+00:09:05.670 --> 00:09:05.680 align:start position:0%
+mean squared error
+ 
+
+00:09:05.680 --> 00:09:08.630 align:start position:0%
+mean squared error
+which<00:09:06.240><c> here</c><00:09:06.640><c> is</c><00:09:07.040><c> really</c><00:09:07.440><c> an</c><00:09:07.760><c> indicative</c><00:09:08.399><c> of</c>
+
+00:09:08.630 --> 00:09:08.640 align:start position:0%
+which here is really an indicative of
+ 
+
+00:09:08.640 --> 00:09:12.470 align:start position:0%
+which here is really an indicative of
+fit<00:09:09.200><c> and</c><00:09:09.440><c> although</c><00:09:10.080><c> this</c><00:09:10.640><c> rss</c><00:09:11.440><c> goes</c><00:09:11.920><c> down</c><00:09:12.320><c> as</c>
+
+00:09:12.470 --> 00:09:12.480 align:start position:0%
+fit and although this rss goes down as
+ 
+
+00:09:12.480 --> 00:09:14.949 align:start position:0%
+fit and although this rss goes down as
+we<00:09:12.720><c> increase</c><00:09:13.040><c> the</c><00:09:13.120><c> complexity</c><00:09:13.920><c> and</c><00:09:14.240><c> knots</c>
+
+00:09:14.949 --> 00:09:14.959 align:start position:0%
+we increase the complexity and knots
+ 
+
+00:09:14.959 --> 00:09:17.110 align:start position:0%
+we increase the complexity and knots
+what<00:09:15.120><c> you</c><00:09:15.279><c> can</c><00:09:15.440><c> see</c><00:09:15.680><c> is</c><00:09:15.920><c> an</c><00:09:16.080><c> incredible</c><00:09:16.640><c> amount</c>
+
+00:09:17.110 --> 00:09:17.120 align:start position:0%
+what you can see is an incredible amount
+ 
+
+00:09:17.120 --> 00:09:19.829 align:start position:0%
+what you can see is an incredible amount
+of<00:09:17.360><c> overfitting</c><00:09:18.399><c> as</c><00:09:18.560><c> we</c><00:09:18.800><c> start</c><00:09:19.120><c> getting</c><00:09:19.519><c> down</c>
+
+00:09:19.829 --> 00:09:19.839 align:start position:0%
+of overfitting as we start getting down
+ 
+
+00:09:19.839 --> 00:09:20.870 align:start position:0%
+of overfitting as we start getting down
+to
+
+00:09:20.870 --> 00:09:20.880 align:start position:0%
+to
+ 
+
+00:09:20.880 --> 00:09:23.430 align:start position:0%
+to
+well<00:09:21.279><c> up</c><00:09:21.440><c> to</c><00:09:21.600><c> a</c><00:09:21.760><c> number</c><00:09:22.160><c> of</c><00:09:22.399><c> 80.</c><00:09:23.040><c> so</c><00:09:23.200><c> you</c><00:09:23.360><c> can</c>
+
+00:09:23.430 --> 00:09:23.440 align:start position:0%
+well up to a number of 80. so you can
+ 
+
+00:09:23.440 --> 00:09:25.030 align:start position:0%
+well up to a number of 80. so you can
+see<00:09:23.600><c> an</c><00:09:23.680><c> incredible</c><00:09:24.080><c> amount</c><00:09:24.399><c> of</c><00:09:24.480><c> overfitting</c>
+
+00:09:25.030 --> 00:09:25.040 align:start position:0%
+see an incredible amount of overfitting
+ 
+
+00:09:25.040 --> 00:09:27.350 align:start position:0%
+see an incredible amount of overfitting
+to<00:09:25.200><c> reduce</c><00:09:25.519><c> that</c><00:09:25.760><c> rss</c>
+
+00:09:27.350 --> 00:09:27.360 align:start position:0%
+to reduce that rss
+ 
+
+00:09:27.360 --> 00:09:28.870 align:start position:0%
+to reduce that rss
+whereas<00:09:27.920><c> we're</c><00:09:28.160><c> looking</c><00:09:28.399><c> for</c><00:09:28.560><c> something</c>
+
+00:09:28.870 --> 00:09:28.880 align:start position:0%
+whereas we're looking for something
+ 
+
+00:09:28.880 --> 00:09:30.630 align:start position:0%
+whereas we're looking for something
+quite<00:09:29.120><c> parsonamous</c>
+
+00:09:30.630 --> 00:09:30.640 align:start position:0%
+quite parsonamous
+ 
+
+00:09:30.640 --> 00:09:31.590 align:start position:0%
+quite parsonamous
+so
+
+00:09:31.590 --> 00:09:31.600 align:start position:0%
+so
+ 
+
+00:09:31.600 --> 00:09:34.070 align:start position:0%
+so
+really<00:09:32.000><c> you</c><00:09:32.480><c> you</c><00:09:32.640><c> could</c><00:09:32.880><c> be</c><00:09:33.200><c> using</c><00:09:33.600><c> some</c><00:09:33.839><c> kind</c>
+
+00:09:34.070 --> 00:09:34.080 align:start position:0%
+really you you could be using some kind
+ 
+
+00:09:34.080 --> 00:09:36.550 align:start position:0%
+really you you could be using some kind
+of<00:09:34.240><c> metric</c><00:09:34.800><c> to</c><00:09:35.040><c> to</c><00:09:35.200><c> judge</c><00:09:35.519><c> palsonomy</c><00:09:36.160><c> with</c><00:09:36.399><c> the</c>
+
+00:09:36.550 --> 00:09:36.560 align:start position:0%
+of metric to to judge palsonomy with the
+ 
+
+00:09:36.560 --> 00:09:38.630 align:start position:0%
+of metric to to judge palsonomy with the
+number<00:09:36.800><c> of</c><00:09:36.880><c> knots</c><00:09:37.200><c> being</c><00:09:37.440><c> like</c><00:09:37.680><c> a</c><00:09:37.760><c> number</c><00:09:38.160><c> a</c>
+
+00:09:38.630 --> 00:09:38.640 align:start position:0%
+number of knots being like a number a
+ 
+
+00:09:38.640 --> 00:09:40.230 align:start position:0%
+number of knots being like a number a
+parameter<00:09:39.279><c> and</c><00:09:39.440><c> you</c><00:09:39.519><c> could</c><00:09:39.680><c> use</c><00:09:39.839><c> that</c><00:09:40.000><c> as</c><00:09:40.160><c> a</c>
+
+00:09:40.230 --> 00:09:40.240 align:start position:0%
+parameter and you could use that as a
+ 
+
+00:09:40.240 --> 00:09:43.430 align:start position:0%
+parameter and you could use that as a
+penalty<00:09:40.959><c> and</c><00:09:41.040><c> then</c><00:09:41.200><c> you</c><00:09:41.279><c> could</c><00:09:41.440><c> use</c><00:09:41.760><c> rrs</c><00:09:42.560><c> as</c><00:09:43.279><c> a</c>
+
+00:09:43.430 --> 00:09:43.440 align:start position:0%
+penalty and then you could use rrs as a
+ 
+
+00:09:43.440 --> 00:09:45.910 align:start position:0%
+penalty and then you could use rrs as a
+measure<00:09:43.760><c> of</c><00:09:43.839><c> fit</c><00:09:44.320><c> you</c><00:09:44.399><c> could</c><00:09:44.560><c> define</c><00:09:45.120><c> any</c><00:09:45.440><c> any</c>
+
+00:09:45.910 --> 00:09:45.920 align:start position:0%
+measure of fit you could define any any
+ 
+
+00:09:45.920 --> 00:09:47.910 align:start position:0%
+measure of fit you could define any any
+uh<00:09:46.240><c> equation</c><00:09:46.720><c> you</c><00:09:46.800><c> want</c><00:09:47.040><c> to</c><00:09:47.200><c> try</c><00:09:47.440><c> and</c><00:09:47.600><c> find</c><00:09:47.839><c> a</c>
+
+00:09:47.910 --> 00:09:47.920 align:start position:0%
+uh equation you want to try and find a
+ 
+
+00:09:47.920 --> 00:09:50.150 align:start position:0%
+uh equation you want to try and find a
+pass<00:09:48.240><c> on</c><00:09:48.399><c> this</c><00:09:48.560><c> model</c><00:09:48.880><c> but</c><00:09:49.279><c> in</c><00:09:49.440><c> this</c><00:09:49.680><c> case</c><00:09:50.000><c> i</c>
+
+00:09:50.150 --> 00:09:50.160 align:start position:0%
+pass on this model but in this case i
+ 
+
+00:09:50.160 --> 00:09:51.430 align:start position:0%
+pass on this model but in this case i
+might<00:09:50.480><c> go</c>
+
+00:09:51.430 --> 00:09:51.440 align:start position:0%
+might go
+ 
+
+00:09:51.440 --> 00:09:53.750 align:start position:0%
+might go
+with<00:09:51.760><c> number</c><00:09:52.160><c> with</c><00:09:52.399><c> 10</c><00:09:52.720><c> knots</c><00:09:53.200><c> and</c><00:09:53.440><c> i</c><00:09:53.519><c> think</c>
+
+00:09:53.750 --> 00:09:53.760 align:start position:0%
+with number with 10 knots and i think
+ 
+
+00:09:53.760 --> 00:09:56.070 align:start position:0%
+with number with 10 knots and i think
+that<00:09:54.000><c> looks</c><00:09:54.240><c> like</c><00:09:54.399><c> a</c><00:09:54.480><c> good</c><00:09:54.720><c> fit</c><00:09:55.360><c> even</c><00:09:55.680><c> three</c>
+
+00:09:56.070 --> 00:09:56.080 align:start position:0%
+that looks like a good fit even three
+ 
+
+00:09:56.080 --> 00:09:59.269 align:start position:0%
+that looks like a good fit even three
+has<00:09:56.320><c> done</c><00:09:56.720><c> as</c><00:09:56.959><c> good</c><00:09:57.120><c> a</c><00:09:57.279><c> job</c><00:09:57.680><c> as</c><00:09:58.160><c> our</c><00:09:58.480><c> polynomial</c>
+
+00:09:59.269 --> 00:09:59.279 align:start position:0%
+has done as good a job as our polynomial
+ 
+
+00:09:59.279 --> 00:10:01.590 align:start position:0%
+has done as good a job as our polynomial
+nearly<00:09:59.839><c> now</c><00:10:00.080><c> let's</c><00:10:00.320><c> explore</c><00:10:00.800><c> using</c><00:10:01.200><c> fourier</c>
+
+00:10:01.590 --> 00:10:01.600 align:start position:0%
+nearly now let's explore using fourier
+ 
+
+00:10:01.600 --> 00:10:03.030 align:start position:0%
+nearly now let's explore using fourier
+series<00:10:02.000><c> to</c><00:10:02.079><c> model</c><00:10:02.320><c> the</c><00:10:02.480><c> volatility</c><00:10:02.959><c> of</c>
+
+00:10:03.030 --> 00:10:03.040 align:start position:0%
+series to model the volatility of
+ 
+
+00:10:03.040 --> 00:10:05.910 align:start position:0%
+series to model the volatility of
+temperature<00:10:04.160><c> so</c><00:10:04.399><c> here</c><00:10:04.720><c> a</c><00:10:04.880><c> fourier</c><00:10:05.360><c> series</c>
+
+00:10:05.910 --> 00:10:05.920 align:start position:0%
+temperature so here a fourier series
+ 
+
+00:10:05.920 --> 00:10:08.230 align:start position:0%
+temperature so here a fourier series
+we've<00:10:06.160><c> got</c><00:10:06.399><c> these</c><00:10:06.640><c> coefficients</c><00:10:07.519><c> in</c><00:10:07.760><c> front</c><00:10:08.079><c> of</c>
+
+00:10:08.230 --> 00:10:08.240 align:start position:0%
+we've got these coefficients in front of
+ 
+
+00:10:08.240 --> 00:10:12.069 align:start position:0%
+we've got these coefficients in front of
+our<00:10:08.399><c> cosine</c><00:10:09.120><c> and</c><00:10:09.519><c> sine</c><00:10:10.160><c> functions</c><00:10:11.120><c> and</c><00:10:11.440><c> the</c>
+
+00:10:12.069 --> 00:10:12.079 align:start position:0%
+our cosine and sine functions and the
+ 
+
+00:10:12.079 --> 00:10:13.910 align:start position:0%
+our cosine and sine functions and the
+cos<00:10:12.399><c> and</c><00:10:12.640><c> sine</c><00:10:12.880><c> functions</c><00:10:13.360><c> have</c><00:10:13.519><c> different</c>
+
+00:10:13.910 --> 00:10:13.920 align:start position:0%
+cos and sine functions have different
+ 
+
+00:10:13.920 --> 00:10:17.430 align:start position:0%
+cos and sine functions have different
+orders<00:10:14.399><c> of</c><00:10:14.640><c> magnitude</c><00:10:15.360><c> and</c><00:10:15.600><c> really</c><00:10:16.000><c> it's</c>
+
+00:10:17.430 --> 00:10:17.440 align:start position:0%
+orders of magnitude and really it's
+ 
+
+00:10:17.440 --> 00:10:19.590 align:start position:0%
+orders of magnitude and really it's
+can<00:10:17.680><c> be</c><00:10:17.920><c> an</c><00:10:18.160><c> infinite</c><00:10:18.560><c> sum</c><00:10:18.880><c> but</c><00:10:19.279><c> we're</c>
+
+00:10:19.590 --> 00:10:19.600 align:start position:0%
+can be an infinite sum but we're
+ 
+
+00:10:19.600 --> 00:10:22.470 align:start position:0%
+can be an infinite sum but we're
+actually<00:10:20.000><c> going</c><00:10:20.320><c> to</c><00:10:20.640><c> sum</c><00:10:21.120><c> up</c><00:10:21.279><c> a</c><00:10:21.360><c> case</c><00:10:21.839><c> i</c><00:10:22.160><c> here</c>
+
+00:10:22.470 --> 00:10:22.480 align:start position:0%
+actually going to sum up a case i here
+ 
+
+00:10:22.480 --> 00:10:24.150 align:start position:0%
+actually going to sum up a case i here
+and<00:10:22.640><c> that</c><00:10:22.880><c> defines</c><00:10:23.360><c> the</c><00:10:23.519><c> order</c><00:10:23.920><c> of</c><00:10:24.000><c> the</c>
+
+00:10:24.150 --> 00:10:24.160 align:start position:0%
+and that defines the order of the
+ 
+
+00:10:24.160 --> 00:10:27.190 align:start position:0%
+and that defines the order of the
+fourier<00:10:24.640><c> series</c><00:10:25.519><c> so</c><00:10:26.000><c> here</c><00:10:26.480><c> we've</c><00:10:26.640><c> got</c><00:10:26.800><c> the</c><00:10:26.959><c> sum</c>
+
+00:10:27.190 --> 00:10:27.200 align:start position:0%
+fourier series so here we've got the sum
+ 
+
+00:10:27.200 --> 00:10:30.230 align:start position:0%
+fourier series so here we've got the sum
+of<00:10:27.360><c> all</c><00:10:27.440><c> these</c><00:10:27.839><c> cosine</c><00:10:28.640><c> functions</c><00:10:29.360><c> and</c><00:10:29.680><c> sine</c>
+
+00:10:30.230 --> 00:10:30.240 align:start position:0%
+of all these cosine functions and sine
+ 
+
+00:10:30.240 --> 00:10:32.150 align:start position:0%
+of all these cosine functions and sine
+functions<00:10:30.720><c> and</c><00:10:30.880><c> we</c><00:10:31.040><c> want</c><00:10:31.200><c> to</c><00:10:31.360><c> estimate</c><00:10:32.000><c> the</c>
+
+00:10:32.150 --> 00:10:32.160 align:start position:0%
+functions and we want to estimate the
+ 
+
+00:10:32.160 --> 00:10:34.870 align:start position:0%
+functions and we want to estimate the
+parameters<00:10:33.040><c> that</c><00:10:33.200><c> give</c><00:10:33.519><c> the</c><00:10:33.760><c> best</c><00:10:34.160><c> fit</c><00:10:34.480><c> to</c><00:10:34.720><c> our</c>
+
+00:10:34.870 --> 00:10:34.880 align:start position:0%
+parameters that give the best fit to our
+ 
+
+00:10:34.880 --> 00:10:37.190 align:start position:0%
+parameters that give the best fit to our
+model<00:10:35.680><c> so</c><00:10:36.079><c> first</c><00:10:36.399><c> off</c><00:10:36.720><c> what</c><00:10:36.880><c> we're</c><00:10:37.040><c> going</c><00:10:37.120><c> to</c>
+
+00:10:37.190 --> 00:10:37.200 align:start position:0%
+model so first off what we're going to
+ 
+
+00:10:37.200 --> 00:10:39.590 align:start position:0%
+model so first off what we're going to
+do<00:10:37.440><c> is</c><00:10:37.519><c> we're</c><00:10:37.680><c> going</c><00:10:37.920><c> to</c><00:10:38.000><c> look</c><00:10:38.320><c> at</c><00:10:38.720><c> long-term</c>
+
+00:10:39.590 --> 00:10:39.600 align:start position:0%
+do is we're going to look at long-term
+ 
+
+00:10:39.600 --> 00:10:42.870 align:start position:0%
+do is we're going to look at long-term
+volatility<00:10:40.959><c> so</c><00:10:41.200><c> here</c><00:10:41.440><c> i'm</c><00:10:41.600><c> going</c><00:10:41.839><c> to</c><00:10:42.000><c> take</c><00:10:42.399><c> the</c>
+
+00:10:42.870 --> 00:10:42.880 align:start position:0%
+volatility so here i'm going to take the
+ 
+
+00:10:42.880 --> 00:10:45.750 align:start position:0%
+volatility so here i'm going to take the
+rolling<00:10:43.680><c> 30-day</c><00:10:44.399><c> standard</c><00:10:44.800><c> deviation</c><00:10:45.519><c> so</c>
+
+00:10:45.750 --> 00:10:45.760 align:start position:0%
+rolling 30-day standard deviation so
+ 
+
+00:10:45.760 --> 00:10:46.949 align:start position:0%
+rolling 30-day standard deviation so
+that<00:10:46.000><c> means</c><00:10:46.240><c> that</c><00:10:46.399><c> we</c><00:10:46.480><c> get</c><00:10:46.640><c> a</c><00:10:46.720><c> standard</c>
+
+00:10:46.949 --> 00:10:46.959 align:start position:0%
+that means that we get a standard
+ 
+
+00:10:46.959 --> 00:10:50.389 align:start position:0%
+that means that we get a standard
+deviation<00:10:47.600><c> for</c><00:10:47.760><c> every</c><00:10:48.240><c> 30</c><00:10:49.200><c> for</c><00:10:49.440><c> every</c><00:10:49.760><c> day</c><00:10:50.240><c> but</c>
+
+00:10:50.389 --> 00:10:50.399 align:start position:0%
+deviation for every 30 for every day but
+ 
+
+00:10:50.399 --> 00:10:52.710 align:start position:0%
+deviation for every 30 for every day but
+it's<00:10:50.640><c> the</c><00:10:50.880><c> rolling</c><00:10:51.519><c> 30</c><00:10:51.839><c> day</c><00:10:52.240><c> standard</c>
+
+00:10:52.710 --> 00:10:52.720 align:start position:0%
+it's the rolling 30 day standard
+ 
+
+00:10:52.720 --> 00:10:54.069 align:start position:0%
+it's the rolling 30 day standard
+deviation
+
+00:10:54.069 --> 00:10:54.079 align:start position:0%
+deviation
+ 
+
+00:10:54.079 --> 00:10:55.269 align:start position:0%
+deviation
+so
+
+00:10:55.269 --> 00:10:55.279 align:start position:0%
+so
+ 
+
+00:10:55.279 --> 00:10:57.910 align:start position:0%
+so
+here<00:10:55.600><c> i</c><00:10:55.680><c> can</c><00:10:55.839><c> see</c><00:10:56.320><c> that</c><00:10:56.720><c> we</c><00:10:56.959><c> have</c>
+
+00:10:57.910 --> 00:10:57.920 align:start position:0%
+here i can see that we have
+ 
+
+00:10:57.920 --> 00:11:00.470 align:start position:0%
+here i can see that we have
+quite<00:10:58.480><c> a</c><00:10:59.040><c> solid</c><00:10:59.519><c> mean</c><00:10:59.920><c> that's</c><00:11:00.160><c> really</c>
+
+00:11:00.470 --> 00:11:00.480 align:start position:0%
+quite a solid mean that's really
+ 
+
+00:11:00.480 --> 00:11:02.790 align:start position:0%
+quite a solid mean that's really
+centered<00:11:00.959><c> around</c><00:11:01.360><c> our</c><00:11:01.680><c> data</c>
+
+00:11:02.790 --> 00:11:02.800 align:start position:0%
+centered around our data
+ 
+
+00:11:02.800 --> 00:11:05.509 align:start position:0%
+centered around our data
+so<00:11:03.200><c> i'm</c><00:11:03.519><c> quite</c><00:11:03.760><c> happy</c><00:11:04.160><c> with</c><00:11:04.399><c> using</c><00:11:04.959><c> a</c><00:11:05.120><c> fourier</c>
+
+00:11:05.509 --> 00:11:05.519 align:start position:0%
+so i'm quite happy with using a fourier
+ 
+
+00:11:05.519 --> 00:11:08.150 align:start position:0%
+so i'm quite happy with using a fourier
+series<00:11:06.079><c> just</c><00:11:06.480><c> off</c><00:11:06.880><c> of</c><00:11:07.120><c> this</c>
+
+00:11:08.150 --> 00:11:08.160 align:start position:0%
+series just off of this
+ 
+
+00:11:08.160 --> 00:11:10.470 align:start position:0%
+series just off of this
+with<00:11:08.399><c> no</c><00:11:08.720><c> linear</c><00:11:09.120><c> trend</c>
+
+00:11:10.470 --> 00:11:10.480 align:start position:0%
+with no linear trend
+ 
+
+00:11:10.480 --> 00:11:12.310 align:start position:0%
+with no linear trend
+if<00:11:10.640><c> there</c><00:11:10.800><c> was</c><00:11:10.959><c> a</c><00:11:11.120><c> linear</c><00:11:11.440><c> trend</c><00:11:11.680><c> here</c><00:11:12.000><c> present</c>
+
+00:11:12.310 --> 00:11:12.320 align:start position:0%
+if there was a linear trend here present
+ 
+
+00:11:12.320 --> 00:11:13.829 align:start position:0%
+if there was a linear trend here present
+in<00:11:12.399><c> volatility</c>
+
+00:11:13.829 --> 00:11:13.839 align:start position:0%
+in volatility
+ 
+
+00:11:13.839 --> 00:11:15.910 align:start position:0%
+in volatility
+then<00:11:14.079><c> i</c><00:11:14.240><c> could</c><00:11:14.480><c> add</c><00:11:14.720><c> that</c><00:11:15.040><c> here</c>
+
+00:11:15.910 --> 00:11:15.920 align:start position:0%
+then i could add that here
+ 
+
+00:11:15.920 --> 00:11:17.670 align:start position:0%
+then i could add that here
+instead<00:11:16.160><c> of</c><00:11:16.320><c> just</c><00:11:16.480><c> having</c><00:11:16.720><c> a</c><00:11:16.800><c> coefficient</c><00:11:17.440><c> for</c>
+
+00:11:17.670 --> 00:11:17.680 align:start position:0%
+instead of just having a coefficient for
+ 
+
+00:11:17.680 --> 00:11:19.509 align:start position:0%
+instead of just having a coefficient for
+my<00:11:17.839><c> volatility</c><00:11:18.480><c> out</c><00:11:18.640><c> the</c><00:11:18.720><c> front</c><00:11:19.040><c> of</c><00:11:19.360><c> my</c>
+
+00:11:19.509 --> 00:11:19.519 align:start position:0%
+my volatility out the front of my
+ 
+
+00:11:19.519 --> 00:11:22.389 align:start position:0%
+my volatility out the front of my
+fourier<00:11:20.000><c> series</c>
+
+00:11:22.389 --> 00:11:22.399 align:start position:0%
+fourier series
+ 
+
+00:11:22.399 --> 00:11:24.710 align:start position:0%
+fourier series
+now<00:11:22.880><c> the</c><00:11:23.120><c> way</c><00:11:23.440><c> i'm</c><00:11:23.680><c> going</c><00:11:23.920><c> to</c><00:11:24.079><c> test</c><00:11:24.399><c> different</c>
+
+00:11:24.710 --> 00:11:24.720 align:start position:0%
+now the way i'm going to test different
+ 
+
+00:11:24.720 --> 00:11:26.790 align:start position:0%
+now the way i'm going to test different
+fourier<00:11:25.120><c> series</c><00:11:25.519><c> and</c><00:11:25.680><c> try</c><00:11:25.920><c> and</c><00:11:26.000><c> fit</c><00:11:26.240><c> by</c><00:11:26.480><c> least</c>
+
+00:11:26.790 --> 00:11:26.800 align:start position:0%
+fourier series and try and fit by least
+ 
+
+00:11:26.800 --> 00:11:30.630 align:start position:0%
+fourier series and try and fit by least
+squares<00:11:27.680><c> is</c><00:11:28.079><c> i'm</c><00:11:28.320><c> going</c><00:11:28.560><c> to</c><00:11:28.720><c> use</c><00:11:29.200><c> this</c><00:11:29.519><c> sim</c><00:11:30.000><c> fit</c>
+
+00:11:30.630 --> 00:11:30.640 align:start position:0%
+squares is i'm going to use this sim fit
+ 
+
+00:11:30.640 --> 00:11:33.350 align:start position:0%
+squares is i'm going to use this sim fit
+module<00:11:31.200><c> in</c><00:11:31.360><c> python</c><00:11:31.839><c> that's</c><00:11:32.000><c> been</c><00:11:32.240><c> written</c><00:11:33.040><c> so</c>
+
+00:11:33.350 --> 00:11:33.360 align:start position:0%
+module in python that's been written so
+ 
+
+00:11:33.360 --> 00:11:35.190 align:start position:0%
+module in python that's been written so
+pip<00:11:33.600><c> install</c><00:11:33.920><c> sim</c><00:11:34.160><c> fit</c><00:11:34.720><c> go</c><00:11:34.880><c> look</c><00:11:35.040><c> at</c><00:11:35.120><c> the</c>
+
+00:11:35.190 --> 00:11:35.200 align:start position:0%
+pip install sim fit go look at the
+ 
+
+00:11:35.200 --> 00:11:36.870 align:start position:0%
+pip install sim fit go look at the
+documentation<00:11:35.920><c> but</c><00:11:36.079><c> essentially</c><00:11:36.560><c> what</c><00:11:36.720><c> we</c>
+
+00:11:36.870 --> 00:11:36.880 align:start position:0%
+documentation but essentially what we
+ 
+
+00:11:36.880 --> 00:11:40.230 align:start position:0%
+documentation but essentially what we
+can<00:11:37.040><c> do</c><00:11:37.279><c> is</c><00:11:37.440><c> we</c><00:11:37.600><c> can</c><00:11:38.079><c> pass</c><00:11:38.560><c> a</c><00:11:38.720><c> dictionary</c><00:11:39.760><c> of</c>
+
+00:11:40.230 --> 00:11:40.240 align:start position:0%
+can do is we can pass a dictionary of
+ 
+
+00:11:40.240 --> 00:11:42.870 align:start position:0%
+can do is we can pass a dictionary of
+symbolic<00:11:40.720><c> fourier</c><00:11:41.200><c> series</c><00:11:42.079><c> and</c><00:11:42.320><c> what</c><00:11:42.480><c> i</c><00:11:42.640><c> mean</c>
+
+00:11:42.870 --> 00:11:42.880 align:start position:0%
+symbolic fourier series and what i mean
+ 
+
+00:11:42.880 --> 00:11:44.630 align:start position:0%
+symbolic fourier series and what i mean
+by<00:11:43.040><c> that</c><00:11:43.360><c> is</c><00:11:43.519><c> that</c><00:11:43.760><c> we</c><00:11:44.000><c> can</c><00:11:44.160><c> create</c><00:11:44.560><c> a</c>
+
+00:11:44.630 --> 00:11:44.640 align:start position:0%
+by that is that we can create a
+ 
+
+00:11:44.640 --> 00:11:47.269 align:start position:0%
+by that is that we can create a
+dictionary<00:11:45.600><c> and</c><00:11:45.760><c> i've</c><00:11:45.920><c> printed</c><00:11:46.240><c> out</c><00:11:46.399><c> one</c><00:11:46.640><c> here</c>
+
+00:11:47.269 --> 00:11:47.279 align:start position:0%
+dictionary and i've printed out one here
+ 
+
+00:11:47.279 --> 00:11:49.030 align:start position:0%
+dictionary and i've printed out one here
+where<00:11:47.519><c> we</c><00:11:47.760><c> have</c><00:11:48.000><c> our</c><00:11:48.240><c> coefficients</c><00:11:48.880><c> that</c>
+
+00:11:49.030 --> 00:11:49.040 align:start position:0%
+where we have our coefficients that
+ 
+
+00:11:49.040 --> 00:11:50.870 align:start position:0%
+where we have our coefficients that
+we're<00:11:49.200><c> interested</c><00:11:49.680><c> in</c><00:11:50.000><c> and</c><00:11:50.160><c> the</c><00:11:50.320><c> particular</c>
+
+00:11:50.870 --> 00:11:50.880 align:start position:0%
+we're interested in and the particular
+ 
+
+00:11:50.880 --> 00:11:53.350 align:start position:0%
+we're interested in and the particular
+model<00:11:51.519><c> that's</c><00:11:51.839><c> passed</c><00:11:52.240><c> through</c><00:11:52.959><c> for</c>
+
+00:11:53.350 --> 00:11:53.360 align:start position:0%
+model that's passed through for
+ 
+
+00:11:53.360 --> 00:11:56.870 align:start position:0%
+model that's passed through for
+optimization<00:11:54.639><c> now</c><00:11:55.279><c> here</c><00:11:55.600><c> this</c><00:11:55.920><c> is</c><00:11:56.160><c> a</c>
+
+00:11:56.870 --> 00:11:56.880 align:start position:0%
+optimization now here this is a
+ 
+
+00:11:56.880 --> 00:12:00.790 align:start position:0%
+optimization now here this is a
+third<00:11:57.279><c> order</c><00:11:57.600><c> model</c><00:11:58.160><c> so</c><00:11:58.399><c> i've</c><00:11:58.720><c> passed</c><00:11:59.120><c> in</c>
+
+00:12:00.790 --> 00:12:00.800 align:start position:0%
+third order model so i've passed in
+ 
+
+00:12:00.800 --> 00:12:04.550 align:start position:0%
+third order model so i've passed in
+a<00:12:01.600><c> third</c><00:12:01.839><c> order</c><00:12:02.560><c> i've</c><00:12:02.959><c> defined</c><00:12:03.600><c> my</c><00:12:03.839><c> frequency</c>
+
+00:12:04.550 --> 00:12:04.560 align:start position:0%
+a third order i've defined my frequency
+ 
+
+00:12:04.560 --> 00:12:06.790 align:start position:0%
+a third order i've defined my frequency
+because<00:12:04.959><c> we</c><00:12:05.200><c> know</c><00:12:05.440><c> that</c><00:12:05.600><c> the</c><00:12:05.760><c> data</c><00:12:06.320><c> is</c><00:12:06.639><c> the</c>
+
+00:12:06.790 --> 00:12:06.800 align:start position:0%
+because we know that the data is the
+ 
+
+00:12:06.800 --> 00:12:09.030 align:start position:0%
+because we know that the data is the
+frequency<00:12:07.279><c> is</c><00:12:07.440><c> yearly</c><00:12:08.160><c> we've</c><00:12:08.560><c> experienced</c>
+
+00:12:09.030 --> 00:12:09.040 align:start position:0%
+frequency is yearly we've experienced
+ 
+
+00:12:09.040 --> 00:12:11.509 align:start position:0%
+frequency is yearly we've experienced
+that<00:12:09.279><c> in</c><00:12:09.519><c> our</c><00:12:09.680><c> temperature</c><00:12:10.399><c> so</c><00:12:10.639><c> i'm</c><00:12:10.800><c> happy</c><00:12:11.200><c> to</c>
+
+00:12:11.509 --> 00:12:11.519 align:start position:0%
+that in our temperature so i'm happy to
+ 
+
+00:12:11.519 --> 00:12:12.389 align:start position:0%
+that in our temperature so i'm happy to
+then
+
+00:12:12.389 --> 00:12:12.399 align:start position:0%
+then
+ 
+
+00:12:12.399 --> 00:12:15.750 align:start position:0%
+then
+redefine<00:12:13.360><c> that</c><00:12:13.600><c> frequency</c><00:12:14.240><c> here</c><00:12:14.560><c> again</c>
+
+00:12:15.750 --> 00:12:15.760 align:start position:0%
+redefine that frequency here again
+ 
+
+00:12:15.760 --> 00:12:17.590 align:start position:0%
+redefine that frequency here again
+so<00:12:16.000><c> that's</c><00:12:16.320><c> 2</c><00:12:16.560><c> times</c><00:12:16.880><c> pi</c>
+
+00:12:17.590 --> 00:12:17.600 align:start position:0%
+so that's 2 times pi
+ 
+
+00:12:17.600 --> 00:12:18.990 align:start position:0%
+so that's 2 times pi
+divided<00:12:18.000><c> by</c><00:12:18.240><c> the</c>
+
+00:12:18.990 --> 00:12:19.000 align:start position:0%
+divided by the
+ 
+
+00:12:19.000 --> 00:12:21.110 align:start position:0%
+divided by the
+365.25<00:12:20.000><c> days</c><00:12:20.320><c> and</c><00:12:20.480><c> remember</c><00:12:20.800><c> because</c><00:12:21.040><c> we're</c>
+
+00:12:21.110 --> 00:12:21.120 align:start position:0%
+365.25 days and remember because we're
+ 
+
+00:12:21.120 --> 00:12:23.269 align:start position:0%
+365.25 days and remember because we're
+dealing<00:12:21.440><c> with</c><00:12:21.519><c> such</c><00:12:21.760><c> a</c><00:12:21.839><c> large</c><00:12:22.160><c> amount</c><00:12:22.480><c> of</c><00:12:22.560><c> data</c>
+
+00:12:23.269 --> 00:12:23.279 align:start position:0%
+dealing with such a large amount of data
+ 
+
+00:12:23.279 --> 00:12:24.790 align:start position:0%
+dealing with such a large amount of data
+number<00:12:23.519><c> of</c><00:12:23.600><c> years</c>
+
+00:12:24.790 --> 00:12:24.800 align:start position:0%
+number of years
+ 
+
+00:12:24.800 --> 00:12:27.190 align:start position:0%
+number of years
+we<00:12:24.959><c> have</c><00:12:25.120><c> to</c><00:12:25.360><c> account</c><00:12:25.839><c> for</c><00:12:26.079><c> that</c><00:12:26.320><c> extra</c><00:12:26.639><c> day</c><00:12:26.959><c> in</c>
+
+00:12:27.190 --> 00:12:27.200 align:start position:0%
+we have to account for that extra day in
+ 
+
+00:12:27.200 --> 00:12:29.030 align:start position:0%
+we have to account for that extra day in
+year<00:12:27.760><c> leap</c><00:12:28.000><c> years</c><00:12:28.399><c> what</c><00:12:28.560><c> we're</c><00:12:28.720><c> going</c><00:12:28.800><c> to</c><00:12:28.880><c> do</c>
+
+00:12:29.030 --> 00:12:29.040 align:start position:0%
+year leap years what we're going to do
+ 
+
+00:12:29.040 --> 00:12:30.629 align:start position:0%
+year leap years what we're going to do
+is<00:12:29.200><c> we're</c><00:12:29.360><c> going</c><00:12:29.440><c> to</c><00:12:29.519><c> test</c><00:12:29.839><c> fourier</c><00:12:30.320><c> orders</c>
+
+00:12:30.629 --> 00:12:30.639 align:start position:0%
+is we're going to test fourier orders
+ 
+
+00:12:30.639 --> 00:12:33.990 align:start position:0%
+is we're going to test fourier orders
+all<00:12:30.720><c> the</c><00:12:30.800><c> way</c><00:12:31.040><c> from</c><00:12:31.360><c> 1</c><00:12:31.839><c> 3</c><00:12:32.079><c> to</c><00:12:32.320><c> 10</c>
+
+00:12:33.990 --> 00:12:34.000 align:start position:0%
+all the way from 1 3 to 10
+ 
+
+00:12:34.000 --> 00:12:36.069 align:start position:0%
+all the way from 1 3 to 10
+using<00:12:34.240><c> the</c><00:12:34.320><c> range</c><00:12:34.639><c> function</c><00:12:35.279><c> and</c><00:12:35.600><c> we're</c><00:12:35.839><c> going</c>
+
+00:12:36.069 --> 00:12:36.079 align:start position:0%
+using the range function and we're going
+ 
+
+00:12:36.079 --> 00:12:38.069 align:start position:0%
+using the range function and we're going
+to<00:12:36.240><c> look</c><00:12:36.480><c> at</c><00:12:36.639><c> the</c><00:12:36.720><c> residual</c><00:12:37.279><c> sum</c><00:12:37.440><c> of</c><00:12:37.600><c> squares</c>
+
+00:12:38.069 --> 00:12:38.079 align:start position:0%
+to look at the residual sum of squares
+ 
+
+00:12:38.079 --> 00:12:39.670 align:start position:0%
+to look at the residual sum of squares
+and<00:12:38.160><c> what</c><00:12:38.320><c> we</c><00:12:38.480><c> can</c><00:12:38.639><c> see</c><00:12:38.880><c> is</c><00:12:38.959><c> that</c><00:12:39.120><c> the</c><00:12:39.200><c> residual</c>
+
+00:12:39.670 --> 00:12:39.680 align:start position:0%
+and what we can see is that the residual
+ 
+
+00:12:39.680 --> 00:12:42.470 align:start position:0%
+and what we can see is that the residual
+sum<00:12:39.839><c> of</c><00:12:40.000><c> squares</c><00:12:40.560><c> really</c><00:12:40.959><c> decreases</c><00:12:41.680><c> until</c>
+
+00:12:42.470 --> 00:12:42.480 align:start position:0%
+sum of squares really decreases until
+ 
+
+00:12:42.480 --> 00:12:45.829 align:start position:0%
+sum of squares really decreases until
+about<00:12:42.959><c> order</c><00:12:43.760><c> 3</c><00:12:44.320><c> but</c><00:12:44.639><c> even</c><00:12:45.040><c> even</c><00:12:45.440><c> we</c><00:12:45.600><c> get</c>
+
+00:12:45.829 --> 00:12:45.839 align:start position:0%
+about order 3 but even even we get
+ 
+
+00:12:45.839 --> 00:12:47.990 align:start position:0%
+about order 3 but even even we get
+slight<00:12:46.320><c> performance</c><00:12:46.880><c> increase</c><00:12:47.360><c> as</c><00:12:47.519><c> we</c><00:12:47.680><c> go</c><00:12:47.839><c> to</c>
+
+00:12:47.990 --> 00:12:48.000 align:start position:0%
+slight performance increase as we go to
+ 
+
+00:12:48.000 --> 00:12:51.750 align:start position:0%
+slight performance increase as we go to
+6.<00:12:48.399><c> so</c><00:12:49.040><c> here</c><00:12:49.360><c> i've</c><00:12:49.680><c> just</c><00:12:50.000><c> used</c><00:12:50.320><c> the</c><00:12:50.399><c> model</c><00:12:51.040><c> 6</c>
+
+00:12:51.750 --> 00:12:51.760 align:start position:0%
+6. so here i've just used the model 6
+ 
+
+00:12:51.760 --> 00:12:54.389 align:start position:0%
+6. so here i've just used the model 6
+and<00:12:52.079><c> then</c><00:12:52.399><c> we've</c><00:12:52.639><c> i've</c><00:12:52.880><c> fit</c><00:12:53.120><c> the</c><00:12:53.200><c> parameters</c>
+
+00:12:54.389 --> 00:12:54.399 align:start position:0%
+and then we've i've fit the parameters
+ 
+
+00:12:54.399 --> 00:12:56.389 align:start position:0%
+and then we've i've fit the parameters
+using<00:12:54.959><c> this</c>
+
+00:12:56.389 --> 00:12:56.399 align:start position:0%
+using this
+ 
+
+00:12:56.399 --> 00:12:59.509 align:start position:0%
+using this
+sim<00:12:56.720><c> fit</c><00:12:57.279><c> module</c><00:12:57.920><c> and</c><00:12:58.160><c> then</c><00:12:58.480><c> what</c><00:12:58.720><c> i</c><00:12:58.800><c> can</c><00:12:59.040><c> do</c><00:12:59.360><c> is</c>
+
+00:12:59.509 --> 00:12:59.519 align:start position:0%
+sim fit module and then what i can do is
+ 
+
+00:12:59.519 --> 00:13:01.750 align:start position:0%
+sim fit module and then what i can do is
+i<00:12:59.680><c> can</c><00:12:59.920><c> print</c><00:13:00.240><c> out</c><00:13:00.320><c> the</c><00:13:00.480><c> fourier</c><00:13:00.880><c> series</c><00:13:01.440><c> that</c>
+
+00:13:01.750 --> 00:13:01.760 align:start position:0%
+i can print out the fourier series that
+ 
+
+00:13:01.760 --> 00:13:03.670 align:start position:0%
+i can print out the fourier series that
+have<00:13:02.160><c> resulted</c><00:13:02.560><c> in</c><00:13:02.639><c> the</c><00:13:02.720><c> best</c><00:13:02.959><c> fit</c><00:13:03.440><c> and</c><00:13:03.600><c> i</c>
+
+00:13:03.670 --> 00:13:03.680 align:start position:0%
+have resulted in the best fit and i
+ 
+
+00:13:03.680 --> 00:13:06.790 align:start position:0%
+have resulted in the best fit and i
+believe<00:13:04.000><c> it</c><00:13:04.160><c> uses</c><00:13:04.639><c> least</c><00:13:04.959><c> squares</c><00:13:06.079><c> to</c><00:13:06.240><c> find</c>
+
+00:13:06.790 --> 00:13:06.800 align:start position:0%
+believe it uses least squares to find
+ 
+
+00:13:06.800 --> 00:13:08.470 align:start position:0%
+believe it uses least squares to find
+these<00:13:07.120><c> parameters</c>
+
+00:13:08.470 --> 00:13:08.480 align:start position:0%
+these parameters
+ 
+
+00:13:08.480 --> 00:13:10.069 align:start position:0%
+these parameters
+what<00:13:08.720><c> that</c><00:13:08.959><c> looks</c><00:13:09.200><c> like</c><00:13:09.440><c> essentially</c><00:13:09.920><c> i've</c>
+
+00:13:10.069 --> 00:13:10.079 align:start position:0%
+what that looks like essentially i've
+ 
+
+00:13:10.079 --> 00:13:11.509 align:start position:0%
+what that looks like essentially i've
+just<00:13:10.240><c> plotted</c><00:13:10.480><c> the</c><00:13:10.639><c> last</c>
+
+00:13:11.509 --> 00:13:11.519 align:start position:0%
+just plotted the last
+ 
+
+00:13:11.519 --> 00:13:13.750 align:start position:0%
+just plotted the last
+20<00:13:11.839><c> something</c><00:13:12.160><c> years</c><00:13:12.639><c> worth</c><00:13:12.880><c> of</c><00:13:12.959><c> data</c><00:13:13.360><c> 25</c>
+
+00:13:13.750 --> 00:13:13.760 align:start position:0%
+20 something years worth of data 25
+ 
+
+00:13:13.760 --> 00:13:15.750 align:start position:0%
+20 something years worth of data 25
+years<00:13:14.079><c> worth</c><00:13:14.320><c> of</c><00:13:14.399><c> data</c><00:13:14.959><c> and</c><00:13:15.120><c> you</c><00:13:15.200><c> can</c><00:13:15.360><c> see</c><00:13:15.519><c> here</c>
+
+00:13:15.750 --> 00:13:15.760 align:start position:0%
+years worth of data and you can see here
+ 
+
+00:13:15.760 --> 00:13:17.910 align:start position:0%
+years worth of data and you can see here
+that<00:13:15.920><c> we've</c><00:13:16.160><c> got</c><00:13:16.639><c> that</c><00:13:16.959><c> black</c><00:13:17.360><c> line</c><00:13:17.600><c> which</c><00:13:17.760><c> is</c>
+
+00:13:17.910 --> 00:13:17.920 align:start position:0%
+that we've got that black line which is
+ 
+
+00:13:17.920 --> 00:13:21.110 align:start position:0%
+that we've got that black line which is
+our<00:13:18.079><c> fourier</c><00:13:18.480><c> series</c><00:13:19.279><c> composition</c>
+
+00:13:21.110 --> 00:13:21.120 align:start position:0%
+our fourier series composition
+ 
+
+00:13:21.120 --> 00:13:23.670 align:start position:0%
+our fourier series composition
+fifth<00:13:21.360><c> order</c><00:13:21.839><c> fourier</c><00:13:22.240><c> series</c><00:13:22.959><c> that</c><00:13:23.200><c> we've</c>
+
+00:13:23.670 --> 00:13:23.680 align:start position:0%
+fifth order fourier series that we've
+ 
+
+00:13:23.680 --> 00:13:25.910 align:start position:0%
+fifth order fourier series that we've
+then<00:13:24.079><c> repeated</c><00:13:24.800><c> every</c><00:13:25.200><c> year</c><00:13:25.440><c> to</c><00:13:25.600><c> try</c><00:13:25.839><c> and</c>
+
+00:13:25.910 --> 00:13:25.920 align:start position:0%
+then repeated every year to try and
+ 
+
+00:13:25.920 --> 00:13:28.150 align:start position:0%
+then repeated every year to try and
+capture<00:13:26.240><c> that</c><00:13:26.480><c> volatility</c><00:13:27.519><c> and</c><00:13:27.680><c> if</c><00:13:27.839><c> we</c><00:13:28.000><c> look</c>
+
+00:13:28.150 --> 00:13:28.160 align:start position:0%
+capture that volatility and if we look
+ 
+
+00:13:28.160 --> 00:13:30.550 align:start position:0%
+capture that volatility and if we look
+at<00:13:28.240><c> that</c><00:13:28.480><c> more</c><00:13:28.720><c> granularly</c><00:13:29.360><c> just</c><00:13:29.680><c> at</c><00:13:29.920><c> a</c><00:13:30.320><c> one</c>
+
+00:13:30.550 --> 00:13:30.560 align:start position:0%
+at that more granularly just at a one
+ 
+
+00:13:30.560 --> 00:13:32.949 align:start position:0%
+at that more granularly just at a one
+year<00:13:30.959><c> basis</c><00:13:31.600><c> we've</c><00:13:32.000><c> essentially</c><00:13:32.480><c> got</c><00:13:32.639><c> this</c>
+
+00:13:32.949 --> 00:13:32.959 align:start position:0%
+year basis we've essentially got this
+ 
+
+00:13:32.959 --> 00:13:35.190 align:start position:0%
+year basis we've essentially got this
+blue<00:13:33.360><c> line</c><00:13:33.680><c> that's</c><00:13:33.920><c> replicated</c><00:13:34.560><c> from</c><00:13:34.800><c> year</c><00:13:35.040><c> to</c>
+
+00:13:35.190 --> 00:13:35.200 align:start position:0%
+blue line that's replicated from year to
+ 
+
+00:13:35.200 --> 00:13:37.670 align:start position:0%
+blue line that's replicated from year to
+year<00:13:35.600><c> in</c><00:13:35.760><c> our</c><00:13:35.920><c> fourier</c><00:13:36.320><c> series</c><00:13:37.200><c> now</c><00:13:37.360><c> this</c><00:13:37.600><c> is</c>
+
+00:13:37.670 --> 00:13:37.680 align:start position:0%
+year in our fourier series now this is
+ 
+
+00:13:37.680 --> 00:13:39.990 align:start position:0%
+year in our fourier series now this is
+quite<00:13:37.920><c> handy</c><00:13:38.320><c> because</c><00:13:38.880><c> the</c><00:13:39.120><c> way</c><00:13:39.440><c> that</c><00:13:39.680><c> this</c>
+
+00:13:39.990 --> 00:13:40.000 align:start position:0%
+quite handy because the way that this
+ 
+
+00:13:40.000 --> 00:13:43.030 align:start position:0%
+quite handy because the way that this
+works<00:13:40.399><c> is</c><00:13:40.560><c> that</c><00:13:40.720><c> i</c><00:13:40.800><c> can</c><00:13:41.120><c> take</c><00:13:41.839><c> time</c><00:13:42.639><c> actually</c>
+
+00:13:43.030 --> 00:13:43.040 align:start position:0%
+works is that i can take time actually
+ 
+
+00:13:43.040 --> 00:13:45.509 align:start position:0%
+works is that i can take time actually
+as<00:13:43.279><c> the</c><00:13:43.440><c> ordinal</c><00:13:43.920><c> number</c><00:13:44.639><c> starting</c><00:13:45.120><c> from</c><00:13:45.440><c> the</c>
+
+00:13:45.509 --> 00:13:45.519 align:start position:0%
+as the ordinal number starting from the
+ 
+
+00:13:45.519 --> 00:13:47.910 align:start position:0%
+as the ordinal number starting from the
+first<00:13:45.839><c> ordinal</c><00:13:46.399><c> number</c><00:13:46.800><c> the</c><00:13:47.040><c> same</c><00:13:47.279><c> way</c><00:13:47.680><c> we</c>
+
+00:13:47.910 --> 00:13:47.920 align:start position:0%
+first ordinal number the same way we
+ 
+
+00:13:47.920 --> 00:13:50.389 align:start position:0%
+first ordinal number the same way we
+have<00:13:48.320><c> for</c><00:13:48.720><c> our</c><00:13:49.040><c> temperature</c><00:13:49.440><c> series</c><00:13:49.839><c> defined</c>
+
+00:13:50.389 --> 00:13:50.399 align:start position:0%
+have for our temperature series defined
+ 
+
+00:13:50.399 --> 00:13:52.470 align:start position:0%
+have for our temperature series defined
+so<00:13:50.560><c> this</c><00:13:50.800><c> is</c><00:13:50.959><c> a</c><00:13:51.199><c> quite</c><00:13:51.519><c> handy</c><00:13:51.920><c> way</c><00:13:52.160><c> where</c><00:13:52.320><c> we</c>
+
+00:13:52.470 --> 00:13:52.480 align:start position:0%
+so this is a quite handy way where we
+ 
+
+00:13:52.480 --> 00:13:54.949 align:start position:0%
+so this is a quite handy way where we
+can<00:13:52.639><c> use</c><00:13:52.959><c> the</c><00:13:53.199><c> same</c><00:13:53.600><c> indexing</c><00:13:54.320><c> in</c><00:13:54.399><c> terms</c><00:13:54.720><c> of</c>
+
+00:13:54.949 --> 00:13:54.959 align:start position:0%
+can use the same indexing in terms of
+ 
+
+00:13:54.959 --> 00:13:55.829 align:start position:0%
+can use the same indexing in terms of
+time
+
+00:13:55.829 --> 00:13:55.839 align:start position:0%
+time
+ 
+
+00:13:55.839 --> 00:13:57.990 align:start position:0%
+time
+for<00:13:56.000><c> both</c><00:13:56.320><c> defining</c><00:13:56.800><c> the</c><00:13:56.880><c> volatility</c><00:13:57.760><c> and</c>
+
+00:13:57.990 --> 00:13:58.000 align:start position:0%
+for both defining the volatility and
+ 
+
+00:13:58.000 --> 00:14:00.230 align:start position:0%
+for both defining the volatility and
+then<00:13:58.320><c> our</c><00:13:58.560><c> temperature</c><00:13:59.199><c> stochastic</c><00:13:59.839><c> model</c>
+
+00:14:00.230 --> 00:14:00.240 align:start position:0%
+then our temperature stochastic model
+ 
+
+00:14:00.240 --> 00:14:03.110 align:start position:0%
+then our temperature stochastic model
+that<00:14:00.399><c> we</c><00:14:00.560><c> had</c><00:14:00.880><c> from</c><00:14:01.199><c> previous</c><00:14:01.680><c> videos</c><00:14:02.560><c> so</c><00:14:02.959><c> i</c>
+
+00:14:03.110 --> 00:14:03.120 align:start position:0%
+that we had from previous videos so i
+ 
+
+00:14:03.120 --> 00:14:05.670 align:start position:0%
+that we had from previous videos so i
+i'm<00:14:03.839><c> really</c><00:14:04.079><c> liking</c><00:14:04.480><c> this</c><00:14:04.720><c> version</c><00:14:05.120><c> so</c><00:14:05.360><c> far</c>
+
+00:14:05.670 --> 00:14:05.680 align:start position:0%
+i'm really liking this version so far
+ 
+
+00:14:05.680 --> 00:14:07.350 align:start position:0%
+i'm really liking this version so far
+now<00:14:05.920><c> last</c><00:14:06.240><c> but</c><00:14:06.399><c> not</c><00:14:06.639><c> least</c><00:14:06.959><c> we</c><00:14:07.120><c> have</c>
+
+00:14:07.350 --> 00:14:07.360 align:start position:0%
+now last but not least we have
+ 
+
+00:14:07.360 --> 00:14:09.590 align:start position:0%
+now last but not least we have
+stochastic<00:14:07.920><c> differential</c><00:14:08.480><c> equation</c><00:14:09.360><c> now</c>
+
+00:14:09.590 --> 00:14:09.600 align:start position:0%
+stochastic differential equation now
+ 
+
+00:14:09.600 --> 00:14:12.069 align:start position:0%
+stochastic differential equation now
+what<00:14:09.760><c> i</c><00:14:09.920><c> mean</c><00:14:10.079><c> by</c><00:14:10.240><c> that</c><00:14:10.560><c> is</c><00:14:11.120><c> we</c><00:14:11.360><c> originally</c><00:14:11.920><c> had</c>
+
+00:14:12.069 --> 00:14:12.079 align:start position:0%
+what i mean by that is we originally had
+ 
+
+00:14:12.079 --> 00:14:15.670 align:start position:0%
+what i mean by that is we originally had
+this<00:14:12.320><c> modified</c><00:14:13.360><c> einstein</c><00:14:13.920><c> ulembek</c><00:14:14.720><c> process</c>
+
+00:14:15.670 --> 00:14:15.680 align:start position:0%
+this modified einstein ulembek process
+ 
+
+00:14:15.680 --> 00:14:16.470 align:start position:0%
+this modified einstein ulembek process
+and
+
+00:14:16.470 --> 00:14:16.480 align:start position:0%
+and
+ 
+
+00:14:16.480 --> 00:14:19.430 align:start position:0%
+and
+that's<00:14:16.959><c> of</c><00:14:17.199><c> this</c><00:14:17.519><c> form</c><00:14:17.839><c> here</c><00:14:18.560><c> but</c><00:14:18.880><c> now</c><00:14:19.279><c> i</c>
+
+00:14:19.430 --> 00:14:19.440 align:start position:0%
+that's of this form here but now i
+ 
+
+00:14:19.440 --> 00:14:21.590 align:start position:0%
+that's of this form here but now i
+actually<00:14:19.760><c> want</c><00:14:19.920><c> to</c><00:14:20.079><c> define</c>
+
+00:14:21.590 --> 00:14:21.600 align:start position:0%
+actually want to define
+ 
+
+00:14:21.600 --> 00:14:23.750 align:start position:0%
+actually want to define
+our<00:14:22.399><c> volatility</c><00:14:23.120><c> or</c><00:14:23.279><c> the</c><00:14:23.360><c> change</c><00:14:23.600><c> in</c>
+
+00:14:23.750 --> 00:14:23.760 align:start position:0%
+our volatility or the change in
+ 
+
+00:14:23.760 --> 00:14:26.069 align:start position:0%
+our volatility or the change in
+volatility<00:14:24.639><c> by</c><00:14:25.040><c> nearly</c><00:14:25.360><c> the</c><00:14:25.440><c> same</c><00:14:25.680><c> equation</c>
+
+00:14:26.069 --> 00:14:26.079 align:start position:0%
+volatility by nearly the same equation
+ 
+
+00:14:26.079 --> 00:14:27.829 align:start position:0%
+volatility by nearly the same equation
+i'm<00:14:26.160><c> going</c><00:14:26.240><c> to</c><00:14:26.320><c> take</c><00:14:26.480><c> that</c><00:14:26.720><c> einstein</c><00:14:27.279><c> ulembek</c>
+
+00:14:27.829 --> 00:14:27.839 align:start position:0%
+i'm going to take that einstein ulembek
+ 
+
+00:14:27.839 --> 00:14:30.150 align:start position:0%
+i'm going to take that einstein ulembek
+process<00:14:28.639><c> and</c><00:14:29.040><c> we're</c><00:14:29.279><c> going</c><00:14:29.600><c> to</c><00:14:29.760><c> start</c>
+
+00:14:30.150 --> 00:14:30.160 align:start position:0%
+process and we're going to start
+ 
+
+00:14:30.160 --> 00:14:33.030 align:start position:0%
+process and we're going to start
+defining<00:14:30.639><c> parameters</c><00:14:31.760><c> now</c><00:14:32.079><c> the</c><00:14:32.399><c> handy</c><00:14:32.800><c> thing</c>
+
+00:14:33.030 --> 00:14:33.040 align:start position:0%
+defining parameters now the handy thing
+ 
+
+00:14:33.040 --> 00:14:35.030 align:start position:0%
+defining parameters now the handy thing
+about<00:14:33.440><c> this</c><00:14:33.839><c> is</c><00:14:34.079><c> that</c>
+
+00:14:35.030 --> 00:14:35.040 align:start position:0%
+about this is that
+ 
+
+00:14:35.040 --> 00:14:37.990 align:start position:0%
+about this is that
+we've<00:14:35.360><c> already</c><00:14:36.000><c> discovered</c><00:14:36.720><c> that</c><00:14:37.040><c> this</c><00:14:37.519><c> long</c>
+
+00:14:37.990 --> 00:14:38.000 align:start position:0%
+we've already discovered that this long
+ 
+
+00:14:38.000 --> 00:14:39.750 align:start position:0%
+we've already discovered that this long
+term<00:14:38.480><c> volatility</c>
+
+00:14:39.750 --> 00:14:39.760 align:start position:0%
+term volatility
+ 
+
+00:14:39.760 --> 00:14:42.949 align:start position:0%
+term volatility
+isn't<00:14:40.160><c> time</c><00:14:40.560><c> varying</c><00:14:41.199><c> so</c><00:14:41.600><c> really</c>
+
+00:14:42.949 --> 00:14:42.959 align:start position:0%
+isn't time varying so really
+ 
+
+00:14:42.959 --> 00:14:44.470 align:start position:0%
+isn't time varying so really
+if<00:14:43.199><c> i</c>
+
+00:14:44.470 --> 00:14:44.480 align:start position:0%
+if i
+ 
+
+00:14:44.480 --> 00:14:46.069 align:start position:0%
+if i
+sorry<00:14:44.800><c> the</c><00:14:44.880><c> big</c><00:14:45.120><c> change</c><00:14:45.440><c> here</c><00:14:45.680><c> is</c><00:14:45.839><c> that</c><00:14:45.920><c> i'm</c>
+
+00:14:46.069 --> 00:14:46.079 align:start position:0%
+sorry the big change here is that i'm
+ 
+
+00:14:46.079 --> 00:14:48.069 align:start position:0%
+sorry the big change here is that i'm
+going<00:14:46.160><c> to</c><00:14:46.320><c> chop</c><00:14:46.560><c> up</c><00:14:46.639><c> this</c><00:14:46.880><c> data</c><00:14:47.279><c> now</c><00:14:47.760><c> and</c><00:14:47.920><c> look</c>
+
+00:14:48.069 --> 00:14:48.079 align:start position:0%
+going to chop up this data now and look
+ 
+
+00:14:48.079 --> 00:14:49.910 align:start position:0%
+going to chop up this data now and look
+at<00:14:48.160><c> standard</c><00:14:48.480><c> deviation</c><00:14:49.199><c> on</c><00:14:49.519><c> a</c>
+
+00:14:49.910 --> 00:14:49.920 align:start position:0%
+at standard deviation on a
+ 
+
+00:14:49.920 --> 00:14:52.629 align:start position:0%
+at standard deviation on a
+month-to-month<00:14:51.040><c> basis</c>
+
+00:14:52.629 --> 00:14:52.639 align:start position:0%
+month-to-month basis
+ 
+
+00:14:52.639 --> 00:14:53.590 align:start position:0%
+month-to-month basis
+so
+
+00:14:53.590 --> 00:14:53.600 align:start position:0%
+so
+ 
+
+00:14:53.600 --> 00:14:55.430 align:start position:0%
+so
+just<00:14:53.920><c> like</c><00:14:54.240><c> with</c><00:14:54.480><c> our</c>
+
+00:14:55.430 --> 00:14:55.440 align:start position:0%
+just like with our
+ 
+
+00:14:55.440 --> 00:14:56.790 align:start position:0%
+just like with our
+constant
+
+00:14:56.790 --> 00:14:56.800 align:start position:0%
+constant
+ 
+
+00:14:56.800 --> 00:14:58.310 align:start position:0%
+constant
+piecewise<00:14:57.440><c> function</c><00:14:57.760><c> that</c><00:14:57.920><c> was</c><00:14:58.079><c> on</c><00:14:58.240><c> a</c>
+
+00:14:58.310 --> 00:14:58.320 align:start position:0%
+piecewise function that was on a
+ 
+
+00:14:58.320 --> 00:14:59.910 align:start position:0%
+piecewise function that was on a
+month-to-month<00:14:58.800><c> basis</c><00:14:59.120><c> now</c><00:14:59.279><c> i'm</c><00:14:59.440><c> looking</c><00:14:59.680><c> at</c>
+
+00:14:59.910 --> 00:14:59.920 align:start position:0%
+month-to-month basis now i'm looking at
+ 
+
+00:14:59.920 --> 00:15:02.230 align:start position:0%
+month-to-month basis now i'm looking at
+monthly<00:15:00.480><c> volatility</c>
+
+00:15:02.230 --> 00:15:02.240 align:start position:0%
+monthly volatility
+ 
+
+00:15:02.240 --> 00:15:04.870 align:start position:0%
+monthly volatility
+so<00:15:02.480><c> if</c><00:15:02.639><c> we</c><00:15:02.880><c> aggregate</c><00:15:03.519><c> on</c><00:15:03.680><c> the</c><00:15:03.760><c> months</c>
+
+00:15:04.870 --> 00:15:04.880 align:start position:0%
+so if we aggregate on the months
+ 
+
+00:15:04.880 --> 00:15:06.150 align:start position:0%
+so if we aggregate on the months
+of<00:15:05.040><c> our</c><00:15:05.279><c> observed</c><00:15:05.600><c> daily</c><00:15:05.920><c> average</c>
+
+00:15:06.150 --> 00:15:06.160 align:start position:0%
+of our observed daily average
+ 
+
+00:15:06.160 --> 00:15:07.750 align:start position:0%
+of our observed daily average
+temperature<00:15:06.560><c> we</c><00:15:06.720><c> get</c><00:15:06.880><c> this</c><00:15:07.440><c> standard</c>
+
+00:15:07.750 --> 00:15:07.760 align:start position:0%
+temperature we get this standard
+ 
+
+00:15:07.760 --> 00:15:10.550 align:start position:0%
+temperature we get this standard
+deviation<00:15:08.560><c> path</c><00:15:09.279><c> and</c><00:15:09.440><c> i've</c><00:15:09.600><c> just</c><00:15:09.839><c> reindexed</c>
+
+00:15:10.550 --> 00:15:10.560 align:start position:0%
+deviation path and i've just reindexed
+ 
+
+00:15:10.560 --> 00:15:13.189 align:start position:0%
+deviation path and i've just reindexed
+the<00:15:10.800><c> time</c><00:15:11.040><c> periods</c><00:15:11.600><c> there</c><00:15:12.000><c> zero</c><00:15:12.399><c> bean</c><00:15:12.959><c> from</c>
+
+00:15:13.189 --> 00:15:13.199 align:start position:0%
+the time periods there zero bean from
+ 
+
+00:15:13.199 --> 00:15:14.910 align:start position:0%
+the time periods there zero bean from
+january
+
+00:15:14.910 --> 00:15:14.920 align:start position:0%
+january
+ 
+
+00:15:14.920 --> 00:15:18.870 align:start position:0%
+january
+1959<00:15:16.000><c> i</c><00:15:16.079><c> think</c><00:15:16.320><c> oh</c><00:15:16.480><c> 1859</c><00:15:17.360><c> sorry</c><00:15:18.160><c> so</c><00:15:18.399><c> we've</c><00:15:18.639><c> got</c>
+
+00:15:18.870 --> 00:15:18.880 align:start position:0%
+1959 i think oh 1859 sorry so we've got
+ 
+
+00:15:18.880 --> 00:15:20.470 align:start position:0%
+1959 i think oh 1859 sorry so we've got
+this<00:15:19.279><c> average</c>
+
+00:15:20.470 --> 00:15:20.480 align:start position:0%
+this average
+ 
+
+00:15:20.480 --> 00:15:23.030 align:start position:0%
+this average
+standard<00:15:20.800><c> deviation</c><00:15:21.839><c> and</c><00:15:22.079><c> that</c><00:15:22.320><c> means</c><00:15:22.720><c> that</c>
+
+00:15:23.030 --> 00:15:23.040 align:start position:0%
+standard deviation and that means that
+ 
+
+00:15:23.040 --> 00:15:25.590 align:start position:0%
+standard deviation and that means that
+this<00:15:23.279><c> parameter</c><00:15:23.760><c> here</c><00:15:24.079><c> in</c><00:15:24.240><c> our</c><00:15:24.399><c> sde</c><00:15:25.120><c> is</c><00:15:25.360><c> not</c>
+
+00:15:25.590 --> 00:15:25.600 align:start position:0%
+this parameter here in our sde is not
+ 
+
+00:15:25.600 --> 00:15:29.670 align:start position:0%
+this parameter here in our sde is not
+going<00:15:25.920><c> to</c><00:15:26.079><c> be</c><00:15:26.399><c> time</c><00:15:26.800><c> varying</c><00:15:27.600><c> now</c><00:15:28.320><c> that</c><00:15:28.880><c> is</c><00:15:29.440><c> a</c>
+
+00:15:29.670 --> 00:15:29.680 align:start position:0%
+going to be time varying now that is a
+ 
+
+00:15:29.680 --> 00:15:31.749 align:start position:0%
+going to be time varying now that is a
+hidden<00:15:30.079><c> gem</c><00:15:30.480><c> because</c><00:15:30.800><c> what</c><00:15:31.040><c> it</c><00:15:31.120><c> means</c><00:15:31.440><c> is</c><00:15:31.519><c> that</c>
+
+00:15:31.749 --> 00:15:31.759 align:start position:0%
+hidden gem because what it means is that
+ 
+
+00:15:31.759 --> 00:15:34.389 align:start position:0%
+hidden gem because what it means is that
+we<00:15:31.920><c> can</c><00:15:32.160><c> actually</c><00:15:32.959><c> create</c><00:15:33.440><c> our</c><00:15:33.680><c> modified</c>
+
+00:15:34.389 --> 00:15:34.399 align:start position:0%
+we can actually create our modified
+ 
+
+00:15:34.399 --> 00:15:36.790 align:start position:0%
+we can actually create our modified
+ulnstein<00:15:35.040><c> ulembek</c><00:15:35.600><c> process</c><00:15:36.000><c> like</c><00:15:36.160><c> we</c><00:15:36.399><c> had</c>
+
+00:15:36.790 --> 00:15:36.800 align:start position:0%
+ulnstein ulembek process like we had
+ 
+
+00:15:36.800 --> 00:15:40.870 align:start position:0%
+ulnstein ulembek process like we had
+before<00:15:37.519><c> where</c><00:15:37.759><c> we</c><00:15:38.000><c> used</c><00:15:38.480><c> the</c><00:15:38.639><c> derivative</c><00:15:39.600><c> of</c>
+
+00:15:40.870 --> 00:15:40.880 align:start position:0%
+before where we used the derivative of
+ 
+
+00:15:40.880 --> 00:15:43.829 align:start position:0%
+before where we used the derivative of
+our<00:15:41.120><c> variable</c><00:15:41.759><c> of</c><00:15:42.000><c> interest</c><00:15:42.880><c> our</c><00:15:43.600><c> time</c>
+
+00:15:43.829 --> 00:15:43.839 align:start position:0%
+our variable of interest our time
+ 
+
+00:15:43.839 --> 00:15:45.990 align:start position:0%
+our variable of interest our time
+variant<00:15:44.240><c> parameter</c><00:15:45.120><c> and</c><00:15:45.360><c> that</c><00:15:45.519><c> means</c><00:15:45.839><c> that</c>
+
+00:15:45.990 --> 00:15:46.000 align:start position:0%
+variant parameter and that means that
+ 
+
+00:15:46.000 --> 00:15:47.910 align:start position:0%
+variant parameter and that means that
+we'll<00:15:46.240><c> be</c><00:15:46.399><c> able</c><00:15:46.639><c> to</c><00:15:46.800><c> use</c><00:15:47.600><c> the</c><00:15:47.680><c> same</c>
+
+00:15:47.910 --> 00:15:47.920 align:start position:0%
+we'll be able to use the same
+ 
+
+00:15:47.920 --> 00:15:50.310 align:start position:0%
+we'll be able to use the same
+methodology<00:15:48.720><c> to</c><00:15:48.959><c> estimate</c><00:15:49.519><c> our</c><00:15:49.759><c> rate</c><00:15:50.000><c> of</c><00:15:50.079><c> mean</c>
+
+00:15:50.310 --> 00:15:50.320 align:start position:0%
+methodology to estimate our rate of mean
+ 
+
+00:15:50.320 --> 00:15:52.550 align:start position:0%
+methodology to estimate our rate of mean
+reversion<00:15:50.880><c> as</c><00:15:51.040><c> we</c><00:15:51.199><c> did</c><00:15:51.519><c> in</c><00:15:51.680><c> the</c><00:15:51.839><c> previous</c>
+
+00:15:52.550 --> 00:15:52.560 align:start position:0%
+reversion as we did in the previous
+ 
+
+00:15:52.560 --> 00:15:55.990 align:start position:0%
+reversion as we did in the previous
+video<00:15:53.440><c> now</c><00:15:53.759><c> we</c><00:15:54.160><c> were</c><00:15:54.399><c> able</c><00:15:54.639><c> to</c><00:15:54.959><c> auto</c><00:15:55.360><c> regress</c>
+
+00:15:55.990 --> 00:15:56.000 align:start position:0%
+video now we were able to auto regress
+ 
+
+00:15:56.000 --> 00:15:58.230 align:start position:0%
+video now we were able to auto regress
+on<00:15:56.399><c> our</c><00:15:57.199><c> uh</c>
+
+00:15:58.230 --> 00:15:58.240 align:start position:0%
+on our uh
+ 
+
+00:15:58.240 --> 00:16:01.030 align:start position:0%
+on our uh
+our<00:15:58.480><c> temperature</c><00:15:59.199><c> parameter</c><00:16:00.000><c> to</c><00:16:00.240><c> then</c><00:16:00.720><c> our</c>
+
+00:16:01.030 --> 00:16:01.040 align:start position:0%
+our temperature parameter to then our
+ 
+
+00:16:01.040 --> 00:16:02.870 align:start position:0%
+our temperature parameter to then our
+residual<00:16:01.519><c> of</c><00:16:01.600><c> the</c><00:16:01.680><c> temperature</c><00:16:02.079><c> parameter</c><00:16:02.639><c> to</c>
+
+00:16:02.870 --> 00:16:02.880 align:start position:0%
+residual of the temperature parameter to
+ 
+
+00:16:02.880 --> 00:16:04.949 align:start position:0%
+residual of the temperature parameter to
+find<00:16:03.360><c> this</c><00:16:03.600><c> rate</c><00:16:03.839><c> of</c><00:16:03.920><c> mean</c><00:16:04.160><c> reversion</c><00:16:04.800><c> and</c>
+
+00:16:04.949 --> 00:16:04.959 align:start position:0%
+find this rate of mean reversion and
+ 
+
+00:16:04.959 --> 00:16:06.310 align:start position:0%
+find this rate of mean reversion and
+here<00:16:05.199><c> we're</c><00:16:05.360><c> going</c><00:16:05.600><c> to</c><00:16:05.680><c> be</c><00:16:05.759><c> doing</c><00:16:06.000><c> the</c><00:16:06.079><c> same</c>
+
+00:16:06.310 --> 00:16:06.320 align:start position:0%
+here we're going to be doing the same
+ 
+
+00:16:06.320 --> 00:16:09.350 align:start position:0%
+here we're going to be doing the same
+thing<00:16:06.720><c> with</c><00:16:07.040><c> our</c><00:16:07.199><c> volatility</c><00:16:08.160><c> term</c><00:16:08.560><c> to</c><00:16:08.720><c> find</c>
+
+00:16:09.350 --> 00:16:09.360 align:start position:0%
+thing with our volatility term to find
+ 
+
+00:16:09.360 --> 00:16:12.230 align:start position:0%
+thing with our volatility term to find
+our<00:16:09.600><c> rate</c><00:16:10.160><c> of</c><00:16:10.399><c> mean</c><00:16:10.639><c> reversion</c><00:16:11.680><c> but</c><00:16:11.920><c> before</c>
+
+00:16:12.230 --> 00:16:12.240 align:start position:0%
+our rate of mean reversion but before
+ 
+
+00:16:12.240 --> 00:16:14.470 align:start position:0%
+our rate of mean reversion but before
+then<00:16:12.560><c> we</c><00:16:12.800><c> need</c><00:16:13.040><c> to</c><00:16:13.279><c> find</c><00:16:13.680><c> this</c><00:16:14.160><c> fixed</c>
+
+00:16:14.470 --> 00:16:14.480 align:start position:0%
+then we need to find this fixed
+ 
+
+00:16:14.480 --> 00:16:16.389 align:start position:0%
+then we need to find this fixed
+parameter<00:16:15.120><c> that</c><00:16:15.360><c> isn't</c><00:16:15.600><c> going</c><00:16:15.839><c> to</c><00:16:15.920><c> be</c><00:16:16.079><c> moving</c>
+
+00:16:16.389 --> 00:16:16.399 align:start position:0%
+parameter that isn't going to be moving
+ 
+
+00:16:16.399 --> 00:16:20.150 align:start position:0%
+parameter that isn't going to be moving
+with<00:16:16.560><c> time</c><00:16:16.880><c> we're</c><00:16:17.040><c> going</c><00:16:17.360><c> to</c><00:16:17.759><c> set</c><00:16:18.079><c> it</c><00:16:18.639><c> as</c>
+
+00:16:20.150 --> 00:16:20.160 align:start position:0%
+with time we're going to set it as
+ 
+
+00:16:20.160 --> 00:16:23.269 align:start position:0%
+with time we're going to set it as
+as<00:16:20.639><c> the</c><00:16:20.880><c> overall</c><00:16:21.440><c> process</c><00:16:22.000><c> the</c><00:16:22.160><c> volatility</c><00:16:23.040><c> of</c>
+
+00:16:23.269 --> 00:16:23.279 align:start position:0%
+as the overall process the volatility of
+ 
+
+00:16:23.279 --> 00:16:24.790 align:start position:0%
+as the overall process the volatility of
+volatility
+
+00:16:24.790 --> 00:16:24.800 align:start position:0%
+volatility
+ 
+
+00:16:24.800 --> 00:16:27.910 align:start position:0%
+volatility
+so<00:16:25.040><c> of</c><00:16:25.120><c> course</c><00:16:25.360><c> the</c><00:16:25.600><c> unbiased</c><00:16:26.720><c> estimate</c>
+
+00:16:27.910 --> 00:16:27.920 align:start position:0%
+so of course the unbiased estimate
+ 
+
+00:16:27.920 --> 00:16:30.389 align:start position:0%
+so of course the unbiased estimate
+of<00:16:28.399><c> volatility</c><00:16:29.279><c> is</c><00:16:29.440><c> going</c><00:16:29.680><c> to</c><00:16:29.839><c> be</c><00:16:30.079><c> the</c><00:16:30.240><c> same</c>
+
+00:16:30.389 --> 00:16:30.399 align:start position:0%
+of volatility is going to be the same
+ 
+
+00:16:30.399 --> 00:16:33.269 align:start position:0%
+of volatility is going to be the same
+for<00:16:30.560><c> the</c><00:16:30.639><c> quadratic</c><00:16:31.120><c> variation</c><00:16:31.839><c> process</c>
+
+00:16:33.269 --> 00:16:33.279 align:start position:0%
+for the quadratic variation process
+ 
+
+00:16:33.279 --> 00:16:34.790 align:start position:0%
+for the quadratic variation process
+so<00:16:33.440><c> here</c><00:16:33.680><c> we're</c><00:16:33.839><c> going</c><00:16:34.000><c> to</c><00:16:34.079><c> take</c><00:16:34.320><c> our</c><00:16:34.480><c> standard</c>
+
+00:16:34.790 --> 00:16:34.800 align:start position:0%
+so here we're going to take our standard
+ 
+
+00:16:34.800 --> 00:16:36.310 align:start position:0%
+so here we're going to take our standard
+deviations
+
+00:16:36.310 --> 00:16:36.320 align:start position:0%
+deviations
+ 
+
+00:16:36.320 --> 00:16:37.509 align:start position:0%
+deviations
+and<00:16:36.480><c> we're</c><00:16:36.639><c> going</c><00:16:36.880><c> to</c><00:16:36.959><c> get</c><00:16:37.120><c> the</c><00:16:37.199><c> standard</c>
+
+00:16:37.509 --> 00:16:37.519 align:start position:0%
+and we're going to get the standard
+ 
+
+00:16:37.519 --> 00:16:39.269 align:start position:0%
+and we're going to get the standard
+deviation<00:16:38.160><c> of</c><00:16:38.399><c> the</c><00:16:38.560><c> temperature</c><00:16:39.040><c> standard</c>
+
+00:16:39.269 --> 00:16:39.279 align:start position:0%
+deviation of the temperature standard
+ 
+
+00:16:39.279 --> 00:16:42.230 align:start position:0%
+deviation of the temperature standard
+deviation<00:16:40.079><c> which</c><00:16:40.320><c> sounds</c><00:16:40.639><c> funny</c><00:16:41.120><c> but</c>
+
+00:16:42.230 --> 00:16:42.240 align:start position:0%
+deviation which sounds funny but
+ 
+
+00:16:42.240 --> 00:16:43.910 align:start position:0%
+deviation which sounds funny but
+that's<00:16:42.480><c> what</c><00:16:42.639><c> we're</c><00:16:42.720><c> going</c><00:16:42.800><c> to</c><00:16:42.880><c> define</c><00:16:43.279><c> it</c><00:16:43.440><c> as</c>
+
+00:16:43.910 --> 00:16:43.920 align:start position:0%
+that's what we're going to define it as
+ 
+
+00:16:43.920 --> 00:16:46.230 align:start position:0%
+that's what we're going to define it as
+that<00:16:44.399><c> parameter</c><00:16:44.880><c> that</c><00:16:44.959><c> we're</c><00:16:45.440><c> estimating</c><00:16:46.079><c> is</c>
+
+00:16:46.230 --> 00:16:46.240 align:start position:0%
+that parameter that we're estimating is
+ 
+
+00:16:46.240 --> 00:16:48.230 align:start position:0%
+that parameter that we're estimating is
+gamma<00:16:46.639><c> in</c><00:16:46.800><c> our</c><00:16:46.959><c> model</c><00:16:47.440><c> so</c><00:16:47.680><c> i've</c><00:16:47.839><c> said</c><00:16:48.000><c> that</c>
+
+00:16:48.230 --> 00:16:48.240 align:start position:0%
+gamma in our model so i've said that
+ 
+
+00:16:48.240 --> 00:16:49.389 align:start position:0%
+gamma in our model so i've said that
+gamma<00:16:48.639><c> is</c>
+
+00:16:49.389 --> 00:16:49.399 align:start position:0%
+gamma is
+ 
+
+00:16:49.399 --> 00:16:52.310 align:start position:0%
+gamma is
+0.58<00:16:50.399><c> and</c><00:16:50.560><c> it's</c><00:16:50.720><c> remember</c><00:16:51.199><c> it's</c><00:16:51.360><c> important</c><00:16:51.839><c> to</c>
+
+00:16:52.310 --> 00:16:52.320 align:start position:0%
+0.58 and it's remember it's important to
+ 
+
+00:16:52.320 --> 00:16:55.030 align:start position:0%
+0.58 and it's remember it's important to
+understand<00:16:52.880><c> that</c><00:16:53.120><c> time</c><00:16:53.600><c> is</c><00:16:53.839><c> now</c><00:16:54.160><c> on</c><00:16:54.399><c> a</c><00:16:54.560><c> monthly</c>
+
+00:16:55.030 --> 00:16:55.040 align:start position:0%
+understand that time is now on a monthly
+ 
+
+00:16:55.040 --> 00:16:57.910 align:start position:0%
+understand that time is now on a monthly
+frequency<00:16:55.600><c> in</c><00:16:55.839><c> this</c><00:16:56.320><c> sub</c><00:16:56.720><c> sde</c><00:16:57.360><c> so</c><00:16:57.600><c> just</c><00:16:57.759><c> like</c>
+
+00:16:57.910 --> 00:16:57.920 align:start position:0%
+frequency in this sub sde so just like
+ 
+
+00:16:57.920 --> 00:16:59.590 align:start position:0%
+frequency in this sub sde so just like
+the<00:16:58.079><c> previous</c>
+
+00:16:59.590 --> 00:16:59.600 align:start position:0%
+the previous
+ 
+
+00:16:59.600 --> 00:17:02.389 align:start position:0%
+the previous
+video<00:17:00.240><c> we</c><00:17:00.399><c> are</c><00:17:00.560><c> actually</c><00:17:00.959><c> going</c><00:17:01.279><c> to</c><00:17:01.759><c> calculate</c>
+
+00:17:02.389 --> 00:17:02.399 align:start position:0%
+video we are actually going to calculate
+ 
+
+00:17:02.399 --> 00:17:05.429 align:start position:0%
+video we are actually going to calculate
+this<00:17:02.639><c> rate</c><00:17:02.880><c> of</c><00:17:03.040><c> mean</c><00:17:03.440><c> reversion</c>
+
+00:17:05.429 --> 00:17:05.439 align:start position:0%
+this rate of mean reversion
+ 
+
+00:17:05.439 --> 00:17:08.069 align:start position:0%
+this rate of mean reversion
+by<00:17:05.679><c> using</c><00:17:06.160><c> a</c><00:17:06.559><c> lag</c><00:17:06.959><c> process</c><00:17:07.360><c> we</c><00:17:07.520><c> can</c><00:17:07.679><c> do</c><00:17:07.839><c> that</c>
+
+00:17:08.069 --> 00:17:08.079 align:start position:0%
+by using a lag process we can do that
+ 
+
+00:17:08.079 --> 00:17:09.510 align:start position:0%
+by using a lag process we can do that
+because
+
+00:17:09.510 --> 00:17:09.520 align:start position:0%
+because
+ 
+
+00:17:09.520 --> 00:17:11.829 align:start position:0%
+because
+the<00:17:09.760><c> modified</c><00:17:10.480><c> dynamics</c><00:17:11.039><c> is</c><00:17:11.120><c> no</c><00:17:11.360><c> different</c><00:17:11.679><c> to</c>
+
+00:17:11.829 --> 00:17:11.839 align:start position:0%
+the modified dynamics is no different to
+ 
+
+00:17:11.839 --> 00:17:16.870 align:start position:0%
+the modified dynamics is no different to
+this<00:17:12.000><c> dynamics</c><00:17:12.640><c> because</c><00:17:13.439><c> the</c><00:17:13.839><c> change</c><00:17:14.559><c> of</c><00:17:15.280><c> our</c>
+
+00:17:16.870 --> 00:17:16.880 align:start position:0%
+this dynamics because the change of our
+ 
+
+00:17:16.880 --> 00:17:20.390 align:start position:0%
+this dynamics because the change of our
+our<00:17:17.199><c> average</c><00:17:18.079><c> volatility</c><00:17:18.880><c> over</c><00:17:19.439><c> time</c><00:17:20.160><c> is</c>
+
+00:17:20.390 --> 00:17:20.400 align:start position:0%
+our average volatility over time is
+ 
+
+00:17:20.400 --> 00:17:22.710 align:start position:0%
+our average volatility over time is
+actually<00:17:21.120><c> it's</c><00:17:21.439><c> it's</c><00:17:21.839><c> it's</c><00:17:22.079><c> constant</c><00:17:22.400><c> so</c><00:17:22.559><c> it's</c>
+
+00:17:22.710 --> 00:17:22.720 align:start position:0%
+actually it's it's it's constant so it's
+ 
+
+00:17:22.720 --> 00:17:24.470 align:start position:0%
+actually it's it's it's constant so it's
+equal<00:17:22.959><c> to</c><00:17:23.120><c> zero</c><00:17:23.439><c> so</c><00:17:23.600><c> we</c><00:17:23.679><c> can</c><00:17:23.760><c> just</c><00:17:24.000><c> add</c><00:17:24.240><c> that</c>
+
+00:17:24.470 --> 00:17:24.480 align:start position:0%
+equal to zero so we can just add that
+ 
+
+00:17:24.480 --> 00:17:27.189 align:start position:0%
+equal to zero so we can just add that
+term<00:17:24.880><c> in</c><00:17:25.280><c> and</c><00:17:25.439><c> then</c><00:17:25.600><c> we</c><00:17:25.760><c> can</c><00:17:26.000><c> use</c><00:17:26.480><c> the</c><00:17:26.720><c> lag</c><00:17:27.039><c> of</c>
+
+00:17:27.189 --> 00:17:27.199 align:start position:0%
+term in and then we can use the lag of
+ 
+
+00:17:27.199 --> 00:17:30.070 align:start position:0%
+term in and then we can use the lag of
+the<00:17:27.280><c> volatility</c><00:17:27.919><c> process</c><00:17:28.559><c> to</c><00:17:28.720><c> calculate</c><00:17:29.600><c> our</c>
+
+00:17:30.070 --> 00:17:30.080 align:start position:0%
+the volatility process to calculate our
+ 
+
+00:17:30.080 --> 00:17:32.630 align:start position:0%
+the volatility process to calculate our
+uh<00:17:30.720><c> our</c><00:17:31.039><c> rate</c><00:17:31.280><c> of</c><00:17:31.360><c> remain</c><00:17:31.760><c> reversion</c><00:17:32.480><c> if</c><00:17:32.559><c> you</c>
+
+00:17:32.630 --> 00:17:32.640 align:start position:0%
+uh our rate of remain reversion if you
+ 
+
+00:17:32.640 --> 00:17:33.909 align:start position:0%
+uh our rate of remain reversion if you
+don't<00:17:32.799><c> know</c><00:17:32.880><c> what</c><00:17:33.039><c> i'm</c><00:17:33.120><c> talking</c><00:17:33.360><c> about</c><00:17:33.600><c> please</c>
+
+00:17:33.909 --> 00:17:33.919 align:start position:0%
+don't know what i'm talking about please
+ 
+
+00:17:33.919 --> 00:17:36.390 align:start position:0%
+don't know what i'm talking about please
+go<00:17:34.080><c> ahead</c><00:17:34.400><c> and</c><00:17:34.640><c> look</c><00:17:34.880><c> at</c><00:17:34.960><c> the</c><00:17:35.120><c> video</c><00:17:35.840><c> last</c><00:17:36.160><c> week</c>
+
+00:17:36.390 --> 00:17:36.400 align:start position:0%
+go ahead and look at the video last week
+ 
+
+00:17:36.400 --> 00:17:38.549 align:start position:0%
+go ahead and look at the video last week
+i'll<00:17:36.559><c> put</c><00:17:36.720><c> a</c><00:17:36.799><c> link</c><00:17:36.960><c> to</c><00:17:37.200><c> it</c><00:17:37.360><c> here</c><00:17:37.760><c> so</c><00:17:38.080><c> i'm</c><00:17:38.320><c> going</c>
+
+00:17:38.549 --> 00:17:38.559 align:start position:0%
+i'll put a link to it here so i'm going
+ 
+
+00:17:38.559 --> 00:17:41.990 align:start position:0%
+i'll put a link to it here so i'm going
+to<00:17:38.720><c> use</c><00:17:39.120><c> our</c><00:17:39.360><c> autoregressive</c><00:17:40.559><c> model</c><00:17:41.120><c> and</c>
+
+00:17:41.990 --> 00:17:42.000 align:start position:0%
+to use our autoregressive model and
+ 
+
+00:17:42.000 --> 00:17:43.830 align:start position:0%
+to use our autoregressive model and
+we're<00:17:42.160><c> going</c><00:17:42.400><c> to</c><00:17:42.480><c> be</c><00:17:42.640><c> passing</c><00:17:43.039><c> our</c><00:17:43.200><c> data</c><00:17:43.600><c> so</c>
+
+00:17:43.830 --> 00:17:43.840 align:start position:0%
+we're going to be passing our data so
+ 
+
+00:17:43.840 --> 00:17:46.390 align:start position:0%
+we're going to be passing our data so
+our<00:17:44.080><c> volatility</c><00:17:45.039><c> standard</c><00:17:45.360><c> deviation</c>
+
+00:17:46.390 --> 00:17:46.400 align:start position:0%
+our volatility standard deviation
+ 
+
+00:17:46.400 --> 00:17:49.990 align:start position:0%
+our volatility standard deviation
+and<00:17:46.720><c> we're</c><00:17:46.880><c> going</c><00:17:47.039><c> to</c><00:17:47.120><c> have</c><00:17:47.440><c> a</c><00:17:47.840><c> one</c><00:17:48.320><c> lag</c><00:17:48.880><c> term</c>
+
+00:17:49.990 --> 00:17:50.000 align:start position:0%
+and we're going to have a one lag term
+ 
+
+00:17:50.000 --> 00:17:51.510 align:start position:0%
+and we're going to have a one lag term
+so<00:17:50.240><c> we've</c><00:17:50.320><c> got</c><00:17:50.480><c> an</c><00:17:50.559><c> auto</c><00:17:50.799><c> regressive</c><00:17:51.200><c> model</c>
+
+00:17:51.510 --> 00:17:51.520 align:start position:0%
+so we've got an auto regressive model
+ 
+
+00:17:51.520 --> 00:17:53.110 align:start position:0%
+so we've got an auto regressive model
+with<00:17:51.760><c> one</c><00:17:52.000><c> lag</c><00:17:52.240><c> term</c><00:17:52.480><c> we're</c><00:17:52.640><c> going</c><00:17:52.720><c> to</c><00:17:52.880><c> fit</c>
+
+00:17:53.110 --> 00:17:53.120 align:start position:0%
+with one lag term we're going to fit
+ 
+
+00:17:53.120 --> 00:17:55.350 align:start position:0%
+with one lag term we're going to fit
+that<00:17:53.440><c> and</c><00:17:53.600><c> then</c><00:17:53.760><c> we're</c><00:17:53.919><c> going</c><00:17:54.240><c> to</c><00:17:54.640><c> look</c><00:17:54.960><c> at</c><00:17:55.120><c> the</c>
+
+00:17:55.350 --> 00:17:55.360 align:start position:0%
+that and then we're going to look at the
+ 
+
+00:17:55.360 --> 00:17:57.029 align:start position:0%
+that and then we're going to look at the
+fit<00:17:55.679><c> and</c><00:17:55.760><c> then</c><00:17:55.919><c> the</c><00:17:56.080><c> parameter</c><00:17:56.640><c> and</c><00:17:56.720><c> the</c><00:17:56.880><c> rate</c>
+
+00:17:57.029 --> 00:17:57.039 align:start position:0%
+fit and then the parameter and the rate
+ 
+
+00:17:57.039 --> 00:17:58.390 align:start position:0%
+fit and then the parameter and the rate
+of<00:17:57.120><c> mean</c><00:17:57.360><c> reversion</c><00:17:57.760><c> of</c><00:17:57.840><c> the</c><00:17:57.919><c> volatility</c>
+
+00:17:58.390 --> 00:17:58.400 align:start position:0%
+of mean reversion of the volatility
+ 
+
+00:17:58.400 --> 00:18:00.510 align:start position:0%
+of mean reversion of the volatility
+process<00:17:58.799><c> that</c><00:17:58.880><c> we</c><00:17:59.039><c> get</c><00:17:59.280><c> is</c>
+
+00:18:00.510 --> 00:18:00.520 align:start position:0%
+process that we get is
+ 
+
+00:18:00.520 --> 00:18:03.590 align:start position:0%
+process that we get is
+0.954<00:18:01.760><c> or</c><00:18:01.919><c> thereabouts</c><00:18:03.039><c> so</c><00:18:03.280><c> now</c><00:18:03.440><c> the</c>
+
+00:18:03.590 --> 00:18:03.600 align:start position:0%
+0.954 or thereabouts so now the
+ 
+
+00:18:03.600 --> 00:18:05.110 align:start position:0%
+0.954 or thereabouts so now the
+stochastic<00:18:04.080><c> differential</c><00:18:04.559><c> equation</c><00:18:04.960><c> that</c>
+
+00:18:05.110 --> 00:18:05.120 align:start position:0%
+stochastic differential equation that
+ 
+
+00:18:05.120 --> 00:18:08.789 align:start position:0%
+stochastic differential equation that
+we've<00:18:05.280><c> completed</c><00:18:06.000><c> is</c><00:18:06.320><c> of</c><00:18:06.720><c> this</c><00:18:07.120><c> form</c><00:18:07.600><c> here</c>
+
+00:18:08.789 --> 00:18:08.799 align:start position:0%
+we've completed is of this form here
+ 
+
+00:18:08.799 --> 00:18:10.549 align:start position:0%
+we've completed is of this form here
+now<00:18:09.039><c> in</c><00:18:09.120><c> order</c><00:18:09.360><c> to</c><00:18:09.520><c> simulate</c><00:18:09.919><c> this</c><00:18:10.160><c> specific</c>
+
+00:18:10.549 --> 00:18:10.559 align:start position:0%
+now in order to simulate this specific
+ 
+
+00:18:10.559 --> 00:18:12.830 align:start position:0%
+now in order to simulate this specific
+path<00:18:10.799><c> we</c><00:18:10.960><c> would</c><00:18:11.120><c> use</c><00:18:11.280><c> a</c><00:18:11.760><c> euler</c><00:18:12.320><c> scheme</c>
+
+00:18:12.830 --> 00:18:12.840 align:start position:0%
+path we would use a euler scheme
+ 
+
+00:18:12.840 --> 00:18:15.430 align:start position:0%
+path we would use a euler scheme
+approximation<00:18:14.320><c> for</c><00:18:14.480><c> each</c><00:18:14.799><c> month</c><00:18:15.120><c> this</c>
+
+00:18:15.430 --> 00:18:15.440 align:start position:0%
+approximation for each month this
+ 
+
+00:18:15.440 --> 00:18:18.470 align:start position:0%
+approximation for each month this
+volatility<00:18:16.480><c> uh</c><00:18:16.880><c> would</c><00:18:17.039><c> be</c><00:18:17.200><c> simulated</c><00:18:17.840><c> as</c><00:18:18.080><c> per</c>
+
+00:18:18.470 --> 00:18:18.480 align:start position:0%
+volatility uh would be simulated as per
+ 
+
+00:18:18.480 --> 00:18:20.070 align:start position:0%
+volatility uh would be simulated as per
+this<00:18:18.880><c> sde</c>
+
+00:18:20.070 --> 00:18:20.080 align:start position:0%
+this sde
+ 
+
+00:18:20.080 --> 00:18:21.750 align:start position:0%
+this sde
+and<00:18:20.320><c> then</c><00:18:20.480><c> we</c><00:18:20.640><c> would</c><00:18:20.880><c> use</c><00:18:21.200><c> that</c><00:18:21.440><c> monthly</c>
+
+00:18:21.750 --> 00:18:21.760 align:start position:0%
+and then we would use that monthly
+ 
+
+00:18:21.760 --> 00:18:25.029 align:start position:0%
+and then we would use that monthly
+volatility<00:18:22.720><c> for</c><00:18:23.039><c> a</c><00:18:23.280><c> whole</c><00:18:23.919><c> month</c>
+
+00:18:25.029 --> 00:18:25.039 align:start position:0%
+volatility for a whole month
+ 
+
+00:18:25.039 --> 00:18:27.350 align:start position:0%
+volatility for a whole month
+of<00:18:25.280><c> temperature</c><00:18:25.760><c> simulations</c><00:18:26.559><c> for</c><00:18:26.720><c> each</c><00:18:27.039><c> day</c>
+
+00:18:27.350 --> 00:18:27.360 align:start position:0%
+of temperature simulations for each day
+ 
+
+00:18:27.360 --> 00:18:29.270 align:start position:0%
+of temperature simulations for each day
+within<00:18:27.679><c> that</c><00:18:27.919><c> month</c><00:18:28.640><c> and</c><00:18:28.799><c> then</c><00:18:28.960><c> you</c><00:18:29.120><c> would</c>
+
+00:18:29.270 --> 00:18:29.280 align:start position:0%
+within that month and then you would
+ 
+
+00:18:29.280 --> 00:18:31.909 align:start position:0%
+within that month and then you would
+progress<00:18:29.919><c> from</c><00:18:30.160><c> month</c><00:18:30.480><c> to</c><00:18:30.640><c> month</c>
+
+00:18:31.909 --> 00:18:31.919 align:start position:0%
+progress from month to month
+ 
+
+00:18:31.919 --> 00:18:33.110 align:start position:0%
+progress from month to month
+now
+
+00:18:33.110 --> 00:18:33.120 align:start position:0%
+now
+ 
+
+00:18:33.120 --> 00:18:34.549 align:start position:0%
+now
+the<00:18:33.280><c> reason</c><00:18:33.600><c> that</c><00:18:33.679><c> i've</c><00:18:33.919><c> done</c><00:18:34.080><c> this</c><00:18:34.320><c> on</c><00:18:34.480><c> a</c>
+
+00:18:34.549 --> 00:18:34.559 align:start position:0%
+the reason that i've done this on a
+ 
+
+00:18:34.559 --> 00:18:36.710 align:start position:0%
+the reason that i've done this on a
+monthly<00:18:34.960><c> basis</c><00:18:35.679><c> is</c><00:18:35.840><c> just</c><00:18:36.000><c> to</c><00:18:36.160><c> show</c><00:18:36.320><c> you</c><00:18:36.480><c> a</c><00:18:36.559><c> bit</c>
+
+00:18:36.710 --> 00:18:36.720 align:start position:0%
+monthly basis is just to show you a bit
+ 
+
+00:18:36.720 --> 00:18:38.070 align:start position:0%
+monthly basis is just to show you a bit
+of<00:18:36.799><c> variety</c>
+
+00:18:38.070 --> 00:18:38.080 align:start position:0%
+of variety
+ 
+
+00:18:38.080 --> 00:18:40.789 align:start position:0%
+of variety
+of<00:18:38.320><c> this</c><00:18:38.559><c> model</c><00:18:38.960><c> compared</c><00:18:39.520><c> to</c><00:18:40.080><c> another</c><00:18:40.480><c> model</c>
+
+00:18:40.789 --> 00:18:40.799 align:start position:0%
+of this model compared to another model
+ 
+
+00:18:40.799 --> 00:18:42.870 align:start position:0%
+of this model compared to another model
+where<00:18:40.960><c> we</c><00:18:41.120><c> might</c><00:18:41.360><c> be</c><00:18:41.520><c> able</c><00:18:41.760><c> to</c><00:18:41.919><c> get</c><00:18:42.160><c> volatility</c>
+
+00:18:42.870 --> 00:18:42.880 align:start position:0%
+where we might be able to get volatility
+ 
+
+00:18:42.880 --> 00:18:45.510 align:start position:0%
+where we might be able to get volatility
+per<00:18:43.200><c> day</c><00:18:43.679><c> in</c><00:18:43.919><c> quite</c><00:18:44.240><c> a</c><00:18:44.559><c> um</c>
+
+00:18:45.510 --> 00:18:45.520 align:start position:0%
+per day in quite a um
+ 
+
+00:18:45.520 --> 00:18:48.070 align:start position:0%
+per day in quite a um
+well<00:18:45.840><c> a</c><00:18:46.160><c> parametric</c><00:18:46.960><c> way</c><00:18:47.280><c> where</c><00:18:47.440><c> we</c><00:18:47.600><c> just</c><00:18:47.840><c> feed</c>
+
+00:18:48.070 --> 00:18:48.080 align:start position:0%
+well a parametric way where we just feed
+ 
+
+00:18:48.080 --> 00:18:50.070 align:start position:0%
+well a parametric way where we just feed
+in<00:18:48.320><c> the</c><00:18:48.880><c> the</c><00:18:49.120><c> time</c><00:18:49.440><c> and</c><00:18:49.520><c> then</c><00:18:49.679><c> we're</c><00:18:49.840><c> going</c><00:18:50.000><c> to</c>
+
+00:18:50.070 --> 00:18:50.080 align:start position:0%
+in the the time and then we're going to
+ 
+
+00:18:50.080 --> 00:18:52.470 align:start position:0%
+in the the time and then we're going to
+get<00:18:50.240><c> a</c><00:18:50.320><c> volatility</c><00:18:51.039><c> back</c><00:18:51.280><c> that's</c><00:18:51.600><c> fixed</c><00:18:52.240><c> now</c>
+
+00:18:52.470 --> 00:18:52.480 align:start position:0%
+get a volatility back that's fixed now
+ 
+
+00:18:52.480 --> 00:18:53.750 align:start position:0%
+get a volatility back that's fixed now
+it's<00:18:52.640><c> important</c><00:18:52.960><c> to</c><00:18:53.039><c> note</c><00:18:53.280><c> that</c><00:18:53.360><c> we</c><00:18:53.520><c> could</c>
+
+00:18:53.750 --> 00:18:53.760 align:start position:0%
+it's important to note that we could
+ 
+
+00:18:53.760 --> 00:18:55.350 align:start position:0%
+it's important to note that we could
+actually<00:18:54.160><c> fit</c><00:18:54.400><c> a</c><00:18:54.480><c> stochastic</c><00:18:54.960><c> differential</c>
+
+00:18:55.350 --> 00:18:55.360 align:start position:0%
+actually fit a stochastic differential
+ 
+
+00:18:55.360 --> 00:18:57.190 align:start position:0%
+actually fit a stochastic differential
+equation<00:18:55.840><c> of</c><00:18:56.000><c> this</c><00:18:56.320><c> form</c><00:18:56.799><c> for</c><00:18:57.039><c> each</c>
+
+00:18:57.190 --> 00:18:57.200 align:start position:0%
+equation of this form for each
+ 
+
+00:18:57.200 --> 00:18:58.870 align:start position:0%
+equation of this form for each
+individual<00:18:57.679><c> month</c>
+
+00:18:58.870 --> 00:18:58.880 align:start position:0%
+individual month
+ 
+
+00:18:58.880 --> 00:19:00.789 align:start position:0%
+individual month
+um<00:18:59.200><c> that</c><00:18:59.360><c> would</c><00:18:59.520><c> be</c><00:18:59.600><c> a</c><00:18:59.679><c> bit</c><00:18:59.919><c> overkill</c><00:19:00.400><c> for</c><00:19:00.559><c> this</c>
+
+00:19:00.789 --> 00:19:00.799 align:start position:0%
+um that would be a bit overkill for this
+ 
+
+00:19:00.799 --> 00:19:03.190 align:start position:0%
+um that would be a bit overkill for this
+exercise<00:19:01.600><c> but</c><00:19:01.840><c> it</c><00:19:02.000><c> could</c><00:19:02.240><c> be</c><00:19:02.400><c> done</c><00:19:02.640><c> again</c><00:19:02.960><c> you</c>
+
+00:19:03.190 --> 00:19:03.200 align:start position:0%
+exercise but it could be done again you
+ 
+
+00:19:03.200 --> 00:19:05.669 align:start position:0%
+exercise but it could be done again you
+can<00:19:03.679><c> vary</c><00:19:04.080><c> your</c><00:19:04.400><c> frequency</c><00:19:04.960><c> of</c><00:19:05.039><c> time</c><00:19:05.360><c> that</c><00:19:05.520><c> you</c>
+
+00:19:05.669 --> 00:19:05.679 align:start position:0%
+can vary your frequency of time that you
+ 
+
+00:19:05.679 --> 00:19:08.150 align:start position:0%
+can vary your frequency of time that you
+want<00:19:05.840><c> to</c><00:19:06.000><c> assess</c><00:19:06.320><c> these</c><00:19:06.559><c> periods</c><00:19:07.039><c> over</c>
+
+00:19:08.150 --> 00:19:08.160 align:start position:0%
+want to assess these periods over
+ 
+
+00:19:08.160 --> 00:19:11.029 align:start position:0%
+want to assess these periods over
+as<00:19:08.559><c> as</c><00:19:08.720><c> you</c><00:19:08.880><c> wish</c><00:19:10.240><c> but</c><00:19:10.400><c> hopefully</c><00:19:10.799><c> that's</c>
+
+00:19:11.029 --> 00:19:11.039 align:start position:0%
+as as you wish but hopefully that's
+ 
+
+00:19:11.039 --> 00:19:12.470 align:start position:0%
+as as you wish but hopefully that's
+given<00:19:11.280><c> you</c><00:19:11.440><c> five</c><00:19:11.760><c> different</c><00:19:12.000><c> ways</c><00:19:12.240><c> that</c><00:19:12.400><c> you</c>
+
+00:19:12.470 --> 00:19:12.480 align:start position:0%
+given you five different ways that you
+ 
+
+00:19:12.480 --> 00:19:14.789 align:start position:0%
+given you five different ways that you
+can<00:19:12.640><c> actually</c><00:19:12.960><c> model</c><00:19:13.440><c> volatility</c><00:19:14.320><c> and</c><00:19:14.559><c> then</c>
+
+00:19:14.789 --> 00:19:14.799 align:start position:0%
+can actually model volatility and then
+ 
+
+00:19:14.799 --> 00:19:17.190 align:start position:0%
+can actually model volatility and then
+incorporate<00:19:15.360><c> that</c><00:19:15.679><c> within</c><00:19:16.400><c> your</c><00:19:16.640><c> modified</c>
+
+00:19:17.190 --> 00:19:17.200 align:start position:0%
+incorporate that within your modified
+ 
+
+00:19:17.200 --> 00:19:19.669 align:start position:0%
+incorporate that within your modified
+ornstein<00:19:17.679><c> ulembek</c><00:19:18.400><c> process</c>
+
+00:19:19.669 --> 00:19:19.679 align:start position:0%
+ornstein ulembek process
+ 
+
+00:19:19.679 --> 00:19:21.669 align:start position:0%
+ornstein ulembek process
+for<00:19:19.919><c> temperature</c><00:19:20.400><c> dynamics</c>
+
+00:19:21.669 --> 00:19:21.679 align:start position:0%
+for temperature dynamics
+ 
+
+00:19:21.679 --> 00:19:23.830 align:start position:0%
+for temperature dynamics
+next<00:19:22.000><c> episode</c><00:19:22.400><c> we're</c><00:19:22.559><c> going</c><00:19:22.799><c> to</c><00:19:22.960><c> be</c><00:19:23.200><c> using</c><00:19:23.679><c> all</c>
+
+00:19:23.830 --> 00:19:23.840 align:start position:0%
+next episode we're going to be using all
+ 
+
+00:19:23.840 --> 00:19:26.150 align:start position:0%
+next episode we're going to be using all
+these<00:19:24.080><c> dynamics</c><00:19:24.640><c> in</c><00:19:24.799><c> our</c><00:19:24.880><c> fitted</c><00:19:25.200><c> temperature</c>
+
+00:19:26.150 --> 00:19:26.160 align:start position:0%
+these dynamics in our fitted temperature
+ 
+
+00:19:26.160 --> 00:19:29.190 align:start position:0%
+these dynamics in our fitted temperature
+volatility<00:19:26.880><c> models</c><00:19:27.440><c> to</c><00:19:27.600><c> be</c><00:19:27.760><c> able</c><00:19:28.160><c> to</c><00:19:28.640><c> price</c>
+
+00:19:29.190 --> 00:19:29.200 align:start position:0%
+volatility models to be able to price
+ 
+
+00:19:29.200 --> 00:19:31.590 align:start position:0%
+volatility models to be able to price
+weather<00:19:29.440><c> derivatives</c><00:19:30.160><c> in</c><00:19:30.400><c> full</c><00:19:30.960><c> so</c><00:19:31.280><c> stay</c>
+
+00:19:31.590 --> 00:19:31.600 align:start position:0%
+weather derivatives in full so stay
+ 
+
+00:19:31.600 --> 00:19:33.430 align:start position:0%
+weather derivatives in full so stay
+tuned<00:19:31.840><c> for</c><00:19:32.000><c> that</c><00:19:32.160><c> until</c><00:19:32.480><c> next</c><00:19:32.720><c> time</c><00:19:32.880><c> youtube</c>
+
+00:19:33.430 --> 00:19:33.440 align:start position:0%
+tuned for that until next time youtube
+ 
+
+00:19:33.440 --> 00:19:38.980 align:start position:0%
+tuned for that until next time youtube
+see<00:19:33.600><c> you</c><00:19:33.760><c> later</c>
+
+00:19:38.980 --> 00:19:38.990 align:start position:0%
+ 
+ 
+
+00:19:38.990 --> 00:19:51.830 align:start position:0%
+ 
+[Music]
+
+00:19:51.830 --> 00:19:51.840 align:start position:0%
+[Music]
+ 
+
+00:19:51.840 --> 00:19:53.919 align:start position:0%
+[Music]
+you
+
