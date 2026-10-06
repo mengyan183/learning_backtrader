@@ -31,16 +31,25 @@ def _last_date(path, col="date"):
 def main():
     fd = _last_date(FEATURES)
     pd_ = _last_date(PRICES)
+    issues = []
+    today = date.today()
     if not fd:
-        warn = "⚠️ 数据停更风险：features.csv 不存在"
-    elif not pd_:
-        warn = ""
+        issues.append("features.csv 不存在")
     else:
         d1 = date.fromisoformat(str(fd)[:10])
-        d2 = date.fromisoformat(str(pd_)[:10])
-        lag = (d2 - d1).days
-        warn = (f"⚠️ 数据停更风险：指数数据 {fd}，最新行情 {pd_}（滞后 {lag} 天，正常 ≤{MAX_LAG_DAYS}）"
-                if lag > MAX_LAG_DAYS else "")
+        lag_today = (today - d1).days
+        if lag_today > MAX_LAG_DAYS:
+            issues.append(f"指数数据 {fd} 距今天已 {lag_today} 天未更新（正常 ≤{MAX_LAG_DAYS}）")
+        if pd_:
+            d2 = date.fromisoformat(str(pd_)[:10])
+            if (d2 - d1).days > MAX_LAG_DAYS:
+                issues.append(f"指数落后最新行情 {pd_} 共 {(d2 - d1).days} 天")
+            lagp = (today - d2).days
+            if lagp > MAX_LAG_DAYS:
+                issues.append(f"行情数据 {pd_} 距今天已 {lagp} 天未更新")
+    if not pd_ and fd:
+        issues.append("prices.csv 不存在")
+    warn = "；".join(issues)
     with open(WARN, "w", encoding="utf-8") as f:
         f.write(warn + "\n")
     print(warn or f"数据新鲜：features={fd} prices={pd_}")

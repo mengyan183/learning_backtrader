@@ -25,6 +25,10 @@ PORTFOLIO_FEATURES_PATH = os.path.join(DATA_DIR, "portfolio_features.csv")
 #         export FG_PROXY=""        # 空串 = 不用代理（见 data/fetch.py 的 _opener）
 #     放在 ~/.zshrc 里，或写进 Mac 上的 .env。
 PROXY = os.environ.get("FG_PROXY", "http://10.30.6.49:9090")
+# 需要走代理的域名白名单（data/fetch._opener 按此分流）：
+# 只有这里列出的 host 用 config.PROXY，其余（nasdaq.com/cboe.com/
+# alternative.me）一律直连 —— 公司代理在家里不可达，曾导致 prices 停更。
+PROXY_HOSTS = ("okx.com",)
 NASDAQ_API = "https://api.nasdaq.com/api/quote/{symbol}/historical"
 CBOE_CDN = "https://cdn.cboe.com/api/global/us_indices/daily_prices/{name}_History.csv"
 

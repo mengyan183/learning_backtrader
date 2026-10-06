@@ -23,30 +23,37 @@ PRICE_COLUMNS = ["date", "symbol", "open", "high", "low", "close", "volume"]
 INDEX_COLUMNS = ["date", "open", "high", "low", "close"]
 
 
-_OPENER = None
+_OPENER = {}           # {"direct": opener, "proxy": opener}
 _LAST_CALL = [0.0]        # 上次请求时刻（单调时钟）；**模块级**，跨调用生效
 
 
-def _opener():
+def _opener(url=None):
     """复用同一个 opener（原实现每次请求都新建，含 SSL 上下文）。
 
-    **代理为空时直连**：`config.PROXY` 默认是**公司代理**，家里 Mac 访问不到。
-    Mac 上有公网，`export FG_PROXY=""` 即走直连 —— 若仍塞 `{"http": ""}`
-    进 ProxyHandler，urllib 会当成"用空地址的代理"，请求全部失败。
+    **按域名分流代理**（2026-10-06 修复数据停更）：config.PROXY 默认是
+    **公司代理**（10.30.6.49:9090），家里 Mac 访问不到；nasdaq/cboe/
+    alternative.me 国内**直连即可**。只有 `config.PROXY_HOSTS` 白名单内的
+    域名（如 okx.com）才走代理，其余一律直连 —— 避免把「拉不到价格」的
+    故障从一个网络环境带进另一个。
     """
     global _OPENER
-    if _OPENER is None:
+    host = urllib.parse.urlparse(url).hostname if url else None
+    use_proxy = bool(host and config.PROXY and any(
+        h in host for h in config.PROXY_HOSTS))
+    key = "proxy" if use_proxy else "direct"
+    cached = _OPENER.get(key)
+    if cached is None:
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
         # ProxyHandler({}) = 显式不用代理
-        proxies = ({"http": config.PROXY, "https": config.PROXY}
-                   if config.PROXY else {})
-        _OPENER = urllib.request.build_opener(
+        proxies = ({"http": config.PROXY, "https": config.PROXY} if use_proxy else {})
+        cached = urllib.request.build_opener(
             urllib.request.ProxyHandler(proxies),
             urllib.request.HTTPSHandler(context=ctx),
         )
-    return _OPENER
+        _OPENER[key] = cached
+    return cached
 
 
 def _throttle(clock=None, sleep=None):
@@ -87,7 +94,7 @@ def _get(url, retries=None):
         _throttle()
         try:
             req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
-            with _opener().open(req, timeout=35) as r:
+            with _opener(url).open(req, timeout=35) as r:
                 return r.read()
         except urllib.error.HTTPError as exc:
             last = exc
@@ -122,7 +129,7 @@ def _post_form(url, fields, headers=None, retries=None):
         _throttle()
         try:
             req = urllib.request.Request(url, data=body, headers=hdr, method="POST")
-            with _opener().open(req, timeout=35) as r:
+            with _opener(url).open(req, timeout=35) as r:
                 return r.read()
         except urllib.error.HTTPError as exc:
             last = exc
