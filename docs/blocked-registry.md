@@ -50,7 +50,7 @@
 | 编号 | 事项 | 现状 | 状态 |
 |---|---|---|---|
 | D-1 | 数学建模落地（HMM/马尔可夫/EVT/贝叶斯更新） | **2026-10-06 已完成**（fg_system/models/ + scripts/model_report.py，见 2026-10-06-数学模型落地.md） | ✅ |
-| D-2 | E4 因子流程文档化 | 见 docs/factor-engine.md（已图表化）；因子注册/检验/跟踪衰减流程可再补一节 | ⚪ |
+| D-2 | E4 因子流程文档化 | **2026-10-06 完成**：factors.md 登记表(F-001~F-006) + 首批候选因子 IC/IR 初检（scripts/factor_screen.py → evolution/factor-screen-results.md，NVDL/FAS/TNA/FNGU 达标、SQQQ 反向语义核验通过、TSLL 弱） | ✅ |
 | D-3 | E5 问答扩展（归因/假说状态/漂移监控） | fg-qa skill 已支持多问题类型 | ✅（2026-10-06 前） |
 
 ## 已解除区（留痕）

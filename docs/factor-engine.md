@@ -76,9 +76,9 @@ flowchart LR
 
 ## 7. 后续动作（按依赖排序）| 动作 | 依赖 | 说明 |
 |---|---|---|
-| 建 `evolution/factors.md` 登记表 | 无 | 把 OBSERVE_SYMBOLS 观察池 6 标的先登记为候选因子草稿 |
-| 首批候选因子检验 | 无 | 观察池标的 IC/IR 初检（不进策略，只做数据取证） |
-| 因子流程文档化收尾 | 无 | 本文件即收尾项 |
+| 建 `evolution/factors.md` 登记表 | 无 | ✅ 已建（2026-10-02，F-001~F-006 观察池候选登记） |
+| 首批候选因子检验 | 无 | ✅ 已跑（2026-10-06，scripts/factor_screen.py → evolution/factor-screen-results.md）：市场级信号取证，NVDL/FAS/TNA/FNGU 达标、SQQQ 正 IC 语义核验通过、TSLL 弱 |
+| 因子流程文档化收尾 | 无 | ✅ 本文件 + 登记表 + 初检结果三件套齐 |
 | 因子入库 | 回测基准 | 变体回测 OOS 不劣化 + 人工审批 |
 
 ## 8. 合成链总览（因子 → 指数 → 信号）
