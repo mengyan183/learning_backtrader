@@ -23,6 +23,11 @@ CHANNELS = {
     "SecretMindset": "https://www.youtube.com/@TheSecretMindset/videos",
     "TradingChannel": "https://www.youtube.com/@thetradingchannel/videos",
     "RaynerTeo": "https://www.youtube.com/@tradingwithrayner/videos",
+    "ChatWithTraders": "https://www.youtube.com/@ChatWithTradersPodcast/videos",
+    "PBoyle": "https://www.youtube.com/@PBoyle/videos",
+    "BenFelix": "https://www.youtube.com/@BenFelixCSI/videos",
+    "ThePlainBagel": "https://www.youtube.com/@ThePlainBagel/videos",
+    "QuantPy": "https://www.youtube.com/@QuantPy/videos",
 }
 PROXY = "http://127.0.0.1:7890"
 OLLAMA_URL = "http://127.0.0.1:11434"
@@ -52,6 +57,16 @@ def load_meta():
             vid, title, date = parts[0], parts[1], parts[2]
             meta.setdefault(vid, {})
             meta[vid].update({"channel": name, "title": title, "date": date})
+    # flat-playlist 拿不到 upload_date 的视频逐条补拉（≤40 个/次）
+    missing = [v for v, m in meta.items() if m.get("date", "NA") == "NA"]
+    for vid in missing[:40]:
+        r = subprocess.run(
+            [".venv/bin/yt-dlp", "--proxy", PROXY, "--skip-download",
+             "--print", "%(upload_date)s", f"https://www.youtube.com/watch?v={vid}"],
+            capture_output=True, text=True, cwd=REPO)
+        d = r.stdout.strip()
+        if d and d != "NA":
+            meta[vid]["date"] = d
     META.write_text(json.dumps(meta, ensure_ascii=False, indent=1))
     return meta
 
