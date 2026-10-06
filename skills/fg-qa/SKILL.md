@@ -36,6 +36,8 @@ description: 用贪恐系统（learning_backtrader）本地数据回答贪恐指
 - **账户类**（「账户多少 / 现金 / 盈亏」）：取 `accounts.csv` 最新行；注明账户类型（stock / crypto）与快照日期。
 - **简报类**（「今天简报 / 有什么消息」）：读最新 `invest_brief_*.md`，按原文摘录，不加工。
 
+- **知识库类**（「怎么做止损 / 风险管理方法 / 交易策略 / 技术分析知识」）：运行 `.venv/bin/python scripts/kb_search.py "<问题>" -n 3`（ChromaDB 集合 yt_trading，Ollama bge-m3 嵌入，来源为 Duomo/SecretMindset/TradingChannel/RaynerTeo 四频道字幕）。命中则摘录要点，**逐条标注「来源：<频道>《<标题>》（YouTube 知识库）」**，信号分级一律 🟡 研究参考（教育观点，非系统数据，不替代系统买卖信号）；无命中则直说「知识库未检索到相关内容」，不编造。
+
 - **扫描模式**（「扫一遍持仓 / 哪些在买入区 / 全部标的状态」）：取 `positions.csv` 最新快照的全部标的，**逐行**输出：symbol | 系统系数+档位 | 守猪待兔系数+档位 | 参考动作。双系统一致时直接给动作；不一致标注「⚠️ 双系统冲突」并分别说明两边的档位。浮盈浮亏按 (price−cost)/cost 一并列出。
 
 ## 第 3 步：查不到就直说
