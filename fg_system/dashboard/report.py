@@ -17,6 +17,7 @@ import pandas as pd
 from fg_system import config
 from fg_system import leverage
 from fg_system import fed
+from fg_system import risk as risk_mod
 from fg_system.dashboard import pwa
 
 ZONE_COLORS = ["#8b0000", "#d9534f", "#f0ad4e", "#5cb85c", "#006400"]
@@ -220,6 +221,34 @@ def _holdings_block(features, shoutu=None, prices=None):
             cost_adv = "卖出信号：注意滑点与税（资本利得），分批执行"
         elif act == "观望" and cost_adv is None:
             cost_adv = "观望：等待系数进入买卖区间，避免在区间内追涨杀跌"
+        # P4 趋势结构（200EMA 方向 + 近 20 日支撑/阻力）
+        _trend = risk_mod.trend_tags(prices, sym, price)
+        if _trend is not None:
+            _arrow = "↑ 多头" if _trend["above"] else "↓ 空头"
+            trend_txt = ("200EMA %s %.0f · 支撑 %s · 阻力 %s"
+                         % (_arrow, _trend["ma200"],
+                            _fmt(_trend["support"]) if _trend["support"] is not None else "—",
+                            _fmt(_trend["resistance"]) if _trend["resistance"] is not None else "—"))
+        else:
+            trend_txt = None
+        # P1 风控仓位（1% 风险规则：建议市值上限 = 净值×1% / 2×ATR20）
+        risk_adv = None
+        if net and mv is not None and price:
+            _atr_p = risk_mod.atr_pct(prices, sym, price)
+            _lim, _ratio = risk_mod.position_limit(net, mv, _atr_p)
+            if _lim is not None and _lim > 0:
+                _pct_now = mv / net * 100.0
+                _pct_lim = _lim / net * 100.0
+                if mv > _lim:
+                    risk_adv = ("⚠ 仓位 %.1f%% 超 1%%风险上限（%.1f%%）：建议减仓"
+                                % (_pct_now, _pct_lim))
+                else:
+                    risk_adv = ("仓位 %.1f%% 未超 1%%风险上限（%.1f%%）"
+                                % (_pct_now, _pct_lim))
+        # P5 风险标签（杠杆 ETF 衰减/清算、加密杠杆）
+        _r_tags = "".join(
+            "<span class='tag tag-risk'>%s %s</span>" % (mark, label)
+            for mark, label in risk_mod.risk_tags(sym, name))
         cards.append(
             "<div class='h-card' data-sym='%s'>"
             "<div class='h-top'><div class='h-left'>"
@@ -230,6 +259,8 @@ def _holdings_block(features, shoutu=None, prices=None):
             "<div class='h-mid'>成本 %s · 现价 %s</div>"
             "<div class='h-mid2'>市值 %s · 占净值 %s · 数量 %s</div>"
             "<div class='h-cost'>%s</div>"
+            "<div class='h-trend'>%s</div>"
+            "<div class='h-risk'>%s%s</div>"
             "<div class='h-tags'>"
             "<span class='tag tag-zone' style='background:%s'>%s</span>"
             "<span class='tag tag-zone' style='background:%s'>%s</span>"
@@ -241,6 +272,8 @@ def _holdings_block(features, shoutu=None, prices=None):
                _fmt(price) if price is not None else "—",
                _fmt(mv), ("%.1f%%" % ratio) if ratio is not None else "—",
                _fmt(qty), cost_adv or "",
+               trend_txt or "趋势结构：数据不足",
+               _r_tags, risk_adv or "",
                sys_bg, sys_txt, s_bg, s_txt,
                cov_cls, cov_txt, advise))
     body = "".join(out)

@@ -119,6 +119,13 @@ div.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 .h-cost{font-size:11px;color:var(--fg-muted);line-height:1.45;margin-bottom:8px;
   padding:4px 8px 4px 9px;border-left:2px solid var(--border);
   background:var(--surface-3);border-radius:0 6px 6px 0}
+.h-trend{font-size:11px;color:var(--fg-muted);margin-bottom:5px;
+  font-family:var(--font-num);letter-spacing:.2px}
+.h-risk{font-size:11px;line-height:1.5;margin-bottom:8px}
+.tag-risk{background:rgba(240,173,78,.16);color:#e0a239;
+  border:1px solid rgba(240,173,78,.45);padding:1px 7px;margin-right:4px;
+  display:inline-block;border-radius:20px;font-size:10.5px;font-weight:600}
+.h-risk .tag-risk:last-child{margin-right:0}
 /* 富途实时 */
 .rt-dot{color:#3fb950;font-size:10px;vertical-align:middle;animation:rt-blink 1.2s infinite}
 @keyframes rt-blink{0%,100%{opacity:1}50%{opacity:.25}}

@@ -157,6 +157,35 @@ def build_snapshot():
     st_latest = st[st["date"] == st["date"].max()]
     snap["shoutu"] = {r["symbol"]: float(r["value"]) for _, r in st_latest.iterrows()}
     snap["shoutu_date"] = str(st_latest["date"].max().date()) if len(st_latest) else None
+
+    # P1 风控仓位（1% 风险规则：建议市值上限 = 净值×1% / 2×ATR20。
+    # 规则来源：知识库 RaynerTeo《The Math Behind Profitable Trading》）
+    stock_net = snap["accounts"].get("stock")
+    sys.path.insert(0, str(REPO))
+    from fg_system import risk as risk_mod
+    for r in rows:
+        sym0 = r["symbol"].replace("-USDT", "")
+        px_now = r.get("last_close")
+        mv0 = r["mv"]
+        if stock_net and px_now and mv0:
+            atrp = risk_mod.atr_pct(px, sym0, px_now)
+            lim, _ratio = risk_mod.position_limit(stock_net, mv0, atrp)
+            r["risk_limit"] = round(lim, 2) if lim else None
+            r["risk_over"] = bool(lim and mv0 > lim)
+        else:
+            r["risk_limit"] = None
+            r["risk_over"] = False
+
+    # 连亏 kill switch：当日亏损 ≥2% 净值 → 提示收工（知识库：Peter Brandt 风控）
+    snap["kill_switch"] = None
+    _dp = acc_latest["day_pnl"].dropna()
+    if len(_dp) and stock_net:
+        _day_pnl = float(_dp.iloc[-1])
+        if _day_pnl <= -0.02 * stock_net:
+            snap["kill_switch"] = {
+                "day_pnl": round(_day_pnl, 2),
+                "pct": round(_day_pnl / stock_net * 100.0, 2),
+            }
     return snap
 
 
@@ -363,6 +392,63 @@ def build_snapshot_lines(snap):
     return "\n".join(out)
 
 
+def risk_brief_text(snap):
+    """P1 风控仓位节（简报）：逐标的风险上限 + 连亏 kill switch。
+
+    1% 风险规则：建议市值上限 = 账户净值×1% / (2×ATR20)。
+    知识库来源：RaynerTeo《Math Behind》/ Peter Brandt 风控。
+    """
+    lines = []
+    for r in snap.get("positions", []):
+        sym = r["symbol"]
+        if r.get("risk_limit"):
+            if r["risk_over"]:
+                lines.append("⚠ %s 市值 %.0f > 1%%风险上限 %.0f：建议减仓"
+                             % (sym, r["mv"], r["risk_limit"]))
+            else:
+                lines.append("✓ %s 未超 1%%风险上限（%.0f）"
+                             % (sym, r["risk_limit"]))
+    ks = snap.get("kill_switch")
+    if ks:
+        lines.append("🔴 连亏保护触发：当日亏损 %s (%.1f%%) ≥ 2%%净值，"
+                     "建议停止开新仓/当日收工（Peter Brandt 风控）"
+                     % (ks["day_pnl"], ks["pct"]))
+    return "\n".join(lines) if lines else None
+
+
+def _zone_int(fg):
+    """fg_index → 档位整数 0极度恐惧~4极度贪婪（不依赖 features 的 zone 文本列）。"""
+    if fg is None:
+        return None
+    edges = [20, 40, 60, 80]
+    zi = 0
+    for e in edges:
+        if fg >= e:
+            zi += 1
+    return min(zi, 4)
+
+
+def behavior_checklist(snap):
+    """P2 极端档位行为检查清单（简报节）。
+
+    知识库来源：Duomo 行为一致性 / ChatWithTraders Market Wizards
+    （交易心理 57 条为最大主题簇，档位极端时最容易犯行为错误）。
+    """
+    fg = (snap.get("fg") or {}).get("fg_index")
+    zi = _zone_int(fg)
+    if zi == 0:
+        return ("极度恐惧档位 · 行为检查清单【研究参考】\n"
+                "☐ 恐慌割肉检查：卖出理由是否来自基本面恶化，而非仅因系数低？\n"
+                "☐ 弹药纪律：熔断/极端日释放的弹药按计划分批，不一次打光\n"
+                "☐ 分批节奏：恐惧区加仓按 1/3 步进，留子弹应对更低")
+    if zi == 4:
+        return ("极度贪婪档位 · 行为检查清单【研究参考】\n"
+                "☐ 追高检查：是否在贪婪区追入未持有的标的？等待信号回中性\n"
+                "☐ 止盈纪律：盈利仓位分批落袋，不赌最后一段\n"
+                "☐ 杠杆上限：杠杆标的（YINN/TQQQ 等）不加仓，警惕衰减与清算")
+    return None
+
+
 def _freshness_block():
     """读 Data/freshness_warning.txt（scripts/check_freshness.py 每日链写入）。
     有风险则返回告警文本，正常返回 None。"""
@@ -385,6 +471,14 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
         secs.append("hr")
     secs.append(("市场快照", build_snapshot_lines(snap)))
     secs.append("hr")
+    _risk_sec = risk_brief_text(snap)
+    if _risk_sec:
+        secs.append(("🛡️ 风控仓位（1%风险规则）", _risk_sec))
+        secs.append("hr")
+    _bc = behavior_checklist(snap)
+    if _bc:
+        secs.append(("🧠 行为检查清单", _bc))
+        secs.append("hr")
     secs.append(("🏛️ 美联储动态", _fed.fed_brief_text(_fctx)))
     secs.append("hr")
     secs.append(("📰 市场快讯", news_text(news) if news else "（新闻源不可用）"))
@@ -537,6 +631,14 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         build_snapshot_lines(snap),
         "```",
         "",
+    ]
+    _risk_sec = risk_brief_text(snap)
+    if _risk_sec:
+        lines += ["## 🛡️ 风控仓位（1%风险规则）", _risk_sec, ""]
+    _bc = behavior_checklist(snap)
+    if _bc:
+        lines += ["## 🧠 行为检查清单【研究参考】", _bc, ""]
+    lines += [
         "## 🏛️ 美联储动态",
         _fed.fed_brief_text(_fctx),
         "",

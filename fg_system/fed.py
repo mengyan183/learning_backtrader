@@ -72,6 +72,9 @@ def fed_context(today=None):
         "next_minutes": None,
         "days_to_minutes": None,
         "sentiment_tone": None,   # 环境温度修正提示
+        # 宏观事件日历（CPI/非农，P3）：可缺失
+        "macro_event": None, "macro_date": None, "days_to_macro": None,
+        "macro_window": False, "macro_window_days": config.MACRO_EVENT_WINDOW_DAYS,
         # 市场预期（CME FedWatch，可缺失）
         "fw_meeting": None, "fw_hold": None, "fw_hike": None, "fw_ease": None,
         "fw_delta_1w": None, "fw_date": None,
@@ -80,9 +83,15 @@ def fed_context(today=None):
     if fw is not None:
         try:
             ctx["fw_meeting"] = str(fw.get("meeting") or "")
-            ctx["fw_hold"] = float(fw.get("hold_pct") or float("nan"))
-            ctx["fw_hike"] = float(fw.get("hike_pct") or float("nan"))
-            ctx["fw_ease"] = float(fw.get("ease_pct") or float("nan"))
+            _e = fw.get("ease_pct")
+            ctx["fw_ease"] = (float(_e) if pd.notna(_e) and _e is not None
+                              else float("nan"))
+            _h = fw.get("hold_pct")
+            ctx["fw_hold"] = (float(_h) if pd.notna(_h) and _h is not None
+                              else float("nan"))
+            _k = fw.get("hike_pct")
+            ctx["fw_hike"] = (float(_k) if pd.notna(_k) and _k is not None
+                              else float("nan"))
             wk = fw.get("wk_hike_pct")
             ctx["fw_delta_1w"] = (ctx["fw_hike"] - float(wk)) if wk == wk else None
             ctx["fw_date"] = str(fw.get("date") or "")
@@ -97,6 +106,15 @@ def fed_context(today=None):
     if next_minutes is not None:
         ctx["next_minutes"] = next_minutes.isoformat()
         ctx["days_to_minutes"] = (next_minutes - today).days
+
+    # 宏观事件日历（CPI/非农，FRED 官方日程，config.MACRO_EVENTS_2026）
+    for d0, name in config.MACRO_EVENTS_2026:
+        if _parse(d0) >= today:
+            ctx["macro_event"] = name
+            ctx["macro_date"] = d0
+            ctx["days_to_macro"] = (_parse(d0) - today).days
+            ctx["macro_window"] = 0 <= ctx["days_to_macro"] <= config.MACRO_EVENT_WINDOW_DAYS
+            break
 
     # 环境温度修正：加息周期压制风险偏好，贪婪档位需谨慎；
     # 降息周期支撑，恐惧档位可视为更好机会。
@@ -126,6 +144,15 @@ def fed_brief_text(ctx):
         parts.append(w)
     if ctx["next_minutes"]:
         parts.append("纪要发布：%s（%d 天后）" % (ctx["next_minutes"], ctx["days_to_minutes"]))
+    if ctx["macro_event"]:
+        w = ("⚠️ 宏观事件窗口（%s 明日发布）" % ctx["macro_event"]
+             if ctx["macro_window"] and ctx["days_to_macro"] == 1
+             else "⚠️ 宏观事件窗口（%s %d 天后发布，避免重仓押注方向）"
+             % (ctx["macro_event"], ctx["days_to_macro"])
+             if ctx["macro_window"]
+             else "下次宏观数据：%s（%s，%d 天后）"
+             % (ctx["macro_event"], ctx["macro_date"], ctx["days_to_macro"]))
+        parts.append(w)
     if ctx["fw_meeting"]:
         fw = "市场预期（CME FedWatch %s）：维持 %.1f%% / 加息25bp %.1f%% / 降息 %.1f%%"
         fw = fw % (ctx["fw_date"], ctx["fw_hold"], ctx["fw_hike"], ctx["fw_ease"])
