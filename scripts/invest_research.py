@@ -621,6 +621,40 @@ def _freshness_block():
     return None
 
 
+def _major_contradiction():
+    """毛选·矛盾分析法（确定性）：取 features.csv 尾行五因子，
+    计算「权重 × 偏离中性50」的合成贡献，绝对值最大=主要矛盾，次大=对冲力量。
+
+    返回结构行（无数据/计算失败返回 None，不编造）。
+    """
+    try:
+        import os
+        import pandas as pd
+        from fg_system import config
+        path = os.path.join(config.ROOT, "Data", "features.csv")
+        row = pd.read_csv(path).tail(1).iloc[-1]
+        names = {"vix": "VIX", "term": "TERM", "price": "PRICE",
+                 "breadth": "BREADTH", "fed": "FED"}
+        contrib = []
+        for col, label in names.items():
+            if pd.isna(row.get(col)):
+                continue
+            val = float(row[col])
+            contrib.append((abs(config.WEIGHTS[col] * (val - 50.0)),
+                            label, val, "贪婪向" if val > 50 else "恐惧向"))
+        if len(contrib) < 2:
+            return None
+        contrib.sort(reverse=True, key=lambda t: t[0])
+        m1 = contrib[0]
+        m2 = contrib[1]
+        date = row.get("date")
+        return (f"主要矛盾：{m1[1]} 因子 {m1[2]:.1f}（{m1[3]}，贡献最大）"
+                f"；对冲力量：{m2[1]} 因子 {m2[2]:.1f}（{m2[3]}，其次）"
+                f"〔features.csv 数据日 {date}，权重×偏离中性50〕")
+    except Exception:
+        return None
+
+
 def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     """结构化简报（飞书富文本 post 用）：[ ("标题", "正文"), "hr", ... ]"""
     from fg_system import fed as _fed
@@ -650,8 +684,9 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     secs.append("hr")
     secs.append(("📰 情绪面 · Hermes(GLM)", (sentiment or "（不可用）").strip()[:1200]))
     secs.append("hr")
-    secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)",
-                 (attribution or "（归因生成失败，已降级跳过）").strip()[:2600]))
+    _mc = _major_contradiction()
+    _attr_txt = (_mc + "\n\n" if _mc else "") + (attribution or "（归因生成失败，已降级跳过）").strip()[:2600]
+    secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)", _attr_txt))
     secs.append("hr")
     secs.append(("⚖️ 裁判裁决 · OpenClaw云端(NVIDIA NIM)【研究参考】",
                  (judge or "（裁判未生成，已降级；以风控/归因结论为准）").strip()[:1200]))
@@ -819,7 +854,8 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         (sentiment or "（跳过：Hermes 不可用）").strip()[:1500],
         "",
         "## 深度归因（Harness 后端 deepseek-v4.1-flash / NVIDIA NIM）",
-        (attribution or "（跳过：NIM 不可用）").strip()[:3000],
+        ((_major_contradiction() or "") + "\n\n" if _major_contradiction() else "")
+        + (attribution or "（跳过：NIM 不可用）").strip()[:3000],
         "",
         "## 裁判裁决（OpenClaw 云端裁判 / NVIDIA NIM）【研究参考，非实盘指令】",
         (judge or "（跳过：裁判不可用）").strip()[:1200],
