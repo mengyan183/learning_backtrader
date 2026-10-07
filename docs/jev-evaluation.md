@@ -63,10 +63,11 @@
 - P2（P1 显著更优才做）：视回测与人工复核结果决定是否切换默认通道。
 - 不做的：任何把 Jev（或任何模型）放进"回测+pytest"裁决路径的改动。
 
-## 7. 下一步（状态更新 2026-10-07：用户选 B）
+## 7. 下一步（状态更新 2026-10-07：用户最终决策——暂不引入）
 
-- [x] 申请 Jev 早访问（TypeSafe 账号已建，登录 console.typesafe.ai）
-- [x] 尝试创建 API key → **受阻**：组织无可用 credits（Billing 需充值）。用户决策：**选 B，等免费/邀请通道**，不为试验充值
-- [ ] 阻塞项：API key（组织无 credits；等待 TypeSafe 免费额度或 waitlist 邀请）
-- [ ] 解除后：P0 样例集构造与并排试验（Jev vs NIM 裁判），结果登记 evolution/，按纪律走决策门
-- 系统主链（NIM 裁判 + 回测 + pytest）不受本次阻塞影响
+- [x] 申请 Jev 早访问（TypeSafe 账号已建，早访问资格已开通，无独立 waitlist 登记）
+- [x] 尝试创建 API key → **受阻**：组织无可用 credits（Billing 需充值）
+- [x] 用户决策（最终）：**暂不做付费内容；等 Jev 生态更丰富后再重新评估**（触发条件：生态成熟度，非时间表）
+- [ ] 阻塞项：API key（组织无 credits；用户不付费，等待生态成熟）
+- [ ] 解除后（生态成熟或用户改主意）：P0 样例集构造与并排试验（Jev vs NIM 裁判），结果登记 evolution/，按纪律走决策门
+- 系统主链（NIM 裁判 + 回测 + pytest）不受本次决策影响；typesafe-ai skill 已安装（仓库/OpenClaw/Hermes），生态成熟后直接可用
