@@ -39,6 +39,7 @@ def test_skip_refresh_when_prices_fresh(tmp_path, monkeypatch):
 def test_trigger_when_prices_stale(tmp_path, monkeypatch):
     """行情明显过期（>3 天）→ 后台触发刷新（异步线程）。"""
     freshness._state.update({"last_trigger": 0.0, "running": False})
+    monkeypatch.setattr(freshness, "_log", lambda msg: None)  # 测试不污染真实日志
     px_path = tmp_path / "prices.csv"
     px_path.write_text("date,symbol,close\n2026-09-01,A,1.0\n")
     monkeypatch.setattr(freshness.config, "RAW_DIR", str(tmp_path))
@@ -54,6 +55,7 @@ def test_trigger_when_prices_stale(tmp_path, monkeypatch):
 def test_throttle_prevents_repeated_trigger(tmp_path, monkeypatch):
     """节流：10 分钟内不重复触发（防每次刷新都打数据源）。"""
     freshness._state.update({"last_trigger": 0.0, "running": False})
+    monkeypatch.setattr(freshness, "_log", lambda msg: None)  # 测试不污染真实日志
     px_path = tmp_path / "prices.csv"
     px_path.write_text("date,symbol,close\n2026-09-01,A,1.0\n")
     monkeypatch.setattr(freshness.config, "RAW_DIR", str(tmp_path))
