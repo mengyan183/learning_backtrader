@@ -13,14 +13,16 @@
 Jinja2 让模板独立成文件、不再需要 `%%` 转义。`make_server` 接口保持兼容，
 `scripts/serve_dashboard.py` 与既有测试无需改动。
 
-【⚠️ 本服务**绝不**抓取守猪待兔】见 `tests/dashboard/test_server.py` 的
+【⚠️ 本服务**绝不无条件抓取**守猪待兔】见 `tests/dashboard/test_server.py` 的
 `test_server_never_fetches_from_api`。两条理由，任一条都足以禁止：
 
 1. 该指数**实时更新**，而 `append_records` 对同一 `(date, symbol)` 是**覆盖**
    语义 ⇒ **每次刷新都抓 = 每次刷新都污染当天样本**（§14.5 已实际发生过一次）
 2. 每次刷新都消耗 `query_api` 额度（5000/月）
 
-⇒ 仪表盘只做**纯计算**（读已有 CSV）；抓取由 06:30 的定时任务**独占**。
+⇒ 仪表盘默认**纯计算**（读已有 CSV）；2026-10-07 起，刷新时仅当检测到
+**当天快照缺失**且行情过期，才由 `freshness.py` 后台补抓**一次**（当天已有
+记录则跳过，节流 10 分钟）——见 `tests/dashboard/test_freshness.py`。
 
 【⚠️ 安全 —— 页面里有**持仓指令**】
 本服务**默认无鉴权**（只适合可信局域网）。一旦要**远程访问**：
@@ -175,6 +177,13 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
     @app.route("/")
     @app.route("/index.html")
     def _index():
+        # 2026-10-07：刷新时检查底层文件新鲜度，过期则后台触发更新
+        # （见 freshness.py：节流 10min、守猪待兔仅当天缺失才补、不阻塞页面）。
+        try:
+            from fg_system.dashboard import freshness
+            freshness.check_and_refresh()
+        except Exception:
+            pass      # 新鲜度检查失败绝不影响页面可用
         try:
             html = render_dashboard(get_features(), prices_path=prices_path)
         except Exception as exc:      # 渲染失败不能把服务搞挂

@@ -110,27 +110,45 @@ def build_snapshot():
     snap["date"] = str(latest.date())
     snap["positions"] = rows
 
-    # 最新收盘价（prices.csv）
+    # 统一价格源（修复"持仓段/归因段双价格"问题，2026-10-07）：
+    #   优先级：① realtime_state.json 实时价（仅 BTC 使用，OKX 常驻更新）
+    #           ② positions.csv 快照价（美股标的：05:30 实时快照，与 qty/cost 同源同刻）
+    #           ③ prices.csv 最新收盘价（fallback）
+    # 选定后 **mv / pnl / pnl_pct 全部按该价重算**，保证同一简报内自洽。
+    rt_prices = {}
+    try:
+        with open(DATA / "realtime_state.json", encoding="utf-8") as _f:
+            rt_prices = json.load(_f).get("prices") or {}
+    except Exception:
+        rt_prices = {}
+
     px = pd.read_csv(DATA / "raw" / "prices.csv", parse_dates=["date"])
     last_px = px.sort_values("date").groupby("symbol").tail(1)
     price_map = dict(zip(last_px["symbol"], last_px["close"]))
     for r in rows:
         sym = r["symbol"].replace("-USDT", "")
-        if sym in price_map:
+        if sym == "BTC":
+            # 加密仓优先 OKX 实时价（realtime_state 由常驻服务更新，source=OKX）
+            _rt = rt_prices.get("BTC") or {}
+            if _rt.get("price"):
+                r["last_close"] = float(_rt["price"])
+                r["px_source"] = "OKX实时"
+            else:
+                r["last_close"] = float(r["price"])
+                r["px_source"] = "positions快照"
+        elif r["price"]:
+            # 美股标的：positions 快照价（与 qty/cost 同源同刻，简报自洽优先）
+            r["last_close"] = float(r["price"])
+            r["px_source"] = "positions快照"
+        elif sym in price_map:
             r["last_close"] = float(price_map[sym])
             r["px_source"] = "prices.csv"
-        elif sym == "BTC":
-            # BTC 现货无美股收盘价 → OKX 实时价回退（静态模式跳过）
-            okx = _okx_ticker(sym)
-            if okx:
-                r["last_close"] = okx["price"]
-                r["px_source"] = "OKX"
-            else:
-                r["last_close"] = None
-                r["px_source"] = None
         else:
             r["last_close"] = None
             r["px_source"] = None
+        # 统一口径：市值与浮盈按同一价格重算（positions 原 market_value 不再混用）
+        if r["last_close"]:
+            r["mv"] = round(r["last_close"] * r["qty"], 2)
         r["pnl"] = round((r["last_close"] - r["cost"]) * r["qty"], 2) if r["last_close"] else None
         r["pnl_pct"] = round((r["last_close"] / r["cost"] - 1) * 100, 2) if r["last_close"] else None
 
@@ -175,6 +193,25 @@ def build_snapshot():
         else:
             r["risk_limit"] = None
             r["risk_over"] = False
+
+    # 系统个股系数（路径B：mom60/mom20/vol20 三因子；数据不足回退市场级）。
+    # 供「减仓操作双引擎」使用：引擎A=价格风控、引擎B=贪恐系数方向信号。
+    try:
+        from fg_system.factors import symbol as sym_mod
+        market_fg = (snap["fg"] or {}).get("fg_index")
+        for r in rows:
+            s = r["symbol"].replace("-USDT", "")
+            s_fg = sym_mod.symbol_fg_index(s, prices=px)
+            if s_fg is None or s_fg.dropna().empty:
+                r["sys_fg"] = round(float(market_fg), 1) if market_fg else None
+                r["sys_fg_note"] = "回退市场级"
+            else:
+                r["sys_fg"] = round(float(s_fg.dropna().iloc[-1]), 1)
+                r["sys_fg_note"] = "个股级"
+    except Exception:
+        for r in rows:
+            r["sys_fg"] = None
+            r["sys_fg_note"] = "不可用"
 
     # 连亏 kill switch：当日亏损 ≥2% 净值 → 提示收工（知识库：Peter Brandt 风控）
     snap["kill_switch"] = None
@@ -246,18 +283,67 @@ def stage_sentiment(hermes_key, snap):
     return _chat(HERMES_URL, hermes_key, "hermes-agent", system, user, max_tokens=800)
 
 
+# ---------------------------------------------------------------- LLM 输出校验与降级（2026-10-07 修复）
+# 背景：NIM 云端 deepseek 在长 prompt 下偶发「prompt 回显 / 思考过程当作正文」，
+# 导致简报出现 "We need answer in Chinese..."、"Hmm if crypto NAV includes BTC?" 等脏内容。
+# 修复策略：**校验失败即降级**，宁可显示"生成失败"也不污染简报。
+
+_PREAMBLE_HITS = ["we need answer", "我们需要回答用户", "你的全部输出只能是",
+                  "请直接输出", "以下是今日", "直接输出最终分析正文",
+                  "你是量化交易系统", "你是投研裁判"]
+_THINKING_HITS = ["need calculate", "hmm if", "let's sum", "need infer",
+                  "need interpret", "maybe scores", "need attribute",
+                  "need calculate exposures", "need not give instructions"]
+
+
+def _clean_attribution(text):
+    """归因输出清洗：命中 prompt 回显/思考特征 → 返回 None（降级）。"""
+    if not text or len(text.strip()) < 80:
+        return None
+    t = text.strip()
+    low = t.lower()
+    if any(m in low for m in _PREAMBLE_HITS) or any(m in low for m in _THINKING_HITS):
+        return None
+    return t
+
+
+def _validate_judge(text):
+    """裁判输出校验：必须为三行格式（评级: …/理由: …/风险: …）。不匹配 → None。"""
+    import re
+    if not text:
+        return None
+    t = text.strip().replace("\n\n", "\n")
+    if not re.search(r"评级\s*[:：]\s*(强烈减仓|减仓|持有|加仓|强烈加仓)", t):
+        return None
+    if "理由" not in t or "风险" not in t:
+        return None
+    return t[:800]
+
+
 def stage_attribution(nim_key, snap):
     """Harness 后端模型(deepseek-v4.1-flash via NVIDIA NIM) 深度归因"""
     system = "你是量化交易系统的深度归因分析师。基于持仓与盈亏数据，用中文输出结构化归因（≤800字）：逐标的归因（为什么涨/跌、驱动因素）、组合风险点、仓位合理性。只做归因分析，不给交易指令。直接输出最终分析正文，不要输出思考过程。"
     user = f"以下是今日持仓快照：\n{snapshot_text(snap)}\n\n请输出深度归因分析。"
-    return _chat(NIM_URL, nim_key, NIM_MODEL, system, user, max_tokens=4096, proxy=PROXY, timeout=300, retries=2)
+    try:
+        out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
+                    max_tokens=4096, proxy=PROXY, timeout=300, retries=2)
+        clean = _clean_attribution(out)
+        if clean is None:
+            # 疑似 prompt 回显/思考 → 重试一次（NIM 偶发）
+            out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
+                        max_tokens=4096, proxy=PROXY, timeout=300, retries=1)
+            clean = _clean_attribution(out)
+        return clean
+    except Exception:
+        return None
 
 
 def stage_judge(nim_key, snap, sentiment, attribution):
     """裁判汇总——NVIDIA NIM(deepseek-v4.1-flash) 云端裁决。
     历史教训：本地 qwen2.5-coder:3b 在裁判任务上倾向输出
     tool_call/sessions_yield 等 JSON 工具格式而非纯文本裁决，
-    已弃用本地模型，统一走 NIM 云端（与深度归因同通道）。"""
+    已弃用本地模型，统一走 NIM 云端（与深度归因同通道）。
+    2026-10-07 加固：**校验三行格式，不匹配重试一次，仍失败则降级提示**。"""
     # 压缩快照：只保留关键行，控制输入长度
     lines = [f"系统贪恐指数 {snap['fg']['fg_index']} [{snap['fg']['zone']}] 目标仓位 {snap['fg']['target_position']} 回撤 {snap['fg']['drawdown']}"]
     if snap.get("shoutu"):
@@ -278,10 +364,14 @@ def stage_judge(nim_key, snap, sentiment, attribution):
     try:
         out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
                     max_tokens=400, proxy=PROXY, timeout=180, retries=1)
-        out = (out or "").strip().replace("\n\n", "\n")
-        if not out:
-            return "裁判输出为空，建议以归因结论为准。"
-        return out[:800]
+        v = _validate_judge(out)
+        if v is None:
+            out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
+                        max_tokens=400, proxy=PROXY, timeout=180, retries=1)
+            v = _validate_judge(out)
+        if v is None:
+            return "（裁判未按三行格式输出，本次以归因/风控结论为准。）"
+        return v
     except Exception as e:
         return f"裁判调用失败（NIM）：{e}，本次以归因结论为准。"
 
@@ -381,7 +471,11 @@ def build_snapshot_lines(snap):
         f = snap["fg"]
         out.append(f"系统贪恐指数 {f['fg_index']} [{f['zone']}] · 目标仓位 {f['target_position']} · 回撤 {f['drawdown']:.2%} · 熔断{'已触发' if f['circuit_breaker'] else '未触发'}")
     if snap.get("shoutu"):
-        pairs = " / ".join(f"{k} {v}" for k, v in list(snap["shoutu"].items())[:6])
+        # 全量展示（修复 2026-10-07 审查发现的 [:6] 静默截断：UPRO/YINN 被隐藏）
+        items = list(snap["shoutu"].items())
+        pairs = " / ".join(f"{k} {v}" for k, v in items[:8])
+        if len(items) > 8:
+            pairs += " …"  # 超过 8 个标的时显式标注省略
         out.append(f"守猪待兔({snap['shoutu_date']}): {pairs}")
     out.append("持仓:")
     for r in snap["positions"]:
@@ -414,6 +508,73 @@ def risk_brief_text(snap):
                      "建议停止开新仓/当日收工（Peter Brandt 风控）"
                      % (ks["day_pnl"], ks["pct"]))
     return "\n".join(lines) if lines else None
+
+
+def action_brief_text(snap):
+    """📉 减仓操作双引擎（2026-10-07 落地，回答"按系数还是按价格减仓"）。
+
+    - 引擎A · 价格风控（P1 1% 风险规则）：**硬敞口**。市值 > 1%风险上限
+      ⇒ 必须减仓到上限（无论系数如何），保护单笔风险 ≤ 净值 1%。
+    - 引擎B · 贪恐系数（系统个股系数 + 守猪待兔系数档位）：**方向信号**。
+      决定买卖时机，不单独触发强制减仓。
+    - 动作矩阵：
+        A触发 & B贪婪(≥卖出线)   → 减仓（双触发，优先级最高）
+        A触发 & B非贪婪           → 减仓至上限（仅降敞口，不追方向）
+        A未触发 & B恐慌(≤买入线)  → 持有/可加（恐慌买入区且敞口合规）
+        其余                      → 持有观望
+    """
+    from fg_system.config import shoutu_lines
+    _ZONE_TXT = {0: "极恐", 1: "恐惧", 2: "中性", 3: "贪婪", 4: "极贪"}
+    out = []
+    for r in snap.get("positions", []):
+        sym = r["symbol"]
+        sym0 = sym.replace("-USDT", "")
+        mv = r.get("mv"); lim = r.get("risk_limit")
+        over = bool(r.get("risk_over"))
+        # 守猪待兔系数与档位（引擎B 之一）
+        st_val = (snap.get("shoutu") or {}).get(sym0)
+        buy_line, sell_line = shoutu_lines(sym0)
+        if st_val is None:
+            st_desc = "守猪待兔:无系数"
+        elif st_val <= buy_line:
+            st_desc = "守猪待兔:%.0f 恐慌(买入区≤%.0f)" % (st_val, buy_line)
+        elif st_val >= sell_line:
+            st_desc = "守猪待兔:%.0f 贪婪(卖出线≥%.0f)" % (st_val, sell_line)
+        else:
+            st_desc = "守猪待兔:%.0f 中性" % st_val
+        # 系统个股系数档位（引擎B 之二）
+        sys_fg = r.get("sys_fg")
+        if sys_fg is None:
+            sys_desc = "系统:无系数"
+        else:
+            zi = _zone_int(sys_fg)
+            sys_desc = "系统:%.1f %s(%s)" % (sys_fg, _ZONE_TXT.get(zi, "?"),
+                                             r.get("sys_fg_note", ""))
+        # 动作判定
+        greedy = ((sys_fg is not None and sys_fg >= 60)
+                  or (st_val is not None and st_val >= sell_line))
+        fearful = (st_val is not None and st_val <= buy_line)
+        if over and greedy:
+            act = "减仓（价格风控+贪婪双触发，优先级最高）"
+        elif over:
+            act = "减仓至上限%.0f（仅价格风控，系数%s；只降敞口不追方向）" % (
+                lim, "贪婪" if greedy else "非贪婪")
+        elif fearful:
+            act = "持有/可加（恐慌买入区且敞口合规）"
+        else:
+            act = "持有观望"
+        if lim is not None:
+            out.append("· %s 市值%.0f/上限%.0f | %s | %s → %s"
+                       % (sym, mv, lim, sys_desc, st_desc, act))
+        else:
+            out.append("· %s 市值%.0f（无上限） | %s | %s → %s"
+                       % (sym, mv, sys_desc, st_desc, act))
+    if not out:
+        return None
+    head = ("引擎A=价格风控(P1 1%规则)：市值超上限必须减到上限（硬敞口）；"
+            "引擎B=贪恐系数：只定方向不动手；A+B 同时贪婪=最高减仓优先级。"
+            "🟡 研究参考，实盘需人工确认。")
+    return head + "\n" + "\n".join(out)
 
 
 def _zone_int(fg):
@@ -475,6 +636,10 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     if _risk_sec:
         secs.append(("🛡️ 风控仓位（1%风险规则）", _risk_sec))
         secs.append("hr")
+    _act_sec = action_brief_text(snap)
+    if _act_sec:
+        secs.append(("📉 减仓操作（双引擎：价格风控 × 贪恐系数）", _act_sec))
+        secs.append("hr")
     _bc = behavior_checklist(snap)
     if _bc:
         secs.append(("🧠 行为检查清单", _bc))
@@ -485,9 +650,11 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     secs.append("hr")
     secs.append(("📰 情绪面 · Hermes(GLM)", (sentiment or "（不可用）").strip()[:1200]))
     secs.append("hr")
-    secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)", (attribution or "（不可用）").strip()[:2600]))
+    secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)",
+                 (attribution or "（归因生成失败，已降级跳过）").strip()[:2600]))
     secs.append("hr")
-    secs.append(("⚖️ 裁判裁决 · OpenClaw云端(NVIDIA NIM)【研究参考】", (judge or "（不可用）").strip()[:1200]))
+    secs.append(("⚖️ 裁判裁决 · OpenClaw云端(NVIDIA NIM)【研究参考】",
+                 (judge or "（裁判未生成，已降级；以风控/归因结论为准）").strip()[:1200]))
     secs.append("hr")
     secs.append(("🧠 知识库观点佐证 · YouTube 9频道【研究参考】", _kb_brief_text(kb_evidence(snap))))
     secs.append("hr")
@@ -635,6 +802,9 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
     _risk_sec = risk_brief_text(snap)
     if _risk_sec:
         lines += ["## 🛡️ 风控仓位（1%风险规则）", _risk_sec, ""]
+    _act_sec = action_brief_text(snap)
+    if _act_sec:
+        lines += ["## 📉 减仓操作（双引擎：价格风控 × 贪恐系数）【研究参考】", _act_sec, ""]
     _bc = behavior_checklist(snap)
     if _bc:
         lines += ["## 🧠 行为检查清单【研究参考】", _bc, ""]
