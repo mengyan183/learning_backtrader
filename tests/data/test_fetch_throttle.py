@@ -55,7 +55,7 @@ def test_throttle_updates_last_call():
 def test_throttle_is_applied_before_every_attempt(monkeypatch):
     """**核心回归**：每次尝试前都必须节流，不能只在失败后 sleep。"""
     calls = []
-    monkeypatch.setattr(fetch, "_opener", lambda: _Bad())
+    monkeypatch.setattr(fetch, "_opener", lambda url: _Bad())
     monkeypatch.setattr(fetch, "_throttle", lambda *a, **k: calls.append(1))
     monkeypatch.setattr(fetch.time, "sleep", lambda s: None)
     monkeypatch.setattr(config, "FETCH_RETRIES", 4)
@@ -86,7 +86,7 @@ def test_backoff_has_jitter_in_50_to_100_percent():
 
 def test_get_retries_full_count_then_raises(monkeypatch):
     slept = []
-    monkeypatch.setattr(fetch, "_opener", lambda: _Bad())
+    monkeypatch.setattr(fetch, "_opener", lambda url: _Bad())
     monkeypatch.setattr(fetch, "_throttle", lambda *a, **k: None)
     monkeypatch.setattr(fetch.time, "sleep", slept.append)
     monkeypatch.setattr(config, "FETCH_RETRIES", 3)
@@ -104,7 +104,7 @@ def test_get_does_not_retry_on_404(monkeypatch):
             n[0] += 1
             raise urllib.error.HTTPError("http://x", 404, "nf", {}, None)
 
-    monkeypatch.setattr(fetch, "_opener", lambda: NotFound())
+    monkeypatch.setattr(fetch, "_opener", lambda url: NotFound())
     monkeypatch.setattr(fetch, "_throttle", lambda *a, **k: None)
     monkeypatch.setattr(fetch.time, "sleep", lambda s: None)
     with pytest.raises(RuntimeError):
@@ -113,16 +113,21 @@ def test_get_does_not_retry_on_404(monkeypatch):
 
 
 def test_get_returns_body_on_success(monkeypatch):
-    monkeypatch.setattr(fetch, "_opener", lambda: _OK(b"hello"))
+    monkeypatch.setattr(fetch, "_opener", lambda url: _OK(b"hello"))
     monkeypatch.setattr(fetch, "_throttle", lambda *a, **k: None)
     assert fetch._get("http://x") == b"hello"
 
 
 def test_opener_is_reused(monkeypatch):
-    """opener 必须复用（原实现每次请求都新建，含 SSL 上下文）。"""
-    fetch._OPENER = None
-    assert fetch._opener() is fetch._opener()
-    fetch._OPENER = None
+    """opener 必须复用（原实现每次请求都新建，含 SSL 上下文）。
+
+    2026-10-06 起 `_OPENER` 是 `{"direct": opener, "proxy": opener}` 字典
+    （按域名分流代理）—— 复用判据改为清空后两次调用返回同一对象。
+    """
+    fetch._OPENER.clear()
+    assert fetch._opener("http://direct.example") is fetch._opener("http://direct.example")
+    assert fetch._opener() is fetch._opener(), "无 url 时走 direct 桶，同样应复用"
+    fetch._OPENER.clear()
 
 
 # ---------------------------------------------------------------- assetclass 回退

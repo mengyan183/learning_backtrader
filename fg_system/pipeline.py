@@ -18,6 +18,7 @@ from fg_system import index as index_mod
 from fg_system import signal as signal_mod
 from fg_system.data import loader, splits
 from fg_system.factors.base import rolling_pct
+from fg_system.factors.fed import FedPolicyFactor
 from fg_system.signal import market_signal as ms_mod
 from fg_system.signal import portfolio as pf_mod
 
@@ -44,6 +45,13 @@ def load_wide(raw_dir=None, shift_inputs=0):
     wide = wide.sort_index()
 
     if shift_inputs:
+        # fed 因子是「日历驱动的离散状态」（政策按生效日取值），不读 wide 列值 ——
+        # 若放任它按原日期重算，平移测试中它不会随输入后移，政策切换日那天
+        # 的合成指数会混用「后移的 vix/term/price/breadth」+「未后移的 fed」，
+        # 触发前视偏差校验的假阳性（tests/test_pipeline.py 实测 2026-01-02 /
+        # 2026-09-16 两天 diff）。把 fed 分数先算成列、再整体平移，
+        # 即保证「输入整体后移一天 → 输出整体后移一天」的不变量。
+        wide[("FED", "score")] = FedPolicyFactor().score(wide)
         wide = wide.shift(shift_inputs)
     return wide
 

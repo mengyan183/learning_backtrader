@@ -47,7 +47,18 @@ class FedPolicyFactor(Factor):
         return self.score(wide) / 100.0
 
     def score(self, wide):
-        """按 wide 索引（日期）逐日计算。只填充 ≤ 今天的日期，未来为 NaN。"""
+        """按 wide 索引（日期）逐日计算。只填充 ≤ 今天的日期，未来为 NaN。
+
+        平移校验路径（`pipeline.load_wide(shift_inputs>0)`）：fed 分数已在
+        shift 之前算成 `("FED","score")` 列并随输入整体平移 —— 此时直接返回
+        该列，保证「输入后移一天 → fed 分数也后移一天」的无前视不变量
+        （否则政策切换日会混用后移因子 + 未后移的 fed，见 tests/test_pipeline.py）。
+        生产路径（shift=0，无该列）保持日历重算，行为与历史一致。
+        """
+        col = ("FED", "score")
+        if isinstance(wide.columns, pd.MultiIndex) and col in wide.columns:
+            return pd.Series(wide[col].astype(float).values,
+                             index=wide.index, name=self.name)
         idx = pd.to_datetime(wide.index)
         today = dt.date.today()
         vals = []

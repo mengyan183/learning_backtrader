@@ -118,7 +118,8 @@ def test_html_has_mobile_breakpoint(tmp_path):
     因此断言模板引用了 /static/style.css 且该文件内含 @media 断点。
     """
     html = _render(tmp_path)
-    assert 'href="/static/style.css"' in html
+    # 允许带 cache-buster 版本参数（`/static/style.css?v=…`），前缀匹配即可
+    assert 'href="/static/style.css' in html
     css_path = os.path.join(os.path.dirname(report.__file__),
                             "static", "style.css")
     css = open(css_path, encoding="utf-8").read()

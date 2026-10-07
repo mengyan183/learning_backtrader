@@ -30,10 +30,11 @@ def _factors_from(scores):
 
 
 def test_weighted_average_of_all_factors():
-    s = _scores(vix=[100.0] * 3, term=[100.0] * 3, price=[0.0] * 3, breadth=[0.0] * 3)
+    s = _scores(vix=[100.0] * 3, term=[100.0] * 3, price=[0.0] * 3,
+                breadth=[0.0] * 3, fed=[0.0] * 3)
     out = idx.combine(s, _factors_from(s))
-    # 0.3*100 + 0.2*100 + 0.3*0 + 0.2*0 = 50
-    assert out.iloc[0] == pytest.approx(50.0)
+    # 0.30*100 + 0.15*100 + 0.25*0 + 0.15*0 + 0.15*0 = 45
+    assert out.iloc[0] == pytest.approx(45.0)
 
 
 def test_missing_factor_renormalizes_weights():
@@ -65,18 +66,18 @@ def test_smoothing_days_one_is_identity():
     assert idx.smooth(s, 1).equals(s)
 
 
-def test_build_factors_returns_four_named_factors():
+def test_build_factors_returns_five_named_factors():
     names = [f.name for f in idx.build_factors()]
-    assert names == ["vix", "term", "price", "breadth"]
+    assert names == ["vix", "term", "price", "breadth", "fed"]
     assert set(names) == set(config.WEIGHTS.keys())
 
 
 # ---------------------------------------------------------------- v2 多市场
 
 def test_build_factors_for_us_equity_unchanged():
-    """大盘因子集合必须与 v1 完全一致。"""
+    """大盘因子集合必须与 config.WEIGHTS 完全一致（v2 起含 fed）。"""
     names = [f.name for f in index.build_factors_for("us_equity")]
-    assert names == ["vix", "term", "price", "breadth"]
+    assert names == ["vix", "term", "price", "breadth", "fed"]
 
 
 def test_build_factors_for_crypto():
@@ -122,13 +123,15 @@ def test_combine_renormalizes_when_min_valid_relaxed():
 
 
 def test_combine_renormalizes_for_equity_when_one_missing():
-    """大盘 4 个因子缺 1 个 → 3 个有效 ≥ 2 → 正常重归一化（v1 行为）。"""
+    """大盘 5 个因子缺 1 个 → 4 个有效 ≥ 2 → 正常重归一化（§5.4）。"""
     scores = pd.DataFrame(
-        {"vix": [80.0], "term": [60.0], "price": [40.0], "breadth": [float("nan")]},
+        {"vix": [80.0], "term": [60.0], "price": [40.0],
+         "breadth": [float("nan")], "fed": [90.0]},
         index=pd.to_datetime(["2026-01-01"]))
     out = index.combine(scores, market="us_equity")
-    # 等权 0.30/0.20/0.30，breadth 缺失 → 按剩余权重归一化
-    expected = (80 * 0.30 + 60 * 0.20 + 40 * 0.30) / (0.30 + 0.20 + 0.30)
+    # 权重 0.30/0.15/0.25/0.15，breadth 缺失 → 按剩余 4 因子归一化
+    expected = (80 * 0.30 + 60 * 0.15 + 40 * 0.25 + 90 * 0.15) / \
+        (0.30 + 0.15 + 0.25 + 0.15)
     assert out.iloc[0] == pytest.approx(expected)
 
 

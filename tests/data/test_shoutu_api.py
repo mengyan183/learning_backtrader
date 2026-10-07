@@ -145,7 +145,7 @@ def test_parse_score_payload_raises_on_non_numeric_score():
 def test_post_form_sends_urlencoded_body(monkeypatch):
     """实测确认 `application/x-www-form-urlencoded` 可用（无需 multipart）。"""
     rec = _Rec()
-    monkeypatch.setattr(fetch, "_opener", lambda: rec)
+    monkeypatch.setattr(fetch, "_opener", lambda url: rec)
     monkeypatch.setattr(fetch, "_throttle", lambda *a, **k: None)
     fetch._post_form("https://x/api", {"code": "US.GDXU", "lever": "3"})
 
@@ -157,7 +157,7 @@ def test_post_form_sends_urlencoded_body(monkeypatch):
 
 def test_post_form_sets_xauth_and_content_type(monkeypatch):
     rec = _Rec()
-    monkeypatch.setattr(fetch, "_opener", lambda: rec)
+    monkeypatch.setattr(fetch, "_opener", lambda url: rec)
     monkeypatch.setattr(fetch, "_throttle", lambda *a, **k: None)
     fetch._post_form("https://x/api", {"code": "US.GDXU"},
                      headers={"X-Auth": "tok"})
@@ -172,7 +172,7 @@ def test_post_form_error_never_leaks_token(monkeypatch):
 
     同 `load_token` 的原则：「绝不回显密钥，否则密钥会随报错进入终端记录与日志」。
     """
-    monkeypatch.setattr(fetch, "_opener", lambda: _Bad())
+    monkeypatch.setattr(fetch, "_opener", lambda url: _Bad())
     monkeypatch.setattr(fetch, "_throttle", lambda *a, **k: None)
     monkeypatch.setattr(fetch.time, "sleep", lambda s: None)
     monkeypatch.setattr(config, "FETCH_RETRIES", 1)
@@ -187,7 +187,7 @@ def test_post_form_error_never_leaks_token(monkeypatch):
 def test_post_form_throttles_before_every_attempt(monkeypatch):
     """节流必须在**每次尝试前**（第 12.14 条），与 `_get` 一致。"""
     calls = []
-    monkeypatch.setattr(fetch, "_opener", lambda: _Bad())
+    monkeypatch.setattr(fetch, "_opener", lambda url: _Bad())
     monkeypatch.setattr(fetch, "_throttle", lambda *a, **k: calls.append(1))
     monkeypatch.setattr(fetch.time, "sleep", lambda s: None)
     monkeypatch.setattr(config, "FETCH_RETRIES", 3)
