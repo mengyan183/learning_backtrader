@@ -202,23 +202,31 @@ def fetch_symbol(symbol, limit=9999, fromdate="2010-01-01"):
     能抓到 MSTR / COIN 只是因为 Nasdaq 也把它们归在 etf 下，不具普遍性。
 
     回退是**严格改进**：`etf` 有数据时行为完全不变；只有 `etf` 返回空表时才多试一次。
+
+    **2026-10-07 加固（批量空响应）**：Nasdaq 在密集批量请求下会返回
+    **HTTP 200 但 tradesTable 为空**（瞬时限流特征，非标的无数据）。此时
+    整体退避重试（最多 3 轮），避免 update_prices 批量跑时大面积「0 新增」。
     """
-    last_err = None
-    for assetclass in ("etf", "stocks"):
-        url = "%s?assetclass=%s&fromdate=%s&limit=%d" % (
-            config.NASDAQ_API.format(symbol=urllib.parse.quote(symbol)),
-            assetclass, fromdate, limit)
-        try:
-            data = json.loads(_get(url).decode("utf-8"))
-        except RuntimeError as exc:
-            last_err = exc
-            continue
-        rows = ((data.get("data") or {}).get("tradesTable") or {}).get("rows") or []
-        df = parse_nasdaq_rows(rows, symbol)
-        if not df.empty:
-            return df
-    if last_err is not None:
-        raise last_err
+    for attempt in range(3):
+        last_err = None
+        for assetclass in ("etf", "stocks"):
+            url = "%s?assetclass=%s&fromdate=%s&limit=%d" % (
+                config.NASDAQ_API.format(symbol=urllib.parse.quote(symbol)),
+                assetclass, fromdate, limit)
+            try:
+                data = json.loads(_get(url).decode("utf-8"))
+            except RuntimeError as exc:
+                last_err = exc
+                continue
+            rows = ((data.get("data") or {}).get("tradesTable") or {}).get("rows") or []
+            df = parse_nasdaq_rows(rows, symbol)
+            if not df.empty:
+                return df
+        # 两轮都空：可能是瞬时限流（200+空），退避后整体重试
+        if last_err is not None:
+            raise last_err
+        if attempt < 2:
+            time.sleep(2 * (attempt + 1))
     return pd.DataFrame(columns=PRICE_COLUMNS)
 
 
