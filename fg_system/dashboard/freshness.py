@@ -9,8 +9,10 @@
    覆盖语义 ⇒ 每次刷新都抓 = 污染当天样本（§14.5 实际发生过）；`query_api`
    额度 5000/月。⇒ 仅当**当天快照缺失** 且数据过期时才补抓**一次**，
    当天已有记录则跳过（不覆盖）。
-2. 默认静态模式（FG_SYNC_MODE 默认 static）：sync_positions 不调用外部 API
-   （公司电脑只跑静态数据）。
+2. 持仓同步默认静态模式（FG_REFRESH_SYNC_MODE 默认 static）：不调用外部 API
+   （公司电脑只跑静态数据）。家里 Mac 可设 FG_REFRESH_SYNC_MODE=live，
+   刷新触发时经 FutuOpenD+OKX 动态拉当日持仓（OpenD 不可达自动降级跳过；
+   live 为当日覆盖写，幂等）。
 3. 触发必须**后台异步 + 节流**（默认 10 分钟）；失败只写日志，不影响页面。
 """
 import os
@@ -82,12 +84,17 @@ def _run_refresh():
         px, added = fetch.update_prices()
         fetch.update_indices()
         _log("行情更新完成，新增行数=%s" % {k: v for k, v in added.items() if v})
-        # 2) 持仓快照（默认 static 模式：不调外部 API；live 环境由每日链负责）
+        # 2) 持仓快照同步。模式取环境变量 FG_REFRESH_SYNC_MODE：
+        #    - 默认 static（公司电脑纪律：不调外部 API）
+        #    - 家里 Mac 在 launchd 设 FG_REFRESH_SYNC_MODE=live → 刷新触发时
+        #      经 FutuOpenD+OKX 动态拉当日持仓（OpenD 不可达自动降级跳过，
+        #      live 为当日覆盖写，幂等）
+        mode = os.environ.get("FG_REFRESH_SYNC_MODE", "static")
         subprocess.run(
             [sys_python(), str(config.ROOT) + "/scripts/sync_positions.py"],
-            env={**os.environ, "FG_SYNC_MODE": "static"},
+            env={**os.environ, "FG_SYNC_MODE": mode},
             timeout=180)
-        _log("持仓快照同步(static)完成")
+        _log("持仓快照同步(%s)完成" % mode)
         # 3) 守猪待兔：仅当天快照缺失时补抓一次（绝不覆盖已有当天记录）
         st = _last_date(os.path.join(config.DATA_DIR, "raw", "shoutu_fng.csv"))
         if st is None or st.date() < _today().date():
