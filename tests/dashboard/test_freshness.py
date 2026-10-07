@@ -13,12 +13,15 @@ from fg_system.dashboard import freshness
 
 
 def test_stale_judgement():
-    """行情文件过期判定：缺失=过期；滞后>3 天=过期；滞后≤3 天=新鲜。"""
+    """过期判定（2026-10-07 用户调整）：缺失=过期；落后最近交易日 ≥1 天=过期；
+    当天=新鲜。"""
     assert freshness._is_stale(None, pd.Timestamp("2026-10-06")) is True
     assert freshness._is_stale(
-        pd.Timestamp("2026-10-03"), pd.Timestamp("2026-10-06")) is False
+        pd.Timestamp("2026-10-06"), pd.Timestamp("2026-10-07")) is True
     assert freshness._is_stale(
-        pd.Timestamp("2026-10-01"), pd.Timestamp("2026-10-06")) is True
+        pd.Timestamp("2026-10-03"), pd.Timestamp("2026-10-06")) is True
+    assert freshness._is_stale(
+        pd.Timestamp("2026-10-06"), pd.Timestamp("2026-10-06")) is False
 
 
 def test_skip_refresh_when_prices_fresh(tmp_path, monkeypatch):

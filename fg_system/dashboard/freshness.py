@@ -25,7 +25,8 @@ from fg_system import config
 
 _LOG = "/tmp/fg_dashboard_fresh.log"
 _THROTTLE_SEC = 600          # 两次触发的间隔下限（10 分钟）
-_REFRESH_GRACE_DAYS = 3      # features/行情允许的最大滞后（跳过周末/节假日宽限）
+# 2026-10-07 用户调整：交易日差 1 天即视为过期并触发（原来 3 天宽限）——
+# 数据落后最近交易日 ≥1 天 → 刷新时后台触发更新，尽快补齐。
 
 _state = {"last_trigger": 0.0, "running": False}
 _lock = threading.Lock()
@@ -64,10 +65,10 @@ def _recent_trading_day(days_ago=0):
 
 
 def _is_stale(csv_date, reference):
-    """csv_date 是否明显落后于 reference（reference 为最近交易日/今天）。"""
+    """csv_date 是否过期：落后最近交易日 ≥1 天即触发（用户 2026-10-07 调整）。"""
     if csv_date is None:
         return True
-    return (reference - csv_date) > pd.Timedelta(days=_REFRESH_GRACE_DAYS)
+    return (reference - csv_date) >= pd.Timedelta(days=1)
 
 
 # ---------------------------------------------------------------- 触发更新
