@@ -27,7 +27,7 @@
 | B-4 | H-010~H-022 中引用虚构列者（H-010/H-012/H-014~H-021） | **登记口径缺陷**：引用的 position_multiplier/threshold/「第 5/6 列布尔位」在真实 features/portfolio_features 列中不存在（2026-10-08 审计确认） | **2026-10-08 修订完成**：九条假说已按真实列重新措辞（zone/core_position/fg_index/trend_blocked_us/trend_blocked_crypto），证据区间改为真实数据（zone 真实切换点 09-24）；状态 open 待按修订口径验证 | ✅ 完成 |
 | B-5 | H-011 / H-013 | 样本不足（持仓快照少、切换点观察短） | 观察点积累 | 🟡 |
 | B-6 | E1 Put-Call 期权情绪 | ~~CBOE 需订阅端点~~ → **免 key 解锁**：CBOE 官方批量 CSV（2006-11→2019-10，cdn 直连）+ Daily 页面逐日（2020-01 起，?dt=YYYY-MM-DD） | ✅ **2026-10-08**：双层链路落地——Data/raw/putcall.csv 3943 条（2006-11-01→2026-10-07）；fetch_sentiment.py 并入 putcall_total/equity/vix 列；putcall_factor_check.py 检验（E4）：total IC 0.044 / 滚动 IR 0.58 / 恐慌端次日 +0.14%>贪婪端 +0.01%（1449 样本）；每日链已接入增量 | ✅ 完成 |
-| B-7 | E1 新闻/社媒情绪 | Market Mood 需 API key | 获取 API key 或换源 | 🔴 |
+| B-7 | 新闻/社媒情绪（Market Mood） | 需 API key | **2026-10-08 解锁落地**：NewsAPI 免费档 key 已申请（100 请求/天，key 存 Data/newsapi_key 已 gitignore）；fetch_news.py 拉大盘/加密/持仓标的新闻，确定性词表打分 → news_sentiment.csv（mkt/crypto 正负计数+score，🟡 研究参考，候选 E1 情绪子信号，未经回测裁判不进合成权重） | ✅ 完成 |
 | B-8 | 极端规则校准（85 熔断 / 10 极恐） | 需积累实盘快照做参数校准 | 快照积累 + OOS 变体验证（红线：OOS 禁直接调参） | 🟡 |
 
 ## C 类：回测恢复后解锁（第二层 + 远期）— 依赖已解除，可实施

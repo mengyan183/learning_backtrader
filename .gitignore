@@ -26,3 +26,4 @@ Data/features.csv
 
 # 运行时日志（不入库）
 logs/
+Data/newsapi_key

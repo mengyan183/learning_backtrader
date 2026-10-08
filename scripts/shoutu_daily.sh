@@ -131,5 +131,17 @@ if [ "$RC4" -ne 0 ]; then
     echo "===== putcall FAILED rc=$RC4 (see traceback above) =====" >> "$LOG"
 fi
 
+# ---------------------------------------------------------------- 抓取（新闻情绪，**可选**）
+# B-7（2026-10-08）：NewsAPI 免费档（100 请求/天，key 在 Data/newsapi_key，
+# 已 gitignore）。大盘/加密/持仓标的标题+描述词表打分 → news_sentiment.csv。
+# ⚠️ **不改 RC** —— 任务成败仍由主路径 fetch_shoutu_api.py 决定（同 putcall 块约定）。
+# ⚠️ 国内直连失败自动走代理 127.0.0.1:7890；单标的失败自动重试 2 次且不中断整体。
+"$PY" scripts/fetch_news.py >> "$LOG" 2>&1
+RC5=$?
+echo "===== news exit=$RC5 =====" >> "$LOG"
+if [ "$RC5" -ne 0 ]; then
+    echo "===== news FAILED rc=$RC5 (see traceback above) =====" >> "$LOG"
+fi
+
 echo "===== end $(stamp) exit=$RC =====" >> "$LOG"
 exit $RC
