@@ -5,18 +5,21 @@ description: 接收并还原飞书 base64 分片，把公司电脑/Windows 端�
 
 # fg-sync：飞书分片 → Mac 仓库安全同步
 
-## ⚠️ 收到分片后的唯一正确动作（必须先读）
+## ⚠️ 收到分片后的唯一正确动作（必须先读，顺序不可改）
 
+0. **立即回一条短确认**（不等处理完成，先让用户知道已收到）：
+   `✅ 已收到，正在还原入库，请稍候…`
 1. **禁止自行解码 base64**、禁止自己判断"是不是 xz"。分片是 URL-safe base64
    （含 `-`/`_` 字符），手动解码必错。
 2. **把用户消息原文原样保存**到 `~/.openclaw/tmp/fg-sync-in/sync_in.md`（保留
    `###FG:…###` 标记和全部字符，一个字都不要改）。
-3. **运行单命令**（不要分步、不要自己解析）：
+3. **运行单命令**（不要分步、不要自己解析；`--quick` 增量测试 <10s，
+   不再全量 pytest 100s）：
 
 ```bash
 cd /Users/xingguo/learning_backtrader
 .venv/bin/python scripts/fg_sync_tool.py -f ~/.openclaw/tmp/fg-sync-in/sync_in.md \
-  --commit "fg-sync: 公司端同步 <YYYY-MM-DD>"
+  --commit "fg-sync: 公司端同步 <YYYY-MM-DD>" --quick
 ```
 
 4. **把脚本输出原样回传飞书**（成功/失败都回传，不要改写、不要补充解释）。
@@ -25,6 +28,7 @@ cd /Users/xingguo/learning_backtrader
 > - 试图 `tool_call {"id":"fg-sync"}` —— fg-sync 是 skill 不是可调用工具。
 > - 用标准 base64 解码 URL-safe 串（`-`/`_` 会被丢）→ 必然报"不是 xz"。
 > - 只回"检查打包脚本"而不跑命令 —— 必须先跑命令看真实输出。
+> - 先分析/先解释/先等结果 —— 先回"已收到"再干活。
 
 ## 这个 skill 干什么
 

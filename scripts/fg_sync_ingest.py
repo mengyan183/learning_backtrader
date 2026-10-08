@@ -16,8 +16,10 @@
 
 用法（OpenClaw/agent 侧）：
     .venv/bin/python scripts/fg_sync_ingest.py <分片目录> \
-        [--repo /Users/xingguo/learning_backtrader] [--commit "同步: <描述>"]
+        [--repo /Users/xingguo/learning_backtrader] [--commit "同步: <描述>"] [--quick]
 退出码：0=全流程成功；2=白名单/冲突/缺片等可解释失败；3=内部错误。
+--quick：增量测试模式，只跑与本次入库文件相关的测试文件（tests/test_<模块>.py、
+        tests/company_sync_test.py 等），预计 <10s；全量 pytest 留给每日链。
 
 【触发词（写进 fg-qa/ag 侧规则）】同步、还原、补传、backfill、base64、分片。
 """
@@ -96,6 +98,8 @@ def main():
     ap.add_argument("src", help="放着 base64 分片文本（.txt/.md）的目录")
     ap.add_argument("--repo", default=REPO)
     ap.add_argument("--commit", default="fg-sync: 公司端同步")
+    ap.add_argument("--quick", action="store_true",
+                    help="增量测试：只跑与本次入库文件相关的测试文件（<10s）")
     args = ap.parse_args()
 
     sys.path.insert(0, os.path.join(args.repo, "scripts"))
@@ -187,11 +191,45 @@ def main():
                 print("已推送 origin/main")
 
     # 测试
-    print("\n=== Mac 测试验证 ===")
     py = os.path.join(args.repo, ".venv", "bin", "python")
     if not os.path.exists(py):
         print("⚠️ 未找到 .venv/bin/python，跳过 pytest（同步本身已成功）。")
         return 0
+
+    # 增量模式：由已入库文件推导相关测试文件（tests/test_<模块>.py）
+    if args.quick:
+        related = set()
+        for rel in copied:
+            base = os.path.basename(rel)
+            if base.startswith("test_"):
+                related.add(os.path.join(args.repo, "tests", base))
+                continue
+            stem = os.path.splitext(base)[0]
+            cand = os.path.join(args.repo, "tests", "test_" + stem + ".py")
+            if os.path.exists(cand):
+                related.add(cand)
+        # 白名单兜底：同步链路自身测试恒跑
+        for always in ("test_fg_sync_ingest.py", "test_restore_from_base64.py"):
+            p = os.path.join(args.repo, "tests", always)
+            if os.path.exists(p):
+                related.add(p)
+        if related:
+            print("=== 增量测试（--quick，%d 个相关文件）===" % len(related))
+            targets = sorted(related)
+        else:
+            print("=== 无直接相关测试文件，退回冒烟测试 ===")
+            targets = [os.path.join(args.repo, "tests", "company_sync_test.py")]
+        tr = subprocess.run([py, "-m", "pytest", "-q", *targets], cwd=args.repo,
+                            capture_output=True, text=True, timeout=600)
+        tail = (tr.stdout or "").strip().splitlines()
+        last = tail[-1] if tail else ""
+        print(last)
+        if tr.returncode != 0:
+            print("❌ 增量 pytest 有失败，详见仓库根 pytest 输出；同步文件已入库，请修复后再提交。")
+            return 2
+        print("✅ 增量 pytest 通过（同步相关测试）。")
+        return 0
+
     tr = subprocess.run([py, "-m", "pytest", "-q"], cwd=args.repo,
                         capture_output=True, text=True, timeout=1800)
     tail = (tr.stdout or "").strip().splitlines()

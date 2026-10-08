@@ -40,6 +40,8 @@ def main():
     ap.add_argument("text", nargs="?", default="", help="分片消息原文（可省略，用 -f 或 stdin）")
     ap.add_argument("-f", "--file", help="分片消息文件路径（推荐：模型把原文存文件后传路径）")
     ap.add_argument("--commit", default="fg-sync: 公司端同步")
+    ap.add_argument("--quick", action="store_true",
+                    help="增量测试：只跑相关测试文件（<10s），不跑全量 pytest")
     args = ap.parse_args()
 
     raw = _read_input(args)
@@ -63,6 +65,8 @@ def main():
     ingest = os.path.join(REPO, "scripts", "fg_sync_ingest.py")
     py = os.path.join(REPO, ".venv", "bin", "python")
     cmd = [py, ingest, SYNC_IN_DIR, "--repo", REPO, "--commit", args.commit]
+    if args.quick:
+        cmd.append("--quick")
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=2400)
     sys.stdout.write(r.stdout)
     sys.stderr.write(r.stderr)
