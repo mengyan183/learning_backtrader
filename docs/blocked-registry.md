@@ -24,7 +24,7 @@
 | B-1 | H-002 现金<0 持续性 | 需连续 5 个交易日快照 | 2026-10-09 前后累计满 5 日再判 | 🟡 |
 | B-2 | H-001 深度浮亏系统性拖累 | 需 20 个观察点 | 观察点满 20（约 2026-10 末） | 🟡 |
 | B-3 | H-006 / H-008 / H-009 | 账户/持仓每日快照需 ≥40-60 交易日 | 快照积累满（约 3 个月） | 🟡 |
-| B-4 | H-010~H-022 中引用虚构列者（H-010/H-012/H-014~H-021） | **登记口径缺陷**：引用的 position_multiplier/threshold/「第 5/6 列布尔位」在真实 features/portfolio_features 列中不存在（2026-10-08 审计确认） | evolve_review 登记方按真实列结构重新措辞后再验证 | 🔴（待修订口径，见 hypotheses.md 登记口径审计） |
+| B-4 | H-010~H-022 中引用虚构列者（H-010/H-012/H-014~H-021） | **登记口径缺陷**：引用的 position_multiplier/threshold/「第 5/6 列布尔位」在真实 features/portfolio_features 列中不存在（2026-10-08 审计确认） | **2026-10-08 修订完成**：九条假说已按真实列重新措辞（zone/core_position/fg_index/trend_blocked_us/trend_blocked_crypto），证据区间改为真实数据（zone 真实切换点 09-24）；状态 open 待按修订口径验证 | ✅ 完成 |
 | B-5 | H-011 / H-013 | 样本不足（持仓快照少、切换点观察短） | 观察点积累 | 🟡 |
 | B-6 | E1 Put-Call 期权情绪 | ~~CBOE 需订阅端点~~ → **免 key 解锁**：CBOE 官方批量 CSV（2006-11→2019-10，cdn 直连）+ Daily 页面逐日（2020-01 起，?dt=YYYY-MM-DD） | ✅ **2026-10-08**：双层链路落地——Data/raw/putcall.csv 3943 条（2006-11-01→2026-10-07）；fetch_sentiment.py 并入 putcall_total/equity/vix 列；putcall_factor_check.py 检验（E4）：total IC 0.044 / 滚动 IR 0.58 / 恐慌端次日 +0.14%>贪婪端 +0.01%（1449 样本）；每日链已接入增量 | ✅ 完成 |
 | B-7 | E1 新闻/社媒情绪 | Market Mood 需 API key | 获取 API key 或换源 | 🔴 |
