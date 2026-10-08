@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""fg-sync 安全入库编排（OpenClaw 收到飞书 base64 分片后调用）。
+
+【全流程】
+  1. 聚合   —— 复用 scripts/restore_from_base64.py 的 extract_marked/_decode：
+               识别 `###FG:包名:序号/总数###…###FG:end###` 分片，缺片/非法字符报错。
+  2. 暂存解压 —— base64 → tar.xz → **先解压到临时目录**（安全解压：拒绝绝对路径、
+                `..` 穿越、符号链接逃逸），不直接碰仓库。
+  3. 白名单过滤 —— 只放行代码/测试/文档目录；拒绝 Data/**（密钥+运行态）、
+                .git/**、.venv/**、__pycache__/**、*.pyc、*.key、*.secret。
+  4. 冲突检查 —— 与 `git status --porcelain` 未提交修改取交集；有冲突则**中止**，
+                列出冲突文件等确认，绝不自动覆盖。
+  5. 入库     —— 无冲突才复制进仓库 → git add -A → commit → push。
+  6. 测试回传 —— `.venv/bin/python -m pytest -q`，汇总结果到 stdout（供 agent 回发飞书）。
+
+用法（OpenClaw/agent 侧）：
+    .venv/bin/python scripts/fg_sync_ingest.py <分片目录> \
+        [--repo /Users/xingguo/learning_backtrader] [--commit "同步: <描述>"]
+退出码：0=全流程成功；2=白名单/冲突/缺片等可解释失败；3=内部错误。
+
+【触发词（写进 fg-qa/ag 侧规则）】同步、还原、补传、backfill、base64、分片。
+"""
+
+import argparse
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# 允许同步进仓库的顶层目录 / 根级文件（其余一律拒绝）
+ALLOWED_DIRS = {"fg_system", "scripts", "tests", "evolution", "docs"}
+ALLOWED_ROOT_FILES = {"README.md", "AGENTS.md", "pyproject.toml",
+                      "requirements.txt", "requirements-dev.txt", "Makefile"}
+# 任何情况下都拒绝的路径片段
+DENY_FRAGMENTS = ("/.git", "/.venv", "/__pycache__", "Data/", ".pyc", ".key",
+                  ".secret", ".token", ".env", "node_modules/")
+
+
+def _allowed(rel):
+    rel = rel.replace("\\", "/")
+    if rel.startswith("/") or rel.startswith("../") or ".." in rel.split("/"):
+        return False
+    if any(f in ("/" + rel) for f in DENY_FRAGMENTS):
+        return False
+    head = rel.split("/", 1)[0]
+    if head in ALLOWED_DIRS:
+        return True
+    if "/" not in rel and rel in ALLOWED_ROOT_FILES:
+        return True
+    return False
+
+
+def _safe_extract(tf, dest):
+    """安全解压：拒绝绝对路径、`..` 穿越、链接逃逸；返回解出的相对路径列表。"""
+    out = []
+    for m in tf.getmembers():
+        name = m.name.replace("\\", "/")
+        if name.startswith("/") or name.split("/", 1)[0] in ("..", ".") or ".." in name.split("/"):
+            raise SystemExit(f"❌ tar 内含穿越路径，已拒绝：{m.name}")
+        if m.issym() or m.islnk():
+            raise SystemExit(f"❌ tar 内含链接（不安全），已拒绝：{m.name}")
+        target = os.path.realpath(os.path.join(dest, name))
+        if not target.startswith(os.path.realpath(dest) + os.sep):
+            raise SystemExit(f"❌ tar 内路径逃逸，已拒绝：{m.name}")
+        tf.extract(m, dest)
+        out.append(name)
+    return out
+
+
+def _git(repo, *args):
+    return subprocess.run(["git", "-C", repo, *args],
+                          capture_output=True, text=True, timeout=60)
+
+
+def _dirty_paths(repo):
+    r = _git(repo, "status", "--porcelain")
+    if r.returncode != 0:
+        return [], r.stderr.strip()
+    paths = []
+    for line in r.stdout.splitlines():
+        if not line.strip():
+            continue
+        p = line[3:].strip()
+        paths.append(p.replace("\\", "/"))
+    return paths, None
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("src", help="放着 base64 分片文本（.txt/.md）的目录")
+    ap.add_argument("--repo", default=REPO)
+    ap.add_argument("--commit", default="fg-sync: 公司端同步")
+    args = ap.parse_args()
+
+    sys.path.insert(0, os.path.join(args.repo, "scripts"))
+    from restore_from_base64 import extract_marked, _decode  # 复用既有解析
+
+    raw = ""
+    for fn in sorted(os.listdir(args.src)):
+        if fn.endswith((".txt", ".md")):
+            with open(os.path.join(args.src, fn), encoding="utf-8",
+                      errors="ignore") as fh:
+                raw += fh.read()
+
+    groups, problems = extract_marked(raw)
+    if not groups:
+        print("❌ 分片目录里没认出 ###FG: 标记的包（共读入 %d 字符）。"
+              "请确认消息以 同步/还原/补传/backfill 开头，且分片标记完整。" % len(raw))
+        return 2
+    if problems:
+        print("⚠️ 分片不完整，中止入库：")
+        for p in problems:
+            print("   " + p)
+        print("请等剩余分片补发后再跑。")
+        return 2
+
+    print("认出的包：%s" % ", ".join("%s(%d片)" % (k, len(v)) for k, v in groups.items()))
+    with tempfile.TemporaryDirectory(prefix="fg-sync-") as tmp:
+        for name, parts in groups.items():
+            blob = _decode(parts)
+            if blob[:6] != b"\xfd7zXZ\x00":
+                print(f"❌ 包 {name} 解出来不是 xz 数据，中止。")
+                return 2
+            tarpath = os.path.join(tmp, name + ".tar.xz")
+            with open(tarpath, "wb") as fh:
+                fh.write(blob)
+            with tarfile.open(tarpath, "r:xz") as tf:
+                members = _safe_extract(tf, tmp)
+
+        allowed, denied = [], []
+        for m in members:
+            (allowed if _allowed(m) else denied).append(m)
+        if denied:
+            print("⛔ 以下文件不在白名单内，已拒绝（不入库）：")
+            for d in denied[:20]:
+                print("   - " + d)
+            if len(denied) > 20:
+                print("   … 共 %d 个被拒" % len(denied))
+        if not allowed:
+            print("❌ 没有任何文件通过白名单，中止。")
+            return 2
+
+        # 冲突检查：与仓库未提交修改取交集
+        dirty, err = _dirty_paths(args.repo)
+        if err:
+            print("⚠️ 无法读取 git 状态（%s），中止（不冒险覆盖）。" % err)
+            return 2
+        conflict = sorted(set(allowed) & set(dirty))
+        if conflict:
+            print("⛔ 与 Mac 本地未提交修改冲突，中止（不自动覆盖），冲突文件：")
+            for c in conflict:
+                print("   - " + c)
+            print("处理方式：先在 Mac 提交/丢弃本地改动，再重新触发同步。")
+            return 2
+
+        # 入库：复制白名单内文件 → git add/commit/push
+        copied = []
+        for rel in sorted(allowed):
+            src_p = os.path.join(tmp, rel)
+            if not os.path.isfile(src_p):
+                continue
+            dst_p = os.path.join(args.repo, rel)
+            os.makedirs(os.path.dirname(dst_p), exist_ok=True)
+            shutil.copy2(src_p, dst_p)
+            copied.append(rel)
+        print("入库 %d 个文件：%s" % (len(copied), ", ".join(copied[:8]) +
+              (" …" if len(copied) > 8 else "")))
+
+        r = _git(args.repo, "add", "-A")
+        if r.returncode != 0:
+            print("❌ git add 失败：" + r.stderr.strip()); return 2
+        r = _git(args.repo, "commit", "-m", args.commit)
+        if r.returncode != 0:
+            print("⚠️ commit 失败（可能无变更可提交）：" + r.stderr.strip())
+        else:
+            r = _git(args.repo, "push", "-q", "origin", "main")
+            if r.returncode != 0:
+                print("⚠️ push 失败：" + r.stderr.strip())
+            else:
+                print("已推送 origin/main")
+
+    # 测试
+    print("\n=== Mac 测试验证 ===")
+    py = os.path.join(args.repo, ".venv", "bin", "python")
+    if not os.path.exists(py):
+        print("⚠️ 未找到 .venv/bin/python，跳过 pytest（同步本身已成功）。")
+        return 0
+    tr = subprocess.run([py, "-m", "pytest", "-q"], cwd=args.repo,
+                        capture_output=True, text=True, timeout=1800)
+    tail = (tr.stdout or "").strip().splitlines()
+    last = tail[-1] if tail else ""
+    print(last)
+    if tr.returncode != 0:
+        print("❌ pytest 有失败，详见仓库根 pytest 输出；同步文件已入库，请修复后再提交。")
+        return 2
+    print("✅ pytest 通过。同步完成，可回复公司端：文件已入库并测试通过。")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
