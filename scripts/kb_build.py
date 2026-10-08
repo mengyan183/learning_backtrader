@@ -28,6 +28,9 @@ CHANNELS = {
     "BenFelix": "https://www.youtube.com/@BenFelixCSI/videos",
     "ThePlainBagel": "https://www.youtube.com/@ThePlainBagel/videos",
     "QuantPy": "https://www.youtube.com/@QuantPy/videos",
+    # Q3（2026-10-08）：Financial_freedom 频道候选，中文字幕可得性已验证
+    # （jHlPnyzd5yk.zh-Hans.vtt 试抓成功）。宏观/地缘/市场分析定位。
+    "BeckieAnalysis": "https://www.youtube.com/@beckieanalysis/videos",
 }
 PROXY = "http://127.0.0.1:7890"
 OLLAMA_URL = "http://127.0.0.1:11434"

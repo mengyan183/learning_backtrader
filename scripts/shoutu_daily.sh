@@ -143,5 +143,17 @@ if [ "$RC5" -ne 0 ]; then
     echo "===== news FAILED rc=$RC5 (see traceback above) =====" >> "$LOG"
 fi
 
+# ---------------------------------------------------------------- 抓取（市场级 FNG 交叉校验，**可选**）
+# Q1（2026-10-08）：alternative.me 市场级 Fear&Greed（lookintobitcoin 同源，
+# 官方 API 需订阅；alternative.me 公开免费）→ Data/raw/fng_altme.csv。
+# 用途：守猪待兔（个股级）的市场温度交叉校验；简报/QA 可引用「altme 市场级」。
+# ⚠️ **不改 RC** —— 任务成败仍由主路径 fetch_shoutu_api.py 决定（同 putcall 块约定）。
+"$PY" scripts/fetch_fng_altme.py >> "$LOG" 2>&1
+RC6=$?
+echo "===== fng_altme exit=$RC6 =====" >> "$LOG"
+if [ "$RC6" -ne 0 ]; then
+    echo "===== fng_altme FAILED rc=$RC6 (see traceback above) =====" >> "$LOG"
+fi
+
 echo "===== end $(stamp) exit=$RC =====" >> "$LOG"
 exit $RC

@@ -109,7 +109,7 @@
 
 | # | 方向 | 来源 | 落地内容 | 状态 |
 |---|---|---|---|---|
-| Q1 | lookintobitcoin 交叉校验 | 6.1 | shoutu_fng 增加同源校验（Rainbow/MVRV 估值带标注） | 待排期 |
-| Q2 | TokenUnlocks 解锁日历 | 6.4 | 加密持仓的解锁抛压事件入 MACRO_EVENTS | 待排期 |
+| Q1 | lookintobitcoin 交叉校验 | 6.1 | alternative.me 市场级 FNG（lookintobitcoin 同源，官方 API 需订阅）→ `scripts/fetch_fng_altme.py` → `Data/raw/fng_altme.csv`，接入 `shoutu_daily.sh` 可选块（不改 RC） | ✅ 2026-10-08 |
+| Q2 | TokenUnlocks 解锁日历 | 6.4 | 加密持仓的解锁抛压事件入 MACRO_EVENTS | ⛔ 受阻（2026-10-08）：官方 API 需 key（代理可达但 401）；Messari 无鉴权端点不可达；当前唯一加密持仓 BTC-USDT 无代币解锁概念 → 降级为手动登记观察位，持仓扩到有 unlock 的代币时再启用 |
 | Q3 | 频道扩容 | 6.2 | 先试抓 Beckie Analysis 一条字幕验证可得性，通过后入 CHANNELS | 待排期 |
 | Q4 | 书单要点入 fg-qa | 6.3 | fg-qa「方法论」路由增加书单引用（标注来源：Financial_freedom 书单） | 待排期 |
