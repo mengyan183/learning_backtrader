@@ -172,7 +172,8 @@ def main():
         print("入库 %d 个文件：%s" % (len(copied), ", ".join(copied[:8]) +
               (" …" if len(copied) > 8 else "")))
 
-        r = _git(args.repo, "add", "-A")
+        # 只 add 本次入库文件，避免 git add -A 把运行态/未提交改动连带提交
+        r = _git(args.repo, "add", "--", *copied)
         if r.returncode != 0:
             print("❌ git add 失败：" + r.stderr.strip()); return 2
         r = _git(args.repo, "commit", "-m", args.commit)
