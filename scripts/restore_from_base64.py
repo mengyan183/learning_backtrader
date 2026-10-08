@@ -97,8 +97,10 @@ def _collect(src_dir):
 MARK_RE = re.compile(
     r"###FG:([A-Za-z0-9_]+):(\d+)/(\d+)###(.*?)###FG:end###")
 
+# ⚠️ 含 `-`/`_`（2026-10-08 补）：打包端 URL-safe base64（`+`→`-`、`/`→`_`）
+#    规避飞书消息对 `+`/`/` 的转义；`_decode` 里会反向替换回标准字符。
 _B64_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                 "abcdefghijklmnopqrstuvwxyz0123456789+/=")
+                 "abcdefghijklmnopqrstuvwxyz0123456789+/=-_")
 
 
 def extract_marked(text):
@@ -163,6 +165,10 @@ def _decode(parts):
                        for p in parts)
     # 从聊天记录/文档复制回来时很容易混入换行、空格 —— 一并去掉
     text = "".join(text.split())
+    # ⚠️ **URL-safe base64 兼容**（2026-10-08 补）：飞书消息传输对 `+`/`/` 有
+    #    转义风险（`+` 有被改写的先例）⇒ 打包端把 `+`→`-`、`/`→`_` 再发。
+    #    标准 base64 字符集不含 `-`/`_`，反向替换不会误伤旧协议的分片。
+    text = text.replace("-", "+").replace("_", "/")
     try:
         return base64.b64decode(text, validate=True)
     except (binascii.Error, ValueError) as exc:
