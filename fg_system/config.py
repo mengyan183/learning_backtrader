@@ -419,6 +419,12 @@ SIGNAL_UNDERLYING_MAP = {
     "AXTX": "AXTI", "CRCG": "CRCL",                 # 第 12.20 条已记录
     "CONL": "COIN",                                 # 同 CRYPTO_UNDERLYING["CONL"]
     "GDXU": "GDXU_UND",                             # **合成列**，见下
+    # C-9 观察池扩池-策略侧（2026-10-08，白名单未动）：
+    #   底层精确映射：NVDL→NVDA、TSLL→TSLA、FAS→XLF、TNA→IWM（Nasdaq 已补抓入库）
+    #   FNGU→QQQ：FANG 指数无现货 ETF 数据，QQQ 作大盘科技**近似底层**（已声明，非精确）
+    #   SQQQ→QQQ：反向 -3× 纳指 ⇒ 指数表达**纳指情绪**（QQQ 动量高=SQQQ 该跌），动作反向
+    "NVDL": "NVDA", "TSLL": "TSLA", "FNGU": "QQQ",
+    "FAS": "XLF", "TNA": "IWM", "SQQQ": "QQQ",
 }
 # GDXU 的底层 = 指数 `MINERS` = **GDX + GDXJ 市值加权**（**不是** GDX 单只）。
 # 权重取自 investing.com 的 GDXU 持仓页（2026-09-28 查得：GDX 76.07%）⇒ 固定先验。

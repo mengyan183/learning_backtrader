@@ -321,7 +321,17 @@ def signal_wide(wide):
     """
     out = wide.copy()
     have = set(out.columns.get_level_values(0))
-    for und in config.SIGNAL_UNDERLYING_MAP.values():
+    # **只补守猪待兔标的的底层**（本函数职责 = SHOUTU inv-vol 权重用底层）。
+    # ⚠️ 不能遍历 `SIGNAL_UNDERLYING_MAP` 全值：2026-10-08 C-9 观察池扩池后
+    #    map 还含 OBSERVE_SYMBOLS 底层（NVDL→NVDA 等），那些是 `symbol_fg_index`
+    #    读 prices 长表用的，**不在** crypto_prices.csv ⇒ 遍历全值会 ValueError。
+    #    以 `config.SHOUTU_SYMBOLS` 驱动（同样来自 config，不硬编码，第 12.26 条⑤）。
+    needed = set()
+    for sym in config.SHOUTU_SYMBOLS:
+        und = config.SIGNAL_UNDERLYING_MAP.get(sym)
+        if und:
+            needed.add(und)
+    for und in needed:
         if und in have or und == config.GDXU_UNDERLYING_COLUMN:
             continue
         out[(und, "close")] = _crypto_close(und).reindex(out.index)

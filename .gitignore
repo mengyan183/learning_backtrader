@@ -23,3 +23,6 @@ Data/positions.csv
 # 传输中间产物
 *.tar.xz
 Data/features.csv
+
+# 运行时日志（不入库）
+logs/
