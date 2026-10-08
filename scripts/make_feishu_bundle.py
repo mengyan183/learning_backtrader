@@ -433,15 +433,18 @@ def minimal_files():
             if not target:
                 continue
             if os.path.isdir(target):
-                for root, dirs, fs in os.walk(target):
-                    dirs[:] = [d for d in dirs if d != "__pycache__"]
-                    for f in fs:
-                        if f.endswith(".py"):
-                            rel2 = _posix(os.path.relpath(os.path.join(root, f),
-                                                          config.ROOT))
-                            if rel2 not in files:
-                                files.add(rel2)
-                                queue.append(rel2)
+                # 包级引用（`import fg_system.factors` / `from fg_system import factors`）：
+                # **只收 `__init__.py`**，包内子模块由 `__init__` 的 imports 继续递归。
+                # ⚠️ 旧版整目录全量收录会把研究/开发模块（如 `factors/screening.py`）
+                #    误打进 Mac 运行集 —— 补传后 Mac 端因此暴露（Windows 端当时
+                #    缺该文件才碰巧通过 minimal 守卫测试）。精确闭包才能保证
+                #    minimal = 入口传递闭包，研究模块不进传输体积。
+                rel_init = _posix(os.path.relpath(
+                    os.path.join(target, "__init__.py"), config.ROOT))
+                if (os.path.isfile(os.path.join(config.ROOT, rel_init))
+                        and rel_init not in files):
+                    files.add(rel_init)
+                    queue.append(rel_init)
             else:
                 rel2 = _posix(os.path.relpath(target, config.ROOT))
                 if rel2 not in files:

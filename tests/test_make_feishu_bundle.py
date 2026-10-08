@@ -303,8 +303,13 @@ def test_text_mode_emits_bootstrap_script(tmp_path):
     boots = [(n, s) for n, s, k in written if k.startswith("引导脚本")]
     assert boots, "没生成引导脚本分片 ⇒ Mac 上没法开始还原"
     # 拼回来必须**逐字节等于**仓库里那份脚本
-    joined = "".join(open(tmp_path / n, encoding="ascii").read()
-                     for n, _s in sorted(boots))
+    # ⚠️ 每条分片带 `###FGB:i/N###`…`###FGB:end###` 标记 —— 聊天记录全选
+    #    复制时靠它精确切分（时间戳混入会静默污染 base64），拼前必须用
+    #    strip_boot_marker 去标记；直接对全文 b64decode 会把 `FGB`/数字/`end`
+    #    的字母混进数据 ⇒ Incorrect padding（2026-10-08 Mac 端 pytest 首跑暴露）。
+    joined = "".join(bundle.strip_boot_marker(
+        open(tmp_path / n, encoding="ascii").read())
+        for n, _s in sorted(boots))
     src = open(os.path.join(config.ROOT, "scripts", "mac_bootstrap.sh"),
                encoding="utf-8").read()
     assert base64.b64decode(joined).decode("utf-8") == src, \
