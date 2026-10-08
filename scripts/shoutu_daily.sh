@@ -118,5 +118,18 @@ if [ "$RC3" -ne 0 ]; then
     echo "===== prices FAILED rc=$RC3 (see traceback above) =====" >> "$LOG"
 fi
 
+# ---------------------------------------------------------------- 抓取（Put/Call 期权情绪，**可选**）
+# B-6（2026-10-08）：CBOE 官方每日页免 key。写进「近期段」分片
+# （Data/raw/putcall_daily_2.csv），由 scripts/build_putcall.py 合并为
+# Data/raw/putcall.csv（2006-2019 基底 + 2020 起逐日）。
+# ⚠️ **不改 RC** —— 任务成败仍由主路径 fetch_shoutu_api.py 决定（同 prices 块约定）。
+# ⚠️ CBOE 页面单请求 5-9s，失败自动重试 2 次；挂起不影响主任务退出码。
+"$PY" scripts/fetch_putcall.py --backfill 1 --out Data/raw/putcall_daily_2.csv >> "$LOG" 2>&1
+RC4=$?
+echo "===== putcall exit=$RC4 =====" >> "$LOG"
+if [ "$RC4" -ne 0 ]; then
+    echo "===== putcall FAILED rc=$RC4 (see traceback above) =====" >> "$LOG"
+fi
+
 echo "===== end $(stamp) exit=$RC =====" >> "$LOG"
 exit $RC

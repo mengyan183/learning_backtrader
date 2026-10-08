@@ -1,0 +1,6 @@
+date,total_ratio,index_ratio,equity_ratio,etp_ratio,vix_ratio,spx_ratio,call_vol,put_vol,call_oi,put_oi,note
+2026-10-01,0.9,1.01,0.57,1.09,0.57,1.11,7261792,6561036,,,CBOE Daily Market Statistics JSON
+2026-10-02,0.78,0.86,0.58,0.88,0.14,1.15,8733513,6780536,,,CBOE Daily Market Statistics JSON
+2026-10-05,0.83,0.91,0.59,1.05,0.31,1.03,7720926,6429431,,,CBOE Daily Market Statistics JSON
+2026-10-06,0.82,0.88,0.57,1.04,0.22,1.03,7555563,6203551,,,CBOE Daily Market Statistics JSON
+2026-10-07,0.87,0.93,0.63,1.09,0.39,1.1,7309174,6323143,,,CBOE Daily Market Statistics JSON

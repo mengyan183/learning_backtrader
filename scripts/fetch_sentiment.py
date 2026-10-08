@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""情绪子信号数据接入（E1）：VIX 情绪代理 + 加密资金费率
+"""情绪子信号数据接入（E1）：VIX 情绪代理 + 加密资金费率 + Put-Call 期权情绪（B-6 已解锁）
 
 数据源（可用性已探明，2026-10）：
 - CBOE VIX 历史 CSV（cdn.cboe.com，1990 起全历史，国内直连可用）→ 同步 Data/raw/vix_history.csv
 - OKX 资金费率（www.okx.com，国内直连 307/超时，走本地代理 7890）→ Data/raw/funding_rate.csv
-- Put-Call 比率：CBOE 需订阅端点，暂用 VIX 水平/变化率作为期权情绪代理（记入 docs/roadmap.md）
+- Put-Call 比率（B-6 免 key 解锁）：CBOE Daily Market Statistics 官方页面逐日抓取
+  （scripts/fetch_putcall.py → Data/raw/putcall.csv），total/equity 比率并入 sentiment.csv
 - 新闻情绪：免费源需 API key，暂缓
 
-产物：Data/raw/sentiment.csv（date, vix, vix_chg, funding_btc, funding_eth）
+产物：Data/raw/sentiment.csv（date, vix, vix_chg, funding_btc, funding_eth, putcall_total, putcall_equity, putcall_vix）
 用法：.venv/bin/python scripts/fetch_sentiment.py
 """
 import os
@@ -75,7 +76,7 @@ def sync_funding(proxy: bool = True):
 
 
 def build_sentiment():
-    """合并 vix_history + funding_rate → Data/raw/sentiment.csv（日频）"""
+    """合并 vix_history + funding_rate + putcall → Data/raw/sentiment.csv（日频）"""
     import pandas as pd
     vix = pd.read_csv(RAW / "vix_history.csv", parse_dates=["date"])
     vix["vix_chg"] = vix["vix"].pct_change() * 100
@@ -83,8 +84,20 @@ def build_sentiment():
     out = vix
     if fr is not None:
         out = out.merge(fr, on="date", how="left")
+    pc = pd.read_csv(RAW / "putcall.csv", parse_dates=["date"]) if (RAW / "putcall.csv").exists() else None
+    if pc is not None:
+        pc = pc.rename(columns={
+            "total_ratio": "putcall_total",
+            "equity_ratio": "putcall_equity",
+            "vix_ratio": "putcall_vix",
+        })[["date", "putcall_total", "putcall_equity", "putcall_vix"]]
+        out = out.merge(pc, on="date", how="left")
     out.to_csv(RAW / "sentiment.csv", index=False)
-    print(f"sentiment.csv: {len(out)} 行 ({out['date'].min().date()} → {out['date'].max().date()})")
+    cols = len(out.columns)
+    print(f"sentiment.csv: {len(out)} 行 ({out['date'].min().date()} → {out['date'].max().date()})，{cols} 列")
+    if pc is not None and "putcall_total" in out.columns:
+        last = out.dropna(subset=["putcall_total"]).iloc[-1]
+        print(f"  Put-Call 最新 {last['date'].date()}: total={last['putcall_total']:.2f} equity={last['putcall_equity']:.2f}")
 
 
 if __name__ == "__main__":
