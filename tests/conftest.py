@@ -71,10 +71,13 @@ _CASE_DEPS = {
         ["scripts/fetch_shoutu.py"],
     "tests/data/test_shoutu_page_query.py::test_main_writes_prices_from_both_sources":
         ["scripts/fetch_shoutu.py"],
+    # ⚠️ 2026-10-08：这两个测试实为 fetch_shoutu.py 的 query_one_js 守卫
+    #   （重建版已内联 JS 模板），deps 原本误挂 scripts/shoutu_page_query.js
+    #   （该文件双端均不存在）⇒ 误 skip。改为 fetch_shoutu.py 后转回运行。
     "tests/data/test_shoutu_page_query.py::test_query_one_js_embeds_symbol_as_a_single_string_literal":
-        ["scripts/shoutu_page_query.js"],
+        ["scripts/fetch_shoutu.py"],
     "tests/data/test_shoutu_page_query.py::test_query_one_js_visibility_check_survives_fixed_positioning":
-        ["scripts/shoutu_page_query.js"],
+        ["scripts/fetch_shoutu.py"],
     "tests/data/test_shoutu_page_query.py::test_script_queries_only_uncovered_symbols":
         ["scripts/fetch_shoutu.py"],
     "tests/test_analyze_shoutu_greed.py::test_fixed_window_matches_full120_scale":

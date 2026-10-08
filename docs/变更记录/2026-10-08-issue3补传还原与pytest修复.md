@@ -33,4 +33,14 @@
 
 ## 提交
 - ce44ae1（补传 19 文件 + 变更记录）已推送。
-- 本轮修复（mac_bootstrap.sh / make_feishu_bundle.py / requirements.txt / 测试修正）待提交推送。
+- 78e4c44（mac_bootstrap.sh / make_feishu_bundle.py / requirements.txt / 测试修正）已推送。
+
+## 追加（2026-10-08 收尾）：剩余 2 skipped 归零
+- 排查：`pytest -rs` 定位 2 个 skip 均为 `test_shoutu_page_query.py::test_query_one_js_*`，
+  deps 误挂 `scripts/shoutu_page_query.js`（该文件双端均不存在，生产零引用）。
+- 实测：去掉 deps 后两测试**直接通过**（0.46s）—— 它们实际守卫 fetch_shoutu.py 的
+  `query_one_js`（重建版已内联 JS 模板，不再读 js 文件）。
+- 处理：**不删测试**（会丢失有效守卫），改为把 deps 修正为 `scripts/fetch_shoutu.py`
+  （与本文件其他测试一致）+ 注释说明根因。
+- 最终全量 pytest：**838 passed / 0 skipped / 0 failed**（skip 21→2→0）。
+- 结论：Windows→Mac 投递链正式关闭（唯一曾缺失的 js 文件双端均不存在，非传输缺口）。
