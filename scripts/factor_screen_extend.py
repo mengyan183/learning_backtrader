@@ -134,10 +134,10 @@ def main():
 
     out += ["", "## 登记已追加 F-007~F-009 至 evolution/factors.md"]
     res_path = os.path.join(EVO, "factor-screen-results.md")
-    with open(res_path, "w", encoding="utf-8") as fh:
-        fh.write("\n".join(out))
+    with open(res_path, "a", encoding="utf-8") as fh:
+        fh.write("\n".join(out) + "\n")
     print("\n".join(out))
-    print("\n[factor_screen_extend] 结果 → %s；登记 → %s" % (res_path, fm_path))
+    print("\n[factor_screen_extend] 结果 → %s（追加）；登记 → %s" % (res_path, fm_path))
 
 
 if __name__ == "__main__":

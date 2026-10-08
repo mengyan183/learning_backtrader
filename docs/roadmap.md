@@ -33,10 +33,10 @@
 
 | 动作 | 说明 | 验收 |
 |---|---|---|
-| ✅ 变体实验设施 | `evolve_variant.py`：adopted 假说 → VARIANTS 草稿 + 等价性守卫测试（默认参数逐位相同红线）+ 变体回测 | **2026-10-08 完成**：variants.py / evolve_variant.py / test_variant_guard.py（4 passed，全量 842 passed）；V-H7 三标的 OOS 均不采纳（负结果如实登记，提案草稿 evolution/experiments/variant_h007_2026-10-08.md） |
-| ⬜ 变更提案自动化 | 回测 OOS 不劣化 → 按第 8 条流程自动生成提案（依据/口径/回测证据/风险） | 提案文档模板可用（C-1 已产出首个草稿，可基于此自动化） |
-| ⬜ 人工审批闭环 | 提案推飞书 → 用户签字 → 才动 config.py | 首个经门控采纳的改进落地 |
-| ⬜ 阶段 6 复盘/周报 | 每周自动汇总（adopted/falsified/数据缺口/风险）推飞书 | 周报自动化 |
+| ✅ 变体实验设施 | `evolve_variant.py`：adopted 假说 → VARIANTS 草稿 + 等价性守卫测试（默认参数逐位相同红线）+ 变体回测 | **2026-10-08 完成**：variants.py / evolve_variant.py / test_variant_guard.py（4 passed，全量 842 passed）；V-H7 三标的 OOS 均不采纳（负结果如实登记，提案草稿 evolution/experiments/variant_h007_2026-10-08.md，裁决 Y 纳入长期观察） |
+| ✅ 变更提案自动化 | 回测 OOS 不劣化 → 按第 8 条流程自动生成提案（依据/口径/回测证据/风险） | **2026-10-08 完成**：evolve_propose.py → evolution/proposals/（V-H7 三标的自动生成，判定确定性） |
+| ⬜ 人工审批闭环 | 提案推飞书 → 用户签字 → 才动 config.py | 首个经门控采纳的改进落地（C-3，可实施） |
+| ⬜ 阶段 6 复盘/周报 | 每周自动汇总（adopted/falsified/数据缺口/风险）推飞书 | 周报自动化（C-4，可实施） |
 
 **本层完成后，进化闭环（6 阶段）全自动运转，人只做最后签字。**
 

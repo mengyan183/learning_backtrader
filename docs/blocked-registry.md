@@ -38,17 +38,17 @@
 
 | 编号 | 事项 | 依赖 | 状态 |
 |---|---|---|---|
-| C-1 | 变体实验设施 `evolve_variant.py`（adopted 假说→VARIANTS 草稿+等价性守卫） | A-2 ✅ | ✅ **2026-10-08 完成**：variants.py（B0+V-H7 纯计算）+ evolve_variant.py（等价性守卫/B0 相对差 <5e-5/OOS 对比/提案草稿）+ test_variant_guard.py 4 passed；**V-H7 OOS 三标的均不采纳**（TQQQ 38.6→27.0 / SOXL 95.1→65.1 / UPRO 26.0→18.3；回撤除 SOXL 外有改善）→ 提案草稿 evolution/experiments/variant_h007_2026-10-08.md，裁决 Y/N 留人工 |
-| C-2 | 变更提案自动化（OOS 不劣化→自动生成提案） | A-2 ✅ | 可实施（C-1 已产出提案草稿，可基于此自动化） |
-| C-3 | 人工审批闭环（提案推飞书→签字→动 config.py） | C-2 | 待 C-2 |
-| C-4 | 阶段 6 复盘/周报自动化 | C 系列 | 待 C-1/C-2 |
+| C-1 | 变体实验设施 `evolve_variant.py`（adopted 假说→VARIANTS 草稿+等价性守卫） | A-2 ✅ | ✅ **2026-10-08 完成**：variants.py（B0+V-H7 纯计算）+ evolve_variant.py（等价性守卫/B0 相对差 <5e-5/OOS 对比/提案草稿）+ test_variant_guard.py 4 passed；**V-H7 OOS 三标的均不采纳**（TQQQ 38.6→27.0 / SOXL 95.1→65.1 / UPRO 26.0→18.3；回撤除 SOXL 外有改善）→ 提案草稿 evolution/experiments/variant_h007_2026-10-08.md；**裁决（用户）2026-10-08：Y 纳入 VARIANTS 长期观察（不入生产），不升级提案；季度 walk-forward（C-5）重检** |
+| C-2 | 变更提案自动化（OOS 不劣化→自动生成提案） | A-2 ✅ | ✅ **2026-10-08 完成**：evolve_propose.py（复用 C-1 变体+守卫；确定性判定：OOS 年化>B0 且回撤<=B0 ⇒ 提案/否则不采纳；第 8 条模板：依据/口径/回测证据/判定/风险/审批位）→ evolution/proposals/（V-H7 三标的自动生成"不采纳"记录，守卫通过） |
+| C-3 | 人工审批闭环（提案推飞书→签字→动 config.py） | C-2 | 可实施（C-2 已产出标准提案与审批位，可对接飞书推送） |
+| C-4 | 阶段 6 复盘/周报自动化 | C 系列 | 可实施（C-1/C-2 依赖已解除） |
 | C-5 | E2 告警后季度 walk-forward 重标定流程 | A-2 ✅ | 可实施 |
 | C-6 | E3 执行确认流（目标仓位确认→人工审批→一键执行） | A-2 ✅ | 可实施 |
 | C-7 | E4 因子库扩展（LLM 因子草稿→数据裁判检验→入库） | A-2 ✅ | ✅ **2026-10-08 完成**：新增 F-007 守猪待兔温度 / F-008 极恐标记（zone==0，事件研究：20 日 +1.3pp / 40 日 +2.8pp 超额，5/10 日弱）/ F-009 资金费率；F-007/F-009 样本不足登记积累中；scripts/factor_screen_extend.py |
 | C-8 | E5 Copilot 扩展（归因/假说状态/漂移监控问答） | 已由 D-3 覆盖 | ✅（2026-10-06 前完成） |
 | C-9 | 个股指数扩池-策略侧（OBSERVE_SYMBOLS 数据已就绪，白名单未动） | A-2 ✅ | ✅ **2026-10-08 完成**：SIGNAL_UNDERLYING_MAP 增 NVDL/TSLL/FAS/TNA/FNGU/SQQQ 映射（FNGU/SQQQ→QQQ 近似底层已声明）；signal_wide 只补 SHOUTU_SYMBOLS 底层；observe_screen.py → Data/observe_screen_2026-10-08.md（NVDL 64.4 贪婪/FAS 21.8 恐惧/TNA 32.3 恐惧/SQQQ 反向标注）；71 passed |
 | C-10 | 实盘-回测归因校验（预测 vs 实际每日归因） | A-2 ✅ | 可实施 |
-| C-11 | E2 假说绩效衰减自动降级（弱假说归档） | C-1 | 待 C-1（设施已就绪，可启动） |
+| C-11 | E2 假说绩效衰减自动降级（弱假说归档） | C-1 | ✅ **2026-10-08 完成**：evolve_decay.py（确定性判据：近窗衰减 ≥2/4 horizon → decayed；样本不足 → accumulating；假说监控表）→ evolution/decay-report.md；首轮扫描：F-007/F-009 accumulating、F-001/F-003~F-006 近窗衰减 1/4 维持、假说 adopted 走 C-5 季度重检；hypotheses.md 状态机已扩展 |
 
 ## D 类：可先做（不依赖回测，本表跟踪推进）
 

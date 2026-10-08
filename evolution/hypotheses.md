@@ -1,6 +1,8 @@
 # hypotheses.md — 假说登记表
 
 状态机：open → verifying → adopted / falsified
+衰减/归档（C-11）：adopted 假说绩效衰减 → 走 C-5 季度 walk-forward 重检后 falsified；
+verifying 假说长期样本不足（≥3 个月无观察点）→ 可归档（archived）。因子侧：draft → decayed（近窗衰减 ≥2/4 horizon，短窗受限）/ accumulating（样本不足）。
 每条假说必备三要素：假设 / 检验方法 / 不成立判据。缺任一要素不入库。
 
 | 编号 | 日期 | 假说(假设) | 检验方法 | 不成立判据 | 状态 | 备注 |
