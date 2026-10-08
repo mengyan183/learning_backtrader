@@ -92,3 +92,25 @@ scripts/
 3. **OOS 禁止调参**——样本外只有一次发言权（验收），没有试错权。
 4. **证伪即成果**——假说不成立照常入库归档（falsified），教训写入 LESSONS.md；不允许静默丢弃反证。
 5. **不自动上线**——STAGE 闸门（development/usage）不变；进化产物是"提案 + 证据"，采纳权永远在人工。
+
+## 7. 修订记录（A-4 进化就绪度对齐，2026-10-08）
+
+执行 docs/readiness-alignment-checklist.md（evolution.py 已补传 ce44ae1，issue #3 关闭）。
+
+**1. 代码就绪度定义**：`fg_system/evolution.py::readiness()` / `shoutu_readiness()`
+- 就绪度 = **守猪待兔数据积累天数 vs `config.RANK_WINDOW`**（分位数口径何时生效），
+  返回 `stage / shoutu_mode / 逐标的数据表(days/needed/remaining/mode/first/last) / next_upgrade`。
+- 模块 docstring 明确"**只做观测，不改任何参数**"（第 14.1 条），瓶颈口径 = 数据（第 14.5 条）。
+
+**2. 与六阶段对比结论：互补而非冲突**
+| 维度 | 代码（evolution.py） | 本方案六阶段 |
+|---|---|---|
+| 就绪度语义 | **数据积累就绪**（percentile 口径何时生效） | **流程闸门就绪**（回测基准/守卫/审批） |
+| 覆盖范围 | 第 14 条数据就绪 | 第 13 条进化闭环 |
+| 冲突 | 无——两者正交；代码回答"数据还差多少天"，方案回答"流程走到哪一步" |  |
+
+按检查单第 4 步：无严格/宽松冲突，属互补，**不做任何代码/方案改动**，仅记录。
+
+**3. 红线对照**：LLM 不判案（模块只观测）✅ / OOS 禁调参（无调参逻辑）✅ / 等价性守卫（无生产改动）✅ / 无前视偏差（只读数据文件）✅ / 人工审批（不产生变更）✅
+
+**4. 待办联动**：本方案阶段②基准回测的"就绪"由 A-2（evolve_baseline.py → baseline.json）承担，产出后 evolution.py 如需引用可在研究通道内新增只读函数，仍走本纪律。

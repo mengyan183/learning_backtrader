@@ -18,16 +18,16 @@
 - ✅ E4 因子引擎地基（fg_system/factors/eval.py：滚动 IC/ICIR/多前瞻衰减）
 - ✅ E5 Copilot 持仓问答（portfolio-qa 技能 + OpenClaw 默认 GLM，飞书/网页可用）
 - ✅ 不依赖回测任务全部清零：就绪度对齐检查单 / 情绪子信号（VIX 全历史 + OKX 资金费率入库+看板）/ 观察池扩池-数据侧（NVDL/TSLL/FNGU/FAS/TNA/SQQQ 入库，白名单未动）
-- 🔴 回测裁判：`fg_system/backtest/*` 未恢复（阻塞项，唯一外部依赖）
+- ✅ 回测裁判恢复：`fg_system/backtest/*` 已还原（issue #3 关闭）+ 基准 baseline.json 已产出（A 类阻塞全部解除）
 
 ## 第一层：解锁回测裁判（近期，唯一硬前置）
 
 | 动作 | 说明 | 验收 |
 |---|---|---|
-| ⬜ 补传回测文件 | issue #3 的 20 个文件（runner/strategy/feed/attribution/crypto_runner + cli/audit/evolution.py） | 相关测试全绿 |
-| ⬜ 恢复基准 | `evolve_baseline.py` 产出 `baseline.json`（年化/回撤/Calmar/逐年/分市场归因，IS/OOS 划分） | baseline.json 非 pending |
-| ⬜ 解锁 H-005/H-007 | portfolio_features.csv 信号列恢复后分箱统计、布尔位回撤比较 | 两假说出验证结论 |
-| 🔄 对齐进化就绪度 | `fg_system/evolution.py` 的"进化就绪度"定义与本方案核对（检查单已就绪：docs/readiness-alignment-checklist.md，待文件补传后执行） | 文档确认无冲突 |
+| ✅ 补传回测文件 | issue #3 的 20 个文件（runner/strategy/feed/attribution/crypto_runner + cli/audit/evolution.py） | 相关测试全绿（ce44ae1 + 78e4c44 + 831f450，全量 838 passed） |
+| ✅ 恢复基准 | `evolve_baseline.py` 产出 `baseline.json`（年化/回撤/Calmar/逐年/分市场归因，IS/OOS 划分） | baseline.json 已产出（2026-10-08，scripts/evolve_baseline.py，IS 截至 2024-09-30 / OOS 自 2024-10-01，时间序 80/20） |
+| ✅ 解锁 H-005/H-007 | portfolio_features.csv 重建后分箱统计、布尔位回撤比较 | 两假说出验证结论（2026-10-08：H-005 rejected / H-007 adopted，详见 evolution/hypothesis_results.md；H-010~H-022 虚构列口径审计见 hypotheses.md） |
+| ✅ 对齐进化就绪度 | `fg_system/evolution.py` 的"进化就绪度"定义与本方案核对（检查单已就绪：docs/readiness-alignment-checklist.md，待文件补传后执行） | 文档确认无冲突（2026-10-08，结论见 evolution-plan.md 修订记录） |
 
 ## 第二层：自动重检 → 自动提案（中期，回测恢复后）
 
