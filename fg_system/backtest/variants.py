@@ -29,6 +29,14 @@ H-007（2026-10-08 adopted）：trend_blocked_us=True（趋势过滤阻断）组
 k 为参数（默认 2.0，网格 1.5/2.0/2.5 走阶段 2 变体，不直接改生产参数）。
 要求 features 含 high/low/close 列（evolve_variant 已 join 价格列）；
 缺价格列（守卫测试纯 features 场景）时返回原样（保守，不加新规则）。
+
+## V-VOL（阶段 2 ②：波动率目标仓位 vol targeting）
+先验：**波动率目标（vol targeting）是经典仓位管理手段**——把目标仓位缩放为
+**min(1.0, vol_target / 滚动年化波动率)**：波动率高于目标 → 自动降仓，
+波动率低于目标 → 回到原始目标仓位（封顶 1.0，不放大风险）。
+vol_target 为参数（默认 0.25 年化，网格 0.20/0.25/0.30 走阶段 2 变体）。
+要求 features 含 close 列（evolve_variant 已 join 价格列）；
+缺价格列时返回原样（保守，不加新规则）。
 """
 import numpy as np
 import pandas as pd
@@ -45,6 +53,11 @@ VARIANTS = {
         "k": 2.0,
         "basis": "阶段 2 ①：经典风险管理手段参数化，先验非调参",
     },
+    "V-VOL": {
+        "label": "波动率目标仓位（vol_target/20日滚动年化波动率，封顶1.0）",
+        "vol_target": 0.25,
+        "basis": "阶段 2 ②：经典仓位管理手段参数化，先验非调参",
+    },
 }
 VARIANT_KEYS = (BASELINE,) + tuple(VARIANTS)
 
@@ -58,12 +71,25 @@ def _atr(high, low, close, period=14):
     return atr
 
 
+def _vol_target_scale(close, vol_target, period=20):
+    """波动率目标缩放因子：min(1.0, vol_target / 滚动年化波动率)。
+
+    年化波动率 = 滚动 period 日对数收益 std × sqrt(252)。
+    前 period 日（NaN）按 1.0 处理（不动原始仓位，保守）。
+    """
+    ret = np.log(close / close.shift(1))
+    vol = ret.rolling(period, min_periods=period).std() * np.sqrt(252.0)
+    scale = (vol_target / vol).clip(upper=1.0)
+    return scale.fillna(1.0)
+
+
 def apply_variant(features, portfolio_features, variant):
     """返回**变换后**的 features 副本（只动 target_position 列）。
 
     - features：Data/features.csv（生产同款，含 target_position）
     - portfolio_features：Data/portfolio_features.csv（含 trend_blocked_us）
-    - variant：B0（原样）、V-H7（阻断日 ×0.5）或 V-ATR（ATR 移动止损）
+    - variant：B0（原样）、V-H7（阻断日 ×0.5）、V-ATR（ATR 移动止损）
+      或 V-VOL（波动率目标仓位）
 
     对齐：portfolio_features 与 features 按 date 内连接；阻断标记缺失的
     交易日（如 warmup 段）按未阻断处理（不新增规则，保守）。
@@ -101,6 +127,14 @@ def apply_variant(features, portfolio_features, variant):
         stop_dist = spec["k"] * atr
         triggered = (close < roll_high - stop_dist).fillna(False)
         out.loc[triggered, "target_position"] = 0.0
+        return out
+
+    if variant == "V-VOL":
+        # 缺价格列：返回原样，保守不加规则
+        if "close" not in out.columns:
+            return out
+        scale = _vol_target_scale(out["close"], spec["vol_target"])
+        out["target_position"] = (out["target_position"] * scale).clip(lower=0.0)
         return out
 
     raise KeyError("未知变体 %r；可选：%s" % (variant, tuple(VARIANT_KEYS)))

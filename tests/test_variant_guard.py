@@ -118,3 +118,38 @@ def test_vatr_stop_triggers_zero():
     assert stopped[75:].any()
     # 前半段（平稳段）不应误触发
     assert not stopped[30:55].any()
+
+
+def test_vvol_no_price_columns_returns_identical():
+    """V-VOL 缺价格列 → 返回原样（保守不加规则）。"""
+    f = _mk_features(120)
+    pf = _mk_portfolio(len(f))
+    out = vmod.apply_variant(f, pf, "V-VOL")
+    assert np.allclose(out["target_position"].values,
+                       f["target_position"].values, rtol=0, atol=0)
+
+
+def test_vvol_high_vol_shrinks_position():
+    """V-VOL 高波动段仓位被缩放（波动 > 目标 → 降仓），低波动段回到原仓位。"""
+    f = _mk_price_features(120)
+    pf = _mk_portfolio(len(f))
+    n = len(f)
+    close = np.empty(n)
+    # 前 60 日低波动缓涨；后 60 日高波动震荡（振幅大）
+    close[:60] = 100.0 + np.arange(60) * 0.05
+    rng = np.random.default_rng(3)
+    close[60:] = 100.0 + np.cumsum(rng.normal(0, 3.0, n - 60))
+    close = np.maximum(close, 30.0)
+    f["close"] = close
+    f["open"] = close
+    f["high"] = np.maximum(close * 1.05, close)
+    f["low"] = np.minimum(close * 0.95, close)
+    out = vmod.apply_variant(f, pf, "V-VOL")
+    pos = out["target_position"].values
+    base = f["target_position"].values
+    # 低波动段（后 20 日滚动波动未起效时）接近原仓位
+    # 高波动段：仓位 <= 原仓位，且至少有一处显著缩小
+    shrunk = (pos[60:] < base[60:] * 0.999)
+    assert shrunk.any()
+    # 永不放大仓位
+    assert np.all(pos <= base + 1e-12)
