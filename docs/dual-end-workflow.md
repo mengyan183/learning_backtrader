@@ -54,8 +54,10 @@ Windows 开发 → make_feishu_bundle.py 打包（≤8KB/片）
 - 白名单：`fg_system/** scripts/** tests/** evolution/** docs/**` + 根级文档；`Data/**`、密钥、`.git` 一律拒。
 - 自动清理：2026-10-09 起入库成功后自动删除分片原文（失败保留便于排查）。
 
-## 当前排期建议（2026-10-09）
+## 当前排期建议（2026-10-09 晚更新）
 
-1. **Windows 端**：阶段 1️⃣ 规则敏感性分析（唯一"可开始且未被阻塞"的实质量化任务）。
+> 状态更正：阶段 1️⃣/2️⃣ 已由 Mac 于 2026-10-09 完成（`evolution/sensitivity/` 四组表 + variants V-H7/V-ATR/V-VOL/V-CORR/V-MA，V-ATR/V-VOL 归档）——roadmap 原"Windows 端可执行"标注已过时，不再重复劳动。
+
+1. **Windows 端**：全量 pytest 回归（~900 用例，Mac 只跑增量 --quick）；B 类观察点满点后的数据分析（H-001 满 20 点等）；日常代码开发（dashboard/脚本/文档）。
 2. **Mac 端**：维持每日链/定时服务/数据积累（B 类观察点自动累积中）。
 3. **两边共同**：季度 walk-forward（C-5）已设自动重检，人工只做最后审批。
