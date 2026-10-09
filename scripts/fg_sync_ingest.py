@@ -38,21 +38,32 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 允许同步进仓库的顶层目录 / 根级文件（其余一律拒绝）
 ALLOWED_DIRS = {"fg_system", "scripts", "tests", "evolution", "docs"}
 ALLOWED_ROOT_FILES = {"README.md", "AGENTS.md", "pyproject.toml",
-                      "requirements.txt", "requirements-dev.txt", "Makefile"}
-# 任何情况下都拒绝的路径片段
-DENY_FRAGMENTS = ("/.git", "/.venv", "/__pycache__", "Data/", ".pyc", ".key",
-                  ".secret", ".token", ".env", "node_modules/")
+                      "requirements.txt", "requirements-dev.txt", "Makefile",
+                      ".gitignore", ".gitattributes"}
+# 任何情况下都拒绝的目录片段（按路径分段精确匹配，避免误伤 .gitignore/.gitattributes 等普通文件）
+DENY_DIR_SEGMENTS = {".git", ".venv", "__pycache__", "Data", "node_modules"}
+# 任何情况下都拒绝的文件后缀/片段
+DENY_FILE_FRAGMENTS = (".pyc", ".key", ".secret", ".token", ".env")
+
+
+def _denied(rel):
+    """判定是否命中强制拒绝规则。目录级与文件级分开精确匹配。"""
+    rel = rel.replace("\\", "/")
+    if rel.startswith("/") or rel.startswith("../") or ".." in rel.split("/"):
+        return True
+    segs = rel.split("/")
+    if any(seg in DENY_DIR_SEGMENTS for seg in segs):
+        return True
+    base = segs[-1]
+    return any(f in base for f in DENY_FILE_FRAGMENTS)
 
 
 def _allowed(rel, full_repo=False):
     rel = rel.replace("\\", "/")
-    if rel.startswith("/") or rel.startswith("../") or ".." in rel.split("/"):
-        return False
-    # DENY_FRAGMENTS 在任何模式都拒绝（Data/、密钥、.git、node_modules 等）
-    if any(f in ("/" + rel) for f in DENY_FRAGMENTS):
+    if _denied(rel):
         return False
     if full_repo:
-        # 一次性完整同步授权：跳过目录白名单，但仍受 DENY_FRAGMENTS 保护
+        # 一次性完整同步授权：跳过目录白名单，但仍受 _denied 保护
         return True
     head = rel.split("/", 1)[0]
     if head in ALLOWED_DIRS:
@@ -95,6 +106,30 @@ def _dirty_paths(repo):
         p = line[3:].strip()
         paths.append(p.replace("\\", "/"))
     return paths, None
+
+
+def _clean_processed(src, keep=None):
+    """成功后清理已处理的分片原文与标记文件（自动清理，2026-10-09）。
+
+    只删除 src 目录根下的 `.md` / `.txt`（分片原文 + 聚合 sync_in.md）与
+    `.done` 标记；目录本身、非文本文件、`keep` 白名单（如保留的归档目录名）
+    一律不动。删除失败不致命（下次处理可再清），记录一行即可。
+    """
+    keep = set(keep or ())
+    if not os.path.isdir(src):
+        return
+    for fn in sorted(os.listdir(src)):
+        if fn in keep:
+            continue
+        p = os.path.join(src, fn)
+        if not os.path.isfile(p):
+            continue
+        if fn.endswith((".md", ".txt", ".done")):
+            try:
+                os.unlink(p)
+            except OSError as exc:
+                print("⚠️ 自动清理跳过 %s：%s" % (fn, exc))
+    print("🧹 已自动清理处理后的分片原文（保留目录：%s）" % (", ".join(sorted(keep)) or "无"))
 
 
 def main():
@@ -234,6 +269,7 @@ def main():
             print("❌ 增量 pytest 有失败，详见仓库根 pytest 输出；同步文件已入库，请修复后再提交。")
             return 2
         print("✅ 增量 pytest 通过（同步相关测试）。")
+        _clean_processed(args.src)
         return 0
 
     tr = subprocess.run([py, "-m", "pytest", "-q"], cwd=args.repo,
@@ -245,6 +281,7 @@ def main():
         print("❌ pytest 有失败，详见仓库根 pytest 输出；同步文件已入库，请修复后再提交。")
         return 2
     print("✅ pytest 通过。同步完成，可回复公司端：文件已入库并测试通过。")
+    _clean_processed(args.src)
     return 0
 
 

@@ -21,6 +21,7 @@ cd /Users/xingguo/learning_backtrader
 **关键纪律**：
 - `fg_sync_tool.py` 是唯一入口（内部完成聚合→解压→白名单→冲突→入库→pytest→回传）
 - `--quick` 增量测试 <10s；退出码 0=成功 / 2=可解释失败 / 3=内部错误
+- **成功后自动清理**：编排脚本在入库+pytest 通过后，自动删除 `~/.openclaw/tmp/fg-sync-in/` 下已处理的分片原文（`*.md`/`*.txt`）与 `.done` 标记，不留残渣。**失败时保留原文**便于排查，修复后重跑同一命令即可。
 - **完整仓库同步**（公司端打包了非白名单文件，用户明确要全量同步时）：直接跑编排脚本加 `--full-repo`：
   ```bash
   .venv/bin/python scripts/fg_sync_ingest.py ~/.openclaw/tmp/fg-sync-in \
