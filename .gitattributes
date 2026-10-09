@@ -1,0 +1,35 @@
+# ==========================================================================
+# 换行符纪律
+# ==========================================================================
+# 【为什么需要】开发在 Windows、**生产在 macOS**。Windows 上 git 默认会把
+# `.sh` 的换行改成 CRLF（提交时会警告 "LF will be replaced by CRLF"），
+# 而 **CRLF 的 shell 脚本在 macOS 上跑不起来**：
+#
+#     bash: ./scripts/xxx.sh: /bin/bash^M: bad interpreter
+#
+# 这个错误只有到 Mac 上才暴露 —— 而那时 60 多条消息已经发完了。
+# ⇒ 用 `.gitattributes` 把 `.sh` **钉死成 LF**，与平台无关。
+# ==========================================================================
+
+# 默认：交给 git 判断（文本文件正常归一化）
+* text=auto
+
+# shell 脚本 **必须 LF** —— CRLF 在 macOS/Linux 上直接报 bad interpreter
+*.sh   text eol=lf
+
+# Python 也统一 LF（避免同一文件在两台机器上 diff 满天飞）
+*.py   text eol=lf
+
+# Windows 批处理**必须 CRLF**
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+
+# 二进制：不要碰
+*.png  binary
+*.jpg  binary
+*.pdf  binary
+*.apk  binary
+*.xz   binary
+*.gz   binary
+*.zip  binary
+*.csv  text eol=lf
