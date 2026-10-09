@@ -33,3 +33,5 @@
 ## 6. 审批
 
 - 人工审批：采纳（动 config.py）/ 观察（纳入 VARIANTS 长期观察）/ 否决（Y/N/Z）？
+
+审批记录：Z 2026-10-09 20:14（观察）：用户审批：纳入 VARIANTS 长期观察，不直接动 config；季度 walk-forward 复检
