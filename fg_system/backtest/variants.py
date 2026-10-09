@@ -22,7 +22,15 @@ H-007（2026-10-08 adopted）：trend_blocked_us=True（趋势过滤阻断）组
 最大回撤 -37.37% **大于**未阻断组 -34.24%（1760 日样本）。
 先验规则化（非调参，固定折扣声明先验）：**阻断日 target_position × 0.5**
 （阻断意味着模型认为趋势不支持，实证其回撤更大 ⇒ 更保守）。
+
+## V-ATR（阶段 2 ①：ATR 移动止损参数化）
+先验：**ATR 止损是经典风险管理手段**，与"回撤控制"目标一致；规则化为
+**20 日滚动高点回撤 ≥ k×ATR(14) → 当日 target_position 归零**（移动止损）。
+k 为参数（默认 2.0，网格 1.5/2.0/2.5 走阶段 2 变体，不直接改生产参数）。
+要求 features 含 high/low/close 列（evolve_variant 已 join 价格列）；
+缺价格列（守卫测试纯 features 场景）时返回原样（保守，不加新规则）。
 """
+import numpy as np
 import pandas as pd
 
 BASELINE = "B0"
@@ -32,8 +40,22 @@ VARIANTS = {
         "factor": 0.5,
         "basis": "H-007 adopted：阻断组回撤 -37.37% > 未阻断 -34.24%",
     },
+    "V-ATR": {
+        "label": "ATR 移动止损（20日高点回撤 k×ATR(14) 清仓）",
+        "k": 2.0,
+        "basis": "阶段 2 ①：经典风险管理手段参数化，先验非调参",
+    },
 }
 VARIANT_KEYS = (BASELINE,) + tuple(VARIANTS)
+
+
+def _atr(high, low, close, period=14):
+    """Wilder ATR(14)。返回与输入等长的 ATR 序列（前 period-1 日为 NaN）。"""
+    prev_close = close.shift(1)
+    tr = pd.concat([high - low, (high - prev_close).abs(), (low - prev_close).abs()],
+                   axis=1).max(axis=1)
+    atr = tr.ewm(alpha=1.0 / period, adjust=False).mean()
+    return atr
 
 
 def apply_variant(features, portfolio_features, variant):
@@ -41,7 +63,7 @@ def apply_variant(features, portfolio_features, variant):
 
     - features：Data/features.csv（生产同款，含 target_position）
     - portfolio_features：Data/portfolio_features.csv（含 trend_blocked_us）
-    - variant：B0（原样）或 V-H7（阻断日 ×0.5）
+    - variant：B0（原样）、V-H7（阻断日 ×0.5）或 V-ATR（ATR 移动止损）
 
     对齐：portfolio_features 与 features 按 date 内连接；阻断标记缺失的
     交易日（如 warmup 段）按未阻断处理（不新增规则，保守）。
@@ -53,13 +75,33 @@ def apply_variant(features, portfolio_features, variant):
         return out
 
     spec = VARIANTS[variant]
-    pf = portfolio_features.copy()
-    if "date" in pf.columns:
-        pf = pf.set_index("date")
-    common = out.index.intersection(pf.index)
-    blocked = pf.loc[common, "trend_blocked_us"].fillna(False).astype(bool)
-    mask = out.index.isin(common[blocked.values])
-    # 仅阻断日降仓；阻断列缺失日不动（保守，不加新规则）
-    out.loc[mask, "target_position"] = (
-        out.loc[mask, "target_position"] * spec["factor"])
-    return out
+
+    if variant == "V-H7":
+        pf = portfolio_features.copy()
+        if "date" in pf.columns:
+            pf = pf.set_index("date")
+        common = out.index.intersection(pf.index)
+        blocked = pf.loc[common, "trend_blocked_us"].fillna(False).astype(bool)
+        mask = out.index.isin(common[blocked.values])
+        # 仅阻断日降仓；阻断列缺失日不动（保守，不加新规则）
+        out.loc[mask, "target_position"] = (
+            out.loc[mask, "target_position"] * spec["factor"])
+        return out
+
+    if variant == "V-ATR":
+        # 缺价格列（守卫测试纯 features 场景）：返回原样，保守不加规则
+        need = {"high", "low", "close"}
+        if not need.issubset(out.columns):
+            return out
+        high, low, close = out["high"], out["low"], out["close"]
+        atr = _atr(high, low, close, period=14)
+        # 20 日滚动高点
+        roll_high = high.rolling(20, min_periods=20).max()
+        # 触发：收盘价跌破 滚动高点 - k×ATR
+        stop_dist = spec["k"] * atr
+        triggered = (close < roll_high - stop_dist).fillna(False)
+        out.loc[triggered, "target_position"] = 0.0
+        return out
+
+    raise KeyError("未知变体 %r；可选：%s" % (variant, tuple(VARIANT_KEYS)))
+

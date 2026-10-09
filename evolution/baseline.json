@@ -1,10 +1,10 @@
 {
  "meta": {
-  "generated_at": "2026-10-08T12:50:28",
+  "generated_at": "2026-10-09T19:09:01",
   "features_path": "/Users/xingguo/learning_backtrader/Data/features.csv",
   "features_range": [
    "2016-09-26",
-   "2026-10-06"
+   "2026-10-08"
   ],
   "symbols": [
    "TQQQ",
@@ -13,8 +13,8 @@
   ],
   "is_oos": {
    "method": "time_80_20",
-   "is_end": "2024-09-30",
-   "oos_start": "2024-10-01"
+   "is_end": "2024-10-01",
+   "oos_start": "2024-10-02"
   },
   "note": "基准绩效，只读不改参；LLM 不判案；变体必须与此文件对比（evolution-plan 阶段②）"
  },
@@ -22,12 +22,12 @@
   "TQQQ": {
    "strategy": {
     "full": {
-     "total_return": 3.162045,
-     "annual_return": 0.153334,
+     "total_return": 3.087524,
+     "annual_return": 0.151123,
      "max_drawdown": -0.431294,
-     "annual_vol": 0.258059,
-     "sharpe": 0.594184,
-     "calmar": 0.355521
+     "annual_vol": 0.258005,
+     "sharpe": 0.585736,
+     "calmar": 0.350394
     },
     "yearly": {
      "2016": {
@@ -111,39 +111,39 @@
       "calmar": 1.255061
      },
      "2026": {
-      "total_return": 0.322709,
-      "annual_return": 0.449105,
+      "total_return": 0.299026,
+      "annual_return": 0.409689,
       "max_drawdown": -0.167069,
-      "annual_vol": 0.284038,
-      "sharpe": 1.581143,
-      "calmar": 2.688137
+      "annual_vol": 0.283218,
+      "sharpe": 1.446549,
+      "calmar": 2.452209
      }
     },
     "is": {
-     "total_return": 1.166302,
-     "annual_return": 0.101503,
+     "total_return": 1.143197,
+     "annual_return": 0.099975,
      "max_drawdown": -0.431294,
-     "annual_vol": 0.245005,
-     "sharpe": 0.414289,
-     "calmar": 0.235345
+     "annual_vol": 0.244976,
+     "sharpe": 0.4081,
+     "calmar": 0.231802
     },
     "oos": {
-     "total_return": 0.921267,
-     "annual_return": 0.386098,
+     "total_return": 0.907209,
+     "annual_return": 0.380135,
      "max_drawdown": -0.270262,
-     "annual_vol": 0.304679,
-     "sharpe": 1.26723,
-     "calmar": 1.428605
+     "annual_vol": 0.304488,
+     "sharpe": 1.24844,
+     "calmar": 1.406541
     }
    },
    "buy_and_hold": {
     "full": {
-     "total_return": 31.482554,
-     "annual_return": 0.416332,
+     "total_return": 29.932644,
+     "annual_return": 0.409041,
      "max_drawdown": -0.817545,
-     "annual_vol": 0.6668,
-     "sharpe": 0.624373,
-     "calmar": 0.509246
+     "annual_vol": 0.66668,
+     "sharpe": 0.613548,
+     "calmar": 0.500328
     },
     "yearly": {
      "2016": {
@@ -227,41 +227,41 @@
       "calmar": 0.589012
      },
      "2026": {
-      "total_return": 0.598065,
-      "annual_return": 0.856166,
+      "total_return": 0.521813,
+      "annual_return": 0.730251,
       "max_drawdown": -0.337881,
-      "annual_vol": 0.607443,
-      "sharpe": 1.40946,
-      "calmar": 2.533926
+      "annual_vol": 0.60645,
+      "sharpe": 1.204141,
+      "calmar": 2.161266
      }
     },
     "is": {
-     "total_return": 12.382427,
-     "annual_return": 0.382983,
+     "total_return": 12.432548,
+     "annual_return": 0.383407,
      "max_drawdown": -0.817545,
-     "annual_vol": 0.672615,
-     "sharpe": 0.569394,
-     "calmar": 0.468455
+     "annual_vol": 0.672449,
+     "sharpe": 0.570165,
+     "calmar": 0.468973
     },
     "oos": {
-     "total_return": 1.427254,
-     "annual_return": 0.557965,
+     "total_return": 1.302813,
+     "annual_return": 0.516249,
      "max_drawdown": -0.583021,
-     "annual_vol": 0.643644,
-     "sharpe": 0.866884,
-     "calmar": 0.957024
+     "annual_vol": 0.643764,
+     "sharpe": 0.801924,
+     "calmar": 0.885474
     }
    }
   },
   "SOXL": {
    "strategy": {
     "full": {
-     "total_return": 8.889729,
-     "annual_return": 0.257645,
+     "total_return": 8.36793,
+     "annual_return": 0.250621,
      "max_drawdown": -0.532522,
-     "annual_vol": 0.395715,
-     "sharpe": 0.651086,
-     "calmar": 0.48382
+     "annual_vol": 0.395792,
+     "sharpe": 0.633215,
+     "calmar": 0.470631
     },
     "yearly": {
      "2016": {
@@ -345,39 +345,39 @@
       "calmar": 1.744821
      },
      "2026": {
-      "total_return": 1.225251,
-      "annual_return": 1.888912,
+      "total_return": 1.107843,
+      "annual_return": 1.660957,
       "max_drawdown": -0.417403,
-      "annual_vol": 0.650235,
-      "sharpe": 2.904969,
-      "calmar": 4.525389
+      "annual_vol": 0.649152,
+      "sharpe": 2.558657,
+      "calmar": 3.979261
      }
     },
     "is": {
-     "total_return": 1.597419,
-     "annual_return": 0.126791,
+     "total_return": 1.544466,
+     "annual_return": 0.123827,
      "max_drawdown": -0.532522,
-     "annual_vol": 0.336469,
-     "sharpe": 0.376829,
-     "calmar": 0.238096
+     "annual_vol": 0.336468,
+     "sharpe": 0.368021,
+     "calmar": 0.23253
     },
     "oos": {
-     "total_return": 2.807522,
-     "annual_return": 0.951287,
+     "total_return": 2.681688,
+     "annual_return": 0.916298,
      "max_drawdown": -0.417403,
-     "annual_vol": 0.573783,
-     "sharpe": 1.657921,
-     "calmar": 2.27906
+     "annual_vol": 0.57388,
+     "sharpe": 1.596671,
+     "calmar": 2.195235
     }
    },
    "buy_and_hold": {
     "full": {
-     "total_return": 57.944271,
-     "annual_return": 0.503538,
+     "total_return": 50.142929,
+     "annual_return": 0.481872,
      "max_drawdown": -0.905055,
-     "annual_vol": 1.028546,
-     "sharpe": 0.489563,
-     "calmar": 0.556362
+     "annual_vol": 1.028757,
+     "sharpe": 0.468402,
+     "calmar": 0.532423
     },
     "yearly": {
      "2016": {
@@ -461,41 +461,41 @@
       "calmar": 0.71125
      },
      "2026": {
-      "total_return": 2.908161,
-      "annual_return": 5.097368,
+      "total_return": 2.390911,
+      "annual_return": 3.966384,
       "max_drawdown": -0.694152,
-      "annual_vol": 1.438861,
-      "sharpe": 3.542641,
-      "calmar": 7.343305
+      "annual_vol": 1.438163,
+      "sharpe": 2.757951,
+      "calmar": 5.714002
      }
     },
     "is": {
-     "total_return": 12.162522,
-     "annual_return": 0.380342,
+     "total_return": 11.139807,
+     "annual_return": 0.366238,
      "max_drawdown": -0.905055,
-     "annual_vol": 0.965213,
-     "sharpe": 0.39405,
-     "calmar": 0.420242
+     "annual_vol": 0.965396,
+     "sharpe": 0.379366,
+     "calmar": 0.404658
     },
     "oos": {
-     "total_return": 3.47819,
-     "annual_return": 1.116173,
+     "total_return": 3.212829,
+     "annual_return": 1.049597,
      "max_drawdown": -0.797893,
-     "annual_vol": 1.250545,
-     "sharpe": 0.892549,
-     "calmar": 1.398901
+     "annual_vol": 1.250583,
+     "sharpe": 0.839286,
+     "calmar": 1.315461
     }
    }
   },
   "UPRO": {
    "strategy": {
     "full": {
-     "total_return": 1.742683,
-     "annual_return": 0.106203,
+     "total_return": 1.718846,
+     "annual_return": 0.10515,
      "max_drawdown": -0.403193,
-     "annual_vol": 0.206741,
-     "sharpe": 0.513702,
-     "calmar": 0.263405
+     "annual_vol": 0.206671,
+     "sharpe": 0.50878,
+     "calmar": 0.260793
     },
     "yearly": {
      "2016": {
@@ -579,39 +579,39 @@
       "calmar": 1.132552
      },
      "2026": {
-      "total_return": 0.188575,
-      "annual_return": 0.257503,
+      "total_return": 0.178245,
+      "annual_return": 0.240214,
       "max_drawdown": -0.138364,
-      "annual_vol": 0.188125,
-      "sharpe": 1.368786,
-      "calmar": 1.861056
+      "annual_vol": 0.187342,
+      "sharpe": 1.282226,
+      "calmar": 1.736106
      }
     },
     "is": {
-     "total_return": 0.728814,
-     "annual_return": 0.070861,
+     "total_return": 0.716806,
+     "annual_return": 0.069893,
      "max_drawdown": -0.403193,
-     "annual_vol": 0.200513,
-     "sharpe": 0.3534,
-     "calmar": 0.175751
+     "annual_vol": 0.20048,
+     "sharpe": 0.348626,
+     "calmar": 0.173348
     },
     "oos": {
-     "total_return": 0.586454,
-     "annual_return": 0.259545,
+     "total_return": 0.583665,
+     "annual_return": 0.257865,
      "max_drawdown": -0.228133,
-     "annual_vol": 0.229983,
-     "sharpe": 1.12854,
-     "calmar": 1.137692
+     "annual_vol": 0.22975,
+     "sharpe": 1.12237,
+     "calmar": 1.130326
     }
    },
    "buy_and_hold": {
     "full": {
-     "total_return": 12.116143,
-     "annual_return": 0.293542,
+     "total_return": 11.84109,
+     "annual_return": 0.290542,
      "max_drawdown": -0.768168,
-     "annual_vol": 0.537207,
-     "sharpe": 0.546423,
-     "calmar": 0.382133
+     "annual_vol": 0.537022,
+     "sharpe": 0.541025,
+     "calmar": 0.378228
     },
     "yearly": {
      "2016": {
@@ -695,29 +695,29 @@
       "calmar": 0.630256
      },
      "2026": {
-      "total_return": 0.351158,
-      "annual_return": 0.487475,
+      "total_return": 0.322823,
+      "annual_return": 0.440936,
       "max_drawdown": -0.269492,
-      "annual_vol": 0.391517,
-      "sharpe": 1.245094,
-      "calmar": 1.808868
+      "annual_vol": 0.390008,
+      "sharpe": 1.130583,
+      "calmar": 1.636176
      }
     },
     "is": {
-     "total_return": 6.027254,
-     "annual_return": 0.275993,
+     "total_return": 6.028092,
+     "annual_return": 0.275858,
      "max_drawdown": -0.768168,
-     "annual_vol": 0.551236,
-     "sharpe": 0.50068,
-     "calmar": 0.359287
+     "annual_vol": 0.551099,
+     "sharpe": 0.500559,
+     "calmar": 0.359111
     },
     "oos": {
-     "total_return": 0.866468,
-     "annual_return": 0.366187,
+     "total_return": 0.827109,
+     "annual_return": 0.3509,
      "max_drawdown": -0.490852,
-     "annual_vol": 0.477487,
-     "sharpe": 0.766906,
-     "calmar": 0.746023
+     "annual_vol": 0.477174,
+     "sharpe": 0.73537,
+     "calmar": 0.714878
     }
    }
   }
@@ -727,29 +727,29 @@
    {
     "leveraged": "TQQQ",
     "underlying": "QQQ",
-    "years": 10.003968253968255,
-    "sigma": 0.22531760772128523,
-    "vol_decay_annual": 0.11618472386234657,
-    "product_cost_annual": 0.08356795682132434,
-    "total_annual": 0.1997526806836709
+    "years": 10.011904761904763,
+    "sigma": 0.22527570405913283,
+    "vol_decay_annual": 0.1176185784240833,
+    "product_cost_annual": 0.08310338176697285,
+    "total_annual": 0.20072196019105615
    },
    {
     "leveraged": "SOXL",
     "underlying": "SOXX",
-    "years": 10.0,
-    "sigma": 0.348155321715067,
-    "vol_decay_annual": 0.3707277766821502,
-    "product_cost_annual": 0.09458216259366803,
-    "total_annual": 0.4653099392758182
+    "years": 10.007936507936508,
+    "sigma": 0.34821453740000335,
+    "vol_decay_annual": 0.3747220842886192,
+    "product_cost_annual": 0.09340081334470529,
+    "total_annual": 0.4681228976333245
    },
    {
     "leveraged": "UPRO",
     "underlying": "SPY",
-    "years": 10.0,
-    "sigma": 0.17992959258007848,
-    "vol_decay_annual": 0.07964640782766907,
-    "product_cost_annual": 0.04027596033813019,
-    "total_annual": 0.11992236816579926
+    "years": 10.007936507936508,
+    "sigma": 0.17986706705723554,
+    "vol_decay_annual": 0.07999958722539158,
+    "product_cost_annual": 0.040307975362906534,
+    "total_annual": 0.12030756258829811
    }
   ],
   "trend_filter": {
