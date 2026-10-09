@@ -103,7 +103,8 @@
   贝叶斯假说信心（fg_system/models/，零新依赖纯 numpy）
 - ✅ 因子检验框架：滚动 IC/ICIR/多前瞻衰减（fg_system/factors/eval.py，E4）
 - ✅ 概念漂移监控：滚动 IC 下降检测 → 告警（E2，实测系统指数 IC -0.36 稳定逆向）
-- 🔴 唯一硬前置：回测文件未恢复（fg_system/backtest/*，issue #3）
+- ✅ 回测裁判已恢复：`fg_system/backtest/*` 已还原，issue #3 于 2026-10-08 关闭；
+  `evolution/baseline.json` 已产出 ⇒ 阶段 1/2 的前置**已解除**（本行原为 🔴「唯一硬前置」，已过时）
 
 ### 升级路径（回测恢复后按序执行）
 
