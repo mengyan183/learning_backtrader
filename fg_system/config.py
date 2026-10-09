@@ -73,16 +73,20 @@ OBSERVE_SYMBOLS = [
     "CRCL",   # Circle（链上金融/稳定币，CRCG 底层，利率敏感标签候选）
 ]
 
-# 链上金融簇研究标签（🟡 研究参考，不进买卖信号；源自 2026-10-09 微信研读
-# 《COIN、HOOD、CRCL》：商业模式已分叉，交易量/TVL 排名易看错）
+# 链上金融簇研究标签（🟡 研究参考，不进买卖信号；源自 2026-10-09 微信研读×4：
+# 《COIN、HOOD、CRCL》商业模式分叉 / 伯恩斯坦币股分层 / Circle 商业模式深度 / Circle 1000亿估值。
+# 估值分层（art2）：经营现金流型 vs Crypto Beta 型——市场偏弱时独立盈利更重要。）
 ONCHAIN_FINANCE_TAGS = {
     "COIN": {"cluster": "onchain_finance", "income_model": "交易费+订阅+排序器",
-             "note": "Base 生态最成熟，Q2 调整后仍亏损，生态未兑现为利润"},
+             "valuation_type": "crypto_beta",   # 同时暴露币价/成交量/监管预期，行情放大器
+             "note": "Base 生态最成熟（USDC 50亿/稳定币，AI代理 7500万笔），Q2 调整后仍亏损；监管与交易量交叉点"},
     "HOOD": {"cluster": "onchain_finance", "income_model": "证券入口交叉销售+排序器",
-             "note": "执行力最强，Q2 净利 5.73亿，13条业务线，PS 19.5x 预期已计入"},
-    "CRCL": {"cluster": "onchain_finance", "income_model": "USDC 储备收益(95%)",
+             "valuation_type": "operating_cashflow",   # 2850万已入金客户→股票代币→24/7交易抵押
+             "note": "Robinhood Chain TVL 7.18亿（Base 13%）但 7日DEX成交 91%；周活超 Base，月活差 24%——增长斜率 vs 生态沉淀待验证"},
+    "CRCL": {"cluster": "onchain_finance", "income_model": "USDC 储备收益(90%+)",
+             "valuation_type": "operating_cashflow",   # 跟 USDC 流通规模与储备利润
              "rate_sensitive": True,
-             "note": "利率敏感度最高：储备收益率 -66bp 直接压缩利润；Arc 支付网络早期"},
+             "note": "储备收益占 90%+：降息 100bp 非线性压缩利润；USDC 流通占 28% 却贡献 63% 交易量（使用效率≈2.25）；Arc/CPN/AI Agent 支付栈为利率对冲"},
 }
 
 # 产品损耗率（费用+融资+跟踪误差），2016-2026 实测标定，须定期重标定（§17 风险 12）

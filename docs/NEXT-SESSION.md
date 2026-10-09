@@ -1,6 +1,6 @@
 # 下次会话先读这个（进度快照）
 
-**更新**：2026-10-09 · **对应提交**：远端 main = `31c73e1`（V-CORR/V-MA 落地 + walk-forward 全变体重检）
+**更新**：2026-10-09（晚） · **对应提交**：远端 main = `9c56eeb`（链上金融观察池 + V-ATR/V-VOL 归档）
 
 ---
 
@@ -8,7 +8,7 @@
 
 - **同步链路已全通** ✓：公司 Windows → 飞书「海外投资助手」机器人 → OpenClaw(Mac) `fg-sync` skill → 贪恐仓库，**855 片大包（117 文件）已全量入库并推送**；白名单误伤修复、push 卡死根治（详见 `docs/fg-sync-accelerate.md`）
 - **GitHub 已统一为唯一主线** ✓：两条线合并完成（以远程为底 + 本地新增重放），issue #3 已关闭，A 类阻塞全解除，C 系列全落地
-- **下一步**：等公司端补发内容（B 类数据积累中）；可随时接 C-5 季度节奏自动重检（已设 launchd）；README/进度文档已更新至 2026-10-09
+- **下一步**：等公司端补发内容（B 类数据积累中）；C-5 季度自动重检已设 launchd（1/4/7/10 月 1 日 08:00，已验证脚本 exit=0）；微信文章提升点（H-030/H-031 假说、观察池、kb 沉淀）已落地
 
 ---
 
@@ -22,7 +22,9 @@
 - ✅ **数学模型**：HMM 状态识别 / 档位马尔可夫矩阵 / EVT 阈值校准 / 贝叶斯假说信心（`fg_system/models/`，纯 numpy）
 - ✅ **阶段 1️⃣ 敏感性分析四组闭环**（2026-10-09）：circuit（贪婪侧不敏感/恐惧侧极恐线5敏感）、zone（基准[20,40,60,80]稳健）、core（两端敏感、0.45居中合理）、trim（阈值未介入回测路径）；`evolution/sensitivity/` 四张表 + 汇总 README
 - ✅ **阶段 2️⃣ 变体回测 V-H7/V-ATR/V-VOL**（2026-10-09）：三变体 OOS 均不采纳（收益损失>回撤收益，SOXL 上 V-VOL 回撤还恶化）⇒ **激进仓位即收益来源，防御降仓不划算**；等价性守卫全通过；提案草稿 evolution/experiments/variant_h007_2026-10-09.md
-- ✅ **阶段 2️⃣ V-CORR + V-MA 落地**（2026-10-09）：variants.py 新增 V-CORR（VIX 滚动1年80分位→仓位×0.5）与 V-MA（close<MA50→×0.5）；守卫 12 passed；**UPRO V-CORR 为阶段2首个提案候选**（年化+0.04pp、回撤持平）
+- ✅ **阶段 2️⃣ V-CORR + V-MA 落地**（2026-10-09）：variants.py 新增 V-CORR（VIX 滚动1年80分位→仓位×0.5）与 V-MA（close<MA50→×0.5）；守卫 12 passed；**UPRO V-CORR 为阶段2首个提案候选**（年化+0.04pp、回撤持平）已按用户批复 **Z（纳入长期观察）** 审批（1134b27）
+- ✅ **V-ATR/V-VOL 归档**（2026-10-09 晚）：walk-forward 20/22 窗建议归档 → variants.py 标记 `archived: True`（9c56eeb）；**激进仓位即收益来源，防御降仓 OOS 不划算**
+- ✅ **链上金融观察池**（2026-10-09 晚，0277a02）：OBSERVE_SYMBOLS 新增 COIN/HOOD/CRCL（HOOD 补价 1305 行）；ONCHAIN_FINANCE_TAGS 研究标签（CRCL 利率敏感）；假说 H-030 量价-资金背离 / H-031 利率敏感度；微信文章 11 块入 kb（channel=wechat_article）
 - ✅ **C-5 walk-forward 全变体重检**（2026-10-09，40 季度窗）：**V-CORR 三标的全维持观察**（27/27/26 窗，与 OOS 提案互相印证）⇒ 待 C-3 人工审批；V-MA 仅 TQQQ 维持；V-H7 延续观察；**V-ATR/V-VOL 建议归档**
 - ✅ **知识库**：YouTube 频道字幕 → ChromaDB（yt_trading）+ `scripts/kb_search.py` + kb-search 技能；外部仓库精华沉淀 `docs/kb-insights.md`
 - ✅ **H-023** 凯利公式 vs 规则仓位假说（半凯利上限，样本 <60 日不落地）
