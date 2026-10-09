@@ -1,130 +1,58 @@
 # 下次会话先读这个（进度快照）
 
-**更新**：2026-10-08 · **对应提交**：本地 HEAD 仍是 `5fbd8a7`（本轮**未提交**，见下）
+**更新**：2026-10-09 · **对应提交**：远端 main = `2f6c4c0`（README 更新）
 
 ---
 
 ## 一句话现状
 
-- **新情况（重要）** ✓：**本仓库与 GitHub 是两条无共同祖先的线** ✗ —— 详见下节
-- **正在做** ✓：解决 GitHub **issue #3**（Mac 端 pytest 收集失败）—— **已交付，待你 push** ✗
-- **下一步** ✗：① 用 `dist/lb-mac-backfill.bundle` 把 19 个文件推上 GitHub ✓ ② 决定两条线的长期策略 ✗
+- **同步链路已全通** ✓：公司 Windows → 飞书「海外投资助手」机器人 → OpenClaw(Mac) `fg-sync` skill → 贪恐仓库，**855 片大包（117 文件）已全量入库并推送**；白名单误伤修复、push 卡死根治（详见 `docs/fg-sync-accelerate.md`）
+- **GitHub 已统一为唯一主线** ✓：两条线合并完成（以远程为底 + 本地新增重放），issue #3 已关闭，A 类阻塞全解除，C 系列全落地
+- **下一步**：等公司端补发内容（B 类数据积累中）；可随时接 C-5 季度节奏自动重检（已设 launchd）；README/进度文档已更新至 2026-10-09
 
 ---
 
-## ⚠️ 两条线（先读这一节）✗
+## 当前状态基线（2026-10-09）
 
-| | 本地（公司 Windows） | GitHub `mengyan183/learning_backtrader` |
-|---|---|---|
-| HEAD | `5fbd8a7`（2026-09-29） | `5cdaba7`（2026-10-07） |
-| 共同祖先 | **无** ✗（本地 4 个 sha 在远程全部不存在） | — |
-| 来源 | 公司开发主线 ✓ | Mac 端 `git init` 新建（`created_at` 2026-09-29 ✓），内容来自**飞书解压包** ✓ |
-| 有 | `docs/trading-discipline.md`（5400+ 行 ✓）、`docs/NEXT-SESSION.md` ✓、`docs/superpowers/specs/*` ✓、YINN 取证 §12.36~§12.39 ✓ | `docs/roadmap.md` / `evolution-plan.md` / `blocked-registry.md` / `变更记录/` 等 **41 份** ✓、`models/`（HMM/EVT/贝叶斯）✓、`fed.py` / `risk.py` ✓、dashboard 大改 ✓ |
-| 无 | Mac 侧的上述全部 ✗ | Windows 侧的上述全部 ✗ |
+- ✅ **回测裁判恢复**：`fg_system/backtest/*` 还原（issue #3 关闭），`evolution/baseline.json` 产出（IS 至 2024-09-30 / OOS 自 2024-10-01）
+- ✅ **A 类阻塞全解除**：H-005 rejected / H-007 adopted（2026-10-08 验证）
+- ✅ **C 系列全落地**（2026-10-08）：C-1 变体设施 / C-2 提案自动化 / C-3 审批闭环 / C-4 周报自动化 / C-5 季度 walk-forward / C-6 执行确认 / C-7 因子库扩展 / C-9 扩池策略侧 / C-10 实盘-回测归因 / C-11 衰减降级；V-H7 三标的 OOS 均不采纳（负结果如实登记，裁决 Y 纳入长期观察）
+- ✅ **B 系列**：B-6 Put-Call 免 key 链路（IC 0.044 / IR 0.58）/ B-7 新闻情绪（NewsAPI 免费 key）/ B-4 假说口径修订（H-010~H-021 按真实列重措辞）
+- ✅ **Q1-Q4**：alternative.me 市场级 FNG 交叉校验 / TokenUnlocks 受阻登记 / BeckieAnalysis 中文字幕入库 / 方法论书单进 fg-qa
+- ✅ **数学模型**：HMM 状态识别 / 档位马尔可夫矩阵 / EVT 阈值校准 / 贝叶斯假说信心（`fg_system/models/`，纯 numpy）
+- ✅ **知识库**：YouTube 频道字幕 → ChromaDB（yt_trading）+ `scripts/kb_search.py` + kb-search 技能；外部仓库精华沉淀 `docs/kb-insights.md`
+- ✅ **H-023** 凯利公式 vs 规则仓位假说（半凯利上限，样本 <60 日不落地）
+- ✅ **量化选型决策**：vectorbt + PyPortfolioOpt（不引入 Qlib/LEAN/vn.py）
+- ✅ **毛选方法论 skill**（mao-methodology）+ 简报归因主要矛盾标注
+- ✅ **守猪待兔修复**：历史通道重建（fetch_shoutu.py），解除信号陈旧
+- ✅ **新鲜度/简报/网页刷新系列修复**：freshness 交易日差≥1 天即触发、刷新触发 live 同步、简报减仓双引擎
 
-⇒ **两套文档体系、两套代码增量** ✗ ⇒ **长期策略待你定** ✗（谁为准 / 如何互推 / 是否合并）
-⇒ **本地新工作（含 YINN 取证）不会自动上 GitHub** ✗ —— 因为无共同历史 ✓
+## 双端同步链路（重点）
 
----
+- **打包端**（公司 Windows）：`scripts/make_feishu_bundle.py` → `###FG:包名:序号/总数###…###FG:end###`（≤8KB/条）
+- **接收端**（Mac）：feishu 插件旁路（`FG-SYNC BYPASS` 注入 monitor mjs）→ 落盘 `~/.openclaw/tmp/fg-sync-in/` → `fg_sync_tool.py --quick --brief` 单命令（聚合→解压→白名单→冲突→入库→pytest→回传）
+- **白名单**：`ALLOWED_DIRS={fg_system,scripts,tests,evolution,docs}` + 根级文件（含 `.gitignore/.gitattributes`）；`--full-repo` 一次性全库授权（跳过目录白名单但保留 `_denied`：Data/、密钥、.git、node_modules、__pycache__）
+- **已归档**：855 片 `sync_code_*.md` → `~/.openclaw/tmp/fg-sync-in/archive_synccode_20261009/`（避免重复解析）
+- **已知坑**：URL-safe base64 含 `-`/`_` 手动解码必错；`.done` 幂等标记（内容 hash）；ingest 读目录下全部 .md
 
-## 本轮完成 ✓：GitHub issue #3
-
-**问题**：Mac 端 `.venv/bin/python -m pytest -q` ⇒ 13 个测试文件收集期
-`ModuleNotFoundError` / `FileNotFoundError`（飞书打包把实现文件 strip 了 ✓）。
-
-**已交付**（`dist/` ✓）：
-- `lb-mac-backfill.bundle`（**83.1 KB** ✓）—— 含基于远程 tip 的提交 **`d429edd`** ✓（**推荐**）
-- `lb-mac-backfill-20261008.zip`（85.4 KB ✓）—— 19 个文件直拷 ✓
-- `lb-mac-backfill-README.md` ✓ —— 两条路线的命令 + 校验证据 ✓
-
-**清单是 19 个（不是 issue 里写的 20 个）** ✗，三处订正：
-1. `fg_system/backtest/` 实为 **6** 个 ✓（漏了 `__init__.py` ✓，缺它包不成立 ✓）
-2. `scripts/fetch_shoutu.py` **远程已存在** ✓（Mac `3f7c56f6` 重建过 ✓）⇒ **不要覆盖** ✗
-3. `scripts/shoutu_page_query.js` 在 **Windows 端也不存在** ✓（全仓无引用 ✓）⇒ 不补 ✓
-
-**已做校验** ✓：模块级（补齐后导入全可解析 ✓）+ 接口级（19 个文件用到的 13 个共享模块属性在远程全存在 ✓）+ bundle 自检（`ls-tree` 19/19 ✓）。
-**未做** ✗：Mac 树上实跑 pytest ✗ —— 代理拉不动整树（见下 ✓）。
-
----
-
-## 下一步（明确的）✗
-
-1. **把 19 个文件送进 GitHub** ✗ —— 公司电脑**无法登录 GitHub** ✗（用户 2026-10-08 确认 ✓）
-   ⇒ 两条路，**待用户选** ✗：
-   - **路 1（最快，无需传文件）** ✓：用户在**手机/Mac** 上建 **fine-grained PAT**（contents: write ✓）
-     → 我直接 `git push`（用一次即弃 ✓，不写入任何配置 ✓）
-   - **路 2（走既有飞书通道）** ✓：`py -3.10 scripts/feishu_send.py --pkg backfill --chat 郭星`
-     （**52** 片 backfill ＋ 7 片 bootstrap ✓ ＝ 59 条 ✓）→ Mac 端
-     `python3 scripts/restore_from_base64.py ~/Downloads/fg`（**默认就解到 `~/learning_backtrader`** ✓）
-     → `git add` / `commit` / `push` / `pytest` ✓
-2. **决定两条线的长期策略** ✗（我未擅自合并 ✗）
-3. **GDXU 取证** ✗（交易侧待办，实盘 27.65%，是**最后一个**无信号持仓 ✓）
-   —— 建议**先做成本检验** ✓（YINN 的教训：方向成立 ≠ 赚得到 ✓）
-
----
-
-## 两条线：已定策略与裁决结论 ✓（2026-10-08）
-
-**用户决定：以 GitHub 为准** ✓；**`restore_from_base64.py` 以 Mac 那份为准** ✓
-（⇒ 本地版**不推** ✓；它是「Mac 版更新」，本地那份属待替换 ✗）。
-
-**文件账（blob sha 对比，零额外请求 ✓）**：仅远程 520 ✓／仅本地 **154** ✓／同名同内容 24 ✓／
-**同名不同内容 88** ✗。本地独有 154 个 = **23.2 MB** ✗（`Data/` 占 20.9 MB）
-⇒ 一次性补传**不可行** ✗（飞书要 ~9000 片 ✗）⇒ **必须按优先级分批** ✓。
-
-**88 个冲突的抽样结论**（8 个精查 + 8 个分类 ✓）：**6/8 是纯换行差异** ✓
-（`tests/**`、`pytest.ini`、`requirements.txt`、`factors/price.py` 等**内容其实相同** ✓）；
-实质分歧只有 `fg_system/config.py`（远程多 105 行：五因子权重/观察池 ✓）与
-`pipeline.py`（远程多 8 行：fed 因子 ✓）⇒ **以远程为准** ✓。
-
-⇒ **分组裁决（建议）**：A `Data/*.csv` 不用管 ✓／B 换行差异类**不推**（以远程为准 ✓）／
-C 远程有实质新增（config/pipeline）**以远程为准** ✓／D 本地有实质新增
-（`tests/test_feishu_send.py`、`tests/test_make_feishu_bundle.py` —— 本轮新增的守卫测试 ✓）
-⇒ **以远程为底 + 重放本地新增** ✓／E `.gitignore`（22.5% 相似，两边都改过 ✗）需合并 ✓。
-⇒ **88 个里真正要动手的只有 D(2) + E(1)** ✓，其余 85 个**不用推** ✓。
-
-**代理退化** ✗：`502 → 403 → 407 AuthenticationRequired`（批量请求后被节流 ✓）
-⇒ 批量 API 任务（如 88 个全量分类）**跑不动** ✗，只能小批量 ✓。
-
----
-
-## 根因订正 ✓（2026-10-08 读码确认）
-
-**strip 不是 `check_deploy_set.py` 的错** ✓ —— 它的清单是**完整**的
-（`NEED_DIRS = ["fg_system", "scripts", "tests"]` ✓ 全拷 ✓）。
-
-**真正的漏点在飞书打包的「包选择」** ✗：`--only minimal` 用的是**传递闭包**
-（按「Mac 跑任务需要什么」算 ✓）⇒ `audit.py` / `cli.py` / `backtest/*` /
-`evolution.py` / `factors/screening.py` / `shoutu_analysis.py` 都**不在**闭包里 ✓；
-而 `tests` 包**又把这些测试文件发了** ✓ ⇒ **包内容自相矛盾** ✓（正是 issue #3 ✓）。
-
-⇒ **治本 = 用 git 补文件** ✓（本轮 ✓）；**顺带**：若将来还用飞书发 `tests` 包，
-应把「tests 的传递闭包」也算进包选择 ✓（否则**必再犯** ✗）。
-
----
-
-## 环境备忘 ✓（本轮新增 ✗）
+## 环境备忘
 
 | 项 | 值 |
 |---|---|
-| GitHub 访问 | 直连**不通** ✗；必须走代理 `http://10.30.6.49:9090` ✓ |
-| **⚠️ DLP 上传上限** ✗ | **POST 体 > ~10 KB 被拦**（实测 base64 **6036 通过** ✓、**12388 → 403** ✗，返回代理 HTML 拦截页 ✓；同款限制见 `restore_from_base64.py` docstring「纯文本上限约 10 KB」✓）⇒ **`git push`（pack）与 GitHub API 建 blob 都走不通** ✗ —— 这是**公司网络下的硬约束** ✗ |
-| 结论 | **公司电脑无法把代码推上 GitHub** ✗（读得到、写不了 ✓）⇒ 传输必须走**飞书**（消息/云文档，均 ≤1700 字符/条 ✓）|
-| git over proxy | `git -c http.proxy=http://10.30.6.49:9090 ls-remote ...` ✓ |
-| **大文件传输** ✗ | 代理扛不住大 pack：`clone` **502** ✓、`--depth 1` 全量 **early EOF** ✓、partial clone 按需拉 blob **HTTP 403** ✓ ⇒ **只能小请求** ✓ |
-| 可行的小请求 | `--filter=blob:none --sparse` 克隆（**222K** ✓，只有 commit+tree ✓）；GitHub **API**（`/git/trees`、`/contents`）✓ |
-| GitHub 凭据 | 本机**没有** ✗（`cmdkey` 无 github、无 `~/.git-credentials`、无 netrc）⇒ **无法 push** ✗ |
-| 命令行限制 | 单条 **≤1024 字节** ✗ + **约 37s 截断** ✗ ⇒ 长命令要拆 ✓ |
-| 代理 + curl | `curl -x <proxy>` 报 **libcurl error 43** ✗ ⇒ 改用 **Python urllib + ProxyHandler + CERT_NONE** ✓ |
-| 预存在失败 | `test_make_feishu_bundle.py`(6) + `test_pre_commit_syntax.py`(1~3) ✗ —— 根因 **Windows GBK 解码子进程输出** ✓，与本轮无关 ✓ |
+| 仓库 | `/Users/xingguo/learning_backtrader`；remote `github.com/mengyan183/learning_backtrader.git` |
+| push 网络 | **必须走 ClashX 代理 7890**（直连被 TUN 劫持/超时）；有效推送：`export GH_TOKEN=$(gh auth token)` + `git -c http.proxy=http://127.0.0.1:7890 -c credential.helper= -c credential.helper="!f(){ echo \"username=x-access-token\"; echo \"password=$GH_TOKEN\"; }; f" push origin main`（绕过 osxkeychain 卡死） |
+| credential | 系统级 CommandLineTools gitconfig 有 `osxkeychain`（会卡死 push）；repo 级 `!gh auth git-credential`（不带 fill） |
+| 模型 | OpenClaw 主模型 `nvidia/deepseek-ai/deepseek-v4.1-flash`；fallback `[zai/glm-4.7-flash, litellm/hermes-agent, ollama/qwen2.5-coder:3b-64k]`（zai 有 429 史）；ollama 11434 |
+| 网关 | OpenClaw 18789；重启 gateway 用 `kill -9 <PID>`（`launchctl kickstart` 静默失效）；日志 `~/Library/Logs/openclaw/gateway.log` |
+| 飞书 | appId `cli_a93abe057178dbb4`（secret 在 `~/.openclaw/openclaw.json`）；chat_id `oc_a9306b326943821490184d073dae9a65`；API 基 `https://open.feishu.cn/open-apis` |
+| 测试 | `.venv/bin/python -m pytest tests/ -q`（850+ passed 基线）；增量 `--quick` <10s |
+| 数据源 | 海外需代理 7890（家里 Mac）；公司电脑用公司代理 |
 
----
+## 给下次会话的提醒
 
-## ⚠️ 给下次会话的提醒 ✗
-
-- **别长回复** ✗ —— 会话容易因上下文超限重启 ✓。
-- **写「待办」前先 grep 文档** ✗ —— 曾两次把已完成的任务当成待办 ✓。
-- **静态守卫要防"假通过/假阳性"** ✗ —— 本轮两次：`from X import sub` 漏收子模块（假通过 ✓）、
-  `A, B = ...` 未处理（假阳性 ✓）⇒ **结论出来前先想它会不会漏/会错** ✓。
-- **引用 issue 清单前先核对** ✗ —— 本轮 3 处订正 ✓。
-- **代理只适合小请求** ✗ —— 别再用 clone/fetch 大 pack 浪费时间 ✓。
+- **别长回复**——会话容易因上下文超限重启。
+- **写「待办」前先 grep 文档**——曾多次把已完成任务当成待办。
+- **引用 issue/清单前先核对**——issue #3 清单 19 个（不是 20）。
+- **push 卡死先查僵尸 git-credential 进程**——`pkill -f git-credential`，然后用 GH_TOKEN 内联方式推。
+- **同步链路排障**：先查 `~/Library/Logs/openclaw/gateway.log`（搜 `FG-bypass handled`）；旁路脚本 `~/.openclaw/tmp/fg-sync-bypass.py`；分片目录 `~/.openclaw/tmp/fg-sync-in/`。
+- **待补充（用户 10-09 发飞书）**：公司端补齐内容（B 类数据积累观察点、回测文件已发过飞书——两个 md 文档已还原入库）。
