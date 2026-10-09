@@ -42,3 +42,16 @@ zai 降为第一 fallback。Gateway 重启后确认 `agent model: nvidia/... (th
 - nvidia 主模型两轮请求：17.7s 决策 + 9.2s 输出，**全程无 fallback、无 429 重试**。
 - 输出 4 行精简结论，`--quick` 增量 pytest 通过。
 - 链路目标达成：规则生效 ✓ 输出精简 ✓ 主模型稳定 ✓ 不再受 zai 429 拖累 ✓
+
+## 追加（2026-10-09 09:54）：关闭 nvidia 思考 + 开启 fast 模式
+
+### 新发现
+47 秒中 nvidia 决策占 17.7s（reasoning 模型思考时间）。日志 `agent model: nvidia/... (thinking=medium, fast=off)`。
+同步是确定性任务（保存→跑脚本→回传），不需要深度推理。
+
+### 修复
+main agent 配置：`thinkingDefault=off` + `fastModeDefault=true`。
+重启后确认 `agent model: nvidia/deepseek-v4.1-flash (thinking=off, fast=on)`。
+
+### 预期
+决策 17.7s → 3-5s，同步链路总耗时 47s → 15-20s。
