@@ -21,6 +21,12 @@ cd /Users/xingguo/learning_backtrader
 **关键纪律**：
 - `fg_sync_tool.py` 是唯一入口（内部完成聚合→解压→白名单→冲突→入库→pytest→回传）
 - `--quick` 增量测试 <10s；退出码 0=成功 / 2=可解释失败 / 3=内部错误
+- **完整仓库同步**（公司端打包了非白名单文件，用户明确要全量同步时）：直接跑编排脚本加 `--full-repo`：
+  ```bash
+  .venv/bin/python scripts/fg_sync_ingest.py ~/.openclaw/tmp/fg-sync-in \
+    --commit "fg-sync: 完整仓库同步 <YYYY-MM-DD>" --full-repo --quick
+  ```
+  一次性授权：跳过目录白名单，**但仍拒绝 Data/**、密钥、.git、node_modules 等危险路径
 - 分片不齐：直接回传 `还缺第 X/N 片，请补发`，不跑还原
 - 白名单拒绝/冲突/校验失败：**原样回传脚本报错**，不改判
 - **禁止** `tool_call {"id":"fg-sync"}`（这是 skill 不是工具）；禁止手动 base64 解码（URL-safe 含 `-`/`_`，手动必错）；禁止只回"检查打包脚本"而不跑命令

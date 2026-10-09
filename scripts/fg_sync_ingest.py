@@ -44,12 +44,16 @@ DENY_FRAGMENTS = ("/.git", "/.venv", "/__pycache__", "Data/", ".pyc", ".key",
                   ".secret", ".token", ".env", "node_modules/")
 
 
-def _allowed(rel):
+def _allowed(rel, full_repo=False):
     rel = rel.replace("\\", "/")
     if rel.startswith("/") or rel.startswith("../") or ".." in rel.split("/"):
         return False
+    # DENY_FRAGMENTS 在任何模式都拒绝（Data/、密钥、.git、node_modules 等）
     if any(f in ("/" + rel) for f in DENY_FRAGMENTS):
         return False
+    if full_repo:
+        # 一次性完整同步授权：跳过目录白名单，但仍受 DENY_FRAGMENTS 保护
+        return True
     head = rel.split("/", 1)[0]
     if head in ALLOWED_DIRS:
         return True
@@ -100,6 +104,8 @@ def main():
     ap.add_argument("--commit", default="fg-sync: 公司端同步")
     ap.add_argument("--quick", action="store_true",
                     help="增量测试：只跑与本次入库文件相关的测试文件（<10s）")
+    ap.add_argument("--full-repo", action="store_true",
+                    help="一次性完整同步授权：跳过目录白名单（仍拒绝 Data/、密钥、.git 等危险路径）")
     args = ap.parse_args()
 
     sys.path.insert(0, os.path.join(args.repo, "scripts"))
@@ -139,7 +145,7 @@ def main():
 
         allowed, denied = [], []
         for m in members:
-            (allowed if _allowed(m) else denied).append(m)
+            (allowed if _allowed(m, full_repo=args.full_repo) else denied).append(m)
         if denied:
             print("⛔ 以下文件不在白名单内，已拒绝（不入库）：")
             for d in denied[:20]:
