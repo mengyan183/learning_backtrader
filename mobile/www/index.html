@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>贪恐仪表盘</title>
+<style>
+:root{--bg:#fafafa;--fg:#222;--bar:#fff;--line:#e6e6e6;--ok:#1a7f37;--warn:#9a6700;--bad:#b42318}
+@media (prefers-color-scheme:dark){:root{--bg:#111;--fg:#e6e6e6;--bar:#1c1c1c;--line:#333}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+  font-family:-apple-system,"Segoe UI",Roboto,"Microsoft YaHei",sans-serif}
+body{display:flex;flex-direction:column}
+/* 顶部安全区：ColorOS 等刘海/挖孔屏需要，否则内容会被状态栏遮住 */
+header{padding:calc(env(safe-area-inset-top) + 8px) 10px 8px;
+  background:var(--bar);border-bottom:1px solid var(--line);flex:0 0 auto}
+.row{display:flex;align-items:center;gap:8px}
+.dot{width:9px;height:9px;border-radius:50%;background:#bbb;flex:0 0 auto}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+#status{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spacer{flex:1 1 auto}
+button{font-size:13px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;
+  background:var(--bg);color:var(--fg);flex:0 0 auto}
+button.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
+#url{font-size:11px;opacity:.6;margin-top:4px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+iframe{flex:1 1 auto;width:100%;border:0;background:#fff}
+#mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;
+  align-items:center;justify-content:center;padding:18px}
+#mask.hidden{display:none}
+.dialog{background:var(--bar);border-radius:14px;padding:18px;width:100%;max-width:420px}
+.dialog h3{margin:0 0 8px;font-size:16px}
+.dialog p{margin:0 0 12px;font-size:13px;line-height:1.6;opacity:.85}
+.dialog code{background:var(--bg);padding:1px 5px;border-radius:4px;font-size:12px}
+#inp-url{width:100%;font-size:15px;padding:11px;border:1px solid var(--line);
+  border-radius:8px;background:var(--bg);color:var(--fg)}
+.btns{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+.hint{margin-top:10px;font-size:12px;line-height:1.6;opacity:.7}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="row">
+    <span id="dot" class="dot"></span>
+    <span id="status">未设置服务器</span>
+    <span class="spacer"></span>
+    <button id="btn-refresh">刷新</button>
+    <button id="btn-cfg">设置</button>
+  </div>
+  <div id="url"></div>
+</header>
+
+<iframe id="view" title="仪表盘"></iframe>
+
+<div id="mask" class="hidden">
+  <div class="dialog">
+    <h3>服务器地址</h3>
+    <p>填 Mac 上运行 <code>serve_dashboard.py</code> 时打印出来的「手机」地址，
+       形如 <code>http://192.168.1.10:8000</code>。</p>
+    <input id="inp-url" type="url" inputmode="url" autocomplete="off"
+           placeholder="http://192.168.1.10:8000">
+    <div class="hint">
+      · 手机与 Mac 必须连**同一个 Wi-Fi**<br>
+      · 数据由 Mac 实时计算，本应用**只读**、不改任何数据<br>
+      · 打开或点「刷新」都会重新向 Mac 取最新结果
+    </div>
+    <div class="btns">
+      <button id="btn-cancel">取消</button>
+      <button id="btn-save" class="primary">保存并连接</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = "fg.server.url";
+  var TIMEOUT_MS = 20000;              // 超时视为连不上（Mac 未开机 / 不同 Wi-Fi）
+  var $ = function (id) { return document.getElementById(id); };
+  var url = localStorage.getItem(KEY) || "";
+  var timer = null;
+
+  function setStatus(text, cls) {
+    $("status").textContent = text;
+    $("dot").className = "dot" + (cls ? " " + cls : "");
+  }
+
+  function showCfg() {
+    $("inp-url").value = url;
+    $("mask").classList.remove("hidden");
+    setTimeout(function () { $("inp-url").focus(); }, 50);
+  }
+  function hideCfg() { $("mask").classList.add("hidden"); }
+
+  function load() {
+    if (!url) { setStatus("未设置服务器", "bad"); showCfg(); return; }
+    // 加时间戳绕过 WebView 缓存 —— 每次都必须拿到 Mac 刚算出来的结果
+    var src = url + (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();
+    $("url").textContent = url;
+    setStatus("加载中…", "warn");
+    $("view").src = src;
+
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      setStatus("连接超时 —— 检查 Mac 是否开机、是否同一 Wi-Fi", "bad");
+    }, TIMEOUT_MS);
+  }
+
+  // 服务器返回后 iframe 触发 load（错误页也会触发，故仍需上面的超时兜底）
+  $("view").addEventListener("load", function () {
+    clearTimeout(timer);
+    setStatus("已连接（" + new Date().toTimeString().slice(0, 8) + "）", "ok");
+  });
+
+  $("btn-refresh").addEventListener("click", load);
+  $("btn-cfg").addEventListener("click", showCfg);
+  $("btn-cancel").addEventListener("click", hideCfg);
+  $("btn-save").addEventListener("click", function () {
+    var v = $("inp-url").value.trim().replace(/\/+$/, "");
+    if (v && !/^https?:\/\//i.test(v)) { v = "http://" + v; }
+    if (!v) { return; }
+    url = v;
+    localStorage.setItem(KEY, v);
+    hideCfg();
+    load();
+  });
+
+  // 首次启动：没配置过就直接弹设置
+  if (!url) { showCfg(); } else { load(); }
+})();
+</script>
+</body>
+</html>

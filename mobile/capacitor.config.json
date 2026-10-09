@@ -1,0 +1,11 @@
+{
+  "appId": "tech.szdt.fg",
+  "appName": "贪恐仪表盘",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "http"
+  }
+}

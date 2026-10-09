@@ -1,0 +1,16 @@
+{
+  "name": "fg-dashboard-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "贪婪恐惧指数仪表盘 —— Android 客户端（WebView 外壳，指向 Mac 上的只读服务）",
+  "scripts": {
+    "add:android": "cap add android",
+    "sync": "cap sync android",
+    "build": "cap sync android && cd android && ./gradlew assembleDebug"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  }
+}

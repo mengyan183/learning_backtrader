@@ -1,0 +1,37 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+//
+// ⚠️ 本文件在仓库里保持**公网态**（可移植）。
+//    公司机器公网不可达，构建前需先套用内网 Nexus 镜像：
+//        python mobile/patch_repos.py
+//    （`bash mobile/build_apk.sh` 已自动做这一步）
+//    Mac 等有公网的机器**无需**任何处理。
+//    详见 mobile/README.md。
+
+buildscript {
+
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.2'
+        classpath 'com.google.gms:google-services:4.4.2'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+apply from: "variables.gradle"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
