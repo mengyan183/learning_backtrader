@@ -1,6 +1,6 @@
 # 下次会话先读这个（进度快照）
 
-**更新**：2026-10-09（晚） · **对应提交**：远端 main = `9c56eeb`（链上金融观察池 + V-ATR/V-VOL 归档）
+**更新**：2026-10-09（晚） · **对应提交**：远端 main = `3808a1f`（微信研报提升点 + H-002 判据定案）
 
 ---
 
@@ -25,6 +25,8 @@
 - ✅ **阶段 2️⃣ V-CORR + V-MA 落地**（2026-10-09）：variants.py 新增 V-CORR（VIX 滚动1年80分位→仓位×0.5）与 V-MA（close<MA50→×0.5）；守卫 12 passed；**UPRO V-CORR 为阶段2首个提案候选**（年化+0.04pp、回撤持平）已按用户批复 **Z（纳入长期观察）** 审批（1134b27）
 - ✅ **V-ATR/V-VOL 归档**（2026-10-09 晚）：walk-forward 20/22 窗建议归档 → variants.py 标记 `archived: True`（9c56eeb）；**激进仓位即收益来源，防御降仓 OOS 不划算**
 - ✅ **链上金融观察池**（2026-10-09 晚，0277a02）：OBSERVE_SYMBOLS 新增 COIN/HOOD/CRCL（HOOD 补价 1305 行）；ONCHAIN_FINANCE_TAGS 研究标签（CRCL 利率敏感）；假说 H-030 量价-资金背离 / H-031 利率敏感度；微信文章 11 块入 kb（channel=wechat_article）
+- ✅ **微信研报提升点**（2026-10-09 晚，3808a1f）：H-033 币股分层 / H-034 稳定币使用效率新假说；ONCHAIN_FINANCE_TAGS 增 valuation_type 分层；7 篇文章入 kb（+19 块，集合 2816）；H-030 编号冲突修复（撞号→H-032）
+- ✅ **H-002 判据定案**（2026-10-09）：10-02 起 5 交易日现金全 <0（-879.99×5）⇒ **adopted 确认成立**（B-1 解除）
 - ✅ **C-5 walk-forward 全变体重检**（2026-10-09，40 季度窗）：**V-CORR 三标的全维持观察**（27/27/26 窗，与 OOS 提案互相印证）⇒ 待 C-3 人工审批；V-MA 仅 TQQQ 维持；V-H7 延续观察；**V-ATR/V-VOL 建议归档**
 - ✅ **知识库**：YouTube 频道字幕 → ChromaDB（yt_trading）+ `scripts/kb_search.py` + kb-search 技能；外部仓库精华沉淀 `docs/kb-insights.md`
 - ✅ **H-023** 凯利公式 vs 规则仓位假说（半凯利上限，样本 <60 日不落地）
