@@ -55,3 +55,10 @@ main agent 配置：`thinkingDefault=off` + `fastModeDefault=true`。
 
 ### 预期
 决策 17.7s → 3-5s，同步链路总耗时 47s → 15-20s。
+
+## 验证（2026-10-09 09:55）：thinking=off + fast 模式首测
+
+- 09:55:30 收到 → 09:56:22 回传，总 52s（nvidia 首轮 12.3s 决策 + 次轮 17s 输出）。
+- 全程无 fallback、无 429、无模型异常。
+- 用户感知"9:56 就响应"，链路从 6 分钟 → 稳定 1 分钟内达标。
+- 剩余小优化点：streaming card 渲染每次 HTTP 400 走兜底（约 +7s），可后续修卡片格式。
