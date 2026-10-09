@@ -64,11 +64,13 @@ VARIANTS = {
         "label": "ATR 移动止损（20日高点回撤 k×ATR(14) 清仓）",
         "k": 2.0,
         "basis": "阶段 2 ①：经典风险管理手段参数化，先验非调参",
+        "archived": True,   # 2026-10-09 walk-forward 20/40 窗 ⇒ 建议归档（防御降仓 OOS 不划算）
     },
     "V-VOL": {
         "label": "波动率目标仓位（vol_target/20日滚动年化波动率，封顶1.0）",
         "vol_target": 0.25,
         "basis": "阶段 2 ②：经典仓位管理手段参数化，先验非调参",
+        "archived": True,   # 2026-10-09 walk-forward 22/40 窗 ⇒ 建议归档（防御降仓 OOS 不划算）
     },
     "V-CORR": {
         "label": "相关性风险预算（VIX 滚动1年80分位以上 → 仓位×0.5）",
