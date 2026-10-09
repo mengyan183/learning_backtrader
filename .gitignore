@@ -1,29 +1,109 @@
-# Python
+# ============================================================
+# 本文件 = 本地（Windows）与远程（Mac）两版的**合并**（2026-10-09 裁决 E ✓）
+# 合并口径：**并集**（两侧条目都保留 ✓），并把远程注释里"为什么"一并带过来 ✓
+# ============================================================
+
+# ---- Python ----
 __pycache__/
 *.py[cod]
-.venv/
+*.egg-info/
 .pytest_cache/
+.mypy_cache/
 
-# 系统
-.DS_Store
+# ---- 虚拟环境 ----
+venv/
+.venv/
+venv-futu/
+env/
 
-# IDE
+# ---- IDE ----
 .idea/
+.vscode/
+*.swp
 
-# 凭据 —— 绝不允许入库（tests/data/test_shoutu_record.py 会守护这条规则）
-Data/shoutu_token
-Data/tstoken
+# ---- Android 客户端（mobile/）----
+# node_modules 是依赖，android/ 下的构建产物可重新生成。
+mobile/node_modules/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/local.properties
+mobile/.gradle/
+mobile/dist/
 
-# 实盘账户/持仓快照 —— 运行时由 scripts/sync_positions.py 动态生成，不入库
+# ---- 投递包（飞书传 Mac 用，产物不入库）----
+dist/
+*.apk
+*.aab
+*.keystore
+# 传输中间产物（来自远程版 ✓）
+*.tar.xz
+# `scripts/pack_one.py` 的产物（每行一片的待发文本 ✓，随时可重新生成 ✓）
+# ⚠️ 用通配覆盖两种命名：`sync_pieces.txt`（旧）与 `sync_code_pieces.txt`（2026-10-09 起 ✓）
+#    —— 上一版只写了前者 ✗，结果后者以 `??` 暴露在 status 里 ✓（差点误入库 ✗）
+sync_pieces*.txt
+
+# ---- 数据（入库以保证回测可复现）----
+Data/features.csv
+Data/state.json
+Data/crypto_features.csv
+Data/crypto_state.json
+Data/portfolio_features.csv
+
+# ---- 管道与回测产物（可重新生成）----
+reports/
+
+# ---- 运行时状态（2026-10-09 补 ✓）----
+# `Data/realtime_state.json` 是运行时写出的状态文件（Mac 侧也只有一个未提交改动就是它 ✓），
+# 属运行态、非项目资产 ⇒ 不入库 ✓
+Data/realtime_state.json
+
+# ---- 实盘账户/持仓快照（来自远程版 ✓）----
+# 运行时由 scripts/sync_positions.py 动态生成，不入库。
 # （历史提交过的版本需后续用 git rm --cached 处理；新写入一律拦截）
 Data/accounts.csv
 Data/positions.csv
+
+# ---- 日志（计划任务的运行日志，不入库）----
+logs/
+
+# ---- Agent/Team 运行时状态（非项目资产）----
+.codebuddy/
+# CodeGraph 知识图谱的本地索引/缓存（工具状态，非项目资产 ✓）
+.codegraph/
+
+# ---- 系统文件 ----
+Thumbs.db
+Desktop.ini
+.DS_Store
+nul
+
+# ---- 凭据（严禁入库）----
+# tests/data/test_shoutu_record.py 会守护这条规则（来自远程版 ✓）
+Data/tstoken
+Data/shoutu_token
+Data/newsapi_key
+Data/*token*
+*.token
+.env
+config/secrets.*
 ~/.okx_credentials.json
 
-# 传输中间产物
-*.tar.xz
-Data/features.csv
+# ---- 仅本机需要：Windows 侧工具链（D 组裁决 2026-10-09）----
+# 这些只服务**发送侧**：驱动本机浏览器发送 / 打包 / 发送前校验 / 本地 git 钩子。
+# Mac 只负责「收」（复制 → restore_from_base64.py）⇒ 不入库、不参与跨机同步 ✓。
+# ⚠️ 它们此前**已被跟踪** ⇒ 单靠 .gitignore 不够，必须 `git rm --cached`（已执行 ✓）。
+# ⚠️ 关键区分：本地独有清单里的文件**大多数不是**本机专用 ✗ —— 例如
+#    scripts/mac_bootstrap.sh 是**给 Mac 用**的首次引导脚本，必须传过去 ✓。
+scripts/feishu_send.py
+scripts/make_feishu_bundle.py
+scripts/verify_feishu_md.py
+scripts/pre-commit-syntax.sh
+tests/test_feishu_send.py
+tests/test_make_feishu_bundle.py
+tests/test_pre_commit_syntax.py
 
-# 运行时日志（不入库）
-logs/
-Data/newsapi_key
+# ---- 链路验证探针（本机专用，2026-10-09 裁决）----
+# 只用来冒烟「本机 → 飞书 → Mac」同步链路，内容就一句 assert True ✓
+# （已用 URL-safe 分片实测走通：入库 ✓ + Mac pytest 通过 ✓）
+tests/company_sync_test.py
