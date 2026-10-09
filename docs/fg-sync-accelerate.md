@@ -22,3 +22,16 @@
 
 ## 预期
 下次同步 ~10-20s 完成，回传 4 行精简结论。
+
+## 追加（2026-10-09 09:34）：主模型切换 nvidia + 429 重试根因
+
+### 新发现
+9:24 同步实测：收到→回复 6 分钟，其中 **4 分钟浪费在 zai 429 后的同模型重试 9 次**（间隔指数退避 1s→30s），OpenClaw 硬编码"429 先重试 9 次再切 fallback"，无配置可跳过。
+fallback 生效后 nvidia 实测 6s/11s 稳定完成，输出 4 行精简结论——**规则本身已完全生效**。
+
+### 修复
+主模型切换：`zai/glm-4.7-flash` → `nvidia/deepseek-ai/deepseek-v4.1-flash`（128k 上下文、工具调用、实测 6s 无 429）。
+zai 降为第一 fallback。Gateway 重启后确认 `agent model: nvidia/... (thinking=medium)`。
+
+### 预期
+同步链路：nvidia 主模型 ~6s 决策 + 1.2s 执行 + 回传 = **10-15 秒**，不再受 zai 429 拖累。
