@@ -42,6 +42,8 @@ def main():
     ap.add_argument("--commit", default="fg-sync: 公司端同步")
     ap.add_argument("--quick", action="store_true",
                     help="增量测试：只跑相关测试文件（<10s），不跑全量 pytest")
+    ap.add_argument("--brief", action="store_true",
+                    help="回传精简：只输出结论摘要（供模型原样回传，减 token）")
     args = ap.parse_args()
 
     raw = _read_input(args)
@@ -68,8 +70,15 @@ def main():
     if args.quick:
         cmd.append("--quick")
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=2400)
-    sys.stdout.write(r.stdout)
-    sys.stderr.write(r.stderr)
+    out, err = r.stdout, r.stderr
+    if args.brief:
+        # 精简回传：只保留结论行（✅/❌/⛔/⚠️ 开头），丢弃过程细节
+        lines = (out + err).splitlines()
+        key = [ln.strip() for ln in lines if ln.strip().startswith(("✅", "❌", "⛔", "⚠️", "认出的包"))]
+        out = "\n".join(key) or out[-500:]
+        err = ""
+    sys.stdout.write(out)
+    sys.stderr.write(err)
     return r.returncode
 
 

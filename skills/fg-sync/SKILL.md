@@ -13,7 +13,7 @@ description: 收到含 ###FG: 标记的飞书消息时立即执行：先回"已�
 
 ```bash
 cd /Users/xingguo/learning_backtrader
-.venv/bin/python scripts/fg_sync_tool.py -f ~/.openclaw/tmp/fg-sync-in/sync_in.md --commit "fg-sync: 公司端同步 <YYYY-MM-DD>" --quick
+.venv/bin/python scripts/fg_sync_tool.py -f ~/.openclaw/tmp/fg-sync-in/sync_in.md --commit "fg-sync: 公司端同步 <YYYY-MM-DD>" --quick --brief
 ```
 
 4. **把脚本输出原样回传飞书**（成功/失败都原样回，不改写、不补充解释）
