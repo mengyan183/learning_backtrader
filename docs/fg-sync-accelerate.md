@@ -62,3 +62,17 @@ main agent 配置：`thinkingDefault=off` + `fastModeDefault=true`。
 - 全程无 fallback、无 429、无模型异常。
 - 用户感知"9:56 就响应"，链路从 6 分钟 → 稳定 1 分钟内达标。
 - 剩余小优化点：streaming card 渲染每次 HTTP 400 走兜底（约 +7s），可后续修卡片格式。
+
+## 追加（2026-10-09 10:02）：修复 streaming card HTTP 400
+
+### 根因
+每次回传日志 `streaming start failed ... Create card request failed with HTTP 400`，实测复现 CardKit create 请求：
+`code 99991672 - Access denied. One of the following scopes is required: [cardkit:card:write]`
+→ **飞书应用缺 `cardkit:card:write` 权限**，OpenClaw 每次尝试创建流式卡片都失败，回退普通消息（+~7s）。
+
+### 修复
+`channels.feishu.streaming.mode = off`：关闭流式渲染，回复直发普通消息（im.message.create），不再触发 CardKit API，无 400、无 7s 兜底。
+（替代方案：在飞书开放平台给应用开通 cardkit:card:write 权限，可恢复流式打字效果。）
+
+### 备注
+本地 bot 自发的测试消息被 OpenClaw 按设计丢弃（dropping self-authored bot message），需用户从公司端发真实消息验证。
