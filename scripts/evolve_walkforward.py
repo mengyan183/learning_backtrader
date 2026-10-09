@@ -129,7 +129,7 @@ def main():
             else:
                 verdict = "建议归档"
                 total["archive"] += 1
-            lines += rows
+            lines += ["### %s" % vk] + rows
             lines.append("| **合计** | | | | | **%d/%d 窗不劣化 ⇒ %s** |" % (n_good, n_total, verdict))
         lines.append("")
 

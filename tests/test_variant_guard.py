@@ -153,3 +153,71 @@ def test_vvol_high_vol_shrinks_position():
     assert shrunk.any()
     # 永不放大仓位
     assert np.all(pos <= base + 1e-12)
+
+
+def _mk_vix_features(n=120):
+    """带 vix 列的 features（V-CORR 需要）。"""
+    f = _mk_features(n)
+    f["vix"] = 15.0  # 默认低 vix（基线）
+    return f
+
+
+def test_vcorr_no_vix_returns_identical():
+    """V-CORR 缺 vix 列 → 返回原样（保守不加规则）。"""
+    f = _mk_features(120)
+    pf = _mk_portfolio(len(f))
+    out = vmod.apply_variant(f, pf, "V-CORR")
+    assert np.allclose(out["target_position"].values,
+                       f["target_position"].values, rtol=0, atol=0)
+
+
+def test_vcorr_stress_shrinks_position():
+    """V-CORR：vix 滚动高分位（压力段）→ 降仓；低 vix 段不动。"""
+    f = _mk_vix_features(120)
+    pf = _mk_portfolio(len(f))
+    n = len(f)
+    vix = np.full(n, 15.0)
+    # 后 40 日 VIX 飙升到 60（压力段，超过前 80 分位）
+    vix[80:] = 60.0
+    f["vix"] = vix
+    out = vmod.apply_variant(f, pf, "V-CORR")
+    pos = out["target_position"].values
+    base = f["target_position"].values
+    # 压力段有降仓
+    assert (pos[85:] < base[85:] - 1e-12).any()
+    # 低 vix 段（前 75 日）不动
+    assert np.allclose(pos[:75], base[:75], rtol=0, atol=1e-12)
+
+
+def _mk_close_features(n=120):
+    """带 close 列的 features（V-MA 需要）。"""
+    f = _mk_features(n)
+    f["close"] = 100.0 + np.arange(n) * 0.1  # 单边缓涨
+    return f
+
+
+def test_vma_no_close_returns_identical():
+    """V-MA 缺 close 列 → 返回原样。"""
+    f = _mk_features(120)
+    pf = _mk_portfolio(len(f))
+    out = vmod.apply_variant(f, pf, "V-MA")
+    assert np.allclose(out["target_position"].values,
+                       f["target_position"].values, rtol=0, atol=0)
+
+
+def test_vma_below_ma_shrinks():
+    """V-MA：close < MA50 → 降仓；close >= MA50 不动。"""
+    f = _mk_close_features(120)
+    pf = _mk_portfolio(len(f))
+    # 后半段跌到 MA50 下方（趋势破坏）
+    n = len(f)
+    close = f["close"].values.copy()
+    close[80:] = 100.0 + np.arange(40) * -0.5  # 持续下跌
+    f["close"] = close
+    out = vmod.apply_variant(f, pf, "V-MA")
+    pos = out["target_position"].values
+    base = f["target_position"].values
+    # 下跌段有降仓
+    assert (pos[90:] < base[90:] - 1e-12).any()
+    # 前段（单边缓涨，close > MA）不动
+    assert np.allclose(pos[55:75], base[55:75], rtol=0, atol=1e-12)

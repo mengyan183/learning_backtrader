@@ -37,6 +37,18 @@ k 为参数（默认 2.0，网格 1.5/2.0/2.5 走阶段 2 变体，不直接改�
 vol_target 为参数（默认 0.25 年化，网格 0.20/0.25/0.30 走阶段 2 变体）。
 要求 features 含 close 列（evolve_variant 已 join 价格列）；
 缺价格列时返回原样（保守，不加新规则）。
+
+## V-CORR（阶段 2 ③：杠杆ETF 相关性风险预算——有效敞口代理）
+先验：**危机中杠杆 ETF 相关性趋 1（分散失效）是实证规律**；VIX 高分位
+= 市场压力状态 = 杠杆簇同跌风险高企。规则化为：**VIX 滚动 1 年 80 分位以上
+→ target_position × factor（默认 0.5）**——以市场波动状态代理相关性状态，
+在"分散失效"窗口主动收缩有效敞口（防 YINN/GDXU 同跌）。
+要求 features 含 vix 列；缺 vix 时返回原样（保守，不加新规则）。
+
+## V-MA（阶段 2 ④：动能/均线过滤）
+先验：**均线过滤防"贪婪档追高"**：价格在 MA 下方 = 中期趋势不支撑
+→ 降仓；上方维持。规则化为：**close < MA(N)（默认 N=50）→ target × factor
+（默认 0.5）**。要求 features 含 close 列；缺时返回原样。
 """
 import numpy as np
 import pandas as pd
@@ -57,6 +69,19 @@ VARIANTS = {
         "label": "波动率目标仓位（vol_target/20日滚动年化波动率，封顶1.0）",
         "vol_target": 0.25,
         "basis": "阶段 2 ②：经典仓位管理手段参数化，先验非调参",
+    },
+    "V-CORR": {
+        "label": "相关性风险预算（VIX 滚动1年80分位以上 → 仓位×0.5）",
+        "factor": 0.5,
+        "vix_lookback": 252,
+        "vix_q": 0.80,
+        "basis": "阶段 2 ③：危机中杠杆ETF相关性趋1（分散失效）实证，先验非调参",
+    },
+    "V-MA": {
+        "label": "动能/均线过滤（close < MA50 → 仓位×0.5）",
+        "factor": 0.5,
+        "ma_period": 50,
+        "basis": "阶段 2 ④：均线过滤防贪婪档追高，先验非调参",
     },
 }
 VARIANT_KEYS = (BASELINE,) + tuple(VARIANTS)
@@ -135,6 +160,30 @@ def apply_variant(features, portfolio_features, variant):
             return out
         scale = _vol_target_scale(out["close"], spec["vol_target"])
         out["target_position"] = (out["target_position"] * scale).clip(lower=0.0)
+        return out
+
+    if variant == "V-CORR":
+        # 缺 vix 列（守卫测试纯 features 场景）：返回原样，保守不加规则
+        if "vix" not in out.columns:
+            return out
+        vix = out["vix"]
+        # VIX 滚动 1 年（252 日）80 分位；min_periods=60（早期窗口保守放宽，
+        # 真实数据 2500+ 行仍以 252 日为完整窗口）；NaN 按未触发处理（保守）
+        q = vix.rolling(spec["vix_lookback"], min_periods=60).quantile(
+            spec["vix_q"])
+        stress = (vix > q).fillna(False)
+        out.loc[stress, "target_position"] = (
+            out.loc[stress, "target_position"] * spec["factor"])
+        return out
+
+    if variant == "V-MA":
+        # 缺 close 列：返回原样，保守不加规则
+        if "close" not in out.columns:
+            return out
+        ma = out["close"].rolling(spec["ma_period"], min_periods=spec["ma_period"]).mean()
+        below = (out["close"] < ma).fillna(False)
+        out.loc[below, "target_position"] = (
+            out.loc[below, "target_position"] * spec["factor"])
         return out
 
     raise KeyError("未知变体 %r；可选：%s" % (variant, tuple(VARIANT_KEYS)))
