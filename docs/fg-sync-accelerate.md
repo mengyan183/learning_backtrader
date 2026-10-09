@@ -76,3 +76,10 @@ main agent 配置：`thinkingDefault=off` + `fastModeDefault=true`。
 
 ### 备注
 本地 bot 自发的测试消息被 OpenClaw 按设计丢弃（dropping self-authored bot message），需用户从公司端发真实消息验证。
+
+## 验证（2026-10-09 10:05）：card 400 修复生效
+
+- 10:05:23 收到 → 10:06:12 回传，总 49s。
+- **日志中 streaming start failed / HTTP 400 完全消失** —— 关闭流式卡片修复生效，回复直发普通消息。
+- nvidia 首轮 19s（决策）+ 次轮 12.3s（输出），无 fallback/429。
+- 剩余瓶颈：deepseek-v4.1-flash 是推理型模型，API 层响应本身 ~12-19s/轮，agent 层 thinking=off 无法再压缩。
