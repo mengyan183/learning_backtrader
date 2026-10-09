@@ -56,8 +56,25 @@ def send_feishu(text, chat_id):
         return f"HTTP {e.code} {e.read().decode()[:200]}"
 
 
+def pkg_hash(pkg, total):
+    """包内容哈希：全部分片原文按序号拼接的 sha256。"""
+    import hashlib
+    h = hashlib.sha256()
+    for i in range(1, total + 1):
+        p = os.path.join(IN_DIR, f"{pkg}_{i}.md")
+        if os.path.exists(p):
+            h.update(open(p, "rb").read())
+    return h.hexdigest()
+
+
 def ingest_package(pkg, total, chat_id):
-    """收齐后调用 fg_sync_tool.py 还原入库并回传。"""
+    """收齐后调用 fg_sync_tool.py 还原入库并回传。幂等：同内容只入库一次。"""
+    # 已入库标记：内容 hash 一致则跳过（重复发送整包不会重复入库）
+    marker = os.path.join(IN_DIR, f"{pkg}.done")
+    cur_hash = pkg_hash(pkg, total)
+    if os.path.exists(marker) and open(marker).read().strip() == cur_hash:
+        return  # 完全相同的包已入库过，静默跳过
+
     # 聚合全部已收分片原文（按序号排序）到 sync_in.md
     parts = []
     for i in range(1, total + 1):
@@ -83,6 +100,9 @@ def ingest_package(pkg, total, chat_id):
     try:
         r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=180)
         out = (r.stdout + r.stderr).strip()
+        # 入库成功后写标记（无论 commit 是否成功——文件已落盘即可视为已处理）
+        with open(marker, "w") as f:
+            f.write(cur_hash)
         send_feishu(f"✅ {pkg} 已收齐 {total} 片，开始入库…\n{out}", chat_id)
     except subprocess.TimeoutExpired:
         send_feishu(f"⏳ {pkg} 入库超时，请稍后查收", chat_id)
