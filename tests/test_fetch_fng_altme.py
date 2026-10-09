@@ -6,6 +6,7 @@
 """
 import datetime
 import sys
+import tempfile
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -45,13 +46,19 @@ class TestParse(unittest.TestCase):
                              "https://api.alternative.me/fng/?limit=3")
             self.assertEqual(fm.parse(body)[0][0], "2026-10-08")
 
-    def test_dedup_on_existing(self, tmp_path=None):
+    def test_dedup_on_existing(self):
         # 现有文件已有 10-06/10-07/10-08 → 全部去重，返回 0 无新增
-        out = tmp_path or Path("/tmp") / "fng_altme_test.csv"
+        #
+        # ⚠️ 必须把 `fm.OUT` 指到临时文件 ✗ —— `load_existing_dates()` **不接受参数**，
+        #    读的是模块级常量 `OUT`（= `Data/raw/fng_altme.csv`）。原来只写了临时
+        #    文件却没指过去 ⇒ 断言实际比对的是**仓库真实数据** ⇒ 数据一陈旧就红
+        #    （2026-10-09 实测：本机数据只到 10-05 ⇒ 红）。临时文件成了死代码。
+        out = Path(tempfile.gettempdir()) / "fng_altme_test.csv"
         out.write_text("date,value,value_classification\n"
                        "2026-10-06,73,Greed\n"
                        "2026-10-07,71,Greed\n"
                        "2026-10-08,64,Greed\n")
+        fm.OUT = str(out)
         existing = fm.load_existing_dates()
         self.assertEqual(existing, {"2026-10-06", "2026-10-07", "2026-10-08"})
         rows = fm.parse(SAMPLE)
