@@ -103,3 +103,23 @@ main agent 配置：`thinkingDefault=off` + `fastModeDefault=true`。
 ### 备注
 - ClashX 本身节点不可用，用户其他走代理的流量（如 Google）可能也受影响，需自行恢复/切换节点。
 - 若 OpenClaw 更新后重写 env 文件，此 NO_PROXY 追加会被覆盖，需复查。
+
+## 追加（2026-10-09 11:40）：路线 B 实施——feishu 插件 ###FG: 旁路绕过 LLM
+
+### 背景
+855 片分片协议在 OpenClaw 架构下走不通：每条分片消息 = 一次完整 LLM 决策（10-25s/条，不可并行）+ 上下文膨胀 → 371s 无进展被判定 stalled 中止，分片一条都没落盘（sync_in.md 0 字节）。
+
+### 补丁（改编译产物，升级会被覆盖）
+`~/.openclaw/npm/projects/openclaw-feishu-*/node_modules/@openclaw/feishu/dist/.setup/monitor.account-*.mjs`
+在 `dispatchFeishuMessage` 的 task 里、`handleMessage` 前插入分支：检测 `preparedContent` 含 `###FG:` → 落盘到 `~/.openclaw/tmp/fg-sync-bypass-in/` → 调 `fg-sync-bypass.py` → return（绕过 LLM）。备份：同目录 `.bak_fgbypass`。
+
+### 旁路脚本（入库：skills/fg-sync/scripts/fg-sync-bypass.py）
+- 解析 `###FG:包名:序号/总数###...###FG:end###` 全部分片
+- 逐片落盘 `~/.openclaw/tmp/fg-sync-in/<包>_<序号>.md`（幂等，同序号覆盖）
+- 收齐（已收 == 总数）→ 聚合到 sync_in.md → 调 fg_sync_tool.py 入库 → 回传飞书
+- 未收齐静默；每 100 片回传一次进度
+
+### 风险与防护
+- OpenClaw 升级会覆盖 .mjs → 需在升级后重打补丁（备份 .bak_fgbypass 在手）
+- 补丁语法已 node --check 验证；gateway 重启正常（PID 45290）
+- 待用户重发 855 片实测
