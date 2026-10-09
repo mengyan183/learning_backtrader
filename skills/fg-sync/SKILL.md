@@ -1,6 +1,6 @@
 ---
 name: fg-sync
-description: 收到含 ###FG: 标记的飞书消息时立即执行：先回"已收到"，把消息原文存文件，跑单命令 fg_sync_tool.py --quick 还原入库，把脚本输出原样回传。触发词：同步、还原、补传、backfill、base64、分片、公司端、###FG:。
+description: 收到含 ###FG: 标记的飞书消息时立即执行：先回"已收到"，把消息原文存文件，跑单命令 fg_sync_tool.py --quick 还原入库，把脚本输出原样回传；收到「同步待办/任务清单/有什么任务」时跑 push_todo.py 生成待办快照回传。触发词：同步、还原、补传、backfill、base64、分片、公司端、###FG:、待办、任务清单、同步待办、有什么任务。
 ---
 
 # fg-sync：同步分片 → Mac 仓库（唯一动作，顺序不可改）
@@ -17,6 +17,17 @@ cd /Users/xingguo/learning_backtrader
 ```
 
 4. **把脚本输出原样回传飞书**（成功/失败都原样回，不改写、不补充解释）
+
+## 待办快照（Windows 端开工前先拉）
+
+收到「同步待办 / 任务清单 / 有什么任务 / 待办」且**不含 `###FG:` 分片**时，只做 2 步：
+
+1. **运行单命令**：
+```bash
+cd /Users/xingguo/learning_backtrader
+.venv/bin/python scripts/push_todo.py
+```
+2. **把脚本输出的摘要原样回传飞书**（不改写、不加工；如需完整 docs 再让 Windows 端说"要完整待办"）
 
 **关键纪律**：
 - `fg_sync_tool.py` 是唯一入口（内部完成聚合→解压→白名单→冲突→入库→pytest→回传）
@@ -37,3 +48,4 @@ cd /Users/xingguo/learning_backtrader
 - 打包端（公司电脑）：`scripts/make_feishu_bundle.py`（分片 ≤8KB/条）
 - 解析核心：`scripts/restore_from_base64.py`（标记聚合/缺片检测/base64 解码）
 - 编排入口：`scripts/fg_sync_tool.py --quick`（加速版，增量 pytest <10s）
+- 待办快照：`scripts/push_todo.py`（读 docs/ 提炼 Windows 可做 + 等待型清单）

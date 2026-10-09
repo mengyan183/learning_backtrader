@@ -36,10 +36,8 @@
 
 | 优先级 | 任务 | 对应文档 | 说明 |
 |---|---|---|---|
-| 🔴 高 | 阶段 1️⃣ 规则敏感性分析（vectorbt 参数网格） | roadmap 量化路线 | 回测依赖已解除，纯本地计算；拉最新 main 后装 vectorbt 即可 |
-| 🔴 高 | 阶段 2️⃣ 量化手段变体回测（ATR/vol targeting/有效敞口/动能过滤） | roadmap 量化路线 | 走 C-1/C-2 变体+提案流程，结果飞书回传 |
+| 🟡 中 | 全量 pytest 回归（~900 用例） | NEXT-SESSION | Mac 只跑增量；Windows 全量更早暴露问题（阶段 1️⃣/2️⃣ 已由 Mac 完成 2026-10-09，不再列） |
 | 🟡 中 | B 类观察点数据分析（H-001 满 20 点后验证等） | blocked-registry B 类 | 数据 Mac 积累，Windows 做分析/汇总 |
-| 🟡 中 | 全量 pytest 回归（~900 用例） | NEXT-SESSION | Mac 只跑增量；Windows 全量更早暴露问题 |
 | 🟢 低 | 日常代码开发（dashboard/脚本/文档） | macos-deploy | 开发完走 fg-sync 打包回传 |
 
 ## C. 双端协作流程（公司 → Mac）
