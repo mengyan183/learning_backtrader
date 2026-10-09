@@ -68,7 +68,22 @@ OBSERVE_SYMBOLS = [
     "FAS",    # 金融 3×
     "TNA",    # 罗素 2000 3×
     "SQQQ",   # 纳指 -3×（反向，情绪极端反向候选）
+    "COIN",   # Coinbase（链上金融/交易所，2021-10 起价格齐备）
+    "HOOD",   # Robinhood（链上金融/证券入口，2026-10-09 补价 1305 行）
+    "CRCL",   # Circle（链上金融/稳定币，CRCG 底层，利率敏感标签候选）
 ]
+
+# 链上金融簇研究标签（🟡 研究参考，不进买卖信号；源自 2026-10-09 微信研读
+# 《COIN、HOOD、CRCL》：商业模式已分叉，交易量/TVL 排名易看错）
+ONCHAIN_FINANCE_TAGS = {
+    "COIN": {"cluster": "onchain_finance", "income_model": "交易费+订阅+排序器",
+             "note": "Base 生态最成熟，Q2 调整后仍亏损，生态未兑现为利润"},
+    "HOOD": {"cluster": "onchain_finance", "income_model": "证券入口交叉销售+排序器",
+             "note": "执行力最强，Q2 净利 5.73亿，13条业务线，PS 19.5x 预期已计入"},
+    "CRCL": {"cluster": "onchain_finance", "income_model": "USDC 储备收益(95%)",
+             "rate_sensitive": True,
+             "note": "利率敏感度最高：储备收益率 -66bp 直接压缩利润；Arc 支付网络早期"},
+}
 
 # 产品损耗率（费用+融资+跟踪误差），2016-2026 实测标定，须定期重标定（§17 风险 12）
 PRODUCT_COST_RATE = {"TQQQ": 0.0822, "SOXL": 0.0895, "UPRO": 0.0395}
