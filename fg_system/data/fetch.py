@@ -87,13 +87,24 @@ def _get(url, retries=None):
     """带**请求前节流**与**指数退避重试**的 GET。
 
     404 视为**永久失败**立即放弃（重试无意义，只会浪费限流额度）。
+
+    **2026-10-09 反爬修复**：Nasdaq 的 Akamai CDN 对 nasdaq.com 域名的
+    API 请求校验 `Referer`——不带浏览器式 Referer 的请求会被拒为
+    `rCode=400 "Symbol not exists"`（伪装错误，实际是反爬），导致 TQQQ
+    等标的批量抓取返回空表、行情停更。这里对 nasdaq.com 请求统一附加
+    浏览器式 Referer（与 UA 同源，模拟从官网详情页发起）。
     """
     retries = config.FETCH_RETRIES if retries is None else retries
     last = None
     for i in range(retries):
         _throttle()
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
+            headers = {"User-Agent": UA, "Accept": "*/*"}
+            if "nasdaq.com" in url:
+                # 反爬：必须带浏览器式 Referer，否则 rCode=400 "Symbol not exists"
+                headers["Referer"] = "https://www.nasdaq.com/market-activity/"
+                headers["Accept-Language"] = "en-US,en;q=0.9"
+            req = urllib.request.Request(url, headers=headers)
             with _opener(url).open(req, timeout=35) as r:
                 return r.read()
         except urllib.error.HTTPError as exc:
