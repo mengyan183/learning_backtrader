@@ -83,3 +83,23 @@ main agent 配置：`thinkingDefault=off` + `fastModeDefault=true`。
 - **日志中 streaming start failed / HTTP 400 完全消失** —— 关闭流式卡片修复生效，回复直发普通消息。
 - nvidia 首轮 19s（决策）+ 次轮 12.3s（输出），无 fallback/429。
 - 剩余瓶颈：deepseek-v4.1-flash 是推理型模型，API 层响应本身 ~12-19s/轮，agent 层 thinking=off 无法再压缩。
+
+## 追加（2026-10-09 11:20）：ClashX 代理故障导致链路卡死 + 修复
+
+### 现象
+11:12 预告消息 10 分钟无响应；日志 nvidia 连续 7 次 ConnectTimeout，任务超 5 分钟被逐出队列。
+
+### 根因（实测定位）
+1. OpenClaw 检测系统代理后自动注入 `HTTP_PROXY/HTTPS_PROXY/ALL_PROXY=http://127.0.0.1:7890`（在 `~/.openclaw/service-env/ai.openclaw.gateway.env`）。
+2. 本机运行 **ClashX**（PID 36274）监听 7890，但**其出口节点当前不可用** → 所有走代理的模型请求全部超时（nvidia、zai 双双超时）。
+3. 直连验证：`TCP 0.1s` / `curl nvidia API 200 0.5s` —— 网络本身正常，问题只在代理一跳。
+4. 仅本地 ollama（11434，NO_PROXY 白名单内）正常。
+
+### 修复
+`ai.openclaw.gateway.env` 的 NO_PROXY 追加模型域名：
+`integrate.api.nvidia.com,open.bigmodel.cn` → nvidia/zai 直连，绕过失效代理。
+重启 gateway（PID 40434），nvidia API 直连 0.5s 200。等用户实测。
+
+### 备注
+- ClashX 本身节点不可用，用户其他走代理的流量（如 Google）可能也受影响，需自行恢复/切换节点。
+- 若 OpenClaw 更新后重写 env 文件，此 NO_PROXY 追加会被覆盖，需复查。
