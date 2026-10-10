@@ -91,7 +91,7 @@ def ingest_package(pkg, total, chat_id):
     with open(sync_file, "w") as f:
         f.write(combined)
 
-    today = "2026-10-09"
+    today = __import__("datetime").date.today().isoformat()
     cmd = [
         os.path.join(REPO, ".venv", "bin", "python"),
         os.path.join(REPO, "scripts", "fg_sync_tool.py"),
