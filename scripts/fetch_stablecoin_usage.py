@@ -82,8 +82,7 @@ except Exception:                                     # pragma: no cover
     DEFAULT_PROXY = os.environ.get("FG_PROXY", "")
 
 DEFAULT_OUT = os.path.join(RAW_DIR, "stablecoin_usage.csv")
-# key 文件放在 Data/ 下，被 .gitignore 的 `Data/*token*`... 不覆盖，故用 `Data/stablecoin_key`
-# —— 需确认已在 .gitignore（本仓库 `.gitignore` 已含 `Data/*token*` 与显式凭据行）。
+# key 文件放在 Data/ 下，被 .gitignore 显式覆盖（`Data/stablecoin_key`，2026-10-10 WT-12 R-4 已补）
 KEY_FILE = os.path.join(REPO, "Data", "stablecoin_key")
 
 # 候选 A 的 base URL（免 key 首选）。联网核实后可用 STABLECOIN_API 覆盖。

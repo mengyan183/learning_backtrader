@@ -83,6 +83,7 @@ nul
 Data/tstoken
 Data/shoutu_token
 Data/newsapi_key
+Data/stablecoin_key
 Data/*token*
 *.token
 .env
