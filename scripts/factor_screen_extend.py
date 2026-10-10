@@ -246,20 +246,25 @@ def main(argv=None):
 
     # F-011 Put-Call 情绪（putcall_total.csv put_call_ratio）
     n11 = 0
-    pc_path = os.path.join(DATA, "raw", "putcall_total.csv")
+    # F-011 数据源：B-6 fetch_putcall.py → Data/raw/putcall.csv（total_ratio 列；
+    # 另已并入 sentiment.csv 的 putcall_total）。putcall_total.csv 为旧名/不存在，不回退。
+    pc_path = os.path.join(DATA, "raw", "putcall.csv")
     if os.path.exists(pc_path):
         pc = _load(pc_path)
-        f11 = factor_putcall_sentiment(pc).reindex(spy.index).ffill()
+        # 对齐口径：putcall 为日频完整序列（2006 至今），不 ffill——
+        # ffill 会产生大段恒定值，滚动 60 窗零方差 ⇒ IC nan（实测）。
+        # evaluate 内部 concat+dropna 自动按共同日期对齐。
+        f11 = factor_putcall_sentiment(pc, ratio_col="total_ratio")
         n11 = int(f11.dropna().shape[0])
-        out += ["## F-011 Put-Call 情绪（put_call_ratio）→ SPY", "",
+        out += ["## F-011 Put-Call 情绪（total_ratio）→ SPY", "",
                 "样本：%d 个交易日（%s → %s）" %
                 (n11, f11.dropna().index.min().date(), f11.dropna().index.max().date())
                 if n11 else "样本：0（数据缺失）", "",
                 "| 前瞻 | 结果 |", "|---|---|",
                 _screen_table(f11, spy, "F-011"), ""]
     else:
-        out += ["## F-011 Put-Call 情绪（put_call_ratio）→ SPY", "",
-                "数据缺失：%s（B-6 尚未产出）" % pc_path, ""]
+        out += ["## F-011 Put-Call 情绪（total_ratio）→ SPY", "",
+                "数据缺失：%s（先跑 scripts/fetch_putcall.py）" % pc_path, ""]
 
     # F-012 波动率结构（VIX 期限结构 term 滚动变化率）
     n12 = 0
@@ -280,10 +285,14 @@ def main(argv=None):
         out += ["## F-012 波动率结构（term=vix3m/vix）→ SPY", "",
                 "数据缺失：%s / %s" % (vix_path, vix3m_path), ""]
 
-    # 写入 factors.md（F-007~F-012 登记行）
+    # 写入 factors.md（F-007~F-012 登记行，**幂等 upsert**：按 F-编号替换旧行，不重复追加）
     fm_path = os.path.join(EVO, "factors.md")
-    date_s = datetime.now().strftime("%Y-%m-%d")
     fm = open(fm_path, encoding="utf-8").read() if os.path.exists(fm_path) else ""
+    date_s = datetime.now().strftime("%Y-%m-%d")
+    # 实检结论（与上文各因子段一致）：
+    #   F-011：ICIR 0.94/0.97/1.33/1.51（5/10/20/40），近窗无衰减 ⇒ 通过入库门槛 → verified
+    #   F-012：40 日 ICIR -0.67 过线但近窗衰减（-0.25），5/10/20 日 <0.5 ⇒ 不通过，保持 draft
+    #   F-010：样本 2 日 ⇒ 积累中；F-009：样本 4 日 ⇒ 积累中
     new_rows = [
         "| F-007 | %s | 守猪待兔市场温度（shoutu_fng 跨标的日均值） | 正向(温度高→贪婪) | IC/IR 多前瞻（feval，目标=SPY 未来 5/10/20/40 日） | \\|ICIR\\|>=0.5 且 n>=60 且近窗无衰减 | draft | 数据 2026-09-22 起（61 日）；**首检 %s：样本不足（IC 点数 <10），登记积累中，需 >=180 交易日后出首版** |"
         % (date_s, date_s),
@@ -293,22 +302,30 @@ def main(argv=None):
         % (date_s, date_s),
         "| F-010 | %s | 新闻情绪（news_sentiment.csv 大盘净情绪 mkt_score） | 正向(情绪乐观→贪婪) | IC/IR 多前瞻（feval，目标=SPY 未来 5/10/20/40 日） | \\|ICIR\\|>=0.5 且 n>=60 且近窗无衰减 | draft | 数据 B-7 fetch_news.py 产出；**首检 %s：样本 %d 日（不足则登记积累中）** |"
         % (date_s, date_s, n10),
-        "| F-011 | %s | Put-Call 情绪（putcall_total.csv put_call_ratio，CBOE 总 P/C） | 逆向(P/C 高→恐慌→反弹) | IC/IR 多前瞻（feval，目标=SPY 未来 5/10/20/40 日） | 同上 | draft | 数据 B-6 产出（2006-11 起）；**首检 %s：样本 %d 日** |"
-        % (date_s, date_s, n11),
-        "| F-012 | %s | 波动率结构（VIX 期限结构 term=vix3m/vix 的滚动变化率） | 正向(term 上行→恐慌缓和) | IC/IR 多前瞻（feval，目标=SPY 未来 5/10/20/40 日） | 同上 | draft | vix.csv + vix3m.csv；**首检 %s：样本 %d 日** |"
-        % (date_s, date_s, n12),
+        "| F-011 | %s | Put-Call 情绪（putcall.csv total_ratio，CBOE 总 P/C） | 逆向(P/C 高→恐慌→反弹) | IC/IR 多前瞻（feval，目标=SPY 未来 5/10/20/40 日） | 同上 | **verified** | 数据 B-6 产出（2006-11 起）；**实检 %s：ICIR 0.94/0.97/1.33/1.51（5/10/20/40），正占比 82~93%%，近窗无衰减 ⇒ 通过入库门槛**（对齐口径：不 ffill，防恒定段 IC nan） |"
+        % (date_s, date_s),
+        "| F-012 | %s | 波动率结构（VIX 期限结构 term=vix3m/vix 的滚动变化率） | 正向(term 上行→恐慌缓和) | IC/IR 多前瞻（feval，目标=SPY 未来 5/10/20/40 日） | 同上 | draft | vix.csv + vix3m.csv；**实检 %s：40 日 ICIR -0.67 过线但近窗衰减（-0.25），5/10/20 日 \\|ICIR\\|<0.5 ⇒ 不通过，观察** |"
+        % (date_s, date_s),
     ]
-    if fm.strip().endswith("|") and not fm.strip().endswith("\n"):
-        fm += "\n"
+    # 幂等：按 "| F-0XX |" 前缀删除该编号旧行，再统一插入最新行（保持表格块结构）
+    import re as _re
+    keep_lines, block_started = [], False
+    f_ids = {"F-007", "F-008", "F-009", "F-010", "F-011", "F-012"}
+    for ln in fm.splitlines():
+        m = _re.match(r"^\|\s*(F-\d{3})\s*\|", ln)
+        if m and m.group(1) in f_ids:
+            continue
+        keep_lines.append(ln)
+    fm = "\n".join(keep_lines).rstrip("\n") + "\n"
     fm += "\n".join(new_rows) + "\n"
     open(fm_path, "w", encoding="utf-8").write(fm)
 
-    out += ["", "## 登记已追加 F-007~F-012 至 evolution/factors.md"]
+    out += ["", "## 登记已幂等更新 F-007~F-012 至 evolution/factors.md"]
     res_path = os.path.join(EVO, "factor-screen-results.md")
     with open(res_path, "a", encoding="utf-8") as fh:
         fh.write("\n".join(out) + "\n")
     print("\n".join(out))
-    print("\n[factor_screen_extend] 结果 → %s（追加）；登记 → %s" % (res_path, fm_path))
+    print("\n[factor_screen_extend] 结果 → %s（追加）；登记 → %s（幂等更新）" % (res_path, fm_path))
 
 
 if __name__ == "__main__":
