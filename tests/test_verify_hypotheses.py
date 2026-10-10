@@ -52,8 +52,26 @@ def test_supported_registry_matches_help_list():
     """
     assert vh.SUPPORTED[:2] == ["H-005", "H-007"]      # 原案保留在前
     assert {"H-024", "H-025", "H-027", "H-029", "H-032"}.issubset(set(vh.HYPOTHESES))
-    for hid in vh.SUPPORTED:
-        assert hid in vh.SUPPORTED
+    # --help 的清单 = 新注册表 ∪ 原案两条：H-005/H-007 由 verify_h005/verify_h007
+    # 单独实现，**不在** HYPOTHESES 注册表里（实测 SUPPORTED=37 / HYPOTHESES=35）。
+    # 原写法 `assert hid in vh.SUPPORTED` 是**同义反复**（等于没断言）—— 2026-10-10 修。
+    assert set(vh.SUPPORTED) == set(vh.HYPOTHESES) | {"H-005", "H-007"}
+
+
+def test_registry_entries_wellformed_by_kind():
+    """按 kind 限定校验注册项（守卫别被整体删掉）。
+
+    WT-07 之前所有注册项都是触发率式，旧断言统一要求 `selector is not None`；
+    现在有 trigger / custom / pending 三类，笼统断言不再成立 ⇒ 改为**按 kind 分别校验**。
+    """
+    for hid, spec in vh.HYPOTHESES.items():
+        kind = spec.get("kind")
+        assert kind in ("trigger", "custom", "pending"), "%s kind=%r" % (hid, kind)
+        if kind == "trigger":
+            assert spec.get("selector") is not None, "%s 缺 selector" % hid
+            assert spec.get("pass_when"), "%s 缺 pass_when" % hid
+        elif kind == "custom":
+            assert hid in vh.CUSTOM, "%s 标为 custom 但不在 CUSTOM 里" % hid
 
 
 # ------------------------------------------------------------------ 2. dry-run 数据缺失
