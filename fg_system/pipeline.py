@@ -42,6 +42,11 @@ def load_wide(raw_dir=None, shift_inputs=0):
     vix3m = pd.read_csv(os.path.join(raw_dir, "vix3m.csv"), parse_dates=["date"]).set_index("date")
     wide[("VIX", "close")] = vix["close"].reindex(wide.index)
     wide[("VIX3M", "close")] = vix3m["close"].reindex(wide.index)
+    # F-011 Put-Call（B-6 链路，CBOE 总 P/C 比）：与 vix 同路径入宽表，
+    # 随 shift 整体后移 ⇒ 平移测试（前视偏差校验）对 putcall 因子同样成立。
+    putcall = pd.read_csv(os.path.join(raw_dir, "putcall.csv"),
+                          parse_dates=["date"]).set_index("date")
+    wide[("PUT_CALL", "ratio")] = putcall["total_ratio"].reindex(wide.index)
     wide = wide.sort_index()
 
     if shift_inputs:

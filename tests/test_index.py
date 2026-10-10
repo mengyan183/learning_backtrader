@@ -66,18 +66,18 @@ def test_smoothing_days_one_is_identity():
     assert idx.smooth(s, 1).equals(s)
 
 
-def test_build_factors_returns_five_named_factors():
+def test_build_factors_returns_six_named_factors():
     names = [f.name for f in idx.build_factors()]
-    assert names == ["vix", "term", "price", "breadth", "fed"]
+    assert names == ["vix", "term", "price", "breadth", "fed", "putcall"]
     assert set(names) == set(config.WEIGHTS.keys())
 
 
 # ---------------------------------------------------------------- v2 多市场
 
 def test_build_factors_for_us_equity_unchanged():
-    """大盘因子集合必须与 config.WEIGHTS 完全一致（v2 起含 fed）。"""
+    """大盘因子集合必须与 config.WEIGHTS 完全一致（v2.7 起含 putcall）。"""
     names = [f.name for f in index.build_factors_for("us_equity")]
-    assert names == ["vix", "term", "price", "breadth", "fed"]
+    assert names == ["vix", "term", "price", "breadth", "fed", "putcall"]
 
 
 def test_build_factors_for_crypto():

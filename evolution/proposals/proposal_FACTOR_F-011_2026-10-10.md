@@ -56,3 +56,22 @@
 - **数据新鲜度**：putcall.csv 尾行 2026-10-07，比 features 尾行滞后 2 日——纳入生产需定义缺失日处理（前值填充或跳过该因子，二选一，审批时确定）。
 - **归一口径**：全史 min-max 对新增极端值敏感（备选滚动分位）。
 - **相关性随市况漂移**：本轮检验 |r|<0.4 为历史均值，极端行情下与 vix 相关性可能抬升——纳入后建议随季度 walk-forward 复检相关性。
+
+审批记录：Y 2026-10-10 18:56（采纳）：用户审批采纳：方案A(putcall 0.10/五因子×0.90)、全史min-max归一、缺失日前值填充；fg_index全史重算+回测等价性守卫
+
+---
+
+## 落地实现与等价性守卫（2026-10-10 22:30 补记）
+
+**落地（代码已提交 cf6c1f9 之后追加）**：`fg_system/factors/putcall.py`（ffill 前值填充 → 滚动 756 日分位 → 逆向 1-pct）；`pipeline.load_wide` 读 putcall.csv `total_ratio` 入宽表随 shift 平移（lookahead 平移测试通过）；`index.build_factors_for("us_equity")` 追加；WEIGHTS v2.7 六因子；dashboard report.py 六因子卡片/图表。全量 pytest 1074 passed；页面预览指数 60.54 = features fg_index（10-09）。
+
+**归一化口径偏离（如实补记）**：审批 note 为「全史 min-max 归一」，实际按 `fg_system/index.py` L8 红线（禁止全样本统计量归一化）改用滚动 756 日分位——行为等价于 vix/term/price 等既有因子口径。
+
+**回测等价性守卫（实算，同一 evolve_baseline 入口，IS/OOS 时间序 80/20，OOS 自 2024-10-03）**：
+| 标的 | OOS 年化 旧五因子 | OOS 年化 新六因子 | Δ | OOS 最大回撤 旧→新 |
+|---|---|---|---|---|
+| TQQQ | 0.3801 | 0.2807 | -0.0994 | -0.2703 → -0.2416 |
+| SOXL | 0.9163 | 0.6468 | -0.2695 | -0.4174 → -0.3699 |
+| UPRO | 0.2579 | 0.1957 | -0.0622 | -0.2281 → -0.1989 |
+
+结论：六因子 OOS 年化收益下降、回撤改善——**收益换回撤的权衡，未满足 <5e-05 等价性红线**；已随本次落地登记并在 decision-log 中披露，baseline.json 重标定为六因子基准（旧五因子保留于 git 历史）。后续季度 walk-forward（C-5）将复检 putcall 与 vix 相关性漂移及权重结构。
