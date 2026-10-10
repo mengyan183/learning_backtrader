@@ -11,19 +11,23 @@
     trend_blocked_crypto 的 True 占比 ≥50% 判成立与否。
     覆盖：H-024 / H-025 / H-029 / H-032（WT-05）+ **H-037 / H-040**（WT-07）。
   - ``custom``：形态与触发率不同，单独实现。
-    **H-010 / H-012**（极值依赖 / 切换点判据）+ H-013~H-015 / H-019~H-021。
+    **H-010 / H-012**（极值依赖 / 切换点判据）+ H-013~H-015 / H-019~H-021
+    + **H-031**（fed 方向变化 × CRCL 后续收益 t 检验）。
   - ``pending``：**数据源未接入或样本不足** ⇒ 走「等待数据」分支，dry-run 报
     「数据缺失（路径）」，不硬凑结论。
     覆盖：H-006 / H-008 / H-009 / H-011 / H-016 / H-017 / H-018 / H-022 / H-023
-    / H-026 / H-028 / H-030 / H-031 / H-033 / H-034 / H-035 / H-036 / H-038
+    / H-026 / H-028 / H-030 / H-033 / H-034 / H-035 / H-036 / H-038
     / H-039 / H-041。
 
 **数据可用性（本机实测 2026-10-10）**：`features.csv`（2513 行，至 2026-09-18）
 与 `portfolio_features.csv`（2518 行，至 2026-09-25）齐备；`positions.csv` /
 `accounts.csv` **仅 2026-09-22 一日快照** ⇒ 一切「多日快照 / 账户盈亏」类判据
 无样本（H-006/008/009/011/016/017/018/022/023/028/033/038/039）；
-`features.csv` **无 fed 列**、**无 position_multiplier 列** ⇒ H-031/H-035/H-041 缺列；
+`features.csv` **无 position_multiplier 列** ⇒ H-035/H-041 缺列；
 TVL / 稳定币使用效率数据源**未接入** ⇒ H-030/H-034 等待数据。
+⚠️ H-031（fed × CRCL）：**Mac 端 `features.csv` 已有 `fed` 列**，本机旧数据缺列。
+实现为 ``custom``：有 `fed` 列 ⇒ 真算并做 t 检验给 `adopted`/`falsified`；
+无 `fed` 列 ⇒ 返回 `pending`，原因写「数据缺失（路径）」+ 指出缺的是 fed 列。
 
 **口径声明（必须先读）**
 
@@ -96,6 +100,12 @@ AMPLITUDE_WINDOW = 10                               # H-013 滚动振幅窗口�
 CORE_DOUBLE = 0.225                                 # H-020 core_position 翻倍档
 SWITCH_ZONE = 2.0                                   # H-015/H-021 zone 降档目标
 MIN_SNAPSHOT_DAYS = 2                               # 多日快照类判据最小观察点
+
+# H-031（fed 方向变化 × CRCL 后续收益）阈值（先验，禁止优化）。
+H031_HORIZONS = (4, 8, 16)      # 检验方法指定的前瞻窗口（交易日）
+H031_ALPHA = 0.05               # 显著性水平：p ≤0.05 才认为有显著影响
+H031_MIN_EVENTS = 5             # 方向变化事件日的最小样本
+H031_MIN_BASE = 20              # 基线（全样本前瞻收益）的最小样本
 
 
 class DataMissingError(Exception):
@@ -464,6 +474,124 @@ def verify_h021(df):
             "note": note}
 
 
+def verify_h031(df):
+    """H-031：fed 方向变化前后 CRCL 后续 4/8/16 日收益差异（t 检验）。
+
+    检验方法（hypotheses.md）：关联 fed 因子（features.fed）与 CRCL 价格/收益
+    序列，比较 fed 方向变化前后 4/8/16 日 CRCL 收益差异。
+
+    口径（照 hypotheses.md，不发明）：
+      - 「方向」= sign(fed 日差分)：涨(+1) / 跌(-1) / 平(0)。
+      - 「方向变化事件日」= 当日方向与上一日方向不同（含 0↔±1 切换）。
+      - 「后续 H 日收益」= close.shift(-H)/close - 1（事件日起 H 个交易日后）。
+      - 基线 = CRCL 全样本各 H 日前瞻收益。
+      - t 检验：对每个 horizon 做**独立双样本 Welch t 检验**
+        （事件组 vs 基线），α=0.05。
+
+    判定：
+      - 无 `fed` 列 ⇒ status=pending，原因「数据缺失（路径）」+ 缺 fed 列。
+      - 任一 horizon p ≤0.05 ⇒ adopted（方向变化对后续收益有显著影响）。
+      - 全部 horizon p >0.05 ⇒ falsified（判据「无显著影响 ⇒ 不成立」）。
+      - 事件 / 基线样本不足 ⇒ insufficient。
+    数据一律走 `fg_system.config` 路径。
+    """
+    # 1) fed 列缺失 ⇒ 明确报「数据缺失（路径）」+ 缺列原因（保持可解释）。
+    if "fed" not in df.columns:
+        return {
+            "status": "pending",
+            "passed": None,
+            "reason": "数据缺失（路径）：%s（缺列 fed）" % config.FEATURES_PATH,
+            "note": ("数据缺失（路径）：%s 无 fed 列（因子未落库）。"
+                     "H-031 需 features.fed 与 CRCL 收益序列关联；"
+                     "本机旧数据缺列，Mac 端已有 fed 列。" % config.FEATURES_PATH),
+        }
+
+    # 2) CRCL 价格序列（走 config 路径）。
+    prices_path = os.path.join(config.RAW_DIR, "prices.csv")
+    if not os.path.exists(prices_path):
+        raise DataMissingError(prices_path)
+    prices = pd.read_csv(prices_path, parse_dates=["date"])
+    crcl = prices[prices["symbol"] == "CRCL"].set_index("date").sort_index()
+    if crcl.empty:
+        return {
+            "status": "insufficient",
+            "passed": None,
+            "n_events": 0, "n_base": 0,
+            "note": "prices.csv 无 CRCL 价格序列 ⇒ 样本不足，无法判定。",
+        }
+
+    fed = df["fed"].dropna()
+    if fed.empty:
+        return {
+            "status": "insufficient",
+            "passed": None,
+            "n_events": 0, "n_base": 0,
+            "note": "features.fed 全为空值 ⇒ 样本不足，无法判定。",
+        }
+
+    # 3) 方向变化事件日（sign 差分切换）。first_day 不构成「变化」⇒ 排除。
+    direction = np.sign(fed.diff()).fillna(0.0)
+    changed = direction.ne(direction.shift())
+    if len(changed):
+        changed.iloc[0] = False
+    event_dates = fed.index[changed]
+    event_dates = event_dates[event_dates.isin(crcl.index)]
+
+    # 4) 各 horizon 的前瞻收益；事件组 vs 基线 Welch t 检验。
+    close = crcl["close"].astype(float)
+    results = {}
+    p_values = []
+    for h in H031_HORIZONS:
+        fwd = close.shift(-h) / close - 1.0            # H 日前瞻收益
+        fwd = fwd.dropna()
+        base = fwd                                    # 基线 = 全样本
+        ev = fwd.reindex(event_dates).dropna()
+        n_ev, n_base = int(len(ev)), int(len(base))
+        if n_ev >= H031_MIN_EVENTS and n_base >= H031_MIN_BASE:
+            from scipy import stats as _st
+            t_stat, p_val = _st.ttest_ind(ev.to_numpy(), base.to_numpy(),
+                                          equal_var=False)
+            t_stat = float(t_stat) if t_stat == t_stat else None
+            p_val = float(p_val) if p_val == p_val else None
+        else:
+            t_stat, p_val = None, None
+        if p_val is not None:
+            p_values.append(p_val)
+        results["h%d" % h] = {
+            "n_events": n_ev, "n_base": n_base,
+            "mean_event": float(ev.mean()) if n_ev else None,
+            "mean_base": float(base.mean()) if n_base else None,
+            "t": t_stat, "p": p_val,
+        }
+
+    n_ev_total = int(sum(r["n_events"] for r in results.values()))
+    n_base_max = int(max(r["n_base"] for r in results.values()))
+    if not p_values:
+        return {
+            "status": "insufficient", "passed": None,
+            "n_events": n_ev_total, "n_base": n_base_max,
+            "horizons": results,
+            "note": ("样本不足：方向变化事件日 %d（需 ≥%d）/ 基线 %d（需 ≥%d），"
+                     "无法做 t 检验。" % (n_ev_total, H031_MIN_EVENTS,
+                                        n_base_max, H031_MIN_BASE)),
+        }
+
+    adopted = any(p <= H031_ALPHA for p in p_values)
+    note = ("检验方法：fed 方向 = sign(日差分)；方向变化事件日 → CRCL 后续 "
+            "4/8/16 日收益（close.shift(-H)/close-1）vs 全样本基线，各 horizon "
+            "独立双样本 Welch t 检验，α=%.2f。任一 p ≤%.2f ⇒ 有显著影响 ⇒ 成立；"
+            "全部 p >%.2f ⇒ 无显著影响 ⇒ 不成立（不成立判据）。"
+            % (H031_ALPHA, H031_ALPHA, H031_ALPHA))
+    return {
+        "status": "ok",
+        "passed": bool(adopted),
+        "verdict": "adopted" if adopted else "falsified",
+        "n_events": n_ev_total, "n_base": n_base_max,
+        "horizons": results,
+        "note": note,
+    }
+
+
 # 单独实现（custom）的假说：id -> (runner, desc, fields)
 CUSTOM = {
     "H-010": (verify_h010, "zone 由 fg_index 固定边界驱动且边界稳定（区间重叠率 ≤20%）",
@@ -481,6 +609,8 @@ CUSTOM = {
               "core_position + trend_blocked_us/trend_blocked_crypto"),
     "H-021": (verify_h021, "zone=2.0 区间与 fg_index 回落区间时间重合",
               "zone + fg_index"),
+    "H-031": (verify_h031, "fed 方向变化前后 CRCL 后续 4/8/16 日收益差异（t 检验）",
+              "features.fed + CRCL 价格（prices.csv）"),
 }
 
 
@@ -542,6 +672,8 @@ HYPOTHESES = {
               "fields": CUSTOM["H-020"][2]},
     "H-021": {"kind": "custom", "desc": CUSTOM["H-021"][1],
               "fields": CUSTOM["H-021"][2]},
+    "H-031": {"kind": "custom", "desc": CUSTOM["H-031"][1],
+              "fields": CUSTOM["H-031"][2]},
     # ---------------------------------------------------------- 挂起（数据缺失）
     "H-027": {
         "kind": "pending",
@@ -588,9 +720,6 @@ PENDING = {
               "Data/accounts.csv（本机仅 1 日快照）"),
     "H-030": ("量价-资金背离（价格/成交上涨而 TVL 未跟随）分组对比",
               "DeFi TVL 数据源未接入（B 类待数据）"),
-    "H-031": ("fed 因子方向变化前后 CRCL 收益差异（样本 338/240）",
-              "features.csv 无 fed 列（因子未落库；CRCL 价格样本已 330 行，"
-              "缺的是 fed 输入）"),
     "H-033": ("币股经营现金流型 vs Crypto Beta 型分组后续收益差异",
               "币股上市不足一年，市场下跌期样本不足"),
     "H-034": ("稳定币使用效率 = 链上月交易量/流通量 的领先性 IC",
@@ -620,18 +749,28 @@ SUPPORTED = ["H-005", "H-007"] + _TRIGGER_IDS + _CUSTOM_IDS + _PENDING_IDS
 
 
 def _run_custom(df, hid):
-    """跑一条单独实现的假说，返回 (meta, text_block)。"""
+    """跑一条单独实现的假说，返回 (meta, text_block)。
+
+    runner 可在结果里带 ``status``（默认 "ok"）声明挂起 / 样本不足
+    （如 H-031 缺 fed 列 ⇒ "pending"）；``reason`` 作为挂起原因。
+    """
     runner, desc, fields = CUSTOM[hid]
     result = runner(df)
     passed = result.get("passed")
-    meta = {"id": hid, "status": "ok", "passed": passed, "result": result}
+    status = result.get("status", "ok")
+    meta = {"id": hid, "status": status, "passed": passed, "result": result}
+    if result.get("reason"):
+        meta["reason"] = result["reason"]
     verdict = ("无法判定" if passed is None
                else ("成立" if passed else "不成立"))
-    text = ["### %s" % hid,
+    text = ["### %s%s" % (hid, "（挂起）" if status == "pending" else ""),
             "- 判据：%s" % desc,
             "- 字段：%s" % fields]
+    if result.get("reason"):
+        text.append("- 状态：%s" % result["reason"])
+    _skip = ("passed", "note", "status", "reason", "verdict")
     for key, val in result.items():
-        if key in ("passed", "note"):
+        if key in _skip:
             continue
         text.append("- %s：%s" % (key, val))
     text += ["- 判定：%s" % verdict, "- 口径声明：%s" % result["note"]]

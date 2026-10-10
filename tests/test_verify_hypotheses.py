@@ -480,11 +480,23 @@ def test_h037_trigger_rate_at_greed():
 
 # ---------------------------------------------------------- pending / 等待数据
 def test_waiting_data_hypotheses_are_pending():
-    """数据源未接入 / 样本不足 ⇒ status=pending 且标注数据缺失，不硬凑结论。"""
-    for hid in ("H-030", "H-031", "H-034", "H-006", "H-008", "H-009"):
+    """数据源未接入 / 样本不足 ⇒ status=pending 且标注数据缺失，不硬凑结论。
+
+    ⚠️ 2026-10-10 修订：H-031 已从「挂起」改为 ``custom``（Mac 端 features.csv
+    已有 fed 列；本机旧数据缺列时由 verify_h031 在运行时返回 pending）。故从
+    本清单移除 H-031 —— 其 pending 属**运行时数据判定**，不再是静态分类。
+    """
+    for hid in ("H-030", "H-034", "H-006", "H-008", "H-009"):
         spec = vh.HYPOTHESES[hid]
         assert spec["kind"] == "pending", hid
         assert spec.get("missing_dep"), hid
+
+
+def test_h031_is_custom_not_pending():
+    """H-031 现在登记为单独实现（custom），不再硬编码挂起。"""
+    spec = vh.HYPOTHESES["H-031"]
+    assert spec["kind"] == "custom"
+    assert "H-031" in vh.CUSTOM
 
 
 def test_verify_any_pending_returns_pending_status():
@@ -508,3 +520,113 @@ def test_all_supported_hypotheses_run_without_crash():
         else:
             meta, text = vh.verify_revised(df, hid)
             assert meta["id"] == hid
+
+
+# ================================================================== H-031 mock 验证
+# 验收：带 fed 列的 mock 数据 ⇒ H-031 跑出 adopted/falsified/insufficient；
+# 不带 fed ⇒ 报「数据缺失（路径）」+ fed 缺列原因。全部走 tmp_path mock，
+# 不读真实 Data/。
+def _write_mock_data(tmp_path, with_fed):
+    """造 mock features.csv + portfolio_features.csv + raw/prices.csv（含 CRCL）。
+
+    with_fed=False 时 features.csv 不含 fed 列。
+    返回 (features_path, portfolio_path, raw_dir)。
+    """
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    # CRCL 价格：80 个交易日，构造明显可检验的收益模式。
+    n = 80
+    dates = pd.date_range("2025-06-02", periods=n, freq="B")
+    # 交替涨跌 + 趋势，保证前瞻收益有方差。
+    close = [100.0 + 3.0 * (i % 2) + 0.5 * i for i in range(n)]
+    prices = pd.DataFrame({
+        "date": dates, "symbol": ["CRCL"] * n,
+        "open": close, "high": close, "low": close,
+        "close": close, "volume": [1000] * n,
+    })
+    prices.to_csv(raw / "prices.csv", index=False)
+
+    # features：fed 因子随时间切换方向（+1/-1），触发行情。
+    # fed 走一个「升—降—升—降」的锯齿，制造方向变化事件日。
+    fed = []
+    for i in range(n):
+        phase = (i // 10) % 2
+        fed.append(1.0 + phase * 0.5 * (1 if (i % 10) < 5 else -1))
+    fcols = {"date": dates, "fg_index": [50.0] * n, "zone": [2] * n,
+             "core_position": [0.225] * n, "target_position": [0.4] * n}
+    if with_fed:
+        fcols["fed"] = fed
+    pd.DataFrame(fcols).to_csv(tmp_path / "features.csv", index=False)
+
+    pd.DataFrame({
+        "date": dates, "fg_index": [50.0] * n,
+        "us_core": [0.18] * n, "core_position": [0.225] * n,
+        "target_position": [0.4] * n,
+        "trend_blocked_us": [False] * n,
+        "trend_blocked_crypto": [False] * n,
+    }).to_csv(tmp_path / "portfolio_features.csv", index=False)
+    return (str(tmp_path / "features.csv"),
+            str(tmp_path / "portfolio_features.csv"), str(raw))
+
+
+def _patch_paths(monkeypatch, tmp_path, with_fed):
+    feats, pf, raw = _write_mock_data(tmp_path, with_fed)
+    monkeypatch.setattr(config, "FEATURES_PATH", feats)
+    monkeypatch.setattr(config, "PORTFOLIO_FEATURES_PATH", pf)
+    monkeypatch.setattr(config, "RAW_DIR", raw)
+    return feats
+
+
+def test_h031_runs_with_mock_fed_column(monkeypatch, tmp_path):
+    """验收：带 fed 列 ⇒ H-031 不再挂起，跑出 adopted/falsified/insufficient。"""
+    _patch_paths(monkeypatch, tmp_path, with_fed=True)
+    df = vh.load_features()
+    assert "fed" in df.columns
+    meta, text = vh.verify_revised(df, "H-031")
+    assert meta["status"] in ("ok", "insufficient"), meta
+    assert meta["status"] != "pending"
+    assert "数据缺失" not in " ".join(text)
+    # 有足够样本时应给明确判定（成立了/不成立）。
+    if meta["status"] == "ok":
+        assert meta["passed"] in (True, False)
+        assert meta["result"]["verdict"] in ("adopted", "falsified")
+    else:
+        assert meta["result"]["note"]      # insufficient ⇒ 仍给可解释说明
+
+
+def test_h031_horizons_and_stats_present(monkeypatch, tmp_path):
+    """带 fed 列时输出 4/8/16 日各 horizon 的 t / p 与样本数。"""
+    _patch_paths(monkeypatch, tmp_path, with_fed=True)
+    df = vh.load_features()
+    out = vh.verify_h031(df)
+    assert out["status"] in ("ok", "insufficient")
+    hs = out["horizons"]
+    for h in vh.H031_HORIZONS:
+        key = "h%d" % h
+        assert key in hs, key
+        assert "n_events" in hs[key] and "n_base" in hs[key]
+
+
+def test_h031_pending_when_fed_column_missing(monkeypatch, tmp_path):
+    """验收：不带 fed 列 ⇒ 报「数据缺失（路径）」+ 缺 fed 列原因。"""
+    feats = _patch_paths(monkeypatch, tmp_path, with_fed=False)
+    df = vh.load_features()
+    assert "fed" not in df.columns
+    meta, text = vh.verify_revised(df, "H-031")
+    assert meta["status"] == "pending"
+    joined = " ".join(text)
+    assert "数据缺失（路径）" in joined
+    assert "fed" in joined
+    assert feats in joined          # 路径可指回
+
+
+def test_h031_help_classified_as_custom_not_pending(capsys):
+    """验收：--help 里 H-031 出现在「单独实现」类，不再在「挂起」类。"""
+    with pytest.raises(SystemExit) as ei:
+        vh.build_arg_parser().parse_args(["--help"])
+    assert ei.value.code == 0
+    out = capsys.readouterr().out
+    custom_line = [ln for ln in out.splitlines() if "单独实现" in ln][0]
+    pending_line = [ln for ln in out.splitlines() if ln.strip().startswith("- 挂起")][0]
+    assert "H-031" in custom_line
+    assert "H-031" not in pending_line
