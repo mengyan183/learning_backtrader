@@ -648,7 +648,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
                        if external else "未录入（不影响其他功能）"),
         index_json=_json(index_points),
         factors_json=_json({
-            k: [(d.strftime("%Y-%m-%d"), float(v)) for d, v in valid[k].items()]
+            k: [(d.strftime("%Y-%m-%d"), float(v)) for d, v in valid[k].dropna().items()]
             for k in ["vix", "term", "price", "breadth", "fed"] if k in valid.columns
         }),
         position_json=_json([

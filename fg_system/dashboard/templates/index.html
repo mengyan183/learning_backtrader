@@ -202,15 +202,27 @@ const EXTERNAL = {{ external_json }};
         return i;
       }
       function calc() {
-        var sw = 0, sws = 0;
+        var sw = 0, sws = 0, sw_eff = 0;
         FKEYS.forEach(function (k) {
           var w = parseFloat(document.querySelector(
             ".w-slider[data-k='" + k + "']").value) / 100;
           sw += w;
-          if (last[k] !== null) { sws += w * last[k]; }
+          var lv = last[k];
+          // NaN/undefined 视为数据缺口：跳过该因子，且不计入有效权重分母
+          // （修复：features 尾行 price 为空 → 后端序列化 NaN → 原逻辑 NaN!==null 判真
+          //   ⇒ sws += w*NaN ⇒ 预览指数 NaN）
+          if (lv !== null && lv !== undefined && !isNaN(lv)) {
+            sws += w * lv;
+            sw_eff += w;
+          }
         });
-        if (sw <= 0) { return; }
-        var v = sws / sw;
+        if (sw_eff <= 0) {
+          idxEl.textContent = "--";
+          zoneEl.textContent = "数据不足";
+          zoneEl.style.color = "#888";
+          return;
+        }
+        var v = sws / sw_eff;
         idxEl.textContent = v.toFixed(1);
         var zi = zoneOf(v);
         zoneEl.textContent = ZONE_TXT[zi];
