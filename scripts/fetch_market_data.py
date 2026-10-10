@@ -46,10 +46,11 @@ def opener():
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
-    return urllib.request.build_opener(
-        urllib.request.ProxyHandler({"http": PROXY, "https": PROXY}),
-        urllib.request.HTTPSHandler(context=ctx),
-    )
+    handlers = [urllib.request.HTTPSHandler(context=ctx)]
+    # FG_PROXY 显式设为空字符串（如 Mac 本地直连）时跳过代理，避免公司代理不可达挂死
+    if PROXY:
+        handlers.insert(0, urllib.request.ProxyHandler({"http": PROXY, "https": PROXY}))
+    return urllib.request.build_opener(*handlers)
 
 
 OP = opener()
