@@ -30,7 +30,7 @@
 | B-7 | 新闻/社媒情绪（Market Mood） | 需 API key | **2026-10-08 解锁落地**：NewsAPI 免费档 key 已申请（100 请求/天，key 存 Data/newsapi_key 已 gitignore）；fetch_news.py 拉大盘/加密/持仓标的新闻，确定性词表打分 → news_sentiment.csv（mkt/crypto 正负计数+score，🟡 研究参考，候选 E1 情绪子信号，未经回测裁判不进合成权重） | ✅ 完成 |
 | B-8 | 极端规则校准（85 熔断 / 10 极恐） | 需积累实盘快照做参数校准 | 快照积累 + OOS 变体验证（红线：OOS 禁直接调参） | 🟡 |
 | B-9 | H-033 币股「经营现金流 vs Crypto Beta」分层验证 | 观察池币股（CRCL/HOOD/COIN）样本不足（CRCL 上市 <18 个月） | 样本积累后按收益-BTC 相关性分组比较（2026-10-09 登记，🟡 研究参考） | 🟡 |
-| B-10 | H-034 稳定币「使用效率」指标验证 | 稳定币链上交易量数据源未接入 | 接入数据源后构造使用效率 = 链上月交易量/USDC 流通量，检验对币股后续收益领先性（2026-10-09 登记，🟡 研究参考） | 🟡 |
+| B-10 | H-034 稳定币「使用效率」指标验证 | ~~稳定币链上交易量数据源未接入~~ → **2026-10-10 数据链路已接入**：scripts/fetch_stablecoin_usage.py（CoinGecko 365 日，直连失败自动走代理 7890）+ Data/raw/stablecoin_usage.csv（口径=USDC 成交量/流通市值，CEX 现货代理；DefiLlama 流通量交叉校验偏差 -0.15%，同日去重）；build_usage 纯函数测试 3 passed | 样本积累后检验对 CRCL/HOOD 后续 4/8/16 日收益领先性（2026-10-09 登记，🟡 研究参考） | ✅ 数据链路已接入，待样本验证 |
 | B-11 | H-035 / H-040 / H-041 口径缺陷 + 未登记阻塞 | **登记口径缺陷**（WT-12 差异 3，2026-10-10）：三条 open 假说引用已判不存在的列——H-035/H-041 用 `position_multiplier`（2026-10-08 B-4 审计确认不存在）、H-040 用「AXTX 浮亏」列（results 明示 features/portfolio_features 无此列）；`verify_hypotheses.py --help` 已把三者列入「挂起（数据缺失/样本不足）」，但 blocked-registry 无登记 | **口径修订**：H-035/H-041 的 position_multiplier 按 B-4/WT-01 口径映射真实列（zone/core_position），H-040 明确 AXTX 浮亏数据来源（Data/positions.csv 持仓快照）或标 pending-revise；修订完成前不得按字面跑 | ✅ **2026-10-10 修订完成**（commit 8b3e2a1）：H-035/H-041 position_multiplier → core_position（真实列）、布尔位/恐惧贪婪数值 → extreme/fg_index（H-037 同源一并修订）；H-040 数据源改为 Data/positions.csv（cost 88.499 vs price 26.47 → 浮亏 **-70.1%**，纠正原登记 -25.1% 的现价当成本错误）。假说状态 open，待按修订口径验证 |
 
 ## C 类：回测恢复后解锁（第二层 + 远期）— 依赖已解除，可实施
