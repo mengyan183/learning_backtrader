@@ -101,17 +101,39 @@ def _count_deffi_tvl():
 
 
 def _count_fed_direction_samples():
-    """H-031：需 `features.fed` 因子与 CRCL 价格配对。features.csv 无 fed 列 ⇒ 0。"""
+    """H-031：数「fed 因子方向变化」次数（检验方法要求 fed 方向变化前后对比）。
+
+    注意：**不是**数 CRCL 价格天数——检验单位是 fed 方向变化（转折），
+    而非标的价格有值的天数。fed 因子在样本区间近乎恒定 ⇒ 可用样本极少。
+    """
     path = config.FEATURES_PATH
     if not os.path.exists(path):
         return 0, "-"
+    rows = {}
     with open(path, newline="", encoding="utf-8") as f:
-        cols = next(csv.reader(f), [])
-    if "fed" not in cols:
+        for r in csv.DictReader(f):
+            try:
+                rows[r["date"]] = float(r["fed"])
+            except (KeyError, TypeError, ValueError):
+                continue
+    if not rows:
         return 0, "-"
-    # fed 列存在才按价格配对计数（当前不可能走到）。
-    return _count_dates(
-        os.path.join(config.RAW_DIR, "prices.csv"), symbols={"CRCL"})
+    dates = sorted(rows)
+    changes = 0
+    first_change = last_change = None
+    prev = rows[dates[0]]
+    for d in dates[1:]:
+        v = rows[d]
+        if abs(v - prev) > 1e-9:
+            changes += 1
+            if first_change is None:
+                first_change = d
+            last_change = d
+        prev = v
+    if not changes:
+        return 0, "fed 因子在样本区间内无任何方向变化"
+    span = "%s → %s" % (first_change, last_change)
+    return changes, span
 
 
 def _count_crypto_beta_samples():
