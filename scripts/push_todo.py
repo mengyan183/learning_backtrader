@@ -57,25 +57,28 @@ def parse_waiting():
 
 
 def parse_win_tasks():
-    """dual-end-workflow.md 的「B. Windows 可做」表中可分流任务。"""
+    """docs/windows-tasks.md「待做任务」表中状态非 ✅ 的具体任务（编号+任务名）。"""
     tasks = []
-    path = os.path.join(REPO, "docs", "dual-end-workflow.md")
+    path = os.path.join(REPO, "docs", "windows-tasks.md")
     try:
         with open(path, encoding="utf-8") as f:
-            in_b = False
+            in_todo = False
             for line in f:
-                if line.startswith("## B. Windows 可做"):
-                    in_b = True
+                if line.startswith("## 待做任务"):
+                    in_todo = True
                     continue
-                if in_b and line.startswith("## "):
+                if in_todo and line.startswith("## "):
                     break
-                if in_b:
-                    # 第二列 = 任务名（第一列 = "🔴 高" 等优先级）
-                    m = re.match(r"\|\s*[🔴🟡🟢]\s*[^|]*?\|\s*(.+?)\s*\|", line)
+                if in_todo:
+                    # 行形如：| WT-01 | 任务名 | ... | 待做/进行中 |
+                    m = re.match(r"\|\s*(WT-\d+)\s*\|\s*(.+?)\s*\|", line)
                     if m:
-                        tasks.append(m.group(1).strip())
+                        name = m.group(2).strip()
+                        # 只收状态非 ✅ 的行（避免"已完成"区或误标）
+                        if not re.search(r"\|\s*✅\s*\|", line):
+                            tasks.append(f"{m.group(1)} {name}")
     except OSError as e:
-        tasks.append(("ERR", f"dual-end-workflow 读取失败：{e}"))
+        tasks.append(f"ERR windows-tasks 读取失败：{e}")
     return tasks
 
 

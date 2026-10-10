@@ -57,4 +57,4 @@ Windows 端是开发主力：写代码、本地计算、全量回归、数据分
 | 双端分工/流程 | `docs/dual-end-workflow.md` |
 | 打包回传 | `scripts/make_feishu_bundle.py`（≤8KB/片） |
 | 还原入库（Mac） | fg-sync skill → `scripts/fg_sync_tool.py --quick` |
-| 待办明细 | `docs/blocked-registry.md` / `docs/NEXT-SESSION.md` |
+| 待办明细 | `docs/windows-tasks.md`（具体任务清单） / `docs/blocked-registry.md` / `docs/NEXT-SESSION.md` |
