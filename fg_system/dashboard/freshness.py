@@ -18,7 +18,6 @@
 import os
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 from datetime import datetime
@@ -27,7 +26,7 @@ import pandas as pd
 
 from fg_system import config
 
-_LOG = os.path.join(tempfile.gettempdir(), "fg_dashboard_fresh.log")
+_LOG = "/tmp/fg_dashboard_fresh.log"
 _THROTTLE_SEC = 600          # 两次触发的间隔下限（10 分钟）
 # 2026-10-07 用户调整：交易日差 1 天即视为过期并触发（原来 3 天宽限）——
 # 数据落后最近交易日 ≥1 天 → 刷新时后台触发更新，尽快补齐。

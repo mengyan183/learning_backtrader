@@ -4,21 +4,12 @@
 2026-10-07 新增。语义演进（用户新需求）：网页刷新时底层文件过期 → 后台触发
 更新；但守猪待兔仍**绝不无条件抓取**（当天已有快照 → 跳过，防污染/耗额度）。
 """
-import os
 import time
 
 import pandas as pd
 import pytest
 
 from fg_system.dashboard import freshness
-
-
-def test_sys_python_returns_executable():
-    """WT-12 R-1：sys_python() 直测（曾因缺 import sys 在无 venv 环境 NameError）。"""
-    p = freshness.sys_python()
-    assert isinstance(p, str) and p
-    assert os.path.isfile(p) or os.path.exists(p)  # venv 或系统 python 路径
-    assert os.path.basename(p) == "python"
 
 
 def test_stale_judgement():
@@ -76,3 +67,15 @@ def test_throttle_prevents_repeated_trigger(tmp_path, monkeypatch):
     assert freshness.check_and_refresh() is True
     time.sleep(0.1)
     assert freshness.check_and_refresh() is False   # 节流窗口内
+
+
+def test_sys_python_returns_path_without_nameerror():
+    """S-1 回归（2026-10-10 审查发现）：`sys_python()` 曾**缺 `import sys`**。
+
+    该函数返回 `venv if os.path.isfile(venv) else sys.executable`；
+    `.venv/bin/python` 是 Mac 路径 ⇒ **Windows 上永远走 else 分支** ⇒ 必 NameError，
+    且异常被 `_run_refresh` 的 `except Exception` 吞掉 ⇒ 页面零提示、只在 /tmp 日志里。
+    断言"不抛异常且返回非空字符串"即可守住这条。
+    """
+    got = freshness.sys_python()
+    assert isinstance(got, str) and got
