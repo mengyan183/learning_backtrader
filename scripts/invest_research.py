@@ -621,6 +621,20 @@ def behavior_checklist(snap):
     return None
 
 
+def _human30_brief():
+    """🌱 Human 3.0 状态节（组合骨架）。无记录返回 None（不输出空板块）。"""
+    import sys as _sys
+    _sys.path.insert(0, str(REPO))
+    from fg_system import human30 as _h30
+    line = _h30.brief_line()
+    if not line:
+        return None
+    rec = _h30.latest()
+    adv = _h30.advice(rec, _h30.history(2)[-2] if len(_h30.history(2)) >= 2 else None)
+    return line + "\n" + "\n".join("· " + a for a in adv[:3]) + \
+        "\n（自评打卡：scripts/human30_cli.py --set --mind .. --body .. --spirit .. --vocation ..）"
+
+
 def _freshness_block():
     """读 Data/freshness_warning.txt（scripts/check_freshness.py 每日链写入）。
     有风险则返回告警文本，正常返回 None。"""
@@ -688,6 +702,10 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     _bc = behavior_checklist(snap)
     if _bc:
         secs.append(("🧠 行为检查清单", _bc))
+        secs.append("hr")
+    _h30 = _human30_brief()
+    if _h30:
+        secs.append(("🌱 Human 3.0 状态【自评记录】", _h30))
         secs.append("hr")
     secs.append(("🏛️ 美联储动态", _fed.fed_brief_text(_fctx)))
     secs.append("hr")

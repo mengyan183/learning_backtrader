@@ -18,6 +18,7 @@ from fg_system import config
 from fg_system import leverage
 from fg_system import fed
 from fg_system import risk as risk_mod
+from fg_system import human30
 from fg_system.dashboard import pwa
 
 ZONE_COLORS = ["#8b0000", "#d9534f", "#f0ad4e", "#5cb85c", "#006400"]
@@ -483,6 +484,53 @@ def _svg_line(points, width=900, height=260, pad=36, y_min=None, y_max=None,
         width, height, "".join(parts))
 
 
+def _human30_block():
+    """Human 3.0 状态卡（组合骨架）：Level 徽章 + 四象限数值 + 短板/建议。无记录时降级提示。"""
+    rec = human30.latest()
+    if not rec:
+        return ('<div class="card"><h3>🌱 Human 3.0</h3>'
+                '<p style="color:#888">尚无自评记录。打卡：'
+                '<code>python scripts/human30_cli.py --set --mind .. --body .. --spirit .. --vocation ..</code></p></div>')
+    agg = human30.aggregate(rec)
+    colors = {"mind": "#2b5da6", "body": "#a67c2b", "spirit": "#3a7d3a", "vocation": "#8a4a7a"}
+    quad_html = "".join(
+        '<div style="display:inline-block;min-width:130px;margin:4px 8px 4px 0;'
+        'padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px">'
+        '<div style="color:%s;font-weight:700">%s</div>'
+        '<div style="font-size:20px;font-weight:700">%.0f</div>'
+        '<div style="font-size:11px;color:#888">%s</div></div>'
+        % (colors[q], human30.LABELS[q], rec[q], "短板" if q == agg["weakest"] else "")
+        for q in human30.QUADRANTS)
+    adv = human30.advice(rec, human30.history(2)[-2] if len(human30.history(2)) >= 2 else None)
+    adv_html = "".join("<li>%s</li>" % a for a in adv[:3])
+    warn = ' <span style="color:#c62828;font-weight:700">⚠️ 失衡</span>' if agg["imbalanced"] else ""
+    return (
+        '<div class="card"><h3>🌱 Human 3.0'
+        ' <span style="background:%s;color:#fff;border-radius:10px;padding:2px 10px;font-size:12px">%s</span>%s</h3>'
+        '<p style="margin:2px 0 8px;color:#666;font-size:12px">%s · 最近打卡 %s · 四象限均分 %s</p>'
+        '<div>%s</div>'
+        '<details style="margin-top:6px"><summary style="cursor:pointer;font-size:13px">建议（规则化，无 LLM）</summary>'
+        '<ul style="margin:6px 0 0;padding-left:18px;font-size:13px">%s</ul></details>'
+        '<p style="margin:8px 0 0;font-size:12px;color:#888">记录文件：Data/human30.json（运行态不入库）· '
+        '打卡 CLI：scripts/human30_cli.py</p></div>'
+        % ("#2e7d32" if agg["level"] == 3 else "#f9a825" if agg["level"] == 2 else "#888",
+           agg["level_name"], warn, agg["level_desc"], rec["date"], agg["avg"],
+           quad_html, adv_html))
+
+
+def _human30_json():
+    """前端趋势图数据：最近 30 天四象限 + 均分。"""
+    recs = human30.history(30)
+    return {
+        "labels": [human30.LABELS[q] for q in human30.QUADRANTS],
+        "keys": human30.QUADRANTS,
+        "dates": [r["date"] for r in recs],
+        "series": {q: [r[q] for r in recs] for q in human30.QUADRANTS},
+        "avg": [round(sum(r[q] for q in human30.QUADRANTS) / 4.0, 1) for r in recs],
+        "latest": recs[-1] if recs else None,
+    }
+
+
 def _factors_block(valid):
     keys = [k for k in ["vix", "term", "price", "breadth", "fed", "putcall"] if k in valid.columns]
     if not keys:
@@ -646,6 +694,8 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         loss=_loss_block(prices),
         external_note=("已录入 %d 条外部指数记录" % len(external)
                        if external else "未录入（不影响其他功能）"),
+        human30=_human30_block(),
+        human30_json=_json(_human30_json()),
         index_json=_json(index_points),
         factors_json=_json({
             k: [(d.strftime("%Y-%m-%d"), float(v)) for d, v in valid[k].dropna().items()]

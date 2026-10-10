@@ -42,10 +42,18 @@
 <div class="sec"><p>{{ external_note }}</p></div>
 </div>
 
+<div class="sec-wrap" data-name="Human 3.0">
+<h2>🌱 Human 3.0 状态</h2>
+<div class="sec">{{ human30 }}</div>
+<h2>四象限趋势（最近 30 次打卡）</h2>
+<div class="sec"><div id="chartHuman30" class="echart-main"></div></div>
+</div>
+
 <nav class="tabbar">
 <button class="tab-btn on" data-tab="0">市场</button>
 <button class="tab-btn" data-tab="1">持仓</button>
 <button class="tab-btn" data-tab="2">系统</button>
+<button class="tab-btn" data-tab="3">Human 3.0</button>
 </nav>
 
 <script>
@@ -53,6 +61,7 @@ const INDEX = {{ index_json }};
 const FACTORS = {{ factors_json }};
 const POSITION = {{ position_json }};
 const EXTERNAL = {{ external_json }};
+const HUMAN30 = {{ human30_json }};
 (function () {
   var tabs = document.querySelectorAll(".tab-btn");
   var wraps = document.querySelectorAll(".sec-wrap");
@@ -160,6 +169,43 @@ const EXTERNAL = {{ external_json }};
           colorStops: [{ offset: 0, color: "rgba(210,153,34,.30)" },
                        { offset: 1, color: "rgba(210,153,34,0)" }] } }
       }]
+    });
+  }
+
+  if (document.getElementById("chartHuman30") && HUMAN30 && HUMAN30.dates && HUMAN30.dates.length) {
+    var h30 = echarts.init(document.getElementById("chartHuman30"));
+    window.__charts.push(h30);
+    var HCOLORS = ["#58a6ff", "#d29922", "#7ee787", "#bc8cff", "#f85149"];
+    var hseries = [];
+    for (var hi = 0; hi < HUMAN30.keys.length; hi++) {
+      (function (i) {
+        var k = HUMAN30.keys[i];
+        hseries.push({
+          name: HUMAN30.labels[i], type: "line",
+          data: HUMAN30.series[k], smooth: true, symbol: "none",
+          lineStyle: { width: 1.8, color: HCOLORS[i] }
+        });
+      })(hi);
+    }
+    hseries.push({
+      name: "四象限均分", type: "line",
+      data: HUMAN30.avg, smooth: true, symbol: "none",
+      lineStyle: { width: 2.4, color: HCOLORS[4], type: "dashed" }
+    });
+    h30.setOption({
+      backgroundColor: "transparent",
+      color: HCOLORS,
+      legend: { top: 0, textStyle: { color: TEXT, fontSize: 11 },
+                data: HUMAN30.labels.concat(["四象限均分"]) },
+      grid: { left: 6, right: 12, top: 34, bottom: 6, containLabel: true },
+      tooltip: Object.assign({ trigger: "axis" }, tip),
+      xAxis: { type: "category", boundaryGap: false, data: HUMAN30.dates,
+        axisLine: { lineStyle: { color: BORDER } },
+        axisLabel: { color: SUB, fontSize: 10 } },
+      yAxis: { type: "value", min: 0, max: 100,
+        axisLabel: { color: SUB, fontSize: 10 },
+        splitLine: { lineStyle: { color: SPLIT } } },
+      series: hseries
     });
   }
 

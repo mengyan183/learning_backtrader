@@ -111,3 +111,6 @@ tests/test_pre_commit_syntax.py
 # 只用来冒烟「本机 → 飞书 → Mac」同步链路，内容就一句 assert True ✓
 # （已用 URL-safe 分片实测走通：入库 ✓ + Mac pytest 通过 ✓）
 tests/company_sync_test.py
+
+# ---- Human 3.0 自评记录（运行态，不入库；结构与代码在仓库，数据留本地）----
+Data/human30.json
