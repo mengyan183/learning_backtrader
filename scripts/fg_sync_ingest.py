@@ -237,18 +237,30 @@ def main():
         print("⚠️ 未找到 .venv/bin/python，跳过 pytest（同步本身已成功）。")
         return 0
 
-    # 增量模式：由已入库文件推导相关测试文件（tests/test_<模块>.py）
+    # 增量模式：由已入库文件推导相关测试文件（tests/**/test_<模块>*.py 递归前缀匹配）
     if args.quick:
+        import glob as _glob
         related = set()
         for rel in copied:
             base = os.path.basename(rel)
             if base.startswith("test_"):
-                related.add(os.path.join(args.repo, "tests", base))
+                # 新测试文件可能在子目录（tests/dashboard/ 等）：glob 定位真实路径，
+                # 不生成平铺 tests/test_xxx.py（不存在 ⇒ pytest not found）。
+                exact = _glob.glob(os.path.join(args.repo, "tests", "**", base),
+                                   recursive=True)
+                for p in exact:
+                    if os.path.isfile(p):
+                        related.add(p)
                 continue
             stem = os.path.splitext(base)[0]
-            cand = os.path.join(args.repo, "tests", "test_" + stem + ".py")
-            if os.path.exists(cand):
-                related.add(cand)
+            # 递归前缀匹配（tests/dashboard/、tests/signal/ 等子目录 + _warning/_key 等语义后缀）：
+            # 旧逻辑 tests/test_<stem>.py 平铺精确匹配 ⇒ 子目录/后缀测试全漏，生成不存在路径
+            # ⇒ pytest "file or directory not found" ⇒ 增量假失败（2026-10-10 sync_1010k 实测）。
+            hits = _glob.glob(os.path.join(args.repo, "tests", "**", "test_" + stem + "*.py"),
+                              recursive=True)
+            for p in hits:
+                if os.path.isfile(p):
+                    related.add(p)
         # 白名单兜底：同步链路自身测试恒跑
         for always in ("test_fg_sync_ingest.py", "test_restore_from_base64.py"):
             p = os.path.join(args.repo, "tests", always)
