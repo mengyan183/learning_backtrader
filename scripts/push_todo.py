@@ -57,7 +57,7 @@ def parse_waiting():
 
 
 def parse_win_tasks():
-    """docs/windows-tasks.md「待做任务」表中状态非 ✅ 的具体任务（编号+任务名）。"""
+    """docs/windows-tasks.md「待做任务」表中状态非 ✅ 的任务（编号+任务名+说明摘要）。"""
     tasks = []
     path = os.path.join(REPO, "docs", "windows-tasks.md")
     try:
@@ -70,13 +70,14 @@ def parse_win_tasks():
                 if in_todo and line.startswith("## "):
                     break
                 if in_todo:
-                    # 行形如：| WT-01 | 任务名 | ... | 待做/进行中 |
-                    m = re.match(r"\|\s*(WT-\d+)\s*\|\s*(.+?)\s*\|", line)
+                    # 行形如：| WT-01 | 任务名 | 说明 | 验收 | 状态 |
+                    m = re.match(r"\|\s*(WT-\d+)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|", line)
                     if m:
-                        name = m.group(2).strip()
+                        num, name, desc = m.group(1), m.group(2).strip(), m.group(3).strip()
                         # 只收状态非 ✅ 的行（避免"已完成"区或误标）
                         if not re.search(r"\|\s*✅\s*\|", line):
-                            tasks.append(f"{m.group(1)} {name}")
+                            desc_short = desc if len(desc) <= 40 else desc[:37] + "…"
+                            tasks.append(f"{num} {name} — {desc_short}")
     except OSError as e:
         tasks.append(f"ERR windows-tasks 读取失败：{e}")
     return tasks
