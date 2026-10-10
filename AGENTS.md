@@ -74,3 +74,21 @@
 - [ ] 数字有来源、事实可追溯
 - [ ] 结构超过 3 部分时有图
 - [ ] 未改动非授权文件
+
+## 6. 本机运行判据（Windows 端，2026-10-10 实测固化）
+
+### 6.1 长任务必须脱离会话运行
+
+1. 前台跑长任务，工具超时会中断它。实测发飞书分片断在 8/13。
+2. `nohup … &` 不够。调用结束后进程仍被杀。
+3. `setsid` 不可用。Git Bash 报 `command not found`。
+4. 正确做法：写 `.bat`，再用 `cmd start "" <bat>` 启动新窗口。
+5. 长任务脚本必须自带断点参数，如 `feishu_send.py --start N`。没有断点，中断后只能从头重跑。
+
+### 6.2 新增脚本先设输出编码
+
+1. 脚本 `print` 非 ASCII 时，Windows 默认 GBK 直接崩。
+2. 实测两次：`UnicodeEncodeError: 'gbk' codec can't encode '✓'`。
+3. 正确做法：运行前设 `PYTHONIOENCODING=utf-8`。
+4. 也可在脚本内调用 `sys.stdout.reconfigure(encoding="utf-8")`。
+5. 不要等报错再改。先设编码，再运行脚本。
