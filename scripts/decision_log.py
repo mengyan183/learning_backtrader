@@ -54,7 +54,11 @@ def _latest_state():
         if s.get("last_extreme_fear_date"):
             out["last_extreme_fear_date"] = s["last_extreme_fear_date"]
         return out
-    except Exception:
+    except Exception as e:
+        # G-4（WT-12 审查）：state.json 读失败原本静默返回 {} ⇒ 决策日志会
+        # 悄悄丢掉熔断/极恐状态。降级保留，但必须留一行线索。
+        print("[decision_log] 读 state.json 失败（按无状态处理）: %s" % e,
+              file=sys.stderr)
         return {}
 
 
@@ -74,7 +78,11 @@ def _latest_positions():
                 q["qty"] = float(r["qty"])
             rows.append(q)
         return {"date": str(latest.date()), "rows": rows}
-    except Exception:
+    except Exception as e:
+        # G-4：持仓读失败原本静默返回 {} ⇒ 日志里"无持仓"与"读不到持仓"
+        # 长得一模一样（后者会让仓位判断凭空消失）。
+        print("[decision_log] 读 positions.csv 失败（按无持仓处理）: %s" % e,
+              file=sys.stderr)
         return {}
 
 

@@ -28,7 +28,7 @@ HERMES_URL = "http://127.0.0.1:8642/v1/chat/completions"
 NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 NIM_MODEL = "deepseek-ai/deepseek-v4.1-flash"
 PROXY = "http://127.0.0.1:7890"
-FEISHU_OPEN_ID = os.environ.get("FEISHU_OPEN_ID", "")  # open_id 不落源码树（WT-12 G-3）；缺值时推送前显式报错
+FEISHU_OPEN_ID = "ou_c4f5cd25e5001a853309524e899dd6d2"
 OKX_TICKER_URL = "https://www.okx.com/api/v5/market/ticker?instId={sym}"
 # 公司电脑只跑静态数据时置 1，禁止任何外部行情 API（富途/OKX）
 STATIC_ONLY = os.environ.get("FG_STATIC_ONLY", "0") == "1"
@@ -87,7 +87,10 @@ def _okx_ticker(sym):
         if out and open24 and float(open24):
             out["day_chg_pct"] = round((float(last) / float(open24) - 1) * 100, 2)
         return out
-    except Exception:
+    except Exception as e:
+        # G-4（WT-12 审查）：降级设计保留（返回 None），但**不得静默** ——
+        # "调用失败"与"合法空结果"压成同一个 None 会让排障无从下手。
+        print("[okx_ticker] 取价失败（按无数据处理）: %s" % e, file=sys.stderr)
         return None
 
 
@@ -334,7 +337,10 @@ def stage_attribution(nim_key, snap):
                         max_tokens=4096, proxy=PROXY, timeout=300, retries=1)
             clean = _clean_attribution(out)
         return clean
-    except Exception:
+    except Exception as e:
+        # G-4：LLM 失败与"输出被清洗判定为空"原本不可区分 ⇒ 记一行原因。
+        print("[stage_attribution] 归因失败（按无数据处理）: %s" % e,
+              file=sys.stderr)
         return None
 
 
@@ -396,7 +402,10 @@ def _rss_titles(url, limit, timeout=20):
             if len(titles) >= limit:
                 break
         return titles
-    except Exception:
+    except Exception as e:
+        # G-4：RSS 取不到标题是**可接受的降级**，但静默会让"源挂了"看起来
+        # 像"今天没新闻"。
+        print("[_rss_titles] 取标题失败（按空列表处理）: %s" % e, file=sys.stderr)
         return []
 
 
@@ -903,8 +912,6 @@ def _send_feishu(msg_type, content_obj):
         headers={"Content-Type": "application/json"}, method="POST",
     )
     token = json.loads(urllib.request.urlopen(token_req, timeout=15).read())["tenant_access_token"]
-    if not FEISHU_OPEN_ID:
-        raise RuntimeError("FEISHU_OPEN_ID 未设置（环境变量），无法推送飞书")
     msg_url = "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id"
     body = {"receive_id": FEISHU_OPEN_ID, "msg_type": msg_type,
             "content": json.dumps(content_obj, ensure_ascii=False)}

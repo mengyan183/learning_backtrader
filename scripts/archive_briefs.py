@@ -28,7 +28,11 @@ def _brief_summary(path):
     """取简报标题行与首个二级标题作为索引摘要。"""
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
-    except Exception:
+    except Exception as e:
+        # G-4：读不到就退回文件名，但**说一声** —— 否则索引里静默少一摘要，
+        # 没人知道是文件坏了还是本来就没内容。
+        print("[archive_briefs] 读取 %s 失败（摘要留空）: %s" % (path, e),
+              file=sys.stderr)
         return ""
     title = next((l.lstrip("# ").strip() for l in lines if l.startswith("# ")), path.name)
     sub = next((l.lstrip("# ").strip() for l in lines if l.startswith("## ")), "")

@@ -663,8 +663,30 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
 
     # 每个表格套横向滚动容器：窄屏下宽表不撑破页面（手机端必需）。
     # 用后处理而不是改各个 _*_block：表格分散在 6 处，集中处理不会漏。
-    return re.sub(r"""(<table class=['"]card['"]>.*?</table>)""",
+    html = re.sub(r"""(<table class=['"]card['"]>.*?</table>)""",
                   r'<div class="scroll">\1</div>', html, flags=re.S)
+
+    # G-1（WT-12 审查）：`docs/system-boundary.md` §5 要求「警告存在时，
+    # 简报/看板**顶部必须展示**，不得假装数据是最新的」。简报侧做到了
+    # （`invest_research._freshness_block`），看板侧此前**没有** ⇒ 手机在数据
+    # 停更时仍显示"最新"。这里补顶部告警条（与上面的表格后处理同法：不改模板，
+    # 6 个区块分散，集中处理不会漏）。
+    from html import escape as _esc          # 局部导入：本文件局部变量名 `html`
+    warn = ""
+    try:
+        with open(os.path.join(config.DATA_DIR, "freshness_warning.txt"),
+                  encoding="utf-8") as f:
+            warn = f.read().strip()
+    except OSError:
+        warn = ""
+    if warn:
+        banner = ('<div class="freshness-warn" style="background:#c62828;color:#fff;'
+                  'padding:10px 14px;font-weight:bold">⚠️ 数据停更风险：%s</div>'
+                  % _esc(warn))
+        html = (re.sub(r"(<body[^>]*>)", lambda m: m.group(1) + banner,
+                       html, count=1)
+                if "<body" in html else banner + html)
+    return html
 
 
 def build(features, path=None, title="贪婪恐惧指数仪表盘", prices_path=None):

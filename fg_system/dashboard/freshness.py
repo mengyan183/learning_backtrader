@@ -40,8 +40,12 @@ def _log(msg):
     try:
         with open(_LOG, "a", encoding="utf-8") as f:
             f.write("%s %s\n" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), msg))
-    except Exception:
-        pass
+    except Exception as e:
+        # G-4（WT-12 审查）：日志写失败**不得完全静默** —— 日志是后台刷新的
+        # 唯一排障出口（S-1 的 NameError 就是被这里吞掉才长期不可见）。
+        # 只降级到 stderr，**绝不向上抛**：`_log` 在后台线程里被调用，
+        # 抛异常会直接杀掉刷新线程。
+        print("[freshness] 日志写入失败 %s: %s" % (_LOG, e), file=sys.stderr)
 
 
 # ---------------------------------------------------------------- 新鲜度判定
@@ -52,7 +56,11 @@ def _last_date(path, col="date"):
             return None
         d = pd.read_csv(path, usecols=[col], parse_dates=[col])
         return d[col].max() if len(d) else None
-    except Exception:
+    except Exception as e:
+        # G-4：解析失败与"文件缺失"都返回 None，但**必须可区分** ——
+        # 否则 CSV 损坏会被当成"数据还没到"，静默变成"不触发刷新"。
+        print("[freshness] 读取 %s 失败（按缺失处理）: %s" % (path, e),
+              file=sys.stderr)
         return None
 
 

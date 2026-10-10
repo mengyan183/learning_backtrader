@@ -9,7 +9,25 @@ fg_system/signal/portfolio.py（组合级）。本模块保留的原因是：
 重构已验收的代码是纯风险——v2 的拆分不应该让 v1 的行为产生任何不确定性。
 
 硬性约定（§3.4）：纯函数 + 显式状态。禁止读写全局变量或文件。
+
+--------------------------------------------------------------------
+**退役条件**（R-5，WT-12 审查：死代码/兼容层不得永久堆积）：
+
+本模块**只允许**被两处引用 —— `fg_system/signal/__init__.py`（向后兼容
+重导出）与 `tests/**`（v1 行为回归）。`tests/signal/test_compat.py`
+以测试锁住这条约束：一旦**生产代码**直接 import 本模块，测试立刻失败。
+
+满足下列**全部**条件即可整体删除本文件（同时从 `signal/__init__.py`
+的导入里摘掉，并在 `docs/trading-discipline.md` 记录删除决策）：
+
+1. 全仓搜索「signal.legacy / from .legacy / import legacy」只剩 tests；
+2. v1 的调用方（历史脚本 / 外部笔记本）确认已全部迁移到 v2
+   （`market_signal` + `portfolio`）或已废弃；
+3. `tests/signal/test_compat.py` 与 `tests/test_signal.py` 中对 v1 的
+   断言一并删除（届时 v1 不再有任何消费者）。
+--------------------------------------------------------------------
 """
+__deprecated__ = True   # 兼容层标记：新代码**不得**依赖（R-5）
 import math
 from dataclasses import dataclass, field
 

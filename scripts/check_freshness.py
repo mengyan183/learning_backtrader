@@ -11,6 +11,7 @@ features.csv 停在 09-29 而无任何告警。此脚本为同类事故的自动
 """
 import csv
 import os
+import sys
 from datetime import date
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,7 +54,10 @@ def main():
     with open(WARN, "w", encoding="utf-8") as f:
         f.write(warn + "\n")
     print(warn or f"数据新鲜：features={fd} prices={pd_}")
+    # R-7：有告警必须**返回非零** —— 否则每日链拿不到停更信号，
+    # 停更的唯一可见出口只剩简报（结合 G-1 修好前的看板盲区，等于全盲）。
+    return 1 if issues else 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

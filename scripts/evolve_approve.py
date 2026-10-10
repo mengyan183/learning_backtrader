@@ -124,7 +124,11 @@ def push_pending(chat="海外投资助手", dry_run=False):
                      % (i, p["sym"], p["vk"], p["verdict"],
                         os.path.basename(p["path"])))
     lines.append("")
-    lines.append("审批：scripts/evolve_approve.py --approve <file> --status Y|N|Z --log")
+    # R-2（WT-12 审查）：提示必须与 main() 的真实必填项一致 ——
+    # `--approve` 缺 `--status` 会**直接 exit(1)**，原提示没写这一条，
+    # 人工审批（C-3 的关键门控）会照提示敲完却发现命令报错。
+    lines.append("审批：scripts/evolve_approve.py --approve <file> --status Y|N|Z [--log]"
+                 "（--status 必填，缺则退出 1）")
     body = "\n".join(lines)
 
     pkg = "approve_" + dt.datetime.now().strftime("%m%d")

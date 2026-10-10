@@ -96,8 +96,10 @@ def main():
             n_good = 0
             n_total = 0
             rows = []
+            # R-3：`apply_variant` 是纯函数（与窗口无关）⇒ 提到窗口循环外，
+            # 原来每个季度窗都重算一遍（窗多时纯浪费）。
+            fv = vmod.apply_variant(feat, pf, vk) if pf is not None else feat
             for (a, b) in windows:
-                fv = vmod.apply_variant(feat, pf, vk) if pf is not None else feat
                 window = fv.loc[a:b]
                 if len(window) < 30:
                     continue

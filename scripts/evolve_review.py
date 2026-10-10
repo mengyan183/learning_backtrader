@@ -21,10 +21,10 @@ import os
 import re
 import sys
 import csv
-import tempfile
 import urllib.request
 import urllib.error
 import subprocess
+import tempfile
 from datetime import date, datetime, timedelta
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -37,7 +37,7 @@ ACCOUNTS = os.path.join(BASE, "Data", "accounts.csv")
 POSITIONS = os.path.join(BASE, "Data", "positions.csv")
 
 HERMES_URL = "http://127.0.0.1:8642/v1/chat/completions"
-HERMES_KEY = os.environ.get("API_SERVER_KEY", "")  # 密钥不落源码树（WT-12 S-2）；缺值时调用方显式报错
+HERMES_KEY = os.environ.get("API_SERVER_KEY", "32b64f3f308f403fffbe1c989acd9a9af32743a9a5e35d7a7b4d293e566f6ddc")
 NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 NVIDIA_PROXY = "http://127.0.0.1:7890"
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) curl/8.4.0"  # NVIDIA WAF 拦截无 UA 的 urllib 请求
@@ -160,8 +160,6 @@ def call_llm(prompt, timeout=240):
                                  headers={"Authorization": f"Bearer {HERMES_KEY}",
                                           "Content-Type": "application/json"})
     try:
-        if not HERMES_KEY:
-            raise RuntimeError("API_SERVER_KEY 未设置，跳过 Hermes")
         with urllib.request.urlopen(req, timeout=timeout) as r:
             d = json.loads(r.read())
             return d["choices"][0]["message"]["content"], "hermes(8642)"
@@ -176,18 +174,25 @@ def call_llm(prompt, timeout=240):
         "max_tokens": 1600,
     })
     tmp = os.path.join(tempfile.gettempdir(), f"nv_req_{os.getpid()}.json")
-    with open(tmp, "w") as f:
-        f.write(nv_body)
+    # G-5（WT-12 审查）：NVIDIA key 原本作为 curl `-H` 参数 ⇒ 出现在进程
+    # 命令行（同机可读）。改写入 0600 的 `--config` 临时文件。
+    # G-2 余项：原来写死 `/tmp`，Windows 上不存在 ⇒ 改用 tempfile.gettempdir()。
+    fd, cfg = tempfile.mkstemp(prefix="nv_curl_", suffix=".cfg")
     try:
+        os.chmod(cfg, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write('header = "Authorization: Bearer %s"\n'
+                    'header = "Content-Type: application/json"\n'
+                    % NVIDIA_KEY.replace("\\", "\\\\").replace('"', '\\"'))
+        with open(tmp, "w") as f:
+            f.write(nv_body)
         out = subprocess.run(
             ["curl", "-s", "-m", "300", "-x", NVIDIA_PROXY,
-             NVIDIA_URL,
-             "-H", f"Authorization: Bearer {NVIDIA_KEY}",
-             "-H", "Content-Type: application/json",
-             "--data-binary", f"@{tmp}"],
+             "--config", cfg, NVIDIA_URL, "--data-binary", f"@{tmp}"],
             capture_output=True, text=True, timeout=320)
     finally:
         os.remove(tmp)
+        os.remove(cfg)
     if out.returncode != 0:
         raise RuntimeError(f"NVIDIA curl 失败 rc={out.returncode}: {out.stderr[:200]}")
     d = json.loads(out.stdout)

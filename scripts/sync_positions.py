@@ -174,22 +174,38 @@ def _okx_request(creds, path):
     import hashlib
     import hmac
     import subprocess
+    import tempfile
     import datetime
 
-    ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    ts = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     sig = base64.b64encode(
         hmac.new(creds["secret"].encode(),
                  (ts + "GET" + path).encode(), hashlib.sha256).digest()
     ).decode()
-    cmd = ["curl", "-s", "-m", "30", "https://www.okx.com" + path,
-           "-H", "OK-ACCESS-KEY: " + creds["api_key"],
-           "-H", "OK-ACCESS-SIGN: " + sig,
-           "-H", "OK-ACCESS-TIMESTAMP: " + ts,
-           "-H", "OK-ACCESS-PASSPHRASE: " + creds["passphrase"],
-           "-H", "Content-Type: application/json"]
-    if creds.get("proxy"):
-        cmd[1:1] = ["-x", creds["proxy"]]
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=35)
+    # G-5（WT-12 审查）：凭据**不得**出现在 curl 的 argv 里 —— 同机任意进程
+    # （`ps aux` / 任务管理器）都能读到 api_key / 签名 / passphrase，等于把
+    # 密钥文件 0600 的保护整个绕开。改用 `--config` 临时文件（0600，用完即删）；
+    # argv 里只留 `-x` 代理（无凭据）。
+    def _q(v):
+        return str(v).replace("\\", "\\\\").replace('"', '\\"')
+
+    cfg_lines = ['header = "OK-ACCESS-KEY: %s"' % _q(creds["api_key"]),
+                 'header = "OK-ACCESS-SIGN: %s"' % _q(sig),
+                 'header = "OK-ACCESS-TIMESTAMP: %s"' % _q(ts),
+                 'header = "OK-ACCESS-PASSPHRASE: %s"' % _q(creds["passphrase"]),
+                 'header = "Content-Type: application/json"']
+    fd, cfg = tempfile.mkstemp(prefix="okx_curl_", suffix=".cfg")
+    try:
+        os.chmod(cfg, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write("\n".join(cfg_lines) + "\n")
+        cmd = ["curl", "-s", "-m", "30", "--config", cfg,
+               "https://www.okx.com" + path]
+        if creds.get("proxy"):
+            cmd[1:1] = ["-x", creds["proxy"]]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=35)
+    finally:
+        os.remove(cfg)
     if r.returncode != 0:
         raise RuntimeError(f"curl 失败: {r.stderr[:150]}")
     return json.loads(r.stdout or "{}")

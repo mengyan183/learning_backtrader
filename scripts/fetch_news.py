@@ -50,8 +50,18 @@ SYM_KEYWORDS = {
 
 
 def read_key():
+    """key 优先取环境变量 `NEWSAPI_KEY`，其次 `Data/newsapi_key`。
+
+    R-6（WT-12 审查）：key 进 URL query string 是 NewsAPI 官方约束（改不了
+    header），但**来源**不该只有文件一个 —— env 注入便于临时/CI 运行，且与
+    `fg_system/data/shoutu.py::load_token` 的既有约定一致（env 优先、文件兜底）。
+    """
+    env = os.environ.get("NEWSAPI_KEY", "").strip()
+    if env:
+        return env
     if not os.path.exists(KEY_FILE):
-        sys.exit("Data/newsapi_key 不存在：请先申请 NewsAPI key 并写入该文件")
+        sys.exit("NEWSAPI_KEY 未设且 Data/newsapi_key 不存在："
+                 "请申请 NewsAPI key 后写入环境变量或该文件")
     with open(KEY_FILE, encoding="utf-8") as f:
         return f.read().strip()
 
