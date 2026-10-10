@@ -324,7 +324,8 @@ def check_alert(sym, st):
 def _acquire_single_instance():
     """flock 单实例锁：拿不到即退出（防 launchd/手动多实例重复告警）。"""
     import fcntl
-    lock_path = "/tmp/fg_realtime.lock"
+    import tempfile
+    lock_path = os.path.join(tempfile.gettempdir(), "fg_realtime.lock")
     fd = open(lock_path, "w")
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)

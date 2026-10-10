@@ -31,6 +31,7 @@
 | B-8 | 极端规则校准（85 熔断 / 10 极恐） | 需积累实盘快照做参数校准 | 快照积累 + OOS 变体验证（红线：OOS 禁直接调参） | 🟡 |
 | B-9 | H-033 币股「经营现金流 vs Crypto Beta」分层验证 | 观察池币股（CRCL/HOOD/COIN）样本不足（CRCL 上市 <18 个月） | 样本积累后按收益-BTC 相关性分组比较（2026-10-09 登记，🟡 研究参考） | 🟡 |
 | B-10 | H-034 稳定币「使用效率」指标验证 | 稳定币链上交易量数据源未接入 | 接入数据源后构造使用效率 = 链上月交易量/USDC 流通量，检验对币股后续收益领先性（2026-10-09 登记，🟡 研究参考） | 🟡 |
+| B-11 | H-035 / H-040 / H-041 口径缺陷 + 未登记阻塞 | **登记口径缺陷**（WT-12 差异 3，2026-10-10）：三条 open 假说引用已判不存在的列——H-035/H-041 用 `position_multiplier`（2026-10-08 B-4 审计确认不存在）、H-040 用「AXTX 浮亏」列（results 明示 features/portfolio_features 无此列）；`verify_hypotheses.py --help` 已把三者列入「挂起（数据缺失/样本不足）」，但 blocked-registry 无登记 | **口径修订**：H-035/H-041 的 position_multiplier 按 B-4/WT-01 口径映射真实列（zone/core_position），H-040 明确 AXTX 浮亏数据来源（Data/positions.csv 持仓快照）或标 pending-revise；修订完成前不得按字面跑 | 🔴 |
 
 ## C 类：回测恢复后解锁（第二层 + 远期）— 依赖已解除，可实施
 

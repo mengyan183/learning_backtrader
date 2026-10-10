@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import csv
+import tempfile
 import urllib.request
 import urllib.error
 import subprocess
@@ -36,7 +37,7 @@ ACCOUNTS = os.path.join(BASE, "Data", "accounts.csv")
 POSITIONS = os.path.join(BASE, "Data", "positions.csv")
 
 HERMES_URL = "http://127.0.0.1:8642/v1/chat/completions"
-HERMES_KEY = os.environ.get("API_SERVER_KEY", "32b64f3f308f403fffbe1c989acd9a9af32743a9a5e35d7a7b4d293e566f6ddc")
+HERMES_KEY = os.environ.get("API_SERVER_KEY", "")  # 密钥不落源码树（WT-12 S-2）；缺值时调用方显式报错
 NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 NVIDIA_PROXY = "http://127.0.0.1:7890"
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) curl/8.4.0"  # NVIDIA WAF 拦截无 UA 的 urllib 请求
@@ -159,6 +160,8 @@ def call_llm(prompt, timeout=240):
                                  headers={"Authorization": f"Bearer {HERMES_KEY}",
                                           "Content-Type": "application/json"})
     try:
+        if not HERMES_KEY:
+            raise RuntimeError("API_SERVER_KEY 未设置，跳过 Hermes")
         with urllib.request.urlopen(req, timeout=timeout) as r:
             d = json.loads(r.read())
             return d["choices"][0]["message"]["content"], "hermes(8642)"
@@ -172,7 +175,7 @@ def call_llm(prompt, timeout=240):
         "chat_template_kwargs": {"thinking": False},
         "max_tokens": 1600,
     })
-    tmp = os.path.join("/tmp", f"nv_req_{os.getpid()}.json")
+    tmp = os.path.join(tempfile.gettempdir(), f"nv_req_{os.getpid()}.json")
     with open(tmp, "w") as f:
         f.write(nv_body)
     try:

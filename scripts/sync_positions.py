@@ -176,7 +176,7 @@ def _okx_request(creds, path):
     import subprocess
     import datetime
 
-    ts = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+    ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
     sig = base64.b64encode(
         hmac.new(creds["secret"].encode(),
                  (ts + "GET" + path).encode(), hashlib.sha256).digest()

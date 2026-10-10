@@ -1,6 +1,7 @@
 """一次性入库：微信文章《COIN、HOOD、CRCL》要点 → ChromaDB yt_trading 集合。
 channel=wechat_article，与 YouTube 频道区分；kb_search 可检索。"""
 import sys
+import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -25,7 +26,7 @@ def chunk_text(text, size=400, overlap=60):
 def main():
     import chromadb
     from chromadb.utils.embedding_functions import OllamaEmbeddingFunction
-    text = Path("/tmp/wx_article.txt").read_text(encoding="utf-8")
+    text = Path(tempfile.gettempdir(), "wx_article.txt").read_text(encoding="utf-8")
     client = chromadb.PersistentClient(path=str(DB_DIR))
     emb = OllamaEmbeddingFunction(url=OLLAMA_URL, model_name=EMBED_MODEL)
     col = client.get_or_create_collection(COLLECTION, embedding_function=emb)

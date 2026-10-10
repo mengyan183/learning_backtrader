@@ -28,7 +28,7 @@ HERMES_URL = "http://127.0.0.1:8642/v1/chat/completions"
 NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 NIM_MODEL = "deepseek-ai/deepseek-v4.1-flash"
 PROXY = "http://127.0.0.1:7890"
-FEISHU_OPEN_ID = "ou_c4f5cd25e5001a853309524e899dd6d2"
+FEISHU_OPEN_ID = os.environ.get("FEISHU_OPEN_ID", "")  # open_id 不落源码树（WT-12 G-3）；缺值时推送前显式报错
 OKX_TICKER_URL = "https://www.okx.com/api/v5/market/ticker?instId={sym}"
 # 公司电脑只跑静态数据时置 1，禁止任何外部行情 API（富途/OKX）
 STATIC_ONLY = os.environ.get("FG_STATIC_ONLY", "0") == "1"
@@ -903,6 +903,8 @@ def _send_feishu(msg_type, content_obj):
         headers={"Content-Type": "application/json"}, method="POST",
     )
     token = json.loads(urllib.request.urlopen(token_req, timeout=15).read())["tenant_access_token"]
+    if not FEISHU_OPEN_ID:
+        raise RuntimeError("FEISHU_OPEN_ID 未设置（环境变量），无法推送飞书")
     msg_url = "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id"
     body = {"receive_id": FEISHU_OPEN_ID, "msg_type": msg_type,
             "content": json.dumps(content_obj, ensure_ascii=False)}

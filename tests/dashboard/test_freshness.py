@@ -4,12 +4,21 @@
 2026-10-07 新增。语义演进（用户新需求）：网页刷新时底层文件过期 → 后台触发
 更新；但守猪待兔仍**绝不无条件抓取**（当天已有快照 → 跳过，防污染/耗额度）。
 """
+import os
 import time
 
 import pandas as pd
 import pytest
 
 from fg_system.dashboard import freshness
+
+
+def test_sys_python_returns_executable():
+    """WT-12 R-1：sys_python() 直测（曾因缺 import sys 在无 venv 环境 NameError）。"""
+    p = freshness.sys_python()
+    assert isinstance(p, str) and p
+    assert os.path.isfile(p) or os.path.exists(p)  # venv 或系统 python 路径
+    assert os.path.basename(p) == "python"
 
 
 def test_stale_judgement():
