@@ -84,6 +84,9 @@ Data/tstoken
 Data/shoutu_token
 Data/newsapi_key
 Data/stablecoin_key
+# ↑ 必须显式列：`Data/*token*` 匹配不到它（名字里没有 "token"），
+#   而 fetch_stablecoin_usage.py 的文档却声称它「被 .gitignore 覆盖」
+#   ⇒ 不列就会把密钥提交进去（2026-10-10 WT-12 R-4 实测发现）
 Data/*token*
 *.token
 .env

@@ -154,20 +154,28 @@ def test_load_token_empty_file_raises(tmp_path, monkeypatch):
         shoutu.load_token(str(f))
 
 
-def test_token_path_is_gitignored():
+@pytest.mark.parametrize("rel,label", [
+    (config.SHOUTU_TOKEN_PATH, "守猪待兔 token"),
+    (os.path.join(config.ROOT, "Data", "stablecoin_key"), "B-10 稳定币 key"),
+])
+def test_secret_paths_are_gitignored(rel, label):
     """**守卫**：密钥文件必须落在 .gitignore 覆盖范围内，否则会入库。
 
     本测试直接问 git（`git check-ignore`），而不是读 .gitignore 文本做字符串
     匹配 —— 后者无法验证 glob 是否真的命中（`Data/*token*` **不**匹配
     `Data/raw/shoutu_token`，这类错误只有问 git 才能发现）。
+
+    2026-10-10 扩为多路径：`Data/stablecoin_key` 曾被漏掉 —— 名字里没有
+    "token"，`Data/*token*` 命中不了它，而 `fetch_stablecoin_usage.py` 的文档
+    却声称它「被 .gitignore 覆盖」（WT-12 R-4 实测发现，`check-ignore` 返回 1）。
     """
     import subprocess
     if not os.path.isdir(os.path.join(config.ROOT, ".git")):
         pytest.skip("非 git 仓库")
-    r = subprocess.run(["git", "check-ignore", "-q", config.SHOUTU_TOKEN_PATH],
+    r = subprocess.run(["git", "check-ignore", "-q", rel],
                        cwd=config.ROOT, capture_output=True)
     assert r.returncode == 0, (
-        "%s **未**被 .gitignore 覆盖，密钥会入库！" % config.SHOUTU_TOKEN_PATH)
+        "%s（%s）**未**被 .gitignore 覆盖，密钥会入库！" % (rel, label))
 
 
 # ---------------------------------------------------------------- 真实文件守卫
