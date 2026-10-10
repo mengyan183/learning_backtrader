@@ -642,6 +642,12 @@ def _human30_brief():
         lv = w["level_counts"]
         lv_txt = " / ".join(f"L{k}×{lv[k]}" for k in (1, 2, 3) if lv.get(k))
         out.append(f"近 7 日：打卡 {w['records']} 次 · 意识层级 {lv_txt}")
+    # AI 复盘（H-REV-001，C-3 已审批；LLM 只解读自评、失败自动降级确定性统计，不阻塞简报）
+    try:
+        from human30_review import review as _h30_review  # scripts/ 已在 sys.path
+        out.append(_h30_review(days=7))
+    except Exception:
+        pass  # review() 内部已降级，兜底不阻塞简报
     out.append("（自评打卡：页面表单 或 scripts/human30_cli.py --set --mind .. --body .. --spirit .. --vocation ..）")
     return "\n".join(out)
 

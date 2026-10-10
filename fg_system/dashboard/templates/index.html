@@ -68,6 +68,11 @@
 </div>
 <div id="chartHuman30" class="echart-main"></div>
 </div>
+<h2>AI 复盘（H-REV-001 · 点按生成）</h2>
+<div class="sec">
+<p style="color:#888" id="h30reviewText">用本地模型解读最近自评序列（只解读成长，不碰交易判决）；生成约需 30-60 秒。</p>
+<button id="h30reviewBtn" style="padding:4px 12px;cursor:pointer">生成 AI 复盘</button>
+</div>
 </div>
 
 <nav class="tabbar">
@@ -242,6 +247,25 @@ const HUMAN30 = {{ human30_json }};
         drawH30(parseInt(b.getAttribute("data-win"), 10));
       });
     })(winBtns[wi]);
+  }
+
+  // AI 复盘（H-REV-001）：点按生成，fetch /api/human30/review，内部失败自动降级
+  var revBtn = document.getElementById("h30reviewBtn");
+  var revText = document.getElementById("h30reviewText");
+  if (revBtn && revText) {
+    revBtn.addEventListener("click", function () {
+      revBtn.disabled = true;
+      revBtn.textContent = "生成中…";
+      revText.textContent = "正在用本地模型解读（约 30-60 秒）…";
+      fetch("/api/human30/review", { cache: "no-store" })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          revText.textContent = d.text || "生成失败，请重试";
+          revText.style.whiteSpace = "pre-wrap";
+        })
+        .catch(function (e) { revText.textContent = "生成失败：" + e; })
+        .finally(function () { revBtn.disabled = false; revBtn.textContent = "重新生成"; });
+    });
   }
 
   if (document.getElementById("chartH30Radar") && HUMAN30 && HUMAN30.latest) {

@@ -151,6 +151,24 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         resp.headers["Cache-Control"] = "no-store"
         return resp
 
+    @app.route("/api/human30/review", methods=["GET"])
+    def _human30_review_endpoint():
+        """AI 复盘（H-REV-001，C-3 已审批 2026-10-10）。
+        点按生成：阻塞该请求约 30-60s（threaded=True 不阻塞其他请求）；
+        模型不可用/超时自动降级确定性统计（见 human30_review.review）。
+        返回 {"text": "AI 复盘（🟡 研究参考，非系统信号）：..."}。
+        """
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.abspath(__file__)))), "scripts"))
+        try:
+            from human30_review import review as _review
+            text = _review(days=7)
+        except Exception as e:
+            text = "AI 复盘（🟡 研究参考，非系统信号）：生成失败（%s），已降级。" % e
+        resp = Response(_json_ok({"text": text}), mimetype="application/json")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
     @app.route("/static/<path:filename>")
     def _static(filename):
         # 只允许 static/ 目录内的文件，防路径穿越

@@ -80,3 +80,17 @@ std > 20        → 失衡标记（短板象限显著落后）
 - **AI 复盘提案**：`docs/proposals/human30-ai-review.md`（C-2 流程，待 C-3 审批；
   边界=LLM 只解读自评、不碰交易判决，失败自动降级确定性统计）
 - 测试：tests/test_human30.py 新增 4 项（市场快照/未打卡天数/窗口统计/CSV），全量 pytest 1089 passed
+
+## H-REV-001：AI 复盘（C-3 已审批 2026-10-10）
+
+- **形态**：`scripts/human30_review.py`（Ollama qwen2.5-coder:3b 本地生成）
+- **边界（提案硬约束）**：LLM 只解读自评序列与成长，**不判交易**——prompt 禁止交易字眼 +
+  输出后 `_guard_filter` 二次过滤（交易策略/仓位/买卖/止损等 → 行动）；固定前缀
+  `AI 复盘（🟡 研究参考，非系统信号）`；数据只读；无调参
+- **降级**：模型不可达/超时/无记录 → 自动降级为确定性窗口统计（window_stats），绝不阻塞简报
+- **幻觉修复**：市场快照缺失显示 `N/A` 且 prompt 明示「N/A 一律跳过不要解读」，
+  防止模型把缺省误读为 zone=0 极度恐惧
+- **接入**：简报每日板块末行 + 页面「AI 复盘（H-REV-001 · 点按生成）」折叠块
+  （GET /api/human30/review，threaded=True 不阻塞其他请求）
+- 测试：tests/test_human30_review.py 4 项（无记录降级/LLM 失败降级/守卫过滤/N-A 行），
+  全量 pytest 1093 passed
