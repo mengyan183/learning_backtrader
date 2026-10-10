@@ -45,6 +45,20 @@
 <div class="sec-wrap" data-name="Human 3.0">
 <h2>🌱 Human 3.0 状态</h2>
 <div class="sec">{{ human30 }}</div>
+<h2>快速打卡（0-100 自评）</h2>
+<div class="sec">
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+  <label style="font-size:12px">心/认知<br><input id="h30mind" type="number" min="0" max="100" value="60" style="width:84px;padding:4px"></label>
+  <label style="font-size:12px">体/行动<br><input id="h30body" type="number" min="0" max="100" value="60" style="width:84px;padding:4px"></label>
+  <label style="font-size:12px">精神/意义<br><input id="h30spirit" type="number" min="0" max="100" value="60" style="width:84px;padding:4px"></label>
+  <label style="font-size:12px">职/事业<br><input id="h30vocation" type="number" min="0" max="100" value="60" style="width:84px;padding:4px"></label>
+  <label style="font-size:12px">备注<br><input id="h30note" type="text" maxlength="200" placeholder="可选" style="width:160px;padding:4px"></label>
+  <button id="h30btn" style="padding:6px 16px;cursor:pointer">保存今日打卡</button>
+</div>
+<div id="h30Msg" style="margin-top:6px;font-size:12px;color:#888"></div>
+</div>
+<h2>四象限雷达（最新）</h2>
+<div class="sec"><div id="chartH30Radar" class="echart-main"></div></div>
 <h2>四象限趋势（最近 30 次打卡）</h2>
 <div class="sec"><div id="chartHuman30" class="echart-main"></div></div>
 </div>
@@ -206,6 +220,67 @@ const HUMAN30 = {{ human30_json }};
         axisLabel: { color: SUB, fontSize: 10 },
         splitLine: { lineStyle: { color: SPLIT } } },
       series: hseries
+    });
+  }
+
+  if (document.getElementById("chartH30Radar") && HUMAN30 && HUMAN30.latest) {
+    var radar = echarts.init(document.getElementById("chartH30Radar"));
+    window.__charts.push(radar);
+    var rv = HUMAN30.latest;
+    radar.setOption({
+      backgroundColor: "transparent",
+      tooltip: Object.assign({}, tip),
+      legend: { top: 0, textStyle: { color: TEXT, fontSize: 11 },
+                data: [HUMAN30.labels.join(" / ") + " 自评"] },
+      radar: {
+        indicator: HUMAN30.keys.map(function (k, i) {
+          return { name: HUMAN30.labels[i], max: 100 };
+        }),
+        radius: "62%",
+        splitArea: { areaStyle: { color: ["rgba(255,255,255,.02)", "rgba(255,255,255,.05)"] } },
+        axisName: { color: TEXT, fontSize: 11 },
+        splitLine: { lineStyle: { color: BORDER } }
+      },
+      series: [{
+        type: "radar",
+        data: [{
+          name: HUMAN30.labels.join(" / ") + " 自评",
+          value: HUMAN30.keys.map(function (k) { return rv[k]; }),
+          lineStyle: { color: "#58a6ff", width: 2 },
+          itemStyle: { color: "#58a6ff" },
+          areaStyle: { color: "rgba(88,166,255,.22)" }
+        }]
+      }]
+    });
+  }
+
+  var h30btn = document.getElementById("h30btn");
+  if (h30btn) {
+    h30btn.addEventListener("click", function () {
+      var body = {
+        mind: parseFloat(document.getElementById("h30mind").value),
+        body: parseFloat(document.getElementById("h30body").value),
+        spirit: parseFloat(document.getElementById("h30spirit").value),
+        vocation: parseFloat(document.getElementById("h30vocation").value),
+        note: document.getElementById("h30note").value
+      };
+      var msg = document.getElementById("h30Msg");
+      fetch("/api/human30", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      }).then(function (r) {
+        if (r.ok) {
+          msg.textContent = "✅ 已保存，页面刷新中…";
+          setTimeout(function () { location.reload(); }, 400);
+        } else {
+          return r.text().then(function (t) {
+            msg.textContent = "❌ " + t;
+          });
+        }
+      }).catch(function (e) {
+        msg.textContent = "❌ 请求失败：" + e;
+      });
     });
   }
 

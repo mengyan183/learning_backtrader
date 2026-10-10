@@ -504,18 +504,41 @@ def _human30_block():
     adv = human30.advice(rec, human30.history(2)[-2] if len(human30.history(2)) >= 2 else None)
     adv_html = "".join("<li>%s</li>" % a for a in adv[:3])
     warn = ' <span style="color:#c62828;font-weight:700">⚠️ 失衡</span>' if agg["imbalanced"] else ""
+    # Level 进度条：avg 在 0-100 标尺上的位置 + L1/L2/L3 区间色带
+    pct = max(0.0, min(100.0, agg["avg"]))
+    bar = (
+        '<div style="position:relative;height:14px;border-radius:7px;margin:8px 0 4px;'
+        'background:linear-gradient(90deg,#888 0%%,#888 40%%,#f9a825 40%%,#f9a825 70%%,#2e7d32 70%%,#2e7d32 100%%);overflow:visible">'
+        '<div style="position:absolute;left:calc(%s%% - 6px);top:-3px;width:12px;height:20px;'
+        'border-radius:3px;background:#fff;border:2px solid #333;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div></div>'
+        '<div style="display:flex;justify-content:space-between;font-size:10px;color:#888">'
+        '<span>0 · L1 从众者</span><span>40 · L2 个体主义者</span><span>70 · L3 综合者</span><span>100</span></div>'
+        % pct)
+    # 历史打卡表（最近 10 次，服务端渲染；report 尾部正则自动套横向滚动容器）
+    hist = human30.history(10)
+    rows = ""
+    if hist:
+        rows = '<tr><th style="text-align:left">日期</th><th>心</th><th>体</th><th>精神</th><th>职</th><th>均分</th></tr>'
+        for r in hist:
+            a = human30.aggregate(r)
+            rows += ("<tr><td>%s</td><td>%.0f</td><td>%.0f</td><td>%.0f</td><td>%.0f</td>"
+                     "<td>%.1f</td></tr>" % (r["date"], r["mind"], r["body"],
+                                             r["spirit"], r["vocation"], a["avg"]))
     return (
         '<div class="card"><h3>🌱 Human 3.0'
         ' <span style="background:%s;color:#fff;border-radius:10px;padding:2px 10px;font-size:12px">%s</span>%s</h3>'
-        '<p style="margin:2px 0 8px;color:#666;font-size:12px">%s · 最近打卡 %s · 四象限均分 %s</p>'
-        '<div>%s</div>'
+        '<p style="margin:2px 0 4px;color:#666;font-size:12px">%s · 最近打卡 %s · 四象限均分 %s</p>'
+        '%s'
+        '<div style="margin-top:6px">%s</div>'
         '<details style="margin-top:6px"><summary style="cursor:pointer;font-size:13px">建议（规则化，无 LLM）</summary>'
         '<ul style="margin:6px 0 0;padding-left:18px;font-size:13px">%s</ul></details>'
+        '<h4 style="margin:12px 0 4px;font-size:13px">最近打卡（%d 次）</h4>'
+        '<table class="card" style="width:100%%;border-collapse:collapse;font-size:12px">%s</table>'
         '<p style="margin:8px 0 0;font-size:12px;color:#888">记录文件：Data/human30.json（运行态不入库）· '
-        '打卡 CLI：scripts/human30_cli.py</p></div>'
+        '下方表单可直接打卡（当日重复覆盖）</p></div>'
         % ("#2e7d32" if agg["level"] == 3 else "#f9a825" if agg["level"] == 2 else "#888",
            agg["level_name"], warn, agg["level_desc"], rec["date"], agg["avg"],
-           quad_html, adv_html))
+           bar, quad_html, adv_html, len(hist), rows))
 
 
 def _human30_json():
@@ -713,7 +736,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
 
     # 每个表格套横向滚动容器：窄屏下宽表不撑破页面（手机端必需）。
     # 用后处理而不是改各个 _*_block：表格分散在 6 处，集中处理不会漏。
-    html = re.sub(r"""(<table class=['"]card['"]>.*?</table>)""",
+    html = re.sub(r"""(<table class=['"]card['"][^>]*>.*?</table>)""",
                   r'<div class="scroll">\1</div>', html, flags=re.S)
 
     # G-1（WT-12 审查）：`docs/system-boundary.md` §5 要求「警告存在时，

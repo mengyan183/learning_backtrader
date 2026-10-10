@@ -174,6 +174,41 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         resp.headers["Cache-Control"] = "no-store"
         return resp
 
+    @app.route("/api/human30", methods=["POST"])
+    def _human30_write():
+        """Human 3.0 页面打卡写入（Data/human30.json，运行态）。
+
+        入参 JSON：{mind, body, spirit, vocation, note?}，四象限 0-100。
+        校验失败 400；成功返回最新记录 + 聚合。当日重复打卡覆盖当日。
+        注：与页面其余部分一样**无鉴权**，仅适合可信局域网（见模块 docstring）。
+        """
+        from fg_system import human30
+        try:
+            payload = request.get_json(force=True, silent=True) or {}
+        except Exception:
+            payload = {}
+        vals = {}
+        for q in human30.QUADRANTS:
+            v = payload.get(q)
+            try:
+                v = float(v)
+            except (TypeError, ValueError):
+                return Response("参数 %s 必须是 0-100 数字" % q, status=400,
+                                mimetype="text/plain; charset=utf-8")
+            if not (0 <= v <= 100):
+                return Response("参数 %s 超出 0-100" % q, status=400,
+                                mimetype="text/plain; charset=utf-8")
+            vals[q] = v
+        note = str(payload.get("note") or "")[:200]
+        rec = human30.record(vals["mind"], vals["body"], vals["spirit"],
+                             vals["vocation"], note=note)
+        agg = human30.aggregate(rec)
+        resp = Response(
+            _json_ok({"date": rec["date"], "record": rec, "aggregate": agg}),
+            mimetype="application/json")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
     @app.route("/")
     @app.route("/index.html")
     def _index():
@@ -194,6 +229,11 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         return resp
 
     return app
+
+
+def _json_ok(obj):
+    import json as _json
+    return _json.dumps(obj, ensure_ascii=False, default=str)
 
 
 def make_server(host="0.0.0.0", port=8000, get_features=None, prices_path=None,

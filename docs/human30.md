@@ -44,14 +44,15 @@ std > 20        → 失衡标记（短板象限显著落后）
 | 核心模块 | `fg_system/human30.py`（record/latest/history/aggregate/advice/brief_line） |
 | 打卡 CLI | `scripts/human30_cli.py`（--set/--latest/--history） |
 | 数据文件 | `Data/human30.json`（运行态，.gitignore 不入库） |
-| 网页面板 | dashboard 第 4 个 tab「Human 3.0」（状态卡 + 最近 30 次打卡四象限趋势） |
+| 网页面板 | dashboard 第 4 个 tab「Human 3.0」（Level 进度条 + 四象限状态卡 + 快速打卡表单 + 雷达图 + 最近 30 次趋势 + 历史表） |
+| 页面打卡端点 | `POST /api/human30`（Flask，0-100 校验，当日覆盖，返回最新记录+聚合） |
 | 每日简报 | `build_brief_sections` 新增「🌱 Human 3.0 状态」板块（无记录时跳过） |
-| 测试 | `tests/test_human30.py`（level 边界/聚合/建议/记录幂等） |
+| 测试 | `tests/test_human30.py`（level 边界/聚合/建议/记录幂等）＋ `tests/dashboard/test_server.py`（端点写入/校验/当日覆盖） |
 
 ## 用法
 
 ```bash
-# 打卡（当日重复则覆盖）
+# 打卡（当日重复则覆盖）—— CLI 方式
 .venv/bin/python scripts/human30_cli.py --set --mind 65 --body 55 --spirit 60 --vocation 50 --note "今日状态"
 # 查询
 .venv/bin/python scripts/human30_cli.py --latest
@@ -59,8 +60,10 @@ std > 20        → 失衡标记（短板象限显著落后）
 .venv/bin/python scripts/human30_cli.py --history 30
 ```
 
+**页面打卡**：dashboard「Human 3.0」tab 底部表单直接打分（心/体/精神/职 0-100 + 备注），
+保存后当日覆盖并刷新页面；等价于 CLI `--set`。
+
 ## 后续扩展（骨架之外，未落地）
 
-- 打卡 UI（页面上直接打分）
 - 与交易行为联动（如极端档位时记录交易者状态 → 归因）
 - AI 复盘（用 LLM 生成解读——需单独审批，绕开"无 LLM 判决"纪律需走 C-2/C-3 流程）

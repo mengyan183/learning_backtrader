@@ -464,3 +464,50 @@ def test_check_basic_auth_rejects_malformed():
     assert not server.check_basic_auth(nocolon, "fg", "pw"), "缺冒号要拒"
     ok = "Basic " + base64.b64encode(b"fg:pw").decode("ascii")
     assert server.check_basic_auth(ok, "fg", "pw")
+
+
+# ================================================================ Human 3.0 打卡端点
+
+def _post(url, payload):
+    req = urllib.request.Request(
+        url, data=json.dumps(payload).encode("utf-8"), method="POST",
+        headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        return r.status, r.read().decode("utf-8")
+
+
+def test_human30_post_writes_and_returns_aggregate(tmp_path, monkeypatch):
+    from fg_system import human30
+    monkeypatch.setattr(human30, "DATA_PATH", str(tmp_path / "human30.json"))
+    srv, base = _serve(lambda: _features(10), tmp_path)
+    try:
+        st, body = _post(base + "/api/human30",
+                         {"mind": 70, "body": 55, "spirit": 60, "vocation": 50, "note": "测试"})
+        assert st == 200
+        data = json.loads(body)
+        assert data["record"]["mind"] == 70
+        assert data["aggregate"]["level"] == 2
+        # 当日重复打卡 → 覆盖当日（记录数不变）
+        _post(base + "/api/human30",
+              {"mind": 80, "body": 60, "spirit": 65, "vocation": 55, "note": "覆盖"})
+        recs = human30.history(10)
+        assert len(recs) == 1
+        assert recs[0]["mind"] == 80
+    finally:
+        srv.server_close()
+
+
+def test_human30_post_rejects_bad_values(tmp_path):
+    srv, base = _serve(lambda: _features(10), tmp_path)
+    try:
+        for bad in ({"mind": 101, "body": 1, "spirit": 1, "vocation": 1},
+                    {"mind": "abc", "body": 1, "spirit": 1, "vocation": 1},
+                    {"mind": -5, "body": 1, "spirit": 1, "vocation": 1},
+                    {"body": 1, "spirit": 1, "vocation": 1}):   # 缺 mind
+            try:
+                st, _ = _post(base + "/api/human30", bad)
+                assert st == 400, "非法参数应 400: %s" % bad
+            except urllib.error.HTTPError as e:
+                assert e.code == 400
+    finally:
+        srv.server_close()
