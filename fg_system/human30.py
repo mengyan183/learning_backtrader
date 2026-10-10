@@ -35,6 +35,39 @@ LEVELS = {
     3: ("3.0 综合者 Synthesist", "多视角整合 · 策略设计 · 能综合出更整体方案"),
 }
 
+# 问答打卡（引导式，无 LLM，确定性映射）：
+# 每象限 1 题，Likert 5 级 → 20/40/60/80/100；分数即输入，统计链路与直填完全同构。
+QUESTIONS = {
+    "mind": "今天我能清晰思考，不被情绪带着走",
+    "body": "今天我的精力足以执行计划",
+    "spirit": "今天做的事让我觉得有意义",
+    "vocation": "今天我在事业/职业上推进了重要事项",
+}
+LIKERT_SCORES = {1: 20, 2: 40, 3: 60, 4: 80, 5: 100}
+
+
+def answers_to_scores(answers):
+    """{象限: 1..5} → {象限: 0-100}。非法 level 抛 ValueError（确定性查表）。"""
+    out = {}
+    for q in QUADRANTS:
+        v = answers.get(q)
+        try:
+            v = int(v)
+        except (TypeError, ValueError):
+            raise ValueError("参数 %s 必须是 1-5 的整数" % q)
+        if v not in LIKERT_SCORES:
+            raise ValueError("参数 %s 超出 1-5（%s）" % (q, v))
+        out[q] = LIKERT_SCORES[v]
+    return out
+
+
+def record_from_answers(mind, body, spirit, vocation, note="", when=None, market=None):
+    """问答打卡：5 级答案 → 分数 → 与 record() 同路径写入。"""
+    scores = answers_to_scores({"mind": mind, "body": body,
+                                "spirit": spirit, "vocation": vocation})
+    return record(scores["mind"], scores["body"], scores["spirit"],
+                  scores["vocation"], note=note, when=when, market=market)
+
 
 def _load():
     if not os.path.exists(DATA_PATH):

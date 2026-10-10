@@ -57,6 +57,42 @@
 </div>
 <div id="h30Msg" style="margin-top:6px;font-size:12px;color:#888"></div>
 </div>
+<h2>问答打卡（30 秒 · 5 级量表 → 确定性转分）</h2>
+<div class="sec">
+  <div style="font-size:12px;color:#888;margin-bottom:6px">每题选 1-5（强烈不同意→强烈同意），映射 20/40/60/80/100，无 AI 判分、可复算。</div>
+  <div id="h30qa">
+    <div style="margin-bottom:8px"><div style="font-size:13px">① 心/认知：今天我能清晰思考，不被情绪带着走</div>
+      <label style="font-size:12px"><input type="radio" name="h30q_mind" value="1">1 强烈不同意</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_mind" value="2">2</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_mind" value="3">3 一般</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_mind" value="4">4</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_mind" value="5">5 强烈同意</label>
+    </div>
+    <div style="margin-bottom:8px"><div style="font-size:13px">② 体/行动：今天我的精力足以执行计划</div>
+      <label style="font-size:12px"><input type="radio" name="h30q_body" value="1">1 强烈不同意</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_body" value="2">2</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_body" value="3">3 一般</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_body" value="4">4</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_body" value="5">5 强烈同意</label>
+    </div>
+    <div style="margin-bottom:8px"><div style="font-size:13px">③ 精神/意义：今天做的事让我觉得有意义</div>
+      <label style="font-size:12px"><input type="radio" name="h30q_spirit" value="1">1 强烈不同意</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_spirit" value="2">2</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_spirit" value="3">3 一般</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_spirit" value="4">4</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_spirit" value="5">5 强烈同意</label>
+    </div>
+    <div style="margin-bottom:8px"><div style="font-size:13px">④ 职/事业：今天我在事业/职业上推进了重要事项</div>
+      <label style="font-size:12px"><input type="radio" name="h30q_vocation" value="1">1 强烈不同意</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_vocation" value="2">2</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_vocation" value="3">3 一般</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_vocation" value="4">4</label>
+      <label style="font-size:12px"><input type="radio" name="h30q_vocation" value="5">5 强烈同意</label>
+    </div>
+  </div>
+  <button id="h30qabtn" style="padding:6px 16px;cursor:pointer">提交问答打卡</button>
+  <div id="h30qaMsg" style="margin-top:6px;font-size:12px;color:#888"></div>
+</div>
 <h2>四象限雷达（最新）</h2>
 <div class="sec"><div id="chartH30Radar" class="echart-main"></div></div>
 <h2>四象限趋势（可切换 7/30/90 天）</h2>
@@ -325,6 +361,44 @@ const HUMAN30 = {{ human30_json }};
         }
       }).catch(function (e) {
         msg.textContent = "❌ 请求失败：" + e;
+      });
+    });
+  }
+
+  // 问答打卡（引导式）：收集 4 题 5 级答案 → POST answers → 后端确定性映射转分
+  var h30qabtn = document.getElementById("h30qabtn");
+  var h30qaMsg = document.getElementById("h30qaMsg");
+  if (h30qabtn) {
+    h30qabtn.addEventListener("click", function () {
+      var keys = ["mind", "body", "spirit", "vocation"];
+      var answers = {};
+      var missing = [];
+      for (var qi = 0; qi < keys.length; qi++) {
+        var el = document.querySelector('input[name="h30q_' + keys[qi] + '"]:checked');
+        if (el) { answers[keys[qi]] = parseInt(el.value, 10); }
+        else { missing.push(keys[qi]); }
+      }
+      if (missing.length) {
+        h30qaMsg.textContent = "❌ 还有未作答：心/体/精神/职 — " + missing.join("、");
+        return;
+      }
+      h30qabtn.disabled = true;
+      h30qaMsg.textContent = "提交中…";
+      fetch("/api/human30", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: answers })
+      }).then(function (r) {
+        if (r.ok) {
+          h30qaMsg.textContent = "✅ 已保存（5 级→分数确定性映射），页面刷新中…";
+          setTimeout(function () { location.reload(); }, 400);
+        } else {
+          return r.text().then(function (t) { h30qaMsg.textContent = "❌ " + t; });
+        }
+      }).catch(function (e) {
+        h30qaMsg.textContent = "❌ 请求失败：" + e;
+      }).finally(function () {
+        h30qabtn.disabled = false;
       });
     });
   }

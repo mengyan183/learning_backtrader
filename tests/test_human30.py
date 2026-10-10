@@ -142,3 +142,26 @@ def test_to_csv_exports_all(tmp_path, monkeypatch):
     assert len(lines) == 3                             # 表头 + 2 行
     assert "54.9" in lines[1] and ",2," in lines[1]
     assert "乙" in lines[2] and "甲" in lines[1]
+
+# ================================================================ 四期：问答打卡（5 级量表 → 确定性转分）
+
+def test_answers_to_scores_mapping():
+    assert human30.answers_to_scores(
+        {"mind": 1, "body": 2, "spirit": 3, "vocation": 5}) == \
+        {"mind": 20, "body": 40, "spirit": 60, "vocation": 100}
+    with pytest.raises(ValueError):
+        human30.answers_to_scores({"mind": 0, "body": 3, "spirit": 3, "vocation": 3})
+    with pytest.raises(ValueError):
+        human30.answers_to_scores({"mind": 6, "body": 3, "spirit": 3, "vocation": 3})
+    with pytest.raises(ValueError):
+        human30.answers_to_scores({"mind": "x", "body": 3, "spirit": 3, "vocation": 3})
+
+
+def test_record_from_answers_writes_scored(tmp_path, monkeypatch):
+    monkeypatch.setattr(human30, "DATA_PATH", str(tmp_path / "h.json"))
+    rec = human30.record_from_answers(2, 3, 4, 5, note="问答")
+    assert (rec["mind"], rec["body"], rec["spirit"], rec["vocation"]) == (40, 60, 80, 100)
+    assert human30.latest()["note"] == "问答"
+    # 与直填 0-100 同一路径：聚合可算
+    agg = human30.aggregate(rec)
+    assert agg["avg"] == 70.0

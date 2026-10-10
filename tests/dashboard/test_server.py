@@ -511,3 +511,36 @@ def test_human30_post_rejects_bad_values(tmp_path):
                 assert e.code == 400
     finally:
         srv.server_close()
+
+
+def test_human30_answers_payload_writes(tmp_path, monkeypatch):
+    """问答打卡：POST answers(1-5) → 服务端确定性映射 → 写入记录。"""
+    from fg_system import human30
+    monkeypatch.setattr(human30, "DATA_PATH", str(tmp_path / "human30.json"))
+    srv, base = _serve(lambda: _features(10), tmp_path)
+    try:
+        st, body = _post(base + "/api/human30",
+                         {"answers": {"mind": 2, "body": 3, "spirit": 4, "vocation": 5}})
+        assert st == 200
+        data = json.loads(body)
+        assert data["record"]["mind"] == 40
+        assert data["record"]["vocation"] == 100
+        assert data["aggregate"]["avg"] == 70.0
+    finally:
+        srv.server_close()
+
+
+def test_human30_answers_invalid_400(tmp_path):
+    srv, base = _serve(lambda: _features(10), tmp_path)
+    try:
+        for bad in ({"mind": 9, "body": 3, "spirit": 3, "vocation": 3},
+                    {"mind": 0, "body": 3, "spirit": 3, "vocation": 3},
+                    {"mind": "x", "body": 3, "spirit": 3, "vocation": 3},
+                    {"mind": 3, "spirit": 3, "vocation": 3}):   # 缺 body
+            try:
+                st, _ = _post(base + "/api/human30", {"answers": bad})
+                assert st == 400, "非法 answers 应 400: %s" % bad
+            except urllib.error.HTTPError as e:
+                assert e.code == 400
+    finally:
+        srv.server_close()

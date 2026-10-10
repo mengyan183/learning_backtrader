@@ -94,3 +94,16 @@ std > 20        → 失衡标记（短板象限显著落后）
   （GET /api/human30/review，threaded=True 不阻塞其他请求）
 - 测试：tests/test_human30_review.py 4 项（无记录降级/LLM 失败降级/守卫过滤/N-A 行），
   全量 pytest 1093 passed
+
+## 四期：问答打卡（引导式，无 LLM）
+
+- **形态**：页面「问答打卡（30 秒）」区块，每象限 1 题、Likert 5 级（强烈不同意→强烈同意）
+- **确定性映射**：`answers_to_scores()` 查表 1→20 / 2→40 / 3→60 / 4→80 / 5→100，
+  非法 level 抛 ValueError（400）；无 LLM、无中间解释层
+- **同链路**：`record_from_answers()` → 与直填 0-100 完全同一写入/统计路径（均分/Level/短板/趋势一致）
+- **端点**：POST /api/human30 兼容两种载荷——原 `{mind..vocation: 0-100}` 与新增
+  `{answers: {mind..vocation: 1-5}}`；页面问答提交后 reload 刷新状态卡
+- 问题库（可复算、可审计）：心=清晰思考不被情绪带走；体=精力足以执行计划；
+  精神=做的事有意义；职=推进了重要事项
+- 测试：test_human30.py +2（映射/写入同链路）、test_server.py +2（端点 answers 200/400），
+  全量 pytest 1097 passed

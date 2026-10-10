@@ -206,21 +206,33 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             payload = request.get_json(force=True, silent=True) or {}
         except Exception:
             payload = {}
-        vals = {}
-        for q in human30.QUADRANTS:
-            v = payload.get(q)
+        # 问答打卡：{answers: {mind:1-5, body:1-5, spirit:1-5, vocation:1-5}} → 确定性映射转分
+        answers = payload.get("answers")
+        if isinstance(answers, dict) and any(k in answers for k in human30.QUADRANTS):
             try:
-                v = float(v)
-            except (TypeError, ValueError):
-                return Response("参数 %s 必须是 0-100 数字" % q, status=400,
+                vals = human30.answers_to_scores(answers)
+            except ValueError as e:
+                return Response(str(e), status=400,
                                 mimetype="text/plain; charset=utf-8")
-            if not (0 <= v <= 100):
-                return Response("参数 %s 超出 0-100" % q, status=400,
-                                mimetype="text/plain; charset=utf-8")
-            vals[q] = v
-        note = str(payload.get("note") or "")[:200]
-        rec = human30.record(vals["mind"], vals["body"], vals["spirit"],
-                             vals["vocation"], note=note, market=_market_snapshot())
+            note = str(payload.get("note") or "")[:200]
+            rec = human30.record(vals["mind"], vals["body"], vals["spirit"],
+                                 vals["vocation"], note=note, market=_market_snapshot())
+        else:
+            vals = {}
+            for q in human30.QUADRANTS:
+                v = payload.get(q)
+                try:
+                    v = float(v)
+                except (TypeError, ValueError):
+                    return Response("参数 %s 必须是 0-100 数字" % q, status=400,
+                                    mimetype="text/plain; charset=utf-8")
+                if not (0 <= v <= 100):
+                    return Response("参数 %s 超出 0-100" % q, status=400,
+                                    mimetype="text/plain; charset=utf-8")
+                vals[q] = v
+            note = str(payload.get("note") or "")[:200]
+            rec = human30.record(vals["mind"], vals["body"], vals["spirit"],
+                                 vals["vocation"], note=note, market=_market_snapshot())
         agg = human30.aggregate(rec)
         resp = Response(
             _json_ok({"date": rec["date"], "record": rec, "aggregate": agg}),
