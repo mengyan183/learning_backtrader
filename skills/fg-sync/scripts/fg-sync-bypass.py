@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """fg-sync bypass handler: 收到 ###FG: 分片直接落盘聚合，绕过 LLM。
 
-用法: python3 fg-sync-bypass.py <消息文件>
+用法: python3 fg-sync-bypass.py <消息文件> [chat_id]
 消息文件内容可能是单条或多条 ###FG:...###FG:end### 分片（debounce 合并）。
 
 行为:
@@ -9,6 +9,7 @@
 - 同序号重复接收 → 跳过（幂等）
 - 收齐（已收片数 == 总数）→ 调用 fg_sync_tool.py 还原入库，回传结果到飞书
 - 未收齐 → 静默（不回传，避免 855 条刷屏）
+- 无分片但命中「同步待办/任务清单/有什么任务/待办」→ 直接跑 push_todo.py 回传待办快照（免 LLM）
 """
 import json, os, re, sys, subprocess, urllib.request
 
@@ -17,6 +18,7 @@ IN_DIR = os.path.join(HOME, ".openclaw", "tmp", "fg-sync-in")
 CFG_PATH = os.path.join(HOME, ".openclaw", "openclaw.json")
 REPO = "/Users/xingguo/learning_backtrader"
 FG_RE = re.compile(r"###FG:([^:#\n]+):(\d+)/(\d+)###([\s\S]*?)###FG:end###")
+TODO_RE = re.compile(r"同步待办|任务清单|有什么任务|待办")
 
 
 def load_cfg():
@@ -108,6 +110,22 @@ def ingest_package(pkg, total, chat_id):
         send_feishu(f"⏳ {pkg} 入库超时，请稍后查收", chat_id)
 
 
+def run_todo_snapshot(chat_id):
+    """待办快照：跑 push_todo.py 并把摘要原样回传（免 LLM，秒级）。"""
+    cmd = [
+        os.path.join(REPO, ".venv", "bin", "python"),
+        os.path.join(REPO, "scripts", "push_todo.py"),
+    ]
+    try:
+        r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=60)
+        out = (r.stdout + r.stderr).strip()
+        if not out:
+            out = "push_todo.py 无输出（检查 docs/ 是否可读）"
+        send_feishu(out, chat_id)
+    except subprocess.TimeoutExpired:
+        send_feishu("⏳ 待办快照生成超时", chat_id)
+
+
 def main():
     if len(sys.argv) < 2:
         return
@@ -121,6 +139,9 @@ def main():
 
     matches = FG_RE.findall(text)
     if not matches:
+        # 非分片消息：命中待办关键词 → 直接回传待办快照（免 LLM）
+        if TODO_RE.search(text):
+            run_todo_snapshot(chat_id)
         return
 
     os.makedirs(IN_DIR, exist_ok=True)
