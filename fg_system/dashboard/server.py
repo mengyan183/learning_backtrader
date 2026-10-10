@@ -180,6 +180,7 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
 
         入参 JSON：{mind, body, spirit, vocation, note?}，四象限 0-100。
         校验失败 400；成功返回最新记录 + 聚合。当日重复打卡覆盖当日。
+        自动附带当日市场快照（Data/features.csv 尾行 fg_index/zone，读不到则无）。
         注：与页面其余部分一样**无鉴权**，仅适合可信局域网（见模块 docstring）。
         """
         from fg_system import human30
@@ -201,7 +202,7 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             vals[q] = v
         note = str(payload.get("note") or "")[:200]
         rec = human30.record(vals["mind"], vals["body"], vals["spirit"],
-                             vals["vocation"], note=note)
+                             vals["vocation"], note=note, market=_market_snapshot())
         agg = human30.aggregate(rec)
         resp = Response(
             _json_ok({"date": rec["date"], "record": rec, "aggregate": agg}),
@@ -229,6 +230,23 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         return resp
 
     return app
+
+
+def _market_snapshot():
+    """读 Data/features.csv 尾行取 fg_index/zone（打卡市场快照，读不到返回 None）。"""
+    import csv as _csv
+    p = os.path.join(config.DATA_DIR, "features.csv")
+    if not os.path.isfile(p):
+        return None
+    try:
+        with open(p, encoding="utf-8-sig") as f:
+            rows = list(_csv.DictReader(f))
+        if not rows:
+            return None
+        last = rows[-1]
+        return {"fg_index": float(last["fg_index"]), "zone": int(float(last["zone"]))}
+    except Exception:
+        return None
 
 
 def _json_ok(obj):

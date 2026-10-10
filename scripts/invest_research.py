@@ -631,8 +631,19 @@ def _human30_brief():
         return None
     rec = _h30.latest()
     adv = _h30.advice(rec, _h30.history(2)[-2] if len(_h30.history(2)) >= 2 else None)
-    return line + "\n" + "\n".join("· " + a for a in adv[:3]) + \
-        "\n（自评打卡：scripts/human30_cli.py --set --mind .. --body .. --spirit .. --vocation ..）"
+    out = [line] + ["· " + a for a in adv[:3]]
+    # 连续未打卡提醒（确定性：断档会让极端档位归因缺样本）
+    gap = _h30.days_since_last()
+    if gap is not None and gap >= 1:
+        out.append(f"⏰ 已连续 {gap} 天未打卡（上次 {rec['date']}）——记录断档，极端档位归因将缺样本")
+    # 近 7 日统计（有记录才输出）
+    w = _h30.window_stats(7)
+    if not w["no_data"]:
+        lv = w["level_counts"]
+        lv_txt = " / ".join(f"L{k}×{lv[k]}" for k in (1, 2, 3) if lv.get(k))
+        out.append(f"近 7 日：打卡 {w['records']} 次 · 意识层级 {lv_txt}")
+    out.append("（自评打卡：页面表单 或 scripts/human30_cli.py --set --mind .. --body .. --spirit .. --vocation ..）")
+    return "\n".join(out)
 
 
 def _freshness_block():

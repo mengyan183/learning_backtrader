@@ -504,6 +504,12 @@ def _human30_block():
     adv = human30.advice(rec, human30.history(2)[-2] if len(human30.history(2)) >= 2 else None)
     adv_html = "".join("<li>%s</li>" % a for a in adv[:3])
     warn = ' <span style="color:#c62828;font-weight:700">⚠️ 失衡</span>' if agg["imbalanced"] else ""
+    # 连续未打卡提醒（确定性规则）
+    gap = human30.days_since_last()
+    gap_html = ""
+    if gap is not None and gap >= 1:
+        gap_html = ('<p style="margin:2px 0 4px;font-size:12px;color:#c62828">'
+                    '⏰ 已连续 %d 天未打卡——记录断档，极端档位归因将缺样本</p>' % gap)
     # Level 进度条：avg 在 0-100 标尺上的位置 + L1/L2/L3 区间色带
     pct = max(0.0, min(100.0, agg["avg"]))
     bar = (
@@ -534,16 +540,42 @@ def _human30_block():
         '<ul style="margin:6px 0 0;padding-left:18px;font-size:13px">%s</ul></details>'
         '<h4 style="margin:12px 0 4px;font-size:13px">最近打卡（%d 次）</h4>'
         '<table class="card" style="width:100%%;border-collapse:collapse;font-size:12px">%s</table>'
+        '%s%s'
         '<p style="margin:8px 0 0;font-size:12px;color:#888">记录文件：Data/human30.json（运行态不入库）· '
         '下方表单可直接打卡（当日重复覆盖）</p></div>'
         % ("#2e7d32" if agg["level"] == 3 else "#f9a825" if agg["level"] == 2 else "#888",
            agg["level_name"], warn, agg["level_desc"], rec["date"], agg["avg"],
-           bar, quad_html, adv_html, len(hist), rows))
+           bar, quad_html, adv_html, len(hist), rows, gap_html, _human30_window_card()))
+
+
+def _human30_window_card():
+    """近 7 日统计卡（确定性）：记录数 / Level 分布 / 短板计数 / 均分趋势。"""
+    w = human30.window_stats(7)
+    if w["no_data"]:
+        return ""
+    lv = w["level_counts"]
+    lv_txt = " / ".join(
+        "L%d ×%d" % (k, lv[k]) for k in (1, 2, 3) if lv.get(k))
+    wk = w["weakest_counts"]
+    wk_txt = "、".join(
+        "%s ×%d" % (k, v) for k, v in sorted(wk.items(), key=lambda x: -x[1]))
+    avg_now = w["avg_series"][-1]["avg"] if w["avg_series"] else "-"
+    avg_first = w["avg_series"][0]["avg"] if w["avg_series"] else "-"
+    delta = avg_now - avg_first
+    arrow = "▲" if delta > 0.5 else ("▼" if delta < -0.5 else "→")
+    return (
+        '<div style="margin-top:10px;padding:8px 10px;border:1px dashed #ccc;'
+        'border-radius:6px;font-size:12px">'
+        '<strong>近 7 日汇总</strong>：打卡 %d 次 · 均分 %s→%s %s · 意识层级 %s'
+        '%s</div>'
+        % (w["records"], avg_first, avg_now, arrow, lv_txt,
+           (" · 短板高频：" + wk_txt) if wk_txt else ""))
 
 
 def _human30_json():
-    """前端趋势图数据：最近 30 天四象限 + 均分。"""
-    recs = human30.history(30)
+    """前端趋势图数据：最近 90 天四象限 + 均分 + 窗口统计 + 未打卡天数。"""
+    recs = human30.history(90)
+    w7 = human30.window_stats(7)
     return {
         "labels": [human30.LABELS[q] for q in human30.QUADRANTS],
         "keys": human30.QUADRANTS,
@@ -551,6 +583,8 @@ def _human30_json():
         "series": {q: [r[q] for r in recs] for q in human30.QUADRANTS},
         "avg": [round(sum(r[q] for q in human30.QUADRANTS) / 4.0, 1) for r in recs],
         "latest": recs[-1] if recs else None,
+        "days_since_last": human30.days_since_last(),
+        "window7": w7,
     }
 
 

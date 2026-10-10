@@ -3,14 +3,18 @@
 
 用法：
   python scripts/human30_cli.py --set --mind 70 --body 55 --spirit 60 --vocation 50 [--note "..."]
-      # 四象限自评打卡（0-100，当日重复则覆盖）
+      # 四象限自评打卡（0-100，当日重复则覆盖；自动附带当日市场快照）
   python scripts/human30_cli.py --latest
       # 当前状态：Level / 均分 / 短板 / 建议
   python scripts/human30_cli.py --history [N]
       # 最近 N 条记录（默认 7）
+  python scripts/human30_cli.py --export 路径.csv
+      # 导出全部记录为 CSV（含市场快照列）
   无参数默认 --latest。
 """
 import argparse
+import csv
+import os
 import sys
 from pathlib import Path
 
@@ -18,6 +22,23 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 from fg_system import human30
+
+
+def _market_snapshot():
+    """读 Data/features.csv 尾行取 fg_index/zone 作为打卡市场快照（读不到返回 None）。"""
+    feat = Path(REPO) / "Data" / "features.csv"
+    if not feat.exists():
+        return None
+    try:
+        with open(feat, encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            rows = list(reader)
+        if not rows:
+            return None
+        last = rows[-1]
+        return {"fg_index": float(last["fg_index"]), "zone": int(float(last["zone"]))}
+    except Exception:
+        return None
 
 
 def _print_latest():
@@ -48,15 +69,25 @@ def main():
     p.add_argument("--note", default="")
     p.add_argument("--latest", action="store_true")
     p.add_argument("--history", nargs="?", const=7, type=int)
+    p.add_argument("--export", metavar="CSV路径", help="导出全部记录为 CSV")
     args = p.parse_args()
+
+    if args.export:
+        out = human30.to_csv(args.export)
+        print(f"✅ 已导出 {len(human30.history(10**6))} 条记录到 {out}")
+        return
 
     if args.set:
         if any(v is None for v in (args.mind, args.body, args.spirit, args.vocation)):
             print("打卡需四象限齐全：--mind --body --spirit --vocation（0-100）", file=sys.stderr)
             sys.exit(2)
-        rec = human30.record(args.mind, args.body, args.spirit, args.vocation, args.note)
+        mkt = _market_snapshot()
+        rec = human30.record(args.mind, args.body, args.spirit, args.vocation,
+                             args.note, market=mkt)
         print(f"✅ 已记录 {rec['date']}：mind {rec['mind']:.0f} / body {rec['body']:.0f} / "
               f"spirit {rec['spirit']:.0f} / vocation {rec['vocation']:.0f}")
+        if mkt:
+            print(f"   附带市场快照：fg_index {mkt['fg_index']} / zone {mkt['zone']}")
         _print_latest()
     elif args.history is not None:
         for r in human30.history(args.history):

@@ -59,8 +59,15 @@
 </div>
 <h2>四象限雷达（最新）</h2>
 <div class="sec"><div id="chartH30Radar" class="echart-main"></div></div>
-<h2>四象限趋势（最近 30 次打卡）</h2>
-<div class="sec"><div id="chartHuman30" class="echart-main"></div></div>
+<h2>四象限趋势（可切换 7/30/90 天）</h2>
+<div class="sec">
+<div style="margin-bottom:4px">
+<button class="h30win" data-win="7" style="padding:2px 10px;cursor:pointer">7 天</button>
+<button class="h30win" data-win="30" style="padding:2px 10px;cursor:pointer">30 天</button>
+<button class="h30win" data-win="90" style="padding:2px 10px;cursor:pointer">90 天</button>
+</div>
+<div id="chartHuman30" class="echart-main"></div>
+</div>
 </div>
 
 <nav class="tabbar">
@@ -186,24 +193,29 @@ const HUMAN30 = {{ human30_json }};
     });
   }
 
-  if (document.getElementById("chartHuman30") && HUMAN30 && HUMAN30.dates && HUMAN30.dates.length) {
-    var h30 = echarts.init(document.getElementById("chartHuman30"));
-    window.__charts.push(h30);
-    var HCOLORS = ["#58a6ff", "#d29922", "#7ee787", "#bc8cff", "#f85149"];
+  var HCOLORS = ["#58a6ff", "#d29922", "#7ee787", "#bc8cff", "#f85149"];
+  var h30 = null;
+  function drawH30(n) {
+    var el = document.getElementById("chartHuman30");
+    if (!el || !HUMAN30 || !HUMAN30.dates || !HUMAN30.dates.length) return;
+    if (!h30) { h30 = echarts.init(el); window.__charts.push(h30); }
+    var win = Math.min(n, HUMAN30.dates.length);
+    var off = HUMAN30.dates.length - win;
+    var dates = HUMAN30.dates.slice(off);
     var hseries = [];
     for (var hi = 0; hi < HUMAN30.keys.length; hi++) {
       (function (i) {
         var k = HUMAN30.keys[i];
         hseries.push({
           name: HUMAN30.labels[i], type: "line",
-          data: HUMAN30.series[k], smooth: true, symbol: "none",
+          data: HUMAN30.series[k].slice(off), smooth: true, symbol: "none",
           lineStyle: { width: 1.8, color: HCOLORS[i] }
         });
       })(hi);
     }
     hseries.push({
       name: "四象限均分", type: "line",
-      data: HUMAN30.avg, smooth: true, symbol: "none",
+      data: HUMAN30.avg.slice(off), smooth: true, symbol: "none",
       lineStyle: { width: 2.4, color: HCOLORS[4], type: "dashed" }
     });
     h30.setOption({
@@ -213,7 +225,7 @@ const HUMAN30 = {{ human30_json }};
                 data: HUMAN30.labels.concat(["四象限均分"]) },
       grid: { left: 6, right: 12, top: 34, bottom: 6, containLabel: true },
       tooltip: Object.assign({ trigger: "axis" }, tip),
-      xAxis: { type: "category", boundaryGap: false, data: HUMAN30.dates,
+      xAxis: { type: "category", boundaryGap: false, data: dates,
         axisLine: { lineStyle: { color: BORDER } },
         axisLabel: { color: SUB, fontSize: 10 } },
       yAxis: { type: "value", min: 0, max: 100,
@@ -221,6 +233,15 @@ const HUMAN30 = {{ human30_json }};
         splitLine: { lineStyle: { color: SPLIT } } },
       series: hseries
     });
+  }
+  drawH30(30);
+  var winBtns = document.querySelectorAll(".h30win");
+  for (var wi = 0; wi < winBtns.length; wi++) {
+    (function (b) {
+      b.addEventListener("click", function () {
+        drawH30(parseInt(b.getAttribute("data-win"), 10));
+      });
+    })(winBtns[wi]);
   }
 
   if (document.getElementById("chartH30Radar") && HUMAN30 && HUMAN30.latest) {

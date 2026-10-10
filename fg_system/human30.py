@@ -54,8 +54,13 @@ def _save(data):
         json.dump(data, f, ensure_ascii=False, indent=1)
 
 
-def record(mind, body, spirit, vocation, note="", when=None):
-    """追加一条自评记录（当日重复打卡则覆盖当日）。返回该记录。"""
+def record(mind, body, spirit, vocation, note="", when=None, market=None):
+    """追加一条自评记录（当日重复打卡则覆盖当日）。返回该记录。
+
+    `market` 可选：打卡时的市场快照 {"fg_index": float, "zone": int} ——
+    只记事实（不判案），供日后分析「市场状态 vs 交易者自评状态」。
+    兼容旧记录：无 market 字段视为 None。
+    """
     for v in (mind, body, spirit, vocation):
         if not (0 <= v <= 100):
             raise ValueError("四象限评分必须在 0-100 之间")
@@ -65,6 +70,18 @@ def record(mind, body, spirit, vocation, note="", when=None):
         "spirit": float(spirit), "vocation": float(vocation),
         "note": note,
     }
+    if market:
+        m = {}
+        try:
+            m["fg_index"] = round(float(market.get("fg_index")), 1)
+        except (TypeError, ValueError):
+            pass
+        try:
+            m["zone"] = int(market.get("zone"))
+        except (TypeError, ValueError):
+            pass
+        if m:
+            rec["market"] = m
     data = _load()
     data.setdefault("records", [])
     data["records"] = [r for r in data["records"] if r.get("date") != rec["date"]]
@@ -150,3 +167,61 @@ def brief_line():
     return (f"Level {agg['level_name']}（四象限均分 {agg['avg']}，"
             f"短板 {agg['weakest_label']} {agg['weakest_val']:.0f}"
             f"{'，失衡' if agg['imbalanced'] else ''}）")
+
+
+def days_since_last(today=None):
+    """距上次打卡的自然日天数；从未打卡返回 None。"""
+    rec = latest()
+    if not rec:
+        return None
+    from datetime import datetime
+    last = datetime.strptime(rec["date"], "%Y-%m-%d").date()
+    ref = today or date.today()
+    return max(0, (ref - last).days)
+
+
+def window_stats(days=7, today=None):
+    """指定窗口（自然日）内的确定性统计，供简报/页面汇总。
+
+    返回：{"records": n, "level_counts": {1:..,2:..,3:..},
+           "weakest_counts": {label:..}, "avg_series": [{"date","avg"}],
+           "window_days": days, "no_data": bool}
+    """
+    ref = today or date.today()
+    from datetime import timedelta
+    start = ref - timedelta(days=days - 1)
+    recs = [r for r in _load().get("records", [])
+            if start.isoformat() <= r["date"] <= ref.isoformat()]
+    level_counts = {1: 0, 2: 0, 3: 0}
+    weakest_counts = {}
+    avg_series = []
+    for r in recs:
+        agg = aggregate(r)
+        level_counts[agg["level"]] = level_counts.get(agg["level"], 0) + 1
+        weakest_counts[agg["weakest_label"]] = weakest_counts.get(agg["weakest_label"], 0) + 1
+        avg_series.append({"date": r["date"], "avg": agg["avg"]})
+    return {
+        "records": len(recs),
+        "level_counts": level_counts,
+        "weakest_counts": weakest_counts,
+        "avg_series": avg_series,
+        "window_days": days,
+        "no_data": not recs,
+    }
+
+
+def to_csv(path):
+    """导出全部记录为 CSV（date, mind, body, spirit, vocation, avg, level, weakest, fg_index, zone, note）。"""
+    import csv as _csv
+    recs = _load().get("records", [])
+    with open(path, "w", encoding="utf-8-sig", newline="") as f:
+        w = _csv.writer(f)
+        w.writerow(["date", "mind", "body", "spirit", "vocation",
+                    "avg", "level", "weakest", "fg_index", "zone", "note"])
+        for r in recs:
+            agg = aggregate(r)
+            mkt = r.get("market") or {}
+            w.writerow([r["date"], r["mind"], r["body"], r["spirit"], r["vocation"],
+                        agg["avg"], agg["level"], agg["weakest_label"],
+                        mkt.get("fg_index", ""), mkt.get("zone", ""), r.get("note", "")])
+    return path
