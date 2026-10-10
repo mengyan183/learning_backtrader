@@ -13,11 +13,9 @@
 
 ## 待做任务（Windows 可立即开工）
 
-| 编号 | 任务 | 说明与来源 | 验收标准 | 状态 |
-|---|---|---|---|---|
-| WT-01 | H-024/H-025/H-027/H-029/H-032 口径修订 | 2026-10-10 口径审计挂起 pending-revise：这 5 条引用虚构列/位置引用（position_multiplier、「第 4/5/6/7 列」）→ 按真实列重措辞（与 B-4 同处置：zone/core_position/fg_index/trend_blocked_us/trend_blocked_crypto，证据区间用真实数据）。来源：evolution/hypotheses.md（状态列 open（pending-revise）） | 5 条假说措辞改完、状态改为 open（修订口径）、提交 hypotheses.md；说明修订依据 | 待做 |
-| WT-02 | C-3 增强：提案飞书推送 | evolve_approve.py 目前只有 --list/--status/--log，缺「新提案自动推飞书」；补 feishu_send 对接（复用 scripts/feishu_send.py 或内置发送）。来源：blocked-registry C-3 备注「飞书推送对接可后续做」 | evolve_approve.py 支持 --push：未审批提案推飞书，已在库中测试通过（增量 pytest 绿） | 待做 |
-| WT-03 | B-8 极端规则校准脚本预写 | 85 熔断 / 10 极恐线参数校准：写 scripts/calibrate_extreme.py（实盘快照积累后跑，输出证据表；红线：OOS 禁直接调参，脚本只测量不改 config.py）。来源：blocked-registry B-8 | 脚本产出校准证据表（快照不足时输出"样本不足"并退出 0），不动 config | 待做 |
+> 当前无待做项（2026-10-10 已清空）。Windows 端默认动作：全量 pytest 回归；或等 Mac 下发新任务。
+
+（空）
 
 ## 默认动作（不占编号）
 
@@ -30,4 +28,6 @@
 
 | 编号 | 任务 | 完成依据 | 完成日期 |
 |---|---|---|---|
-| （空） | | | |
+| WT-01 | H-024/H-025/H-027/H-029/H-032 口径修订 | sync_1010b 入库（b63081c）：5 条已按真实列重措辞（core_position/zone/fg_index/trend_blocked_us/trend_blocked_crypto），状态 open（修订口径）；本地复核 5/5 确认 | 2026-10-10 |
+| WT-02 | C-3 增强：提案飞书推送 | sync_1010b 入库（b63081c）：evolve_approve.py 支持 --push / --push --dry-run（写分片 → feishu_send.py --pkg）；本地验证 --help 与注释 | 2026-10-10 |
+| WT-03 | B-8 极端规则校准脚本预写 | sync_1010b 入库（b63081c）：scripts/calibrate_extreme.py（熔断标称 85 实测 75.96~87.30 / 极恐标称 10），本地实测可运行 | 2026-10-10 |
