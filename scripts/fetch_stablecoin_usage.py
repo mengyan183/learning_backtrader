@@ -85,12 +85,56 @@ def cross_check_dl(cg_mcap: float) -> str:
         return "DefiLlama 校验失败（%s），不阻塞" % type(e).__name__
 
 
+def incremental_days(dest: Path) -> int:
+    """增量模式：读现有 CSV 最后日期，返回需回拉的天数（至少 2 天覆盖当日）。"""
+    if not dest.exists():
+        return 365
+    import datetime
+    last = None
+    with open(dest, newline="") as f:
+        for row in csv.reader(f):
+            if row and row[0] != "date":
+                last = row[0]
+    if not last:
+        return 365
+    d_last = datetime.date.fromisoformat(last)
+    gap = (datetime.date.today() - d_last).days
+    return max(gap + 1, 2)
+
+
+def merge_into(dest: Path, new_rows: list) -> int:
+    """按日期合并去重写回（新数据覆盖旧同日行）；返回写回行数。"""
+    existing = {}
+    if dest.exists():
+        with open(dest, newline="") as f:
+            for row in csv.reader(f):
+                if row and row[0] != "date":
+                    existing[row[0]] = row
+    for row in new_rows:
+        existing[row[0]] = row
+    ordered = sorted(existing.items())
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(dest, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["date", "mcap", "volume", "usage_ratio", "usage_30d"])
+        for _, row in ordered:
+            w.writerow(row)
+    return len(ordered)
+
+
 def main():
     p = argparse.ArgumentParser(description="稳定币使用效率数据链路（B-10/H-034）")
     p.add_argument("--days", type=int, default=365)
+    p.add_argument("--incremental", action="store_true",
+                   help="增量模式：按现有 CSV 最后日期回拉并合并去重（每日链用）")
     args = p.parse_args()
 
-    g = fetch_cg(args.days)
+    days = args.days
+    dest = DATA_DIR / "stablecoin_usage.csv"
+    if args.incremental:
+        days = incremental_days(dest)
+
+    g = fetch_cg(days)
     prices = g.get("prices", [])
     mcaps = g.get("market_caps", [])
     vols = g.get("total_volumes", [])
@@ -112,17 +156,9 @@ def main():
     dedup = [(__import__("datetime").datetime.utcfromtimestamp(rec[0] / 1000).date().isoformat(), rec[1], rec[2], rec[3], rec[4])
              for rec in seen.values()]
 
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    dest = DATA_DIR / "stablecoin_usage.csv"
-    with open(dest, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["date", "mcap", "volume", "usage_ratio", "usage_30d"])
-        for iso, mcap, vol, ratio, u30 in dedup:
-            w.writerow([iso, "%.2f" % mcap, "%.2f" % vol,
-                        "%.6f" % ratio, "%.6f" % u30])
-
+    n = merge_into(dest, dedup)
     last = out[-1]
-    print("稳定币使用效率已落盘：%s（%d 日）" % (dest, len(out)))
+    print("稳定币使用效率已合并落盘：%s（共 %d 日）" % (dest, n))
     print("最新 %s：mcap %.2fB / volume %.2fB / ratio %.6f / 30d %.6f" % (
         __import__("datetime").datetime.utcfromtimestamp(last[0] / 1000).date().isoformat(),
         last[1] / 1e9, last[2] / 1e9, last[3], last[4]))

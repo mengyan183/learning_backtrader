@@ -31,3 +31,28 @@ def test_build_usage_varies_with_volume():
     out = build_usage(rows)
     assert abs(out[0][3] - 1.0) < 1e-9
     assert abs(out[1][3] - 0.0) < 1e-9
+
+
+def test_incremental_days(tmp_path):
+    """增量天数：按现有 CSV 最后日期回拉（至少 2 天）。"""
+    from fetch_stablecoin_usage import incremental_days
+    dest = tmp_path / "stablecoin_usage.csv"
+    assert incremental_days(dest) == 365          # 文件不存在 → 全量
+    dest.write_text("date,mcap,volume,usage_ratio,usage_30d\n"
+                    "2026-10-10,1,1,0.5,0.5\n", encoding="utf-8")
+    # 今天=2026-10-10 → 差 0 天 → max(1,2)=2
+    assert incremental_days(dest) == 2
+
+
+def test_merge_into_dedup(tmp_path):
+    """合并去重：新同日行覆盖旧行，按日期升序。"""
+    from fetch_stablecoin_usage import merge_into
+    dest = tmp_path / "stablecoin_usage.csv"
+    dest.write_text("date,mcap,volume,usage_ratio,usage_30d\n"
+                    "2026-10-09,1,1,0.5,0.5\n", encoding="utf-8")
+    n = merge_into(dest, [["2026-10-09", "2", "2", "0.6", "0.6"],
+                          ["2026-10-10", "3", "3", "0.7", "0.7"]])
+    assert n == 2
+    lines = dest.read_text(encoding="utf-8").strip().splitlines()
+    assert lines[1].startswith("2026-10-09,2,2,0.6")   # 旧同日行被新数据覆盖
+    assert lines[2].startswith("2026-10-10,3,3,0.7")
