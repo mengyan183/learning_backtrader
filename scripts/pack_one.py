@@ -23,6 +23,7 @@ import io
 import os
 import sys
 import tarfile
+import time
 
 # URL-safe 字符映射：+ → - ，/ → _ （解码端在 restore_from_base64._decode 反向替换）
 def _b64url(data: bytes) -> str:
@@ -37,7 +38,13 @@ def main():
                     help="输出分片文件（每行一片）")
     ap.add_argument("--max-chars", type=int, default=1500,
                     help="每条飞书消息的字符上限（实测 1700，留余量取 1500）")
-    ap.add_argument("--pkg", default="sync", help="分片包名（###FG:包名:序号/总数###）")
+    # ⚠️ 包名**只允许 [A-Za-z0-9_]** —— Mac 端 mac_bootstrap.sh 的标记正则是
+    #    `###FG:([A-Za-z0-9_]+):(\d+)/(\d+)###` ⇒ 带 `-`/`.` 会**整包匹配不到** ✗。
+    # 约定（2026-10-10）：`sync_<MMDD><序号字母>`，如 sync_1009a、sync_1009b。
+    # 为什么要换名：同一个包名先后发两次 ⇒ Mac 端看到两个不同总数 ⇒ 判成
+    #    「混了旧导出」⇒ **整包跳过**（连本该能进的那份也进不去）✗。
+    ap.add_argument("--pkg", default="sync_" + time.strftime("%m%d"),
+                    help="分片包名（###FG:包名:序号/总数###）；只允许 [A-Za-z0-9_]")
     args = ap.parse_args()
 
     src = args.src.replace("\\", "/")
