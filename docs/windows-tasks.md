@@ -13,9 +13,12 @@
 
 ## 待做任务（Windows 可立即开工）
 
-> 当前无待做项（2026-10-10 已清空）。Windows 端默认动作：全量 pytest 回归；或等 Mac 下发新任务。
-
-（空）
+| 编号 | 任务 | 说明与来源 | 验收标准 | 状态 |
+|---|---|---|---|---|
+| WT-07 | verify_hypotheses.py 覆盖全部 open 假说 | 当前仅支持 H-005/H-007/H-024/H-025/H-027/H-029/H-032；扩展支持**其余修订后 open 假说**：H-006/H-008/H-009（B-3 修订口径）、H-011/H-013（B-5）、H-014~H-022（B-4 修订，含 H-010/H-012 的极值依赖/切换点判据）、H-026（GDXU 占比）、H-030（TVL 背离，数据源未接入时输出等待）、H-031（fed×CRCL，样本已 338/240）。每个假说按其 hypotheses.md「检验方法」列实现验证函数（数据均走 config 路径）。来源：evolution/hypotheses.md 全部 open 行 | `--help` 列出新增假说全集；dry-run 无数据时报"数据缺失（路径）"退出 2 而非崩溃；有数据时输出判据判定（adopted/falsified/insufficient） | 待做 |
+| WT-08 | 核心脚本测试补齐 | 以下脚本无测试：`calibrate_extreme.py`（WT-03 产物）、`evolve_approve.py`（WT-02 产物）、`evolve_h001.py`、`evolve_decay.py`、`evolve_weekly.py`、`execution_confirm.py`、`factor_screen_extend.py`、`evolve_propose.py`——至少为其中 **6 个**补 `tests/test_*.py`（mock 数据/命令路径，不依赖真实 Data/）。来源：scripts/ 测试覆盖盘点（2026-10-10） | 6 个测试文件存在且增量 pytest 全绿；测试用 fixture/mock 不读真实 Data | 待做 |
+| WT-09 | 新因子候选开发（F-010+） | `scripts/factor_screen_extend.py` 扩展 ≥2 个候选因子（走 IC/IR 检验框架）：候选①新闻情绪（news_sentiment.csv 的 score 列，B-7 已落地数据）、候选②Put-Call 情绪（putcall_total 列，B-6 已落地数据）、候选③波动率结构（VIX 期限结构 term 的滚动变化率）。每个候选实现 factor 函数 + 注册表登记（factors.md 同步补 F-010~F-012 行）。IC/IR 实际检验在 Mac 跑（需 Data）。来源：roadmap E4 因子库深化 | factor_screen_extend.py 新增 ≥2 个 factor 函数 + 注册；--list 输出含新因子；factors.md 登记行已同步 | 待做 |
+| WT-10 | 稳定币数据质量校验脚本 | 为 B-10/WT-06 产物写 `scripts/validate_stablecoin_data.py`：校验 Data/raw/stablecoin_usage.csv（若不存在则明确报"数据未拉取"退出 2）：缺失率（>5% 告警）、异常值（流通量/交易量 ≤0 或环比跳变 >10× 标记）、格式（date 可解析、列齐全）、输出校验报告。来源：blocked-registry B-10（H-034 数据质量前置） | 脚本存在、--help 可运行；无数据时退出 2 并提示先跑 fetch_stablecoin_usage.py；有数据时输出缺失率/异常清单 | 待做 |
 
 ## 默认动作（不占编号）
 
