@@ -1,6 +1,6 @@
 # 双端分工表（Windows 开发端 / Mac 服务端）
 
-> **更新**：2026-10-09 · **架构定位**（`docs/macos-deploy.md`）：公司电脑（Windows）= 开发主力；家里 Mac（macOS）= 服务运行。
+> **更新**：2026-10-10 · **架构定位**（`docs/macos-deploy.md`）：公司电脑（Windows）= 开发主力；家里 Mac（macOS）= 服务运行。
 > **用途**：开会/排期时照表执行——明确每类任务放哪一端，避免"该 Mac 抓的数据放到 Windows 跑"或"该 Windows 开发的任务积压在 Mac"。
 
 ---
@@ -51,6 +51,52 @@ Windows 开发 → make_feishu_bundle.py 打包（≤8KB/片）
 
 - 白名单：`fg_system/** scripts/** tests/** evolution/** docs/**` + 根级文档；`Data/**`、密钥、`.git` 一律拒。
 - 自动清理：2026-10-09 起入库成功后自动删除分片原文（失败保留便于排查）。
+
+### C.1 同步通道：读走 git+代理，写走飞书，不做 merge（2026-10-10 定案）
+
+**决策**：**读** Mac 最新走 git（**必须带公司代理**）；**写**回 Mac 走飞书分片；
+**不做 `git merge`**（历史无关）。
+
+**根因（2026-10-10 实测，经两轮修正）**：
+
+1. **直连不通，但公司通用代理可通** —— 直连 curl 报
+   `curl: (28) Failed to connect to gitee.com port 443 after 5010 ms: Timeout was reached`；
+   改用公司代理后立刻成功：
+
+       PROXY=http://10.30.6.49:9090
+       git -c http.proxy=$PROXY -c https.proxy=$PROXY ls-remote --heads origin
+         → 6bb61b28b391e19f6d7632a53022548f617307fa  refs/heads/main   (rc=0)
+       git -c http.proxy=$PROXY -c https.proxy=$PROXY fetch origin
+         → ok fetched (1 new refs)
+
+   - **代理地址**：`http://10.30.6.49:9090`（通用外网代理，见 `docs/trading-discipline.md`）。
+   - ⚠️ `http://10.1.82.22:3128` **只放行 pypi**，拿它上网报 403。
+   - ⚠️ **不要写进 git config**（本仓库纪律：不改 git config）⇒ 每次用 `-c` 显式传参。
+
+2. **部分克隆 ⇒ 读文件也必须带代理** —— 本仓库是 `blob:none` 部分克隆，
+   `git show origin/main:<path>` 会**按需拉 blob**；不带代理时走直连 ⇒ **静默挂死**
+   （输出为空、无报错、进程被清）。必须同样加 `-c http.proxy=...`：
+
+       git -c http.proxy=$PROXY -c https.proxy=$PROXY show origin/main:docs/windows-tasks.md
+
+3. **别把「fetch 静默失败」当成「远端没前进」（2026-10-10 实际踩过）** ——
+   `git fetch` 无输出被当成"已是最新" ⇒ 误判"Gitee 没有新记录"✗（实际已有 `6bb61b2`）。
+   **判据**：判断远端是否前进，必须看 `git fetch` 的**退出码**，或先做连通性探针。
+
+4. **合并仍然不可行（与网络无关，已核实）** —— `git merge-base HEAD origin/main` **为空**
+   ⇒ 两条历史**确实没有共同祖先**，`git merge` 报 `refusing to merge unrelated histories`；
+   强合只能 `--allow-unrelated-histories`，后果是全库冲突。⇒ **不做 merge**。
+
+**做法（保持现状）**：
+
+```
+Windows 完成一项 → scripts/pack_many.py 打包（URL-safe base64 分片）
+    → scripts/send_pkg.bat 发送（cmd start 脱离会话，见 AGENTS.md §6.1）
+    → Mac 入库 → Mac 更新 docs/windows-tasks.md 状态并提交
+```
+
+- 打包/校验/发送工具：`scripts/pack_many.py`、`scripts/verify_pkg.py`、`scripts/send_pkg.py|bat`。
+- 发送后**必须**跑 `verify_pkg.py` 做往返 md5 比对 —— 只报"已发出"不算证据。
 
 ## 当前排期建议（2026-10-09 晚更新）
 

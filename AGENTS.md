@@ -92,3 +92,17 @@
 3. 正确做法：运行前设 `PYTHONIOENCODING=utf-8`。
 4. 也可在脚本内调用 `sys.stdout.reconfigure(encoding="utf-8")`。
 5. 不要等报错再改。先设编码，再运行脚本。
+
+### 6.3 访问 Gitee 必须带公司代理
+
+1. 直连 `gitee.com:443` **不通**（curl 5s 连接超时）；通用代理 `http://10.30.6.49:9090` 可通。
+   ⚠️ `10.1.82.22:3128` **只放行 pypi**，拿它上网报 403。
+2. **不要写进 git config**（本仓库纪律：不改 git config）⇒ 每条命令用 `-c` 显式传参。
+3. 读 Mac 最新：
+
+       P=http://10.30.6.49:9090
+       git -c http.proxy=$P -c https.proxy=$P fetch origin
+       git -c http.proxy=$P -c https.proxy=$P show origin/main:docs/windows-tasks.md
+
+4. 仓库是 `blob:none` 部分克隆 ⇒ **`git show` 也会按需拉 blob**，不带代理同样**静默挂死**。
+5. 判断远端是否前进要看**退出码**，不能凭"没输出"（详见 `docs/dual-end-workflow.md` §C.1）。
