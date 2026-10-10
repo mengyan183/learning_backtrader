@@ -6,6 +6,9 @@
   F-007 守猪待兔市场温度（shoutu_fng.csv 跨标的日均值）→ 目标 SPY 收益
   F-008 极度恐惧标记（features zone==0 二进制）      → 目标 SPY 收益
   F-009 OKX 资金费率（funding_rate.csv funding_btc） → 目标 BTC 收益
+  F-010 新闻情绪（news_sentiment.csv mkt_score 大盘净情绪）→ 目标 SPY 收益
+  F-011 Put-Call 情绪（putcall_total.csv put_call_ratio）   → 目标 SPY 收益
+  F-012 波动率结构（VIX 期限结构 term=vix3m/vix 滚动变化率）→ 目标 SPY 收益
 
 口径：与 factor-engine.md §4 / factor_screen.py 一致
 （fg_system/factors/eval.py：滚动 IC/ICIR，前瞻 5/10/20/40 日，
@@ -14,15 +17,25 @@
 ⚠️ 样本不足的因子**如实报告**（IC 点数 < 门槛），登记"积累中"，
 绝不编造 IC/IR（数字必须可指回文件）。
 
-用法：.venv/bin/python scripts/factor_screen_extend.py
-输出：stdout + evolution/factors.md（F-007~F-009 登记行）
+用法：
+  .venv/bin/python scripts/factor_screen_extend.py          # 跑 IC/IR 检验（需 Data）
+  .venv/bin/python scripts/factor_screen_extend.py --list   # 只列已注册因子（不读 Data）
+输出：stdout + evolution/factors.md（F-007~F-012 登记行）
 """
+import argparse
 import os
 import sys
 from datetime import datetime
 
 import numpy as np
 import pandas as pd
+
+# AGENTS.md §6.2：Windows 控制台默认 GBK，打印非 ASCII 会崩。先设 UTF-8。
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+except (AttributeError, ValueError):
+    pass
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -66,7 +79,106 @@ def _screen_table(signal, close, factor_name):
     return "\n".join(rows)
 
 
-def main():
+# ---------------------------------------------------------------- 新候选因子（F-010~F-012）
+# 每个 factor 函数输入已加载的 DataFrame / Series，输出**日频信号 Series**（index=date）。
+# 口径纪律：只做数据取证，不改策略、不进白名单。
+
+def factor_news_sentiment(news, close=None, score_col="mkt_score"):
+    """F-010 新闻情绪：大盘净情绪分（mkt_score）→ 日频信号。
+
+    news = pd.read_csv("Data/raw/news_sentiment.csv", parse_dates=["date"])
+    信号 = score_col 列（默认 mkt_score：大盘正负词净分 / 条数）。
+    信号方向：正向（情绪越乐观 → 未来收益越高）。缺列或空数据返回空 Series。
+    """
+    if news is None or len(news) == 0 or score_col not in news.columns:
+        return pd.Series(dtype=float)
+    s = news.set_index("date")[score_col].astype(float).sort_index()
+    return s[~s.index.duplicated(keep="last")]
+
+
+def factor_putcall_sentiment(putcall, close=None, ratio_col="put_call_ratio"):
+    """F-011 Put-Call 情绪：CBOE 总 Put/Call 比率 → 日频信号。
+
+    putcall = pd.read_csv("Data/raw/putcall_total.csv", parse_dates=["date"])
+    信号 = ratio_col 列（put_call_ratio；列名亦接受 sentiment.csv 的 putcall_total）。
+    信号方向：逆向（put/call 越高 = 越恐慌 → 未来收益越高）。
+    缺列或空数据返回空 Series。
+    """
+    if putcall is None or len(putcall) == 0:
+        return pd.Series(dtype=float)
+    col = ratio_col if ratio_col in putcall.columns else (
+        "putcall_total" if "putcall_total" in putcall.columns else None)
+    if col is None:
+        return pd.Series(dtype=float)
+    s = putcall.set_index("date")[col].astype(float).sort_index()
+    return s[~s.index.duplicated(keep="last")]
+
+
+def factor_vix_term_change(vix, vix3m, window=5):
+    """F-012 波动率结构：VIX 期限结构 term=vix3m/vix 的滚动变化率。
+
+    vix    = pd.read_csv("Data/raw/vix.csv",    parse_dates=["date"])   # 近月 VIX
+    vix3m  = pd.read_csv("Data/raw/vix3m.csv",  parse_dates=["date"])   # 3 月 VIX
+    期限结构 term = vix3m_close / vix_close（>1 为正向市场，<1 为倒挂）。
+    信号 = term 的 window 日滚动变化率（pct_change(window)）。
+    信号方向：正向（term 上行 = 恐慌缓和 → 未来收益越高）。
+    缺列或空数据返回空 Series。
+    """
+    if vix is None or vix3m is None or len(vix) == 0 or len(vix3m) == 0:
+        return pd.Series(dtype=float)
+    if "close" not in vix.columns or "close" not in vix3m.columns:
+        return pd.Series(dtype=float)
+    a = vix.set_index("date")["close"].astype(float).sort_index()
+    b = vix3m.set_index("date")["close"].astype(float).sort_index()
+    a = a[~a.index.duplicated(keep="last")]
+    b = b[~b.index.duplicated(keep="last")]
+    term = (b / a).dropna()
+    return term.pct_change(window).replace([np.inf, -np.inf], np.nan)
+
+
+# 因子注册表：--list 读它；main() 的检验段按 id 对应 factor_* 函数。
+# 结构：{id: {"name": 简称, "formula": 公式/来源, "direction": 信号方向,
+#             "status": 状态}}。ID 与 evolution/factors.md 登记行一一对应。
+FACTORS = {
+    "F-010": {
+        "name": "新闻情绪（大盘净情绪 mkt_score）",
+        "formula": "news_sentiment.csv mkt_score（正负词净分/条数）→ SPY",
+        "direction": "正向(情绪乐观→贪婪)",
+        "status": "draft",
+    },
+    "F-011": {
+        "name": "Put-Call 情绪（putcall_total put_call_ratio）",
+        "formula": "putcall_total.csv put_call_ratio（CBOE 总 P/C）→ SPY",
+        "direction": "逆向(P/C 高→恐慌→反弹)",
+        "status": "draft",
+    },
+    "F-012": {
+        "name": "波动率结构（VIX 期限结构 term 滚动变化率）",
+        "formula": "term=vix3m/vix，term.pct_change(5) → SPY",
+        "direction": "正向(term 上行→恐慌缓和)",
+        "status": "draft",
+    },
+}
+
+
+def list_factors():
+    """--list 输出：已注册因子名。不读 Data、不写文件。"""
+    lines = ["已注册候选因子（factor_screen_extend）："]
+    for fid, meta in FACTORS.items():
+        lines.append("  %s | %s | %s | %s | %s"
+                     % (fid, meta["name"], meta["direction"], meta["status"], meta["formula"]))
+    return "\n".join(lines)
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="C-7 E4 因子库扩展 IC/IR 初检")
+    ap.add_argument("--list", action="store_true",
+                    help="只列出已注册候选因子（不读 Data、不写文件）")
+    args = ap.parse_args(argv)
+    if args.list:
+        print(list_factors())
+        return
+
     prices = _load(os.path.join(DATA, "raw", "prices.csv"))
     features = _load(config.FEATURES_PATH)
     spy = _close(prices, "SPY")
@@ -115,7 +227,60 @@ def main():
             "样本：%d 个交易日（%s → %s）⇒ **样本不足，登记积累中**" %
             (len(f9), f9.index.min().date(), f9.index.max().date()), ""]
 
-    # 写入 factors.md（F-007~F-009 登记行）
+    # F-010 新闻情绪（news_sentiment.csv mkt_score）
+    n10 = 0
+    news_path = os.path.join(DATA, "raw", "news_sentiment.csv")
+    if os.path.exists(news_path):
+        ns = _load(news_path)
+        f10 = factor_news_sentiment(ns).reindex(spy.index).ffill()
+        n10 = int(f10.dropna().shape[0])
+        out += ["## F-010 新闻情绪（mkt_score）→ SPY", "",
+                "样本：%d 个交易日（%s → %s）" %
+                (n10, f10.dropna().index.min().date(), f10.dropna().index.max().date())
+                if n10 else "样本：0（数据缺失）", "",
+                "| 前瞻 | 结果 |", "|---|---|",
+                _screen_table(f10, spy, "F-010"), ""]
+    else:
+        out += ["## F-010 新闻情绪（mkt_score）→ SPY", "",
+                "数据缺失：%s（B-7 fetch_news.py 尚未产出）" % news_path, ""]
+
+    # F-011 Put-Call 情绪（putcall_total.csv put_call_ratio）
+    n11 = 0
+    pc_path = os.path.join(DATA, "raw", "putcall_total.csv")
+    if os.path.exists(pc_path):
+        pc = _load(pc_path)
+        f11 = factor_putcall_sentiment(pc).reindex(spy.index).ffill()
+        n11 = int(f11.dropna().shape[0])
+        out += ["## F-011 Put-Call 情绪（put_call_ratio）→ SPY", "",
+                "样本：%d 个交易日（%s → %s）" %
+                (n11, f11.dropna().index.min().date(), f11.dropna().index.max().date())
+                if n11 else "样本：0（数据缺失）", "",
+                "| 前瞻 | 结果 |", "|---|---|",
+                _screen_table(f11, spy, "F-011"), ""]
+    else:
+        out += ["## F-011 Put-Call 情绪（put_call_ratio）→ SPY", "",
+                "数据缺失：%s（B-6 尚未产出）" % pc_path, ""]
+
+    # F-012 波动率结构（VIX 期限结构 term 滚动变化率）
+    n12 = 0
+    vix_path = os.path.join(DATA, "raw", "vix.csv")
+    vix3m_path = os.path.join(DATA, "raw", "vix3m.csv")
+    if os.path.exists(vix_path) and os.path.exists(vix3m_path):
+        vx = _load(vix_path)
+        vx3 = _load(vix3m_path)
+        f12 = factor_vix_term_change(vx, vx3).reindex(spy.index).ffill()
+        n12 = int(f12.dropna().shape[0])
+        out += ["## F-012 波动率结构（term=vix3m/vix 滚动变化率）→ SPY", "",
+                "样本：%d 个交易日（%s → %s）" %
+                (n12, f12.dropna().index.min().date(), f12.dropna().index.max().date())
+                if n12 else "样本：0（数据缺失）", "",
+                "| 前瞻 | 结果 |", "|---|---|",
+                _screen_table(f12, spy, "F-012"), ""]
+    else:
+        out += ["## F-012 波动率结构（term=vix3m/vix）→ SPY", "",
+                "数据缺失：%s / %s" % (vix_path, vix3m_path), ""]
+
+    # 写入 factors.md（F-007~F-012 登记行）
     fm_path = os.path.join(EVO, "factors.md")
     date_s = datetime.now().strftime("%Y-%m-%d")
     fm = open(fm_path, encoding="utf-8").read() if os.path.exists(fm_path) else ""
@@ -126,13 +291,19 @@ def main():
         % (date_s, date_s, n_z0),
         "| F-009 | %s | OKX 资金费率（funding_btc） | 逆向(费率极端→反转) | IC/IR 多前瞻（feval，目标=BTC） | 同上 | draft | 数据 2026-10-02 起（4 日）；**首检 %s：样本不足，登记积累中** |"
         % (date_s, date_s),
+        "| F-010 | %s | 新闻情绪（news_sentiment.csv 大盘净情绪 mkt_score） | 正向(情绪乐观→贪婪) | IC/IR 多前瞻（feval，目标=SPY 未来 5/10/20/40 日） | \\|ICIR\\|>=0.5 且 n>=60 且近窗无衰减 | draft | 数据 B-7 fetch_news.py 产出；**首检 %s：样本 %d 日（不足则登记积累中）** |"
+        % (date_s, date_s, n10),
+        "| F-011 | %s | Put-Call 情绪（putcall_total.csv put_call_ratio，CBOE 总 P/C） | 逆向(P/C 高→恐慌→反弹) | IC/IR 多前瞻（feval，目标=SPY 未来 5/10/20/40 日） | 同上 | draft | 数据 B-6 产出（2006-11 起）；**首检 %s：样本 %d 日** |"
+        % (date_s, date_s, n11),
+        "| F-012 | %s | 波动率结构（VIX 期限结构 term=vix3m/vix 的滚动变化率） | 正向(term 上行→恐慌缓和) | IC/IR 多前瞻（feval，目标=SPY 未来 5/10/20/40 日） | 同上 | draft | vix.csv + vix3m.csv；**首检 %s：样本 %d 日** |"
+        % (date_s, date_s, n12),
     ]
     if fm.strip().endswith("|") and not fm.strip().endswith("\n"):
         fm += "\n"
     fm += "\n".join(new_rows) + "\n"
     open(fm_path, "w", encoding="utf-8").write(fm)
 
-    out += ["", "## 登记已追加 F-007~F-009 至 evolution/factors.md"]
+    out += ["", "## 登记已追加 F-007~F-012 至 evolution/factors.md"]
     res_path = os.path.join(EVO, "factor-screen-results.md")
     with open(res_path, "a", encoding="utf-8") as fh:
         fh.write("\n".join(out) + "\n")

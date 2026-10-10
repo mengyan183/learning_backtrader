@@ -36,7 +36,10 @@ RHO_FALSIFY = -0.3       # ρ ≥ -0.3 → 证伪
 
 
 def load_series():
-    """返回 (市值合计序列, 净值序列)，均按日期升序、日期去重。"""
+    """返回 (日期序列, 市值合计序列, 净值序列)，三者**同源同长度**。
+
+    日期 = positions 与 accounts 的**日期交集**，升序去重；两个序列都按该日期映射。
+    """
     mv_by_date, nv_by_date = defaultdict(float), {}
     with open(POS_CSV, newline="") as f:
         for row in csv.DictReader(f):
@@ -52,10 +55,12 @@ def load_series():
                     nv_by_date[row["date"]] = float(row.get("net_value") or 0)
                 except ValueError:
                     pass
-    dates = sorted(mv_by_date)
+    # 三个序列必须同源同长度：先取日期交集，再各自映射。
+    # 原实现 mv 先于交集构建 ⇒ mv 比 nv 长 ⇒ main() 的 zip(dmv, dnv) 静默错配日期
+    # （ρ 会把不同日的市值变动与净值变动配成一对）。2026-10-10 修。
+    dates = sorted(d for d in mv_by_date if d in nv_by_date)
     mv = [mv_by_date[d] for d in dates]
-    nv = [nv_by_date[d] for d in dates if d in nv_by_date]
-    dates = [d for d in dates if d in nv_by_date]
+    nv = [nv_by_date[d] for d in dates]
     return dates, mv, nv
 
 
@@ -70,7 +75,9 @@ def pearson(x, y):
 
 
 def update_hypotheses(status, note):
-    lines = open(HYP).read().splitlines()
+    # encoding 必写：hypotheses.md 含中文，Windows 默认 GBK 读会 UnicodeDecodeError
+    # （同 AGENTS.md §6.2 的坑；此前写回分支在 Windows 上必崩，2026-10-10 由测试暴露）
+    lines = open(HYP, encoding="utf-8").read().splitlines()
     out = []
     for ln in lines:
         if ln.strip().startswith("| H-001"):
@@ -78,10 +85,10 @@ def update_hypotheses(status, note):
             out.append(ln)
         else:
             out.append(ln)
-    open(HYP, "w").write("\n".join(out) + "\n")
+    open(HYP, "w", encoding="utf-8").write("\n".join(out) + "\n")
     # 追加备注到 H-001 行尾的备注列由人工维护，结论写入 memory 日志
     mem = os.path.join(MEM_DIR, date.today().isoformat() + ".md")
-    with open(mem, "a") as f:
+    with open(mem, "a", encoding="utf-8") as f:
         f.write(f"\n## H-001 自动判定（{date.today().isoformat()}）\n{note}\n")
 
 
