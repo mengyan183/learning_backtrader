@@ -56,7 +56,7 @@ def test_write_decision_files(tmp_path):
     assert "walk-forward 季度裁判" in log
     assert "维持 1 / 归档 1 / 样本不足 1" in log
     # 不自动改生产：建议文件是只读证据，无执行字段
-    assert "不自动改生产" in dec
+    assert "不改任何生产状态" in dec
 
 
 def test_weekly_quarter_section_counts():

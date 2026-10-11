@@ -13,6 +13,13 @@
   .venv/bin/python scripts/drift_monitor.py              # 只出报告
   .venv/bin/python scripts/drift_monitor.py --push       # 报告推飞书
   .venv/bin/python scripts/drift_monitor.py --push-alert # 仅异常(预警/告警)时推飞书
+  .venv/bin/python scripts/drift_monitor.py --quality    # 数据质量闸门（R1.5）单独跑
+
+## R1.5 数据质量闸门（freqtrade 数据自检思想）
+- 检测 Data/raw/prices.csv（白名单+SPY）、vix.csv、news_sentiment.csv：
+  无效值(价格<=0/NaN/负量) / 断档(交易日缺口>5) / 跳空(单日|涨跌|超阈值) / 极端值
+- 异常 → 合并写 Data/freshness_warning.txt（[数据质量] 节，不清除停更告警）；
+  --push-alert 时推飞书。正常 → 移除本脚本旧的 [数据质量] 节（不留 stale 告警）。
 """
 import argparse
 import sys
@@ -54,11 +61,142 @@ def decide(full, recent):
     return "正常", f"逆向信号稳定(全窗 IC {full['ic_mean']:.2f} / 近窗 {recent['ic_mean']:.2f})"
 
 
+# ---------------------------------------------------------------- R1.5 数据质量闸门
+JUMP_SPY = 0.20        # SPY 单日跳空阈值（杠杆外品种）
+JUMP_LEV = 0.40        # 杠杆 ETF 单日跳空阈值（3x 日内极端）
+JUMP_VIX = 0.30        # VIX 单日跳空阈值
+GAP_DAYS = 5           # 交易日缺口 > 5 天 → 断档（周末+节假日≈3，留裕度）
+RECENT_DAYS = 30       # 断档/跳空/极端值仅查最近 30 交易日（坏数据发生在最新写入环节；历史真实事件非坏数据）
+WARN_PATH = DATA / "freshness_warning.txt"
+QUALITY_TAG = "[数据质量]"
+
+
+def check_price_series(df, symbol, jump=JUMP_LEV):
+    """价格序列检测：无效值 / 断档 / 跳空。返回异常行列表。"""
+    issues = []
+    sub = df[df["symbol"] == symbol].sort_values("date").reset_index(drop=True)
+    if sub.empty:
+        return ["%s: 数据为空" % symbol]
+    close = sub["close"]
+    bad = (close <= 0) | close.isna() | (sub["volume"] <= 0)
+    if bad.any():
+        issues.append("%s: %d 行无效值(close<=0/NaN/volume<=0)" %
+                      (symbol, int(bad.sum())))
+    d = pd.to_datetime(sub["date"])
+    recent = sub.tail(RECENT_DAYS)
+    d_r = pd.to_datetime(recent["date"])
+    gap = d_r.diff().dt.days
+    if (gap > GAP_DAYS).any():
+        idx = int(gap[gap > GAP_DAYS].index[0])
+        issues.append("%s: 断档 %s→%s（%d 天）" %
+                      (symbol, d_r.iloc[idx - 1].date(), d_r.iloc[idx].date(),
+                       int(gap.iloc[idx])))
+    ret = recent["close"].pct_change()
+    big = ret.abs() > jump
+    if big.any():
+        idx = int(big[big].index[0])
+        issues.append("%s: 跳空 %.1f%%（%s）超阈值 %.0f%%" %
+                      (symbol, ret.iloc[idx] * 100, d_r.iloc[idx].date(), jump * 100))
+    return issues
+
+
+def check_vix_series(df):
+    """VIX 序列检测：无效值 / 断档 / 跳空 / 极端值（>80 罕见危机级）。"""
+    issues = []
+    if df.empty:
+        return ["vix: 数据为空"]
+    close = df["close"]
+    bad = (close <= 0) | close.isna()
+    if bad.any():
+        issues.append("vix: %d 行无效值" % int(bad.sum()))
+    d = pd.to_datetime(df["date"])
+    recent = df.tail(RECENT_DAYS)
+    d_r = pd.to_datetime(recent["date"])
+    c_r = recent["close"]
+    if (c_r > 80).any():
+        issues.append("vix: 极端值 %.1f（%s，>80 危机级，需人工确认）" %
+                      (c_r.max(), d_r[c_r == c_r.max()].iloc[0].date()))
+    gap = d_r.diff().dt.days
+    if (gap > GAP_DAYS).any():
+        idx = int(gap[gap > GAP_DAYS].index[0])
+        issues.append("vix: 断档 %s→%s（%d 天）" %
+                      (d_r.iloc[idx - 1].date(), d_r.iloc[idx].date(), int(gap.iloc[idx])))
+    ret = c_r.pct_change()
+    if (ret.abs() > JUMP_VIX).any():
+        idx = int((ret.abs() > JUMP_VIX).idxmax())
+        issues.append("vix: 跳空 %.1f%%（%s）超阈值 %.0f%%" %
+                      (ret.iloc[idx] * 100, d_r.iloc[idx].date(), JUMP_VIX * 100))
+    return issues
+
+
+def check_sentiment_series(df):
+    """情感序列检测：NaN 比例 / 断档。样本少时只做结构检查。"""
+    issues = []
+    if df.empty:
+        return ["news_sentiment: 数据为空"]
+    na = df.isna().mean()
+    if (na > 0.2).any():
+        cols = "、".join(na[na > 0.2].index.tolist())
+        issues.append("news_sentiment: 列 NaN 比例超标：%s" % cols)
+    d = pd.to_datetime(df["date"])
+    gap = d.diff().dt.days
+    if (gap > GAP_DAYS).any():
+        idx = int(gap[gap > GAP_DAYS].index[0])
+        issues.append("news_sentiment: 断档 %s→%s（%d 天）" %
+                      (d.iloc[idx - 1].date(), d.iloc[idx].date(), int(gap.iloc[idx])))
+    return issues
+
+
+def quality_gate():
+    """汇总三路检测 → 写 freshness_warning.txt 的 [数据质量] 节。返回异常数。"""
+    issues = []
+    prices = pd.read_csv(DATA / "raw" / "prices.csv", parse_dates=["date"])
+    for sym in ["SPY"]:
+        issues += check_price_series(prices, sym, jump=JUMP_SPY)
+    for sym in ["TQQQ", "SOXL", "UPRO"]:
+        issues += check_price_series(prices, sym, jump=JUMP_LEV)
+    vix_p = DATA / "raw" / "vix.csv"
+    if vix_p.exists():
+        issues += check_vix_series(pd.read_csv(vix_p, parse_dates=["date"]))
+    sent_p = DATA / "raw" / "news_sentiment.csv"
+    if sent_p.exists():
+        issues += check_sentiment_series(pd.read_csv(sent_p, parse_dates=["date"]))
+
+    # 合并写 freshness_warning.txt：保留 freshness 停更告警，替换本脚本旧 [数据质量] 节
+    old = ""
+    if WARN_PATH.exists():
+        old = WARN_PATH.read_text(encoding="utf-8").strip()
+    kept = "\n".join(ln for ln in old.splitlines() if not ln.startswith(QUALITY_TAG))
+    if issues:
+        block = "\n".join(QUALITY_TAG + " " + i for i in issues)
+        new = (kept + "\n" + block).strip("\n")
+    else:
+        new = kept
+    WARN_PATH.write_text(new + "\n", encoding="utf-8")
+    return issues
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--push", action="store_true", help="报告推飞书")
     ap.add_argument("--push-alert", action="store_true", help="仅异常(预警/告警)时推飞书")
+    ap.add_argument("--quality", action="store_true", help="R1.5 数据质量闸门：三路检测并写 freshness_warning.txt")
     args = ap.parse_args()
+
+    if args.quality:
+        issues = quality_gate()
+        if issues:
+            print("数据质量异常 %d 项：" % len(issues))
+            for i in issues:
+                print(" - " + i)
+            print("→ 已写 Data/freshness_warning.txt")
+            if args.push_alert:
+                from scripts.invest_research import push_feishu
+                ok, msg = push_feishu("\n".join(["【数据质量闸门】"] + issues))
+                print(f"飞书推送: {'成功' if ok else f'失败 {msg}'}")
+        else:
+            print("数据质量闸门：全部通过（prices/vix/news_sentiment 无异常）")
+        return 0
 
     signal, close = load()
     ev = evaluate(signal, close, horizons=(HORIZON,), window=IC_WINDOW)
