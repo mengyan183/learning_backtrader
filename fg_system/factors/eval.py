@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 
@@ -39,8 +40,8 @@ def rolling_ic(signal: pd.Series, target: pd.Series, window: int = 60,
 
 
 def icir(ic_series: pd.Series) -> dict | None:
-    """由 IC 序列计算汇总统计。"""
-    ic = ic_series.dropna()
+    """由 IC 序列计算汇总统计（先清除 ±inf——离散信号滚动相关会产生 inf，混入会污染均值）。"""
+    ic = ic_series.replace([np.inf, -np.inf], np.nan).dropna()
     if len(ic) == 0:
         return None
     std = float(ic.std())

@@ -134,7 +134,11 @@ def main():
     if args.incremental:
         days = incremental_days(dest)
 
-    g = fetch_cg(days)
+    try:
+        g = fetch_cg(days)
+    except Exception as e:
+        print("稳定币抓取失败：%s（请检查代理 7890 或网络）" % type(e).__name__)
+        return 2
     prices = g.get("prices", [])
     mcaps = g.get("market_caps", [])
     vols = g.get("total_volumes", [])

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""B-10（WT-06）：fetch_stablecoin_usage.py 单元测试。
+"""B-10（WT-06）：fetch_stablecoin_usage.py 单元测试（适配 2026-10-10 重构后的免 key 接口）。
 
-覆盖验收标准：
+覆盖验收标准（R1.1 回归）：
   1. `--help` 可用（argparse 正常，退出码 0）。
-  2. 无 key 时（--require-key）明确报错并**退出 2**（可解释失败，不抛栈）。
-  3. CSV 列结构符合登记：date, symbol, monthly_volume, circulation, usage_efficiency。
-  4. usage_efficiency = monthly_volume / circulation。
-  5. 无网络时明确报错并退出 2。
+  2. 无网络/抓取失败时明确报错并退出 2（可解释失败，不抛栈）。
+  3. CoinGecko 返回为空时退出 2。
+  4. usage_ratio = volume / mcap；usage_30d = 近 30 日 usage_ratio 均值。
+  5. mcap≤0 的行跳过；merge_into 按日期去重合并。
 
-**不联网**：全部 stub urllib（monkeypatch fetch_json / opener）。
+**不联网**：全部 stub fetch_cg / fetch。
 """
 import importlib.util
 import io
@@ -28,132 +28,104 @@ spec = importlib.util.spec_from_file_location(
 fm = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fm)
 
-# DefiLlama `/stablecoins` 的**最小**样本（仅 USDC，含一个干扰资产）。
-SAMPLE_CIRC = {
-    "peggedAssets": [
-        {"symbol": "USDC", "date": "2026-10-09",
-         "circulating": {"peggedUSD": 40000000000.0}},
-        {"symbol": "USDT", "date": "2026-10-09",
-         "circulating": {"peggedUSD": 120000000000.0}},
-    ]
+# 三序列最小样本：100 亿美元市值、10 亿美元日成交量 → ratio=0.1。
+SAMPLE_CG = {
+    "prices": [[1728000000000, 100.0], [1728000000000 + 86400000, 101.0]],
+    "market_caps": [[1728000000000, 10000000000.0], [1728000000000 + 86400000, 10100000000.0]],
+    "total_volumes": [[1728000000000, 1000000000.0], [1728000000000 + 86400000, 1010000000.0]],
 }
-# 逐日交易量样本：USDC 月成交 900 亿 → 效率 900e8 / 400e8 = 2.25。
-SAMPLE_VOL = [
-    {"date": "2026-10-09", "volume": 90000000000.0},
-]
 
 
-def _run_main(argv):
-    """跑 main，捕获 stdout/stderr，返回 (rc, out, err)。"""
+def _run_main(argv=None):
+    """跑 main（argparse 内部解析），捕获 stdout/stderr，返回 (rc, out, err)。
+
+    脚本 `sys.exit(main())`：正常/失败码以 SystemExit 抛出。
+    """
+    old = sys.argv
+    sys.argv = ["fetch_stablecoin_usage.py"] + (argv or [])
     out, err = io.StringIO(), io.StringIO()
-    with redirect_stdout(out), redirect_stderr(err):
-        rc = fm.main(argv)
+    rc = None
+    try:
+        with redirect_stdout(out), redirect_stderr(err):
+            rc = fm.main()
+    except SystemExit as e:
+        rc = e.code
+    finally:
+        sys.argv = old
     return rc, out.getvalue(), err.getvalue()
 
 
 class TestHelp(unittest.TestCase):
     def test_help(self):
-        out = io.StringIO()
-        with self.assertRaises(SystemExit) as cm, redirect_stdout(out):
-            fm.main(["--help"])
-        self.assertEqual(cm.exception.code, 0)
-        self.assertIn("stablecoin_usage.csv", out.getvalue())
+        rc, text, _ = _run_main(["--help"])
+        self.assertEqual(rc, 0)
+        self.assertIn("稳定币使用效率", text)
 
 
-class TestNoKey(unittest.TestCase):
-    def test_missing_key_exits_2(self):
-        # 清空环境变量 + 确保 key 文件不存在 → 无 key。
-        with mock.patch.dict(os.environ, {}, clear=False), \
-                mock.patch.object(fm, "KEY_FILE", str(Path(tempfile.gettempdir()) / "no_such_key_xyz")):
-            os.environ.pop("STABLECOIN_API_KEY", None)
-            rc, _out, err = _run_main(["--require-key"])
-        self.assertEqual(rc, 2)
-        self.assertIn("缺少 API key", err)
-
-
-class TestColumnsAndEfficiency(unittest.TestCase):
-    def test_csv_columns_and_efficiency(self):
-        tmp = Path(tempfile.gettempdir()) / "stablecoin_usage_test.csv"
-        if tmp.exists():
-            tmp.unlink()
-        # stub 网络：fetch_json 直接返回样本流通量（不联网）。
-        with mock.patch.object(fm, "fetch_json", return_value=SAMPLE_CIRC), \
-                mock.patch.object(fm, "KEY_FILE", str(Path(tempfile.gettempdir()) / "no_such_key_xyz")):
-            os.environ.pop("STABLECOIN_API_KEY", None)
-            rc, out, err = _run_main(["--out", str(tmp)])
-        self.assertEqual(rc, 0, err)
-
-        text = tmp.read_text(encoding="utf-8")
-        header = text.splitlines()[0].split(",")
-        self.assertEqual(header, fm.COLUMNS)
-        self.assertEqual(
-            header,
-            ["date", "symbol", "monthly_volume", "circulation", "usage_efficiency"])
-
-        # 只有 USDC 一行（USDT 被过滤）。
-        rows = list(fm.csv.DictReader(io.StringIO(text)))
+class TestBuildUsage(unittest.TestCase):
+    def test_ratio_computed(self):
+        rows = fm.build_usage([(0, 100.0, 10.0)])
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["symbol"], "USDC")
-        self.assertEqual(float(rows[0]["circulation"]), 40000000000.0)
-        self.assertEqual(rows[0]["date"], "2026-10-09")
+        ts, mcap, vol, ratio, usage_30d = rows[0]
+        self.assertAlmostEqual(ratio, 0.1, places=6)
+        self.assertAlmostEqual(usage_30d, 0.1, places=6)  # 单点：30d = ratio
 
-    def test_efficiency_computed(self):
-        rows = fm.build_rows(SAMPLE_CIRC, SAMPLE_VOL)
+    def test_30d_window_mean(self):
+        # 3 日序列（ratio 0.1/0.2/0.3）：第 3 日 30d = (0.1+0.2+0.3)/3
+        rows = fm.build_usage([(i, 100.0, vol) for i, vol in
+                               [(0, 10.0), (1, 20.0), (2, 30.0)]])
+        self.assertAlmostEqual(rows[-1][4], 0.2, places=6)
+        self.assertAlmostEqual(rows[0][4], 0.1, places=6)
+
+    def test_skip_nonpositive_mcap(self):
+        rows = fm.build_usage([(0, 0.0, 10.0), (1, -1.0, 10.0), (2, 100.0, 10.0)])
         self.assertEqual(len(rows), 1)
-        # 900e8 / 400e8 = 2.25
-        self.assertAlmostEqual(float(rows[0]["usage_efficiency"]), 2.25, places=6)
-
-    def test_efficiency_blank_when_no_volume(self):
-        rows = fm.build_rows(SAMPLE_CIRC)          # 无逐日成交量
-        self.assertEqual(rows[0]["usage_efficiency"], "")
-
-    def test_efficiency_blank_when_circ_zero(self):
-        payload = {"peggedAssets": [
-            {"symbol": "USDC", "date": "2026-10-09", "circulating": {"peggedUSD": 0.0}}]}
-        rows = fm.build_rows(payload, SAMPLE_VOL)
-        self.assertEqual(rows[0]["usage_efficiency"], "")
+        self.assertEqual(rows[0][0], 2)
 
 
 class TestNoNetwork(unittest.TestCase):
     def test_network_failure_exits_2(self):
         def boom(*a, **k):
-            raise fm.StablecoinFetchError("连接超时")
-        with mock.patch.object(fm, "fetch_json", side_effect=boom), \
-                mock.patch.object(fm, "KEY_FILE", str(Path(tempfile.gettempdir()) / "no_such_key_xyz")):
-            os.environ.pop("STABLECOIN_API_KEY", None)
-            rc, _out, err = _run_main([])
+            raise ConnectionError("连接超时")
+        with mock.patch.object(fm, "fetch_cg", side_effect=boom):
+            rc, out, _err = _run_main()
         self.assertEqual(rc, 2)
-        self.assertIn("抓取失败", err)
+        self.assertIn("抓取失败", out)
 
     def test_empty_payload_exits_2(self):
-        with mock.patch.object(fm, "fetch_json", return_value={"peggedAssets": []}), \
-                mock.patch.object(fm, "KEY_FILE", str(Path(tempfile.gettempdir()) / "no_such_key_xyz")):
-            os.environ.pop("STABLECOIN_API_KEY", None)
-            rc, _out, err = _run_main([])
+        with mock.patch.object(fm, "fetch_cg", return_value={"prices": [], "market_caps": [], "total_volumes": []}):
+            rc, out, _err = _run_main()
         self.assertEqual(rc, 2)
-        self.assertIn("无 USDC 数据", err)
+        self.assertIn("返回为空", out)
 
 
-class TestKeyLoading(unittest.TestCase):
-    def test_env_key_priority(self):
-        tmp = Path(tempfile.gettempdir()) / "stablecoin_key_test"
-        tmp.write_text("filekey\n", encoding="utf-8")
-        with mock.patch.dict(os.environ, {"STABLECOIN_API_KEY": "envkey"}):
-            self.assertEqual(fm.load_key(str(tmp)), "envkey")
+class TestMergeAndIncremental(unittest.TestCase):
+    def test_merge_into_dedup_sorted(self):
+        tmp = Path(tempfile.gettempdir()) / "stablecoin_usage_merge_test.csv"
+        if tmp.exists():
+            tmp.unlink()
+        n1 = fm.merge_into(tmp, [("2026-10-09", "100", "10", "0.1", "0.1")])
+        n2 = fm.merge_into(tmp, [("2026-10-10", "110", "11", "0.1", "0.1"),
+                                 ("2026-10-09", "100", "10", "0.1", "0.1")])  # 同日覆盖
+        self.assertEqual(n1, 1)
+        self.assertEqual(n2, 2)
+        lines = tmp.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(lines[0], "date,mcap,volume,usage_ratio,usage_30d")
+        self.assertEqual(len(lines), 3)  # 表头 + 2 日
 
-    def test_file_key_fallback(self):
-        tmp = Path(tempfile.gettempdir()) / "stablecoin_key_test2"
-        tmp.write_text("filekey\n", encoding="utf-8")
-        env = dict(os.environ)
-        env.pop("STABLECOIN_API_KEY", None)
-        with mock.patch.dict(os.environ, env, clear=True):
-            self.assertEqual(fm.load_key(str(tmp)), "filekey")
+    def test_incremental_days_new_file(self):
+        tmp = Path(tempfile.gettempdir()) / "stablecoin_usage_incr_none.csv"
+        if tmp.exists():
+            tmp.unlink()
+        self.assertEqual(fm.incremental_days(tmp), 365)
 
-    def test_no_key_returns_none(self):
-        env = dict(os.environ)
-        env.pop("STABLECOIN_API_KEY", None)
-        with mock.patch.dict(os.environ, env, clear=True):
-            self.assertIsNone(fm.load_key(str(Path(tempfile.gettempdir()) / "no_such_key_xyz")))
+    def test_incremental_days_existing(self):
+        import datetime
+        tmp = Path(tempfile.gettempdir()) / "stablecoin_usage_incr.csv"
+        last = (datetime.date.today() - datetime.timedelta(days=3)).isoformat()
+        tmp.write_text("date,mcap,volume,usage_ratio,usage_30d\n%s,1,1,1,1\n" % last,
+                       encoding="utf-8")
+        self.assertEqual(fm.incremental_days(tmp), 4)  # gap+1 = 3+1
 
 
 if __name__ == "__main__":
