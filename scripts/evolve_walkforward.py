@@ -17,8 +17,10 @@
 
 红线：只读 baseline.json / Data/*（无前视）；不修改 config.py；OOS 禁调参（本脚本无任何调参逻辑）。
 
-用法：.venv/bin/python scripts/evolve_walkforward.py [--write]
+用法：.venv/bin/python scripts/evolve_walkforward.py [--write] [--decision]
 输出：evolution/walkforward-report.md（--write 时生成）
+      evolution/walkforward-decision.md（--decision 时生成，含维持/归档建议）
+      --decision 同时追加写 docs/decision-log.md（M2.5 季度裁判常态化）
 """
 import argparse
 import json
@@ -60,6 +62,15 @@ def quarter_windows(features):
     return windows
 
 
+def verdict_for(n_total, n_good, min_q=MIN_QUARTERS, ratio=KEEP_RATIO):
+    """确定性判定：样本不足 / 维持观察 / 建议归档（无 LLM 判决）。"""
+    if n_total < min_q:
+        return "样本不足，继续积累"
+    if n_good / n_total >= ratio:
+        return "维持观察"
+    return "建议归档"
+
+
 def perf(returns):
     return runner.performance_metrics(returns)
 
@@ -67,6 +78,7 @@ def perf(returns):
 def main():
     ap = argparse.ArgumentParser(description="C-5 季度 walk-forward 重标定")
     ap.add_argument("--write", action="store_true", help="生成 walkforward-report.md")
+    ap.add_argument("--decision", action="store_true", help="生成建议文件并追加写 decision-log.md（M2.5）")
     args = ap.parse_args()
 
     features = pd.read_csv(config.FEATURES_PATH, parse_dates=["date"]).set_index("date")
@@ -87,6 +99,7 @@ def main():
     lines.append("")
 
     total = {"keep": 0, "archive": 0, "accum": 0}
+    verdicts = []
     for sym in config.SYMBOLS:
         px = prices[prices["symbol"] == sym].set_index("date")[
             ["open", "high", "low", "close", "volume"]]
@@ -122,15 +135,16 @@ def main():
                             % (a.date(), b.date(), m0["annual_return"] * 100,
                                m["annual_return"] * 100, m0["max_drawdown"] * 100,
                                m["max_drawdown"] * 100, tag))
-            if n_total < MIN_QUARTERS:
-                verdict = "样本不足，继续积累"
+            verdict = verdict_for(n_total, n_good)
+            if verdict == "样本不足，继续积累":
                 total["accum"] += 1
-            elif n_good / n_total >= KEEP_RATIO:
-                verdict = "维持观察"
+            elif verdict == "维持观察":
                 total["keep"] += 1
             else:
-                verdict = "建议归档"
                 total["archive"] += 1
+            verdicts.append({"sym": sym, "variant": vk, "verdict": verdict,
+                             "n_good": n_good, "n_total": n_total,
+                             "n_accum": n_total if n_total < MIN_QUARTERS else 0})
             lines += ["### %s" % vk] + rows
             lines.append("| **合计** | | | | | **%d/%d 窗不劣化 ⇒ %s** |" % (n_good, n_total, verdict))
         lines.append("")
@@ -153,6 +167,59 @@ def main():
         print("\n✅ 报告 → %s" % OUT)
     else:
         print("\n(dry-run，加 --write 生成文件)")
+
+    if args.decision:
+        write_decision(verdicts, total, date_s)
+
+
+def write_decision(verdicts, total, date_s):
+    """M2.5：生成建议文件 + 追加写 decision-log.md（确定性判定，无 LLM 判决）。
+
+    建议文件供 C-3 归档流程使用；归档/维持由人工按第 8 条流程确认，脚本不改生产。
+    """
+    q = (datetime.now().month - 1) // 3 + 1
+    qlabel = "%dQ%d" % (datetime.now().year, q)
+    lines = ["# walk-forward 季度裁判建议（M2.5，%s）" % qlabel, "",
+             "> 由 scripts/evolve_walkforward.py --decision 生成 · 确定性判据（无 LLM 判决）",
+             "> 判据：>=%.0f%% 季度窗不劣化/等价 ⇒ 维持观察；否则建议归档；窗数<%d ⇒ 样本不足"
+             % (KEEP_RATIO * 100, MIN_QUARTERS), "",
+             "| 标的 | 变体 | 判定 | 证据（不劣化窗/总窗） |", "|---|---|---|---|"]
+    for v in verdicts:
+        if v["n_accum"]:
+            evidence = "样本不足（%d 窗）" % v["n_total"]
+        else:
+            evidence = "%d/%d 窗不劣化" % (v["n_good"], v["n_total"])
+        lines.append("| %s | %s | %s | %s |" % (v["sym"], v["variant"], v["verdict"], evidence))
+    lines += ["", "## 汇总", "",
+              "| 判定 | 数量 |", "|---|---|",
+              "| 维持观察 | %d |" % total["keep"],
+              "| 建议归档 | %d |" % total["archive"],
+              "| 样本不足 | %d |" % total["accum"],
+              "", "## 说明",
+              "- 建议文件**不改任何生产状态**；「建议归档」仅表示从 VARIANTS 长期观察移除的候选，"
+              "需人工按第 8 条流程（C-3 审批）确认后执行。",
+              "- 完整证据：evolution/walkforward-report.md（%s）" % date_s]
+    dec = "\n".join(lines) + "\n"
+    dec_out = os.path.join(REPO, "evolution", "walkforward-decision.md")
+    open(dec_out, "w", encoding="utf-8").write(dec)
+    print("\n✅ 建议文件 → %s" % dec_out)
+
+    # decision-log 追加
+    dl = os.path.join(REPO, "docs", "decision-log.md")
+    entry = ["",
+             "## %s walk-forward 季度裁判（M2.5）" % date_s,
+             "",
+             "- **判定清单**（确定性判据，无 LLM 判决）：" + 
+             "；".join("%s/%s=%s(%s)" % (v["sym"], v["variant"], v["verdict"],
+                                          v["n_good"] if not v["n_accum"] else "样本不足")
+                       for v in verdicts),
+             "- **汇总**：维持 %d / 归档 %d / 样本不足 %d。" % (total["keep"], total["archive"], total["accum"]),
+             "- **动作**：不自动改生产；「建议归档」项走 C-3 人工审批（第 8 条流程）；"
+             "「维持观察」项继续留 VARIANTS 长期观察。",
+             "- **证据**：evolution/walkforward-report.md + walkforward-decision.md（%s）。" % date_s]
+    with open(dl, "a", encoding="utf-8") as f:
+        f.write("\n".join(entry) + "\n")
+    print("\n✅ decision-log.md 已追加（%s）" % qlabel)
 
 
 if __name__ == "__main__":

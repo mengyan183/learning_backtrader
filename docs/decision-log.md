@@ -185,3 +185,10 @@
   与 Qlib/QuantConnect/vn.py 同决策：零新依赖、黑箱裁判规避）。触发条件
   「进化扫描成为瓶颈」已由本基准覆盖：自实现层可直接接入后续参数网格扫描；
   裁判逻辑仍自建（第 1、8 条）。
+
+## 2026-10-11 walk-forward 季度裁判（M2.5）
+
+- **判定清单**（确定性判据，无 LLM 判决）：TQQQ/V-H7=维持观察(34)；TQQQ/V-ATR=建议归档(19)；TQQQ/V-VOL=建议归档(20)；TQQQ/V-CORR=维持观察(28)；TQQQ/V-MA=维持观察(24)；SOXL/V-H7=维持观察(34)；SOXL/V-ATR=建议归档(18)；SOXL/V-VOL=建议归档(21)；SOXL/V-CORR=维持观察(30)；SOXL/V-MA=建议归档(23)；UPRO/V-H7=维持观察(33)；UPRO/V-ATR=建议归档(20)；UPRO/V-VOL=建议归档(20)；UPRO/V-CORR=维持观察(29)；UPRO/V-MA=建议归档(23)
+- **汇总**：维持 7 / 归档 8 / 样本不足 0。
+- **动作**：不自动改生产；「建议归档」项走 C-3 人工审批（第 8 条流程）；「维持观察」项继续留 VARIANTS 长期观察。
+- **证据**：evolution/walkforward-report.md + walkforward-decision.md（2026-10-11）。

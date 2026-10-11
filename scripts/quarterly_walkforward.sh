@@ -8,7 +8,7 @@ echo "==== walkforward $(date '+%F %T') ====" >> "$LOG"
 
 cd "$REPO" || { echo "cd 失败" >> "$LOG"; exit 1; }
 
-"$PY" scripts/evolve_walkforward.py --write >> "$LOG" 2>&1
+"$PY" scripts/evolve_walkforward.py --write --decision >> "$LOG" 2>&1
 rc=$?
 echo "exit=$rc" >> "$LOG"
 exit $rc

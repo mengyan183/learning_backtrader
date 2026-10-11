@@ -118,8 +118,27 @@ def main():
         zone = tail[2] if len(tail) > 2 else "?"
         cb = tail[7] if len(tail) > 7 else "?"
         lines.append("- 指数尾行：%s，zone=%s，熔断=%s（features.csv 尾行）" % (fdate, zone, cb))
+    # M2.5：季度重标定节（若本季度已有裁判建议则引用）
+    wf_dec = os.path.join(REPO, "evolution", "walkforward-decision.md")
+    q = (dt.datetime.now().month - 1) // 3 + 1
+    qlabel = "%dQ%d" % (dt.datetime.now().year, q)
+    lines += ["", "## 6.5 季度重标定（M2.5）", ""]
+    if os.path.exists(wf_dec):
+        content = open(wf_dec, encoding="utf-8").read()
+        if qlabel in content:
+            pat = re.compile(r"^\| (TQQQ|SOXL|UPRO) \| [^|]+ \| (维持观察|建议归档|样本不足) \|")
+            rows = [ln for ln in content.splitlines() if pat.match(ln)]
+            keeps = sum(1 for r in rows if "维持观察" in r)
+            arch = sum(1 for r in rows if "建议归档" in r)
+            lines.append("- 本季度（%s）已有 walk-forward 裁判：维持 %d 项 / 建议归档 %d 项。"
+                         % (qlabel, keeps, arch))
+            lines.append("- 建议文件：evolution/walkforward-decision.md；归档需人工按第 8 条流程（C-3）确认。")
+        else:
+            lines.append("- 本季度尚未产出 walk-forward 裁判（最近建议文件对应其他季度）。")
+    else:
+        lines.append("- 尚无 walk-forward 裁判建议文件（季度调度 1/4/7/10 月 1 日 08:00 自动产出）。")
     lines += ["", "## 7. 附：本周产物", ""]
-    lines.append("- evolution/decay-report.md / walkforward-report.md / attribution-report.md（如存在）")
+    lines.append("- evolution/decay-report.md / walkforward-report.md / walkforward-decision.md / attribution-report.md（如存在）")
 
     os.makedirs(WEEKLY_DIR, exist_ok=True)
     out_path = os.path.join(WEEKLY_DIR, "weekly-%s.md" % week)
