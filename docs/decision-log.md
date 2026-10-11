@@ -229,3 +229,10 @@
 - **证据**：AKShare 官方数据字典确认 `index_option_50index_qvix`（上证50股指期权波动率指数）+ `index_option_50index_min_qvix`（分时）存在且免 key；50ETF 期权 QVIX（`index_option_50etf_qvix`）同可用。第三方 A 股恐贪指数（miumiu/韭圈儿）仅网页展示、无公开 API，不采信（口径不透明）。
 - **建议**：QVIX 可复刻 vix/price 因子逻辑（复用 R1.1 + M2.2 通道），独立 A 股指数不进 WEIGHTS；启动前先验 QVIX 数据连续性（2018 年中证暂停 QVIX 官方发布，50 股指期权 QVIX 为衍生重构口径）；AKShare 新版需 Python 3.11+（本机 3.10 需装兼容旧版）。
 - **产物**：docs/ashare-expansion-assessment.md。
+
+## 2026-10-11 L3.5 知识库闭环增强（P3）完成
+
+- **invest_research --kb 可选引用**：`stage_attribution` 前用 kb_search.search_results 结构化检索注入「知识库观点参考」（逐条标注频道/标题/日期/相关度，注明仅参考不构成信号）；检索失败/库空返回空串不阻塞主流程；不改判决链（仍 NIM 归因）。
+- **human30 复盘规则化提炼**：新增 `insight_summary()` 确定性函数（无 LLM 判决）——窗口打卡纪律率、主导水平段（1.0/2.0/3.0）、短板聚焦（最弱象限频率）、窗口前后半段 avg 趋势（上升/下降/持平）；兼容 str/date 入参。
+- **测试**：tests/test_l35_kb_closure.py 6 条（无数据兜底/四类洞察规则/趋势持平/--kb 注入格式/降级路径）。
+- **全量回归**：1195 passed（含新增）。

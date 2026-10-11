@@ -323,10 +323,36 @@ def _validate_judge(text):
     return t[:800]
 
 
-def stage_attribution(nim_key, snap):
-    """Harness 后端模型(deepseek-v4.1-flash via NVIDIA NIM) 深度归因"""
+def _kb_context(query, n=3):
+    """可选引用知识库观点（L3.5 闭环增强）：kb_search 结构化检索 → 观点参考文本。
+
+    非 LLM 判决：仅作归因参考上下文，逐条标注来源（YouTube 知识库）；
+    检索失败/库空返回空串，不阻塞主流程。
+    """
+    try:
+        from scripts import kb_search
+        rows = kb_search.search_results(query, n=n)
+    except Exception as e:
+        print("[kb_context] 知识库检索失败（按无引用处理）: %s" % e, file=sys.stderr)
+        return ""
+    if not rows:
+        return ""
+    lines = ["【知识库观点参考（YouTube 交易频道字幕，仅参考不构成信号）】"]
+    for r in rows[:n]:
+        lines.append("- 来源 %s《%s》（%s，相关度 %.3f）：%s"
+                     % (r["channel"], r["title"], r["date"], r["score"],
+                        r["snippet"][:200].replace("\n", " ")))
+    return "\n".join(lines) + "\n\n"
+
+
+def stage_attribution(nim_key, snap, kb=None):
+    """Harness 后端模型(deepseek-v4.1-flash via NVIDIA NIM) 深度归因
+
+    kb: 可选检索问题（L3.5）——注入知识库观点作参考上下文，不改判决链。
+    """
     system = "你是量化交易系统的深度归因分析师。基于持仓与盈亏数据，用中文输出结构化归因（≤800字）：逐标的归因（为什么涨/跌、驱动因素）、组合风险点、仓位合理性。只做归因分析，不给交易指令。直接输出最终分析正文，不要输出思考过程。"
-    user = f"以下是今日持仓快照：\n{snapshot_text(snap)}\n\n请输出深度归因分析。"
+    kb_txt = _kb_context(kb) if kb else ""
+    user = f"{kb_txt}以下是今日持仓快照：\n{snapshot_text(snap)}\n\n请输出深度归因分析。"
     try:
         out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
                     max_tokens=4096, proxy=PROXY, timeout=300, retries=2)
@@ -998,6 +1024,7 @@ def _send_feishu(msg_type, content_obj):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="只产出简报不推送飞书")
+    ap.add_argument("--kb", default=None, help="L3.5 可选引用知识库观点（如 '杠杆ETF 风险管理'；注入归因参考，不改判决）")
     args = ap.parse_args()
 
     snap = build_snapshot()
@@ -1014,7 +1041,7 @@ def main():
     except Exception as e:
         print("Hermes 阶段失败:", e)
     try:
-        attribution = stage_attribution(_read_nim_key(), snap)
+        attribution = stage_attribution(_read_nim_key(), snap, kb=args.kb)
     except Exception as e:
         print("NIM 阶段失败:", e)
     try:

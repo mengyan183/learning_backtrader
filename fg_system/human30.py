@@ -258,3 +258,49 @@ def to_csv(path):
                         agg["avg"], agg["level"], agg["weakest_label"],
                         mkt.get("fg_index", ""), mkt.get("zone", ""), r.get("note", "")])
     return path
+
+
+def insight_summary(days=7, today=None):
+    """L3.5 规则化复盘洞察（确定性，无 LLM 判决）。
+
+    基于 window_stats + history 提炼：
+    - 打卡纪律：窗口打卡率（records / 窗口自然日）
+    - 主导水平：窗口内占比最高的 self-rating level（1/2/3 → 1.0/2.0/3.0 段）
+    - 短板聚焦：窗口内出现频率最高的最弱象限
+    - 趋势：窗口前后半段 avg 比较（上升/下降/持平）
+    返回 list[str]（洞察行），无数据时返回 ["窗口内无打卡记录，暂无可提炼洞察。"]。
+    """
+    from datetime import date as _date
+    if isinstance(today, str):
+        today = _date.fromisoformat(today)
+    ws = window_stats(days=days, today=today)
+    if ws["no_data"]:
+        return ["窗口内无打卡记录，暂无可提炼洞察。"]
+    out = []
+    # 打卡纪律
+    rate = ws["records"] / max(ws["window_days"], 1)
+    out.append("打卡纪律：%d/%d 天（%.0f%%）%s"
+               % (ws["records"], ws["window_days"], rate * 100,
+                  "——连续性良好" if rate >= 0.7 else "——存在断档，注意保持节奏"))
+    # 主导水平
+    lc = ws["level_counts"]
+    dom = max(lc, key=lc.get)
+    out.append("主导水平：%s 段（%d/%d 天）%s"
+               % ({1: "1.0", 2: "2.0", 3: "3.0"}[dom], lc[dom], ws["records"],
+                  "——仍处积累期" if dom == 1 else (
+                      "——升级期，具备迁移/外化条件" if dom == 3 else "——稳步爬坡中")))
+    # 短板聚焦
+    wc = ws["weakest_counts"]
+    if wc:
+        wmax = max(wc, key=wc.get)
+        out.append("短板聚焦：%s 出现频率最高（%d 次）——优先补它，木桶短板是主要矛盾"
+                   % (wmax, wc[wmax]))
+    # 趋势（窗口前后半段 avg 比较）
+    series = [s["avg"] for s in ws["avg_series"]]
+    if len(series) >= 4:
+        half = len(series) // 2
+        a, b = sum(series[:half]) / half, sum(series[half:]) / (len(series) - half)
+        diff = b - a
+        out.append("趋势：窗口后半段 vs 前半段 %+.1f%s"
+                   % (diff, "（上升）" if diff >= 3 else ("（下降）" if diff <= -3 else "（持平）")))
+    return out
