@@ -219,7 +219,15 @@
 | L3.2 | P1 | 组合风险度量（自实现轻量 CVaR/HRP → 评估 PyPortfolioOpt/Riskfolio-Lib；优化器输出仅参考） | 量化升级·阶段 2️⃣ 风险延伸 | ✅ 2026-10-11（e24d2a3）组合风险度量：risk.py 自实现 CVaR/HRP（纯 numpy+scipy）；OOS 等权组合 CVaR95 -4.02%/VaR95 -2.47%；HRP 参考权重 TQQQ 48.2%/SOXL 2.8%/UPRO 49.0%；与纪律第 9 条对照登记 decision-log；9 条测试 |
 | L3.3 | P2 | 实时链路增强（futu_realtime 输入 market_signal，dashboard /realtime；只读） | 扩展规划·E3（盘中预览） | ✅ 2026-10-11（futu_realtime build_market_signal 结构化：type/factor_drivers/in_trading_hours/freshness_ts；dashboard 徽章升级读 market_signal 带盘中/盘外+行情新鲜度标注；/realtime 只读 no-store；7 条测试） |
 | L3.4 | P3 | A 股扩展评估（AKShare QVIX/funddb 恐贪可行性，独立支线 or 合并，出评估报告） | 第三层·信号源扩展 | ✅ 2026-10-11（docs/ashare-expansion-assessment.md：AKShare QVIX 免 key 可用可复刻 vix/price 因子逻辑；第三方恐贪指数无 API 不采信；结论=独立支线可行、不与美股合成混入；P3 待启动） |
-| L3.5 | P3 | 知识库闭环增强（invest_research 可选引用 kb_search + human30 复盘规则化提炼，非 LLM 判决） | 扩展规划·E5 深化 | ⬜ |
+| L3.5 | P3 | 知识库闭环增强（invest_research 可选引用 kb_search + human30 复盘规则化提炼，非 LLM 判决） | 扩展规划·E5 深化 | ✅ 2026-10-11（invest_research --kb 注入知识库观点参考（标注来源/非判决/失败降级）；human30 insight_summary 确定性复盘洞察：打卡纪律/主导水平/短板聚焦/窗口趋势，无 LLM；6 条测试） |
+
+## 数据源观察项（2026-10-11，用户已按建议拍板）
+
+| 数据源 | 判断 | 状态 |
+|---|---|---|
+| **FRED**（美联储免费宏观数据库，免 key CSV） | 高价值：fed 因子官方长期数据源（DFF 1954 至今 / T10Y2Y 2000 至今），补 fedwatch 历史不足、作政策表交叉校验基准 | ✅ 数据层已接入（scripts/fetch_fred.py，增量幂等，仅入 Data/raw 不改生产计算）；接入合成权重走 M2.2 评测门控 |
+| **QuantPedia**（量化策略百科） | 中：因子思想库（M2.4 候选池/E 类待验证思路来源）——借思想不自引，其回测指标不可直接采信 | 观察，不落地 |
+| **Seeking Alpha**（海外投研社区） | 低：观点社区非数据 API，与市场级情绪系统错位，付费墙多 | 不建议 |
 
 **执行顺序**：P0 链 `R1.1 → M2.1 → M2.3/L3.1/L3.2`、`R1.1 → M2.2 → M2.4`；R1.2/R1.5/R1.7 全程横切（纪律工具化 + 评测池卫生）。
 **纪律锚点**（与规划 §5 一致）：全部落地项确定性优先；不引入黑箱裁判（Qlib RD-Agent/vn.py/LEAN/zipline bundle 明确排除，取舍见规划 §3）；🟡 未经回测裁判不进合成权重；OOS 禁直接调参；免 key 优先；数字指回 `Data/`。

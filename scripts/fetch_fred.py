@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""FRED 免 key 宏观数据接入（2026-10-11，L3.x 观察项）。
+
+补强点：fed 因子当前数据源 fedwatch.csv 仅 2026-10 起（CME FedWatch 会话抓取，
+历史不足）；FRED DFF（有效联邦基金利率）1954 年至今官方全历史，作为 fed 因子
+level 分量的**官方长期数据源 + 交叉校验基准**。
+
+通道：fred.stlouisfed.org/graph/fredgraph.csv?id=<SERIES> 免 API key 直连 CSV
+（美国站点，直连失败自动走本地代理 7890，与 fetch_stablecoin_usage 同模式）。
+
+产出：
+  Data/raw/fred_DFF.csv      observation_date,DFF     （有效联邦基金利率 %）
+  Data/raw/fred_T10Y2Y.csv   observation_date,T10Y2Y  （10Y-2Y 国债利差 %）
+增量 append，同日期幂等覆盖；仅入 Data/raw，**不改任何生产计算**。
+
+用法：.venv/bin/python scripts/fetch_fred.py [--series DFF,T10Y2Y] [--debug]
+"""
+import argparse
+import os
+import sys
+import urllib.request
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
+RAW = os.path.join(REPO, "Data", "raw")
+
+BASE = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=%s"
+PROXY = "http://127.0.0.1:7890"
+SERIES = {
+    "DFF": "有效联邦基金利率(%)，1954-至今，fed 因子 level 分量官方源",
+    "T10Y2Y": "10Y-2Y 国债利差(%)，2000-至今，term/宏观观察指标",
+}
+
+
+def fetch_series(sid, debug=False):
+    """免 key 下载 FRED CSV；直连失败自动走代理。返回 (lines, source)。"""
+    url = BASE % sid
+    for label, opener in (
+        ("direct", urllib.request.build_opener()),
+        ("proxy", urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": PROXY, "https": PROXY}))),
+    ):
+        try:
+            resp = opener.open(url, timeout=20)
+            raw = resp.read().decode("utf-8")
+            lines = [l.strip() for l in raw.splitlines() if l.strip()]
+            if len(lines) < 2 or not lines[1].split(",")[1]:
+                raise ValueError("空数据")
+            if debug:
+                print(f"[fred] {sid} 走 {label}：{len(lines)-1} 行，"
+                      f"尾行 {lines[-1]}")
+            return lines, label
+        except Exception as e:
+            if debug:
+                print(f"[fred] {sid} {label} 失败: {e}")
+    raise SystemExit(f"FRED {sid} 下载失败（直连+代理均不可达）")
+
+
+def merge_csv(sid, lines):
+    """增量合并：header + 按 observation_date 幂等（同日期后行覆盖）。"""
+    out = os.path.join(RAW, f"fred_{sid}.csv")
+    fresh = {}
+    for l in lines[1:]:
+        d, v = l.split(",")[0], l.split(",")[1]
+        if v not in (".", ""):
+            fresh[d] = v
+    if os.path.exists(out):
+        old = open(out, encoding="utf-8").read().strip().splitlines()
+        for l in old[1:]:
+            d, v = l.split(",")[0], l.split(",")[1]
+            if v not in (".", ""):
+                fresh.setdefault(d, v)
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("observation_date,%s\n" % sid)
+        for d in sorted(fresh):
+            f.write(f"{d},{fresh[d]}\n")
+    return len(fresh)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--series", default="DFF,T10Y2Y")
+    ap.add_argument("--debug", action="store_true")
+    args = ap.parse_args()
+    os.makedirs(RAW, exist_ok=True)
+    for sid in [s.strip() for s in args.series.split(",") if s.strip()]:
+        if sid not in SERIES:
+            raise SystemExit(f"未知系列 {sid}（可用：{list(SERIES)}）")
+        lines, src = fetch_series(sid, args.debug)
+        n = merge_csv(sid, lines)
+        print(f"✅ fred_{sid}.csv：{n} 个观测日（来源 {src}，{SERIES[sid]}）")
+
+
+if __name__ == "__main__":
+    main()
