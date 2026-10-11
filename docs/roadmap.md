@@ -217,7 +217,7 @@
 | M2.5 | P2 | walk-forward 季度报告自动化（对接 evolve_weekly，自动产出维持/归档/观察建议） | E2/C-5 深化 | ✅（--decision 2026Q4：维持 7 / 归档 8；季度调度带决策） |
 | L3.1 | P1 | 向量化参数扫描（vectorbt 思想：先基准实验，固定 numba/seed/cache；只做扫描层） | 量化升级·回测扫描层 | ✅（vec_run 等价性 12 组全过；64 组网格 8.0x 提速；自实现不引 vectorbt） |
 | L3.2 | P1 | 组合风险度量（自实现轻量 CVaR/HRP → 评估 PyPortfolioOpt/Riskfolio-Lib；优化器输出仅参考） | 量化升级·阶段 2️⃣ 风险延伸 | ✅ 2026-10-11（e24d2a3）组合风险度量：risk.py 自实现 CVaR/HRP（纯 numpy+scipy）；OOS 等权组合 CVaR95 -4.02%/VaR95 -2.47%；HRP 参考权重 TQQQ 48.2%/SOXL 2.8%/UPRO 49.0%；与纪律第 9 条对照登记 decision-log；9 条测试 |
-| L3.3 | P2 | 实时链路增强（futu_realtime 输入 market_signal，dashboard /realtime；只读） | 扩展规划·E3（盘中预览） | ⬜ |
+| L3.3 | P2 | 实时链路增强（futu_realtime 输入 market_signal，dashboard /realtime；只读） | 扩展规划·E3（盘中预览） | ✅ 2026-10-11（futu_realtime build_market_signal 结构化：type/factor_drivers/in_trading_hours/freshness_ts；dashboard 徽章升级读 market_signal 带盘中/盘外+行情新鲜度标注；/realtime 只读 no-store；7 条测试） |
 | L3.4 | P3 | A 股扩展评估（AKShare QVIX/funddb 恐贪可行性，独立支线 or 合并，出评估报告） | 第三层·信号源扩展 | ⬜ |
 | L3.5 | P3 | 知识库闭环增强（invest_research 可选引用 kb_search + human30 复盘规则化提炼，非 LLM 判决） | 扩展规划·E5 深化 | ⬜ |
 

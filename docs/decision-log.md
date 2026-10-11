@@ -208,3 +208,10 @@
 - **回测（M2.2 probe，TQQQ OOS 191 日）**：年化 47.20% < B0 67.18%（未不劣化）→ **FAIL**；最大回撤 -24.0% vs -33.8%（改善 +9.8pp）；Sharpe 1.30 vs 1.10（占优）。
 - **建议**：**Z（观察）**——不进生产权重（draft 不进合成维持不变）；与 F-011 同构（风险缓释价值 > 收益价值）；样本偏短（191 日），756 日窗未满，纳入 VARIANTS 长期观察，样本积累后季度复检。
 - **证据**：evolution/proposals/proposal_F013_StablecoinUsage_2026-10-11.md（审批位待用户 Y/N/Z）。
+
+## 2026-10-11 L3.3 实时链路增强（E3 盘中预览延伸）完成
+
+- **增量**：futu_realtime.py 抽 `build_market_signal()`（纯函数）——把盘中预览结构化输出为 market_signal：type=preview（标注预览，绝不写 features/signals）、factor_drivers（price=实时 QQQ 重算，vix/term/breadth/fed=features 尾行）、in_trading_hours（美东时段判定）、freshness_ts（实时 QQQ 行情时间）；保留 preview_index 向后兼容。
+- **dashboard**：/realtime 只读返回（no-store）；页面预览徽章升级读 market_signal 优先，标注盘中/盘外 + 行情新鲜度 + 口径说明。
+- **测试**：tests/test_l33_market_signal.py 7 条（结构化字段/无 preview 降级/缺 QQQ 新鲜度 nil/周末与盘中时段判定/路由 200+no-store+兼容字段/404）。
+- **纪律**：只读展示，不落盘、不改 features；正式信号仍以收盘为准。

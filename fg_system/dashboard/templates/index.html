@@ -525,11 +525,15 @@ const HUMAN30 = {{ human30_json }};
           }
         }
       }
-      var pi = d.preview_index;
-      if (pi) {
+      var pi = d.market_signal || d.preview_index;
+      if (pi && pi.fg_index != null) {
+        var mkt = d.market_signal;
+        var tz = mkt && mkt.in_trading_hours === true ? "盘中" : (mkt && mkt.in_trading_hours === false ? "盘外" : "");
+        var fresh = mkt && mkt.freshness_ts ? " · 行情 " + (mkt.freshness_ts || "").slice(0, 16).replace("T", " ") : "";
         bar.innerHTML = "🟢 盘中预览：<b>" + pi.fg_index + "</b> " + pi.zone +
           "（收盘 " + pi.closed_index + "，Δ" + (pi.delta >= 0 ? "+" : "") +
-          pi.delta + "）· 仅预览，正式信号以收盘为准";
+          pi.delta + "）" + (tz ? " · " + tz : "") + fresh +
+          " · 仅预览（price 实时重算，其余因子取收盘），正式信号以收盘为准";
         bar.style.display = "block";
       } else { bar.style.display = "none"; }
     }).catch(function () { /* 服务未启动则静默 */ });

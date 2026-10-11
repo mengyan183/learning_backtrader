@@ -37,6 +37,55 @@ def now_iso():
     return datetime.now().isoformat(timespec="seconds")
 
 
+def _us_now():
+    """美东当前时间（America/New_York）。"""
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/New_York"))
+
+
+def _in_trading_hours(dt=None):
+    """美股常规交易时段判定：周一至周五 09:30–16:00（美东）。
+
+    盘前/盘后/周末 snapshot 的 last_price 仍是上一交易日收盘价，
+    算出的 day_chg 是**历史涨跌**而非当下异动（2026-10-05 盘前误报根因）。
+    仅在交易时段内做盘中异动告警。
+    """
+    now = dt or _us_now()
+    if now.weekday() >= 5:      # 周六/周日
+        return False
+    minutes = now.hour * 60 + now.minute
+    return 9 * 60 + 30 <= minutes <= 16 * 60
+
+
+def build_market_signal(state, preview):
+    """把盘中预览结构化输出为 market_signal（L3.3 实时链路增强，只读）。
+
+    语义字段：
+    - type: "preview"（标注预览，绝不写 features.csv / signals）
+    - factor_drivers: 仅 price 因子用实时 QQQ 重算，vix/term/breadth/fed 取 features 尾行
+    - in_trading_hours: 美东常规交易时段判定
+    - freshness_ts: 实时 QQQ 价格时间（nil = 无实时价）
+    - market_state: trading / closed（仅作展示标注，不构成信号）
+    保留 preview_index 原字段向后兼容（页面旧徽章与测试不破坏）。
+    """
+    if not preview:
+        return None
+    rt_qqq = (state.get("prices") or {}).get("QQQ", {})
+    return {
+        "type": "preview",
+        "fg_index": preview.get("fg_index"),
+        "zone": preview.get("zone"),
+        "closed_index": preview.get("closed_index"),
+        "delta": preview.get("delta"),
+        "reason": preview.get("reason"),
+        "factor_drivers": "price=实时QQQ重算; vix/term/breadth/fed=features尾行",
+        "in_trading_hours": _in_trading_hours(),
+        "freshness_ts": rt_qqq.get("ts") if isinstance(rt_qqq, dict) else None,
+        "ts": preview.get("ts"),
+    }
+
+
+
 def load_state():
     if os.path.exists(STATE_PATH):
         try:
@@ -125,28 +174,6 @@ def snapshot_fallback():
         except Exception as e:
             print(f"[rt] snapshot 轮询异常: {e}")
         time.sleep(15)
-
-
-# ---------------------------------------------------------------- 交易时段
-def _us_now():
-    """美东当前时间（America/New_York）。"""
-    from zoneinfo import ZoneInfo
-    from datetime import datetime
-    return datetime.now(ZoneInfo("America/New_York"))
-
-
-def _in_trading_hours():
-    """美股常规交易时段判定：周一至周五 09:30–16:00（美东）。
-
-    盘前/盘后/周末 snapshot 的 last_price 仍是上一交易日收盘价，
-    算出的 day_chg 是**历史涨跌**而非当下异动（2026-10-05 盘前误报根因）。
-    仅在交易时段内做盘中异动告警。
-    """
-    now = _us_now()
-    if now.weekday() >= 5:      # 周六/周日
-        return False
-    minutes = now.hour * 60 + now.minute
-    return 9 * 60 + 30 <= minutes <= 16 * 60
 
 
 # ---------------------------------------------------------------- 指数预览
@@ -387,6 +414,7 @@ def main():
             pi = preview_index()
             if pi:
                 state["preview_index"] = pi
+                state["market_signal"] = build_market_signal(state, pi)
                 save_state(state)
                 print(f"[rt] 预览指数 {pi['fg_index']} {pi['zone']} (收盘 {pi['closed_index']}, Δ{pi['delta']:+.1f})")
             # 兜底：若最近 180s 内回调无任何更新，切 snapshot 轮询线程
