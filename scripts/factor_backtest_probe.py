@@ -52,8 +52,9 @@ def rolling_rank(s: pd.Series, window: int = ROLL, min_periods: int = 60) -> pd.
     return s.rolling(window, min_periods=min_periods).apply(_rank_last, raw=True)
 
 
-def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_START) -> dict:
-    feats = pd.read_csv(DATA / "features.csv", parse_dates=["date"])
+def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_START,
+               features_path=None) -> dict:
+    feats = pd.read_csv(features_path or (DATA / "features.csv"), parse_dates=["date"])
     prices = pd.read_csv(RAW / "prices.csv", parse_dates=["date"])
     if factor not in feats.columns:
         raise SystemExit("features 无因子列 %r（可用：%s）" % (factor, list(feats.columns)))
@@ -130,9 +131,11 @@ def main() -> int:
     ap.add_argument("--direction", choices=["positive", "negative"], default="positive",
                     help="因子方向（F-011 正向：高分=恐慌=未来涨）")
     ap.add_argument("--oos-start", default=OOS_START)
+    ap.add_argument("--features", default=None, help="研究专用特征文件（默认 Data/features.csv；F-013 用 evolution/experiments/factor-adoption/features_f013.csv）")
     args = ap.parse_args()
 
-    out = run_probe(args.factor, args.symbol, args.direction, args.oos_start)
+    out = run_probe(args.factor, args.symbol, args.direction, args.oos_start,
+                     args.features)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     md_path = OUT_DIR / f"{args.factor}-{args.symbol}-oos.md"
     json_path = OUT_DIR / f"{args.factor}-{args.symbol}-oos.json"
