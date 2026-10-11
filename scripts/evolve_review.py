@@ -239,6 +239,20 @@ def register_hypotheses(cands, via):
         if a[:50] in existing:
             print(f"[evolve_review] 已登记过，跳过：{a[:40]}")
             continue
+        # R1.7 列名校验质量门：脆弱/虚构列引用 → pending-revise（不登记为 open）
+        reason = validate_column_refs(a, t, f)
+        if reason:
+            hid = next_hyp_id()
+            row = (f"| {hid} | {today} | {a} | {t} | {f} | pending-revise | "
+                   f"由 evolve_review 自动登记（{via}）；证据：{e[:60]}；"
+                   f"**R1.7 列名校验：{reason}** |")
+            with open(HYP, "a") as fh:
+                fh.write(row + "\n")
+            added.append(hid)
+            existing += row
+            print(f"[evolve_review] 列名校验未过，登记为 pending-revise：{a[:40]} "
+                  f"（{reason}）")
+            continue
         hid = next_hyp_id()
         row = (f"| {hid} | {today} | {a} | {t} | {f} | open | "
                f"由 evolve_review 自动登记（{via}）；证据：{e[:60]} |")
@@ -247,6 +261,45 @@ def register_hypotheses(cands, via):
         added.append(hid)
         existing += row
     return added
+
+
+_FRAGILE_COL_RE = re.compile(r"第\s*[\d、,，\s]+\s*列")
+# features.csv 真实列名（R1.7 校验基准，取当前表头）
+_FEATURE_COLS = set()
+if os.path.exists(FEATURES):
+    with open(FEATURES, newline="") as _f:
+        _FEATURE_COLS = set(next(csv.reader(_f)))
+# 通用词白名单：出现在 features.csv 上下文中但非列名的词不判虚构
+_COMMON_TOKENS = {
+    "the", "for", "with", "true", "false", "date", "row", "rows", "column",
+    "columns", "value", "values", "sample", "samples", "features", "csv",
+    "group", "groups", "between", "within", "over", "under", "when", "and",
+    "than", "are", "was", "were", "has", "have", "is", "in", "of", "to",
+    "by", "at", "from", "this", "that", "这些", "该", "与", "及", "在", "对",
+}
+
+
+def validate_column_refs(*texts):
+    """R1.7 假说登记列名校验质量门。
+
+    返回 None=通过；否则返回驳回原因（登记为 pending-revise）：
+      1. 「第 N 列」脆弱引用（列序变化即失效，禁止）；
+      2. features.csv 上下文中出现真实表头之外的疑似列名（虚构列）。
+    """
+    for txt in texts:
+        if _FRAGILE_COL_RE.search(txt):
+            return "使用「第 N 列」脆弱引用，须改写为真实列名（features.csv 表头）"
+    # 虚构列检测：仅检查提到 features.csv 的片段
+    for txt in texts:
+        for seg in re.finditer(r"features\.csv[^。；;|]{0,80}", txt):
+            seg_text = seg.group(0)
+            for tok in re.findall(r"[a-z_]{2,}", seg_text.lower()):
+                if tok in _FEATURE_COLS or tok in _COMMON_TOKENS:
+                    continue
+                if re.fullmatch(r"(threshold|column[ns]?|field[ns]?|index[es]?|"
+                                r"param[ns]?|num[ns]?|col\d+|c\d+)", tok):
+                    return "引用虚构列名 %r（不在 features.csv 表头）" % tok
+    return None
 
 
 def log_memory(report, via, added):
