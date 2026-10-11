@@ -154,6 +154,9 @@ svg.chart .frame{stroke:rgba(255,255,255,.1)}
 .f-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 .f-name{font-size:11px;color:var(--fg-muted);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
 .f-val{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;font-family:var(--font-num)}
+.f-zone{font-size:10px;color:var(--fg-muted);border:1px solid var(--border);border-radius:8px;padding:1px 6px;margin-left:4px;white-space:nowrap}
+.f-zone[data-zone="0"],.f-zone[data-zone="4"]{color:#f85149;border-color:#f85149}
+.f-zone[data-zone="1"],.f-zone[data-zone="3"]{color:#d29922;border-color:#d29922}
 .f-chart svg{width:100%;height:auto;display:block}
 /* 情绪子信号条（E1） */
 .sent{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;

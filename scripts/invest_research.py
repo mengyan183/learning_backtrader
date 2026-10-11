@@ -724,6 +724,10 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     if _h30:
         secs.append(("🌱 Human 3.0 状态【自评记录】", _h30))
         secs.append("hr")
+    _fbreak = _factor_breakdown()
+    if _fbreak:
+        secs.append(("🧩 六因子独立分项【R1.3】", _fbreak))
+        secs.append("hr")
     secs.append(("🏛️ 美联储动态", _fed.fed_brief_text(_fctx)))
     secs.append("hr")
     secs.append(("📰 市场快讯", news_text(news) if news else "（新闻源不可用）"))
@@ -741,6 +745,38 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     secs.append("hr")
     secs.append(("📎 数据来源", _source_footnote(snap)))
     return secs
+
+
+def _factor_breakdown():
+    """R1.3 六因子独立分项（确定性）：features.csv 尾行逐因子 分 + 档位 + 方向。
+
+    每因子独立 0-100 档位判定（复用 config.ZONE_EDGES 边界），不参与合成即可独立
+    诊断——让简报展示「哪个因子在拉/压指数」。无数据/计算失败返回 None，不编造。
+    """
+    try:
+        import os
+        import pandas as pd
+        from fg_system import config
+        from fg_system.index import factor_score_summary
+        path = os.path.join(config.ROOT, "Data", "features.csv")
+        row = pd.read_csv(path).tail(1).iloc[-1]
+        summary = factor_score_summary(row)
+        if not summary:
+            return None
+        labels = {"vix": "VIX", "term": "TERM", "price": "PRICE",
+                  "breadth": "BREADTH", "fed": "FED", "putcall": "PUT-CALL"}
+        date = row.get("date")
+        lines = [f"〔数据日 {date}；档位边界 20/40/60/80；权重为合成权重〕"]
+        for k, s in summary.items():
+            if s["score"] is None:
+                lines.append(f"{labels[k]:8s}  —  数据缺失")
+                continue
+            arrow = "→" if s["direction"] == "贪婪向" else "↓"
+            lines.append(f"{labels[k]:8s}  {s['score']:6.2f}  {arrow}  "
+                         f"{s['zone_name']}（权重 {s['weight']:.3f}）")
+        return "\n".join(lines)
+    except Exception:
+        return None
 
 
 def _source_footnote(snap):

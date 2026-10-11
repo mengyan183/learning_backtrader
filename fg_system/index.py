@@ -95,3 +95,46 @@ def smooth(fg_index, days=None):
     if days <= 1:
         return fg_index
     return fg_index.rolling(days, min_periods=days).mean()
+
+
+# ---------------------------------------------------------------- R1.3 分因子独立报告
+ZONE_NAMES = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"]
+
+
+def factor_zone(score):
+    """单因子 0-100 分 → 档位（0 极恐 / 1 恐 / 2 中性 / 3 贪 / 4 极贪）。
+
+    边界 = config.ZONE_EDGES = [20, 40, 60, 80]（`>=` 判定，与 pipeline/market_signal 同口径）。
+    NaN → None。
+    """
+    if score is None or (isinstance(score, float) and score != score):
+        return None
+    for i, edge in enumerate(config.ZONE_EDGES):
+        if score < edge:
+            return i
+    return len(config.ZONE_EDGES)
+
+
+def factor_score_summary(row, factors=None):
+    """单日因子独立报告：六因子 分 + 档位 + 方向（>50 贪婪向 / <50 恐惧向）+ 权重。
+
+    输入：features.csv 一行（含 vix/term/price/breadth/fed/putcall）。
+    输出：dict {因子名: {score, zone, zone_name, direction, weight}}。
+    """
+    factors = factors or ["vix", "term", "price", "breadth", "fed", "putcall"]
+    out = {}
+    weights = config.WEIGHTS
+    for k in factors:
+        v = row.get(k)
+        val = float(v) if v is not None and v == v else None
+        z = factor_zone(val)
+        out[k] = {
+            "score": None if val is None else round(val, 2),
+            "zone": z,
+            "zone_name": ZONE_NAMES[z] if z is not None else "—",
+            "direction": ("贪婪向" if val is not None and val > 50
+                          else ("恐惧向" if val is not None and val < 50
+                                else ("中性" if val is not None else "—"))),
+            "weight": float(weights[k]),
+        }
+    return out

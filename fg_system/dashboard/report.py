@@ -595,17 +595,25 @@ def _factors_block(valid):
     colors = ["#58a6ff", "#d29922", "#7ee787", "#f85149", "#bc8cff", "#ffa657"]
     labels = {"vix": "波动率 VIX", "term": "期限利差", "price": "价格动量",
               "breadth": "市场广度", "fed": "美联储政策", "putcall": "Put-Call 情绪"}
+    try:
+        from fg_system.index import ZONE_NAMES, factor_zone
+    except Exception:
+        ZONE_NAMES, factor_zone = [], (lambda x: None)
     out = ["<div class='f-grid'>"]
     for i, k in enumerate(keys):
         pts = [(d.strftime("%Y-%m-%d"), float(v))
                for d, v in valid[k].items() if not pd.isna(v)]
         cur = pts[-1][1] if pts else float("nan")
+        z = factor_zone(cur)
+        zname = ZONE_NAMES[z] if (z is not None and z < len(ZONE_NAMES)) else ""
+        zone_badge = ("<span class='f-zone' data-zone='%d'>%s</span>"
+                      % (z, zname) if zname else "")
         out.append("<div class='f-card'><div class='f-head'>"
                    "<span class='f-name'>%s</span>"
-                   "<span class='f-val' style='color:%s'>%s</span></div>"
+                   "<span class='f-val' style='color:%s'>%s</span>%s</div>"
                    "<div class='f-chart' id='chartF%d'></div></div>"
                    % (labels.get(k, k), colors[i % 4],
-                      ("%.2f" % cur) if cur == cur else "—", i))
+                      ("%.2f" % cur) if cur == cur else "—", zone_badge, i))
     out.append("</div>")
     return "".join(out)
 

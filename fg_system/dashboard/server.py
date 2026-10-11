@@ -259,6 +259,37 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         resp.headers["Cache-Control"] = "no-store"   # 刷新必须拿新的
         return resp
 
+    @app.route("/api/factors")
+    def _factors_api():
+        """R1.3 分因子独立报告：尾行六因子 分 + 档位 + 方向 + 权重（JSON）。"""
+        try:
+            import pandas as pd
+            from fg_system import config
+            from fg_system.index import factor_score_summary
+            path = os.path.join(config.ROOT, "Data", "features.csv")
+            row = pd.read_csv(path).tail(1).iloc[-1]
+            summary = factor_score_summary(row)
+            labels = {"vix": "波动率 VIX", "term": "期限利差", "price": "价格动量",
+                      "breadth": "市场广度", "fed": "美联储政策", "putcall": "Put-Call 情绪"}
+            out = {
+                "date": str(row.get("date", "")),
+                "fg_index": (float(row["fg_index"]) if pd.notna(row.get("fg_index"))
+                             else None),
+                "factors": [
+                    {
+                        "key": k, "label": labels.get(k, k),
+                        "score": s["score"], "zone": s["zone"],
+                        "zone_name": s["zone_name"], "direction": s["direction"],
+                        "weight": s["weight"],
+                    }
+                    for k, s in summary.items()
+                ],
+            }
+            return _json_ok(out)
+        except Exception as exc:
+            return Response("factors api 失败：%s: %s" % (type(exc).__name__, exc),
+                            status=500, mimetype="text/plain; charset=utf-8")
+
     return app
 
 
