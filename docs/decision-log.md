@@ -128,3 +128,21 @@
 - **框架取舍（已确认）**：借思想自实现为主（Qlib 评测协议 / freqtrade 自检 / zipline Pipeline DAG）；轻量引入为辅（bt / PyPortfolioOpt 远期候选）；明确不引入 Qlib RD-Agent / vn.py / LEAN / zipline bundle / mlfinlab / 国内闭源平台。
 - **口径修正（审计）**：生产实为六因子 v2.7（含 putcall:0.100）；假说已登记至 H-046；E 类待验证项（qjr1997 公式 / vectorbt Numba / freqtrade 切分 / TA-Lib）挂入 blocked-registry。
 - **衔接**：roadmap.md「2026-10-11 规划纳入」章节 + NEXT-SESSION.md 已同步；落地项按章节回写既有体系，不另起平行体系。
+
+### 2026-10-11 L3.2 组合风险度量（CVaR/HRP 落地，P1）
+
+- **决策**：`fg_system/risk.py` 落地自实现轻量尾部度量（纯 numpy/scipy 聚类）：
+  `var/cvar/max_drawdown/hrp_weights/risk_report`；报告产物
+  `evolution/experiments/risk/{risk-report.md,json}`（OOS 2024-10-03 起，
+  生产同款 runner 收益口径，与 M2.1 构造一致）。
+- **关键数值**：等权组合 CVaR95 = **-4.02%/日**（最差 5% 场景单日期望损失），
+  VaR95 -2.47%、年化波动 29.97%、最大回撤 -26.07%；单资产 SOXL 尾部最重
+  （CVaR -6.82%、回撤 -36.99%）。HRP 参考权重：TQQQ 48.18% / SOXL 2.83% /
+  UPRO 48.99%（SOXL 因高波动 + 与 TQQQ 高相关被聚类降权）。
+- **与纪律第 9 条对照**：9.1 极贪降 25% 底仓 = 组合 CVaR 的尾部量化执行；
+  9.3 极恐分批释弹药 = 样本外尾部未知性（VaR/CVaR 无法覆盖黑天鹅）下
+  防一次性暴露的纪律依据。**第 9 条执行不改**。
+- **框架评估**：PyPortfolioOpt / Riskfolio-Lib 保持远期候选；当前自实现
+  已覆盖组合尾部报告需求（零新依赖），暂不引入。
+- **约束**：HRP 权重**仅是参考建议**，底仓实际调仓仍走指令卡 + C-3
+  人工审批（第 1、8 条）；不绕过指令卡。

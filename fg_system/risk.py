@@ -115,3 +115,119 @@ def risk_tags(sym, name):
     if sym_u in config.CRYPTO_LEVERAGE or sym_u.endswith("-USDT"):
         tags.append(("加密现货杠杆", "⚠"))
     return tags
+
+
+# ---------------------------------------------------------------------------
+# L3.2 组合风险度量（M2.1 承接）：尾部指标 VaR/CVaR + HRP 参考权重（纯 numpy）
+# 纪律：优化器输出仅是参考建议，不得绕过指令卡/人工审批（第 1、8 条）。
+# ---------------------------------------------------------------------------
+
+import numpy as np  # noqa: E402
+
+
+def var(returns, alpha=0.05):
+    """历史模拟 VaR：收益分布 alpha 分位（负值=损失）。数据不足返回 None。"""
+    if returns is None or len(returns) == 0:
+        return None
+    s = returns.dropna()
+    if len(s) < 30:
+        return None
+    return float(np.percentile(s.values, alpha * 100))
+
+
+def cvar(returns, alpha=0.05):
+    """历史模拟 CVaR：尾部（<=VaR）期望损失。数据不足返回 None。"""
+    if returns is None or len(returns) == 0:
+        return None
+    s = returns.dropna()
+    if len(s) < 30:
+        return None
+    v = np.percentile(s.values, alpha * 100)
+    tail = s.values[s.values <= v]
+    return float(np.mean(tail)) if len(tail) else float(v)
+
+
+def max_drawdown(returns):
+    """最大回撤（收益序列）。数据不足（<2 点）返回 None。"""
+    if returns is None or len(returns) == 0:
+        return None
+    s = returns.dropna()
+    if len(s) < 2:
+        return None
+    nav = (1.0 + s).cumprod()
+    peak = np.maximum.accumulate(nav)
+    return float(((nav - peak) / peak).min())
+
+
+def hrp_weights(returns, linkage="single"):
+    """分层风险平价（HRP）参考权重：相关矩阵层次聚类 → 递归二分 → 逆方差。
+
+    scipy 层次聚类（单连接），纯 numpy 权重计算；样本不足回退等权。
+    输出仅是参考建议（纪律：不得绕过指令卡/人工审批）。
+    """
+    from scipy.cluster import hierarchy
+    s = returns.dropna()
+    if len(s) < 30 or s.shape[1] < 2:
+        return {c: 1.0 / s.shape[1] for c in s.columns} if s.shape[1] else {}
+    corr = s.corr().fillna(0.0).values
+    dist = np.sqrt(np.maximum(0.0, (1.0 - corr) / 2.0))
+    Z = hierarchy.linkage(dist[np.triu_indices(len(s.columns), k=1)],
+                          method=linkage)
+    labels = s.columns
+
+    def _recursive(w, idxs):
+        if len(idxs) == 1:
+            w[idxs[0]] = 1.0
+            return
+        # 沿聚类树最后合并点二分
+        i, j = Z[len(idxs) - 2, 0].astype(int), Z[len(idxs) - 2, 1].astype(int)
+        # 用 scipy 的 fcluster 按当前节点拆分
+        cl = hierarchy.fcluster(Z, len(idxs) - 1, criterion="maxclust")
+        left = [k for k in idxs if cl[k] == 1]
+        right = [k for k in idxs if cl[k] == 2]
+        if not left or not right:  # 退化：全部同簇 → 等分
+            left, right = idxs[:len(idxs) // 2], idxs[len(idxs) // 2:]
+        inv = np.diag(np.linalg.pinv(s.cov().fillna(0.0).values))
+        wl = np.sum(inv[left]) if inv[left].sum() else 1.0
+        wr = np.sum(inv[right]) if inv[right].sum() else 1.0
+        alpha = wl / (wl + wr)
+        _recursive(w, left)
+        _recursive(w, right)
+        for k in left:
+            w[k] *= alpha
+        for k in right:
+            w[k] *= (1.0 - alpha)
+
+    w = {}
+    _recursive(w, list(range(len(labels))))
+    total = sum(w.values())
+    return {labels[k]: float(w[k] / total) for k in w}
+
+
+def risk_report(returns_df, weights=None):
+    """组合尾部风险报告：单资产 + 组合的 VaR/CVaR/年化波动/最大回撤。
+
+    returns_df: 收益 DataFrame（列=资产）；weights: 组合权重 dict（默认等权）。
+    """
+    if returns_df is None or returns_df.empty:
+        return {}
+    cols = list(returns_df.columns)
+    n = len(cols)
+    w = weights or {c: 1.0 / n for c in cols}
+    comb = sum(w[c] * returns_df[c].fillna(0.0) for c in cols)
+    annual = 252 ** 0.5
+    out = {"assets": {}}
+    for c in cols:
+        r = returns_df[c]
+        out["assets"][c] = {
+            "var95": var(r), "cvar95": cvar(r),
+            "annual_vol": float(r.dropna().std() * annual) if len(r.dropna()) > 1 else None,
+            "max_drawdown": max_drawdown(r),
+        }
+    out["portfolio"] = {
+        "var95": var(comb), "cvar95": cvar(comb),
+        "annual_vol": float(comb.dropna().std() * annual) if len(comb.dropna()) > 1 else None,
+        "max_drawdown": max_drawdown(comb),
+        "weights": w,
+    }
+    return out
