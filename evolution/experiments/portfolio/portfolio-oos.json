@@ -1,0 +1,146 @@
+{
+  "generated_at": "2026-10-11 12:04",
+  "engine": "内化（复用 runner.run_single + FgStrategy + next_position；零新依赖）",
+  "symbols": [
+    "TQQQ",
+    "SOXL",
+    "UPRO"
+  ],
+  "weights": {
+    "TQQQ": 0.3333333333333333,
+    "SOXL": 0.3333333333333333,
+    "UPRO": 0.3333333333333333
+  },
+  "oos_start": "2024-10-03",
+  "cross_check": {
+    "assertion": "组合日收益 ≡ Σ(1/n)·单标的日收益（构造保证）",
+    "max_abs_diff": 0.0
+  },
+  "correlation": {
+    "TQQQ": {
+      "TQQQ": 1.0,
+      "SOXL": 0.8911812089772179,
+      "UPRO": 0.9437105713453363
+    },
+    "SOXL": {
+      "TQQQ": 0.8911812089772179,
+      "SOXL": 1.0,
+      "UPRO": 0.8246606127043344
+    },
+    "UPRO": {
+      "TQQQ": 0.9437105713453363,
+      "SOXL": 0.8246606127043344,
+      "UPRO": 1.0
+    }
+  },
+  "metrics": {
+    "portfolio": {
+      "full": {
+        "total_return": 3.027914758485542,
+        "annual_return": 0.14937049129635094,
+        "max_drawdown": -0.39594053658962125,
+        "annual_vol": 0.24974327562947102,
+        "sharpe": 0.5980961486144792,
+        "calmar": 0.3772548589819393
+      },
+      "is": {
+        "total_return": 1.1227287746899948,
+        "annual_return": 0.09860495803165925,
+        "max_drawdown": -0.39594053658962125,
+        "annual_vol": 0.235556727460724,
+        "sharpe": 0.41860387132479726,
+        "calmar": 0.24903981512218815
+      },
+      "oos": {
+        "total_return": 0.8975173872949376,
+        "annual_return": 0.37663070048135694,
+        "max_drawdown": -0.2607171283870581,
+        "annual_vol": 0.2997472143629725,
+        "sharpe": 1.2564944140741339,
+        "calmar": 1.4445951549535891
+      }
+    },
+    "buyhold": {
+      "full": {
+        "total_return": 43.48575777327336,
+        "annual_return": 0.4611385254192888,
+        "max_drawdown": -0.8002470439526801,
+        "annual_vol": 0.7087685063787155,
+        "sharpe": 0.6506193789215702,
+        "calmar": 0.5762452094063051
+      },
+      "is": {
+        "total_return": 13.418949997988982,
+        "annual_return": 0.395709008458909,
+        "max_drawdown": -0.8002470439526801,
+        "annual_vol": 0.6970385170630006,
+        "sharpe": 0.5677003476454137,
+        "calmar": 0.494483561606643
+      },
+      "oos": {
+        "total_return": 2.0852286594708906,
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "annual_vol": 0.7543800221264447,
+        "sharpe": 1.0001904397300614,
+        "calmar": 1.222892852594253
+      }
+    }
+  },
+  "per_leg_oos": {
+    "TQQQ": {
+      "portfolio_leg": {
+        "total_return": 0.6419086460400205,
+        "annual_return": 0.2807408979166919,
+        "max_drawdown": -0.24156228581595418,
+        "annual_vol": 0.2566135309555973,
+        "sharpe": 1.0940221931059022,
+        "calmar": 1.1621884474573476
+      },
+      "buyhold_leg": {
+        "total_return": 1.3329506314580888,
+        "annual_return": 0.5248449585854498,
+        "max_drawdown": -0.5830206881766538,
+        "annual_vol": 0.6431698908912095,
+        "sharpe": 0.816028495765244,
+        "calmar": 0.9002166976730388
+      }
+    },
+    "SOXL": {
+      "portfolio_leg": {
+        "total_return": 1.7173803550125641,
+        "annual_return": 0.6468170843308079,
+        "max_drawdown": -0.36986842201019265,
+        "annual_vol": 0.48409850622886474,
+        "sharpe": 1.3361269989645774,
+        "calmar": 1.7487761750933775
+      },
+      "buyhold_leg": {
+        "total_return": 2.997711670480543,
+        "annual_return": 0.9966864975903669,
+        "max_drawdown": -0.7978931896129349,
+        "annual_vol": 1.2505599998451646,
+        "sharpe": 0.7969921456897465,
+        "calmar": 1.249147768855965
+      }
+    },
+    "UPRO": {
+      "portfolio_leg": {
+        "total_return": 0.43074730482079504,
+        "annual_return": 0.19571436156515643,
+        "max_drawdown": -0.19893063278911782,
+        "annual_vol": 0.1938146923611409,
+        "sharpe": 1.0098014716060628,
+        "calmar": 0.9838321972897413
+      },
+      "buyhold_leg": {
+        "total_return": 0.8580121703853933,
+        "annual_return": 0.3614213615857831,
+        "max_drawdown": -0.49085243264977885,
+        "annual_vol": 0.4768234139021148,
+        "sharpe": 0.7579773791476981,
+        "calmar": 0.7363136811499836
+      }
+    }
+  }
+}

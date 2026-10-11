@@ -210,7 +210,7 @@
 | R1.5 | P2 | `drift_monitor.py` 数据质量闸门（断点/跳空/极端值检测 + push-alert） | E2 概念漂移（数据保障） | ⬜ |
 | R1.6 | P2 | B 类数据积累持续推进（H-001 7/20、F-009/F-010 accumulating），简报标注样本进度 | B 类数据积累（blocked-registry） | 🔄 |
 | R1.7 | P2 | `evolve_review` 假说登记列名校验（虚构列引用自动 `pending-revise`，杜绝 H-042~H-044 类污染） | 纪律工具化（评测池卫生） | ⬜ |
-| M2.1 | P0 | 组合级回测层（bt 思想 A/B 对照：引入 bt vs 自实现），三标的白名单组合净值/成本/回撤 | 量化升级·阶段 2️⃣ 延伸（组合层） | ⬜ |
+| M2.1 | P0 | 组合级回测层（bt 思想 A/B 对照：引入 bt vs 自实现），三标的白名单组合净值/成本/回撤 | 量化升级·阶段 2️⃣ 延伸（组合层） | ✅ 2026-10-11（scripts/portfolio_backtest.py 内化方案 B；A/B 决策记录 evolution/experiments/portfolio/decision.md；组合 OOS 37.66% vs B0 75.45%、回撤 -26.07% vs -61.70%、Sharpe 1.26 vs 1.00；与 baseline 单标的口径逐一核对一致） |
 | M2.2 | P0 | 🟡→生产验证通道正式化（候选因子→评测→回测裁判→C-3 审批→更新 WEIGHTS，文档化并跑通一次） | 第二层·自动提案延伸 | ✅ 2026-10-11（docs/factor-adoption-pipeline.md；F-011 跑通：评测通过→回测 FAIL→提案待 C-3 审批） |
 | M2.3 | P1 | 权重/档位敏感性升级（权重扰动→fg_index→组合回测扫描，进 C-3 审批模板） | 量化升级·阶段 1️⃣ 延伸 | ⬜ |
 | M2.4 | P1 | 情绪子因子候选池（news_sentiment / stablecoin_breadth，注册 F 系列，**不进合成**先进评测池） | 扩展规划·E1 深化 | ⬜ |
