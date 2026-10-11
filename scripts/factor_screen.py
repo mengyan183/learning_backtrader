@@ -108,6 +108,20 @@ def factor_f011_putcall(putcall_df, ratio_col="total_ratio"):
     return s[~s.index.duplicated(keep="last")]
 
 
+def factor_f013_stablecoin_usage(usage_df, ref_index=None, col="usage_30d"):
+    """F-013 稳定币使用效率（M2.4）：usage_30d → 日频信号（正向）。
+
+    不 ffill：低频日频序列缺失即缺失（样本不足如实报告，滚动窗避免零方差）。
+    """
+    if usage_df is None or len(usage_df) == 0 or col not in usage_df.columns:
+        return pd.Series(dtype=float)
+    s = usage_df.set_index("date")[col].astype(float).sort_index()
+    s = s[~s.index.duplicated(keep="last")]
+    if ref_index is not None:
+        return s.reindex(ref_index)
+    return s
+
+
 # ---------------------------------------------------------------- 报告渲染
 
 def _fmt(x, nd=3, suf=""):
@@ -190,6 +204,11 @@ def main(argv=None):
     units.append({"factor_id": "F-011", "name": "Put-Call（total_ratio）",
                   "signal": factor_f011_putcall(pc),
                   "target": "SPY", "direction": "正向", "close": spy})
+    # F-013 稳定币使用效率（M2.4；H-030 背离先验：使用效率升→贪婪虚高→后续跌；首检 IC 全负）
+    su = _load(DATA / "raw" / "stablecoin_usage.csv")
+    units.append({"factor_id": "F-013", "name": "稳定币使用效率（usage_30d）",
+                  "signal": factor_f013_stablecoin_usage(su, spy.index),
+                  "target": "SPY", "direction": "逆向", "close": spy})
 
     reports = []
     out = ["# 因子评测协议报告（R1.1 · Qlib 蓝图）", "",
