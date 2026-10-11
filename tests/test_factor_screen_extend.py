@@ -169,3 +169,22 @@ def test_sets_utf8_stdout_before_fg_import():
     assert reconf, "脚本必须设置 stdout/stderr 编码"
     assert fg, "脚本必须导入 fg_system"
     assert min(reconf) < min(fg), "UTF-8 设置必须在 fg_system 导入之前"
+
+
+class TestF015Dff:
+    def test_empty_returns_empty(self):
+        from scripts.factor_screen import factor_f015_dff
+        assert factor_f015_dff(None).empty
+
+    def test_signal_built_and_ffilled(self):
+        from scripts.factor_screen import factor_f015_dff
+        import pandas as pd
+        df = pd.DataFrame({"observation_date": pd.to_datetime(["2026-10-01", "2026-10-02"]),
+                           "DFF": [3.8, 3.9]})
+        df = df.rename(columns={"observation_date": "date"})
+        ref = pd.DatetimeIndex(pd.to_datetime(
+            ["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"]))
+        s = factor_f015_dff(df, ref)
+        assert len(s) == 4
+        assert s.iloc[-1] == 3.9           # 尾部 ffill
+        assert s.iloc[0] == 3.8

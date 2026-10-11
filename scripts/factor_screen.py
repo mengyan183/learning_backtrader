@@ -122,6 +122,20 @@ def factor_f013_stablecoin_usage(usage_df, ref_index=None, col="usage_30d"):
     return s
 
 
+def factor_f015_dff(fred_df, ref_index=None, col="DFF"):
+    """F-015 FRED 有效联邦基金利率（2026-10-11 数据源观察项）：利率水平 → 日频信号（逆向）。
+
+    高利率 → 压制风险资产 → 未来跌（逆向）。低频日频序列 reindex+ffill 对齐 SPY。
+    """
+    if fred_df is None or len(fred_df) == 0 or col not in fred_df.columns:
+        return pd.Series(dtype=float)
+    s = fred_df.set_index("date")[col].astype(float).sort_index()
+    s = s[~s.index.duplicated(keep="last")]
+    if ref_index is not None:
+        return s.reindex(ref_index).ffill()
+    return s
+
+
 # ---------------------------------------------------------------- 报告渲染
 
 def _fmt(x, nd=3, suf=""):
@@ -206,6 +220,13 @@ def main(argv=None):
                   "target": "SPY", "direction": "正向", "close": spy})
     # F-013 稳定币使用效率（M2.4；H-030 背离先验：使用效率升→贪婪虚高→后续跌；首检 IC 全负）
     su = _load(DATA / "raw" / "stablecoin_usage.csv")
+    # F-015 FRED DFF（数据源观察项：fed 因子官方长期数据源；逆向：高利率→压风险资产）
+    _fred_raw = pd.read_csv(DATA / "raw" / "fred_DFF.csv",
+                            parse_dates=["observation_date"])
+    fred = _fred_raw.rename(columns={"observation_date": "date"})
+    units.append({"factor_id": "F-015", "name": "FRED DFF 有效联邦基金利率",
+                  "signal": factor_f015_dff(fred, spy.index),
+                  "target": "SPY", "direction": "逆向", "close": spy})
     units.append({"factor_id": "F-013", "name": "稳定币使用效率（usage_30d）",
                   "signal": factor_f013_stablecoin_usage(su, spy.index),
                   "target": "SPY", "direction": "逆向", "close": spy})
