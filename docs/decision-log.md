@@ -222,3 +222,10 @@
 - **理由**：评测通过（10/20 日 ICIR -1.389/-1.389）但 OOS 回测 FAIL（年化 47.20% < B0 67.18%）；回撤改善 +9.8pp、Sharpe 1.30 占优（风险缓释价值 > 收益价值）；样本偏短（191 日）。
 - **动作**：纳入 VARIANTS 长期观察；C-5 季度复检；组合层回撤敏感度证据积累后评估权重微调。
 - **证据**：evolution/proposals/proposal_F013_StablecoinUsage_2026-10-11.md（审批位 Z）。
+
+## 2026-10-11 L3.4 A 股扩展评估（P3）完成
+
+- **结论**：独立支线可行、暂不落地、不与美股主线合并。
+- **证据**：AKShare 官方数据字典确认 `index_option_50index_qvix`（上证50股指期权波动率指数）+ `index_option_50index_min_qvix`（分时）存在且免 key；50ETF 期权 QVIX（`index_option_50etf_qvix`）同可用。第三方 A 股恐贪指数（miumiu/韭圈儿）仅网页展示、无公开 API，不采信（口径不透明）。
+- **建议**：QVIX 可复刻 vix/price 因子逻辑（复用 R1.1 + M2.2 通道），独立 A 股指数不进 WEIGHTS；启动前先验 QVIX 数据连续性（2018 年中证暂停 QVIX 官方发布，50 股指期权 QVIX 为衍生重构口径）；AKShare 新版需 Python 3.11+（本机 3.10 需装兼容旧版）。
+- **产物**：docs/ashare-expansion-assessment.md。
