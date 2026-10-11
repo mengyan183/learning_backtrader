@@ -29,7 +29,7 @@ def _sample_features(n=400):
 def test_plan_a_uses_date_index():
     f = _sample_features()
     z = plan_a_zone(f)
-    assert z.index.is_all_dates
+    assert isinstance(z.index, pd.DatetimeIndex)
     assert z.notna().sum() > 0
     assert set(z.dropna().unique()).issubset({0, 1, 2, 3, 4})
 

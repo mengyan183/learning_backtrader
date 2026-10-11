@@ -83,6 +83,7 @@ def test_scan_monotonicity():
         "open": 10.0, "high": 10.5, "low": 9.5,
         "close": np.linspace(10, 30, 252), "volume": 1e6,
     })
+    from scripts.vector_scan_bench import vec_run
     r_lo = vec_run(features, px, 0.0, 1.0)
     r_hi = vec_run(features, px, 0.75, 1.0)
     nav_lo = (1 + r_lo).cumprod().iloc[-1]

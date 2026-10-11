@@ -56,6 +56,7 @@ RESEARCH_WHITELIST = {
     "scripts/verify_hypotheses.py",     # H 假说事件研究（事件后收益衡量）
     "scripts/evolve_walkforward.py",    # C-5 季度 walk-forward 裁判
     "scripts/evolve_baseline.py",       # A-2 回测基线恢复
+    "scripts/norm_compare.py",       # R1.4 归一化对照实验（forward return 取证）
 }
 
 # 负 shift 模式：shift(-1) / shift(-horizon) / shift(-h) / shift(  -5 ) 等
