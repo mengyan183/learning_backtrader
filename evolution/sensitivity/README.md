@@ -12,6 +12,7 @@
 | 档位买卖线（zone） | TQQQ | [sensitivity_zone_TQQQ.md](sensitivity_zone_TQQQ.md) | 两端内收（[25,40,60,75]）→ 年化 13.1%、回撤 -46.1% 为最差 ⇒ **买卖线两端对收益敏感，基准 [20,40,60,80] 处于稳健区间** |
 | 目标仓位（core） | TQQQ | [sensitivity_core_TQQQ.md](sensitivity_core_TQQQ.md) | **两端敏感**：0.25 → 年化 10.6% 偏低、0.65 → 回撤 -53.2% 偏险；0.35~0.55 年化 14.9%~16.9% 为稳健带 ⇒ 当前 0.45 居中合理 |
 | 减仓阈值（trim） | TQQQ | [sensitivity_trim_TQQQ.md](sensitivity_trim_TQQQ.md) | **0.5%~3% 全网格结果一致**（年化 15.11%/回撤 -43.13%）⇒ 该阈值在回测路径中**从未触发**（P1 减仓规则在持仓页/简报层执行，不作用于 target_position），测量确认规则未介入回测 |
+| 因子权重（WEIGHTS） | 组合 | [sensitivity_weights.md](sensitivity_weights.md) | 六因子 ±10%：组合 OOS 年化 35.6%~46.7%（基准 37.66%）、回撤 -25.8%~-34.0%、Sharpe 1.15~1.34 ⇒ **整体稳健、无极端恶化**；vix/term/price +10% 提升年化（46.2%/46.7%/46.6%）属局部扰动非调参建议；fed 对 fg_index 影响最小（mean\|Δ\| 0.02）；zone 翻转 760~794 天（指数长期贴近档位边界）；target 变化不对称（+10% 触发弹药/熔断状态机 1651 天 vs -10% 仅 18~35 天） |
 
 ## 待扫
 
@@ -22,3 +23,4 @@
 
 - 阶段 1 结论进文档后，如发现需调参 → 走阶段 2 变体（V-ATR OOS 不采纳、
   V-VOL 待回测，见 evolution/experiments/variant_h007_2026-10-09.md）+ C-2/C-3 审批。
+- 权重/档位类提案审批须附敏感性表（M2.3，已写入 evolve_propose 提案模板 §6）。

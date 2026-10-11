@@ -212,7 +212,7 @@
 | R1.7 | P2 | `evolve_review` 假说登记列名校验（虚构列引用自动 `pending-revise`，杜绝 H-042~H-044 类污染） | 纪律工具化（评测池卫生） | ⬜ |
 | M2.1 | P0 | 组合级回测层（bt 思想 A/B 对照：引入 bt vs 自实现），三标的白名单组合净值/成本/回撤 | 量化升级·阶段 2️⃣ 延伸（组合层） | ✅ 2026-10-11（scripts/portfolio_backtest.py 内化方案 B；A/B 决策记录 evolution/experiments/portfolio/decision.md；组合 OOS 37.66% vs B0 75.45%、回撤 -26.07% vs -61.70%、Sharpe 1.26 vs 1.00；与 baseline 单标的口径逐一核对一致） |
 | M2.2 | P0 | 🟡→生产验证通道正式化（候选因子→评测→回测裁判→C-3 审批→更新 WEIGHTS，文档化并跑通一次） | 第二层·自动提案延伸 | ✅ 2026-10-11（docs/factor-adoption-pipeline.md；F-011 跑通：评测通过→回测 FAIL→提案待 C-3 审批） |
-| M2.3 | P1 | 权重/档位敏感性升级（权重扰动→fg_index→组合回测扫描，进 C-3 审批模板） | 量化升级·阶段 1️⃣ 延伸 | ⬜ |
+| M2.3 | P1 | 权重/档位敏感性升级（权重扰动→fg_index→组合回测扫描，进 C-3 审批模板） | 量化升级·阶段 1️⃣ 延伸 | ✅ 2026-10-11（scripts/weight_sensitivity.py；六因子 ±10% 组合 OOS 年化 35.6%~46.7% 稳健；evolve_propose 提案模板 §6 已写入「审批须附敏感性表」） |
 | M2.4 | P1 | 情绪子因子候选池（news_sentiment / stablecoin_breadth，注册 F 系列，**不进合成**先进评测池） | 扩展规划·E1 深化 | ⬜ |
 | M2.5 | P2 | walk-forward 季度报告自动化（对接 evolve_weekly，自动产出维持/归档/观察建议） | E2/C-5 深化 | ⬜ |
 | L3.1 | P1 | 向量化参数扫描（vectorbt 思想：先基准实验，固定 numba/seed/cache；只做扫描层） | 量化升级·回测扫描层 | ⬜ |

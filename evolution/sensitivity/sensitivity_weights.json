@@ -1,0 +1,237 @@
+{
+  "base_weights": {
+    "vix": 0.27,
+    "term": 0.135,
+    "price": 0.225,
+    "breadth": 0.135,
+    "fed": 0.135,
+    "putcall": 0.1
+  },
+  "base_portfolio_oos": {
+    "total_return": 0.8975173872949376,
+    "annual_return": 0.37663070048135694,
+    "max_drawdown": -0.2607171283870581,
+    "annual_vol": 0.2997472143629725,
+    "sharpe": 1.2564944140741339,
+    "calmar": 1.4445951549535891
+  },
+  "delta": 0.1,
+  "results": [
+    {
+      "factor": "vix",
+      "delta": 0.1,
+      "fg_delta_max": 1.2199821655378784,
+      "fg_delta_mean": 0.35902053383976984,
+      "zone_flip_days": 792,
+      "target_flip_days": 1651,
+      "portfolio_oos": {
+        "annual_return": 0.46225722214525167,
+        "max_drawdown": -0.2967804134671702,
+        "sharpe": 1.3291414518435278
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "vix",
+      "delta": -0.1,
+      "fg_delta_max": 1.3188213703099407,
+      "fg_delta_mean": 0.3834158485732191,
+      "zone_flip_days": 785,
+      "target_flip_days": 26,
+      "portfolio_oos": {
+        "annual_return": 0.35605884813182076,
+        "max_drawdown": -0.2577996502720564,
+        "sharpe": 1.1981124603246571
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "term",
+      "delta": 0.1,
+      "fg_delta_max": 1.0404291565676758,
+      "fg_delta_mean": 0.26948659370785444,
+      "zone_flip_days": 789,
+      "target_flip_days": 1651,
+      "portfolio_oos": {
+        "annual_return": 0.46674147852672254,
+        "max_drawdown": -0.29383997796126593,
+        "sharpe": 1.3436673078062515
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "term",
+      "delta": -0.1,
+      "fg_delta_max": 1.0975839627270432,
+      "fg_delta_mean": 0.2786533713293337,
+      "zone_flip_days": 777,
+      "target_flip_days": 18,
+      "portfolio_oos": {
+        "annual_return": 0.37672090852358653,
+        "max_drawdown": -0.26071406591063706,
+        "sharpe": 1.2565429644322925
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "price",
+      "delta": 0.1,
+      "fg_delta_max": 0.7469053240444623,
+      "fg_delta_mean": 0.21007644254453797,
+      "zone_flip_days": 775,
+      "target_flip_days": 1148,
+      "portfolio_oos": {
+        "annual_return": 0.4657490933034556,
+        "max_drawdown": -0.293840404931338,
+        "sharpe": 1.33660323961787
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "price",
+      "delta": -0.1,
+      "fg_delta_max": 0.7867993769607864,
+      "fg_delta_mean": 0.22107018355573976,
+      "zone_flip_days": 781,
+      "target_flip_days": 22,
+      "portfolio_oos": {
+        "annual_return": 0.3785894612292462,
+        "max_drawdown": -0.26071288866184583,
+        "sharpe": 1.263558869986908
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "breadth",
+      "delta": 0.1,
+      "fg_delta_max": 1.155792868983859,
+      "fg_delta_mean": 0.21730266734246423,
+      "zone_flip_days": 777,
+      "target_flip_days": 18,
+      "portfolio_oos": {
+        "annual_return": 0.37499082055455335,
+        "max_drawdown": -0.2607160648303206,
+        "sharpe": 1.2514735831864339
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "breadth",
+      "delta": -0.1,
+      "fg_delta_max": 1.2056035752289702,
+      "fg_delta_mean": 0.22472928784217502,
+      "zone_flip_days": 781,
+      "target_flip_days": 1651,
+      "portfolio_oos": {
+        "annual_return": 0.42126587625316425,
+        "max_drawdown": -0.3396039631051392,
+        "sharpe": 1.1511760413363679
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "fed",
+      "delta": 0.1,
+      "fg_delta_max": 0.6181851698498946,
+      "fg_delta_mean": 0.022915996304911077,
+      "zone_flip_days": 760,
+      "target_flip_days": 1,
+      "portfolio_oos": {
+        "annual_return": 0.3794725456158903,
+        "max_drawdown": -0.2607171283870581,
+        "sharpe": 1.2657355760399185
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "fed",
+      "delta": -0.1,
+      "fg_delta_max": 0.6351045814929819,
+      "fg_delta_mean": 0.023543195392827843,
+      "zone_flip_days": 763,
+      "target_flip_days": 4,
+      "portfolio_oos": {
+        "annual_return": 0.3633782522124205,
+        "max_drawdown": -0.2607171283870581,
+        "sharpe": 1.2151663985608867
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "putcall",
+      "delta": 0.1,
+      "fg_delta_max": 0.9122368547534307,
+      "fg_delta_mean": 0.36781755475839134,
+      "zone_flip_days": 785,
+      "target_flip_days": 26,
+      "portfolio_oos": {
+        "annual_return": 0.35694394427653653,
+        "max_drawdown": -0.26071609329182965,
+        "sharpe": 1.2005833731361641
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    },
+    {
+      "factor": "putcall",
+      "delta": -0.1,
+      "fg_delta_max": 0.9490949094909382,
+      "fg_delta_mean": 0.37693120384082185,
+      "zone_flip_days": 794,
+      "target_flip_days": 35,
+      "portfolio_oos": {
+        "annual_return": 0.38873834302681676,
+        "max_drawdown": -0.2577972203432565,
+        "sharpe": 1.2962725795184253
+      },
+      "buyhold_oos": {
+        "annual_return": 0.7545236860542222,
+        "max_drawdown": -0.6169990154522291,
+        "sharpe": 1.0001904397300614
+      }
+    }
+  ]
+}

@@ -65,6 +65,9 @@ def write_proposal(sym, vk, spec, m_b0, m_v, out_dir):
         "- 变体规则可能错过阻断解除后的快速反弹。", "",
         "## 6. 审批", "",
         "- 人工审批：采纳（动 config.py）/ 观察（纳入 VARIANTS 长期观察）/ 否决（Y/N/Z）？",
+        "- **敏感性表（M2.3）**：审批须附 `evolution/sensitivity/` 最新扫描——权重类提案引用 "
+        "`sensitivity_weights.md` 对应因子行；档位/阈值类引用 `sensitivity_zone/core/circuit/trim` "
+        "对应表。未附敏感性表的提案按未完备退回。",
     ]
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, "proposal_%s_%s_%s.md" % (sym, vk, date_s))
