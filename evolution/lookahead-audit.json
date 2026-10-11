@@ -1,0 +1,60 @@
+{
+  "generated_at": "2026-10-11T10:05:32",
+  "cheat_on": false,
+  "verdict": "PASS",
+  "code": {
+    "violations": [],
+    "whitelisted": [
+      {
+        "file": "fg_system/factors/eval.py",
+        "line": 22,
+        "code": "out[f\"fwd_{h}\"] = close.shift(-h) / close - 1.0"
+      },
+      {
+        "file": "fg_system/factors/screening.py",
+        "line": 25,
+        "code": "return close.shift(-horizon) / close - 1.0"
+      },
+      {
+        "file": "scripts/attribution_check.py",
+        "line": 56,
+        "code": "df[\"ret_next\"] = df[\"close\"].shift(-1) / df[\"close\"] - 1"
+      },
+      {
+        "file": "scripts/factor_screen_extend.py",
+        "line": 206,
+        "code": "fut = spy.shift(-h) / spy - 1.0"
+      },
+      {
+        "file": "scripts/putcall_factor_check.py",
+        "line": 30,
+        "code": "spy[\"next_ret\"] = spy[\"ret\"].shift(-1)  # 当日收盘 → 次日收盘"
+      },
+      {
+        "file": "scripts/verify_hypotheses.py",
+        "line": 486,
+        "code": "- 「后续 H 日收益」= close.shift(-H)/close - 1（事件日起 H 个交易日后）。"
+      },
+      {
+        "file": "scripts/verify_hypotheses.py",
+        "line": 545,
+        "code": "fwd = close.shift(-h) / close - 1.0            # H 日前瞻收益"
+      },
+      {
+        "file": "scripts/verify_hypotheses.py",
+        "line": 581,
+        "code": "\"4/8/16 日收益（close.shift(-H)/close-1）vs 全样本基线，各 horizon \""
+      }
+    ],
+    "unclassified": []
+  },
+  "data": {
+    "features_tail": "2026-10-09",
+    "raw_tails": {
+      "vix.csv": "2026-10-09",
+      "sentiment.csv": "2026-10-09",
+      "prices.csv": "2026-10-09"
+    },
+    "ahead_of_raw": false
+  }
+}
