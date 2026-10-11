@@ -205,18 +205,18 @@
 |---|---|---|---|---|
 | R1.1 | P0 | `factor_screen.py` 升级为 Qlib 式评测协议（IC/RankIC/ICIR + 分组累计净值 + 多空对冲 + 含/不含成本双口径） | 量化升级·阶段 4️⃣ 因子库化（裁判补全） | ✅ 2026-10-11（28 报告跑通；17 pytest；全量 1119 通过） |
 | R1.2 | P0 | 未来函数审计工具化（freqtrade lookahead 思想 → pytest 可执行） | 纪律红线（第 4 条）工具化 | ✅ 2026-10-11（审计器 PASS：违规 0 / 白名单 8 / 数据层通过；6 pytest；全量 1125 通过） |
-| R1.3 | P1 | 分因子独立 0–100 报告（简报分项表 + dashboard /api/factors；仅展示不进合成） | 扩展规划·E1 深化（透明度） | ⬜ |
+| R1.3 | P1 | 分因子独立 0–100 报告（简报分项表 + dashboard /api/factors；仅展示不进合成） | 扩展规划·E1 深化（透明度） | ✅ 2026-10-11（fecb7be）分因子独立报告：factor_zone/factor_score_summary 进 index.py；简报新增「六因子独立分项」确定性节；dashboard GET /api/factors + 因子卡档位徽标；6 条测试 |
 | R1.4 | P1 | 归一化/档位对照实验（A 现状 / B qjr1997 式 z-score / C 动态档位），walk-forward 裁判比较，**生产不动** | 量化升级·阶段 1️⃣ 敏感性延伸 | ⬜ |
 | R1.5 | P2 | `drift_monitor.py` 数据质量闸门（断点/跳空/极端值检测 + push-alert） | E2 概念漂移（数据保障） | ⬜ |
 | R1.6 | P2 | B 类数据积累持续推进（H-001 7/20、F-009/F-010 accumulating），简报标注样本进度 | B 类数据积累（blocked-registry） | 🔄 |
-| R1.7 | P2 | `evolve_review` 假说登记列名校验（虚构列引用自动 `pending-revise`，杜绝 H-042~H-044 类污染） | 纪律工具化（评测池卫生） | ⬜ |
+| R1.7 | P2 | `evolve_review` 假说登记列名校验（虚构列引用自动 `pending-revise`，杜绝 H-042~H-044 类污染） | 纪律工具化（评测池卫生） | ✅ 2026-10-11（bc79af5）假说登记列名校验质量门：脆弱「第 N 列」/虚构列名自动 pending-revise；H-042~H-044 修订为真实列名；6 条测试 |
 | M2.1 | P0 | 组合级回测层（bt 思想 A/B 对照：引入 bt vs 自实现），三标的白名单组合净值/成本/回撤 | 量化升级·阶段 2️⃣ 延伸（组合层） | ✅ 2026-10-11（scripts/portfolio_backtest.py 内化方案 B；A/B 决策记录 evolution/experiments/portfolio/decision.md；组合 OOS 37.66% vs B0 75.45%、回撤 -26.07% vs -61.70%、Sharpe 1.26 vs 1.00；与 baseline 单标的口径逐一核对一致） |
 | M2.2 | P0 | 🟡→生产验证通道正式化（候选因子→评测→回测裁判→C-3 审批→更新 WEIGHTS，文档化并跑通一次） | 第二层·自动提案延伸 | ✅ 2026-10-11（docs/factor-adoption-pipeline.md；F-011 跑通：评测通过→回测 FAIL→提案待 C-3 审批） |
 | M2.3 | P1 | 权重/档位敏感性升级（权重扰动→fg_index→组合回测扫描，进 C-3 审批模板） | 量化升级·阶段 1️⃣ 延伸 | ✅ 2026-10-11（scripts/weight_sensitivity.py；六因子 ±10% 组合 OOS 年化 35.6%~46.7% 稳健；evolve_propose 提案模板 §6 已写入「审批须附敏感性表」） |
-| M2.4 | P1 | 情绪子因子候选池（news_sentiment / stablecoin_breadth，注册 F 系列，**不进合成**先进评测池） | 扩展规划·E1 深化 | ⬜ |
+| M2.4 | P1 | 情绪子因子候选池（news_sentiment / stablecoin_breadth，注册 F 系列，**不进合成**先进评测池） | 扩展规划·E1 深化 | ✅ 2026-10-11（c65e10d）情绪子因子候选池：news_sentiment(F-010)/stablecoin_breadth(F-013) 注册评测池，不进合成；F-013 首检逆向通过待回测裁判；8 条测试 |
 | M2.5 | P2 | walk-forward 季度报告自动化（对接 evolve_weekly，自动产出维持/归档/观察建议） | E2/C-5 深化 | ⬜ |
 | L3.1 | P1 | 向量化参数扫描（vectorbt 思想：先基准实验，固定 numba/seed/cache；只做扫描层） | 量化升级·回测扫描层 | ⬜ |
-| L3.2 | P1 | 组合风险度量（自实现轻量 CVaR/HRP → 评估 PyPortfolioOpt/Riskfolio-Lib；优化器输出仅参考） | 量化升级·阶段 2️⃣ 风险延伸 | ⬜ |
+| L3.2 | P1 | 组合风险度量（自实现轻量 CVaR/HRP → 评估 PyPortfolioOpt/Riskfolio-Lib；优化器输出仅参考） | 量化升级·阶段 2️⃣ 风险延伸 | ✅ 2026-10-11（e24d2a3）组合风险度量：risk.py 自实现 CVaR/HRP（纯 numpy+scipy）；OOS 等权组合 CVaR95 -4.02%/VaR95 -2.47%；HRP 参考权重 TQQQ 48.2%/SOXL 2.8%/UPRO 49.0%；与纪律第 9 条对照登记 decision-log；9 条测试 |
 | L3.3 | P2 | 实时链路增强（futu_realtime 输入 market_signal，dashboard /realtime；只读） | 扩展规划·E3（盘中预览） | ⬜ |
 | L3.4 | P3 | A 股扩展评估（AKShare QVIX/funddb 恐贪可行性，独立支线 or 合并，出评估报告） | 第三层·信号源扩展 | ⬜ |
 | L3.5 | P3 | 知识库闭环增强（invest_research 可选引用 kb_search + human30 复盘规则化提炼，非 LLM 判决） | 扩展规划·E5 深化 | ⬜ |
