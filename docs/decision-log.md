@@ -255,3 +255,9 @@
 ## 2026-10-11 运维部署手册
 
 - 新增 `docs/OPS-DEPLOYMENT.md`：系统概览/环境/常驻服务（dashboard/realtime/Hermes/Ollama）/launchd 6 任务（命令+频率+日志）/数据文件地图/每日链路手动等价命令/测试发布纪律/双端同步链路/常见故障排查表/备份恢复要点。
+
+## 2026-10-11 变体提案批量审批（15 份 → Z 观察）
+
+- 用户批量审批：10-09 全部变体提案 **Z（观察）**——纳入 VARIANTS 长期观察，不直接动 config，季度 walk-forward（C-5）复检后再定。
+- 回填 14 份（UPRO V-CORR 已于 10-09 20:14 单独批 Z）：SOXL/TQQQ/UPRO × V-ATR/V-VOL/V-MA/V-CORR/V-H7（不采纳类）全部归档观察。
+- 生产现状不变：WEIGHTS v2.7 六因子不变；VARIANTS 观察池扩大。
