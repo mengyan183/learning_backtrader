@@ -298,3 +298,13 @@
 - **用户裁决**：sensitivity_scan 的 OOS 切分选**选项 A（双口径分层）**——扫描 IS = 纪律口径（config.IS_START~IS_END，2019-09-20~2022-12-31），OOS 终验 = 研究口径（evo_meta.oos_start()，2024-10-03 起）。
 - 依据：WT-18 明令双口径不得混用；A 使调参绝不触碰纪律 OOS、验收跨研究 OOS，两层纪律全满足；代价为 IS 仅 ~3.3 年（接受，配合稳定性检查）。
 - 已开 **WT-27**（docs/windows-tasks.md 待做表末行），交 Windows 端实现。
+
+## 2026-10-12 WT-22 收口：attribution 实跑 verdict 翻转（待用户裁决）
+
+- Mac 实跑 `python -m fg_system.cli attribution`（修复后）：
+  - with_trend_return = without_trend_return = **0.754331**（完全相同）
+  - return_delta = **0.0**（贡献度 0.00%，阈值 2.00%）⇒ effective = **False**
+  - blocked_days = 413（blocked_ratio 16.37%）
+  - verdict：「趋势过滤贡献度 0.00% < 阈值 2.00%，修正无效 → 应回到验收报告**选项 A（降低核心仓上限）**，不要继续调趋势参数」
+- 语义说明：v1 target 从未乘趋势系数（裁决 B），「关闭趋势过滤」对照=无变化 ⇒ 贡献度 0 是**真实结论**，非计算错误；旧 ÷0.5 假对照夸大贡献。
+- ⚠️ 选项 A（降低核心仓上限）属**规则/仓位变更**，按 trading-discipline 第 8 条**待用户人工确认**后才可实施。
