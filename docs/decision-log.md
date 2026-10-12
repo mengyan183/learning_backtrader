@@ -276,3 +276,9 @@
 - **note1012a**（2 片，公司端打包路径 `dist/feishu/text/` 不在白名单 → 被拒）：内容 = Windows 端自查回传（无代码变更；①futu_realtime /tmp lock 伪缺口不改、②_kb_add_wechat /tmp 伪缺口不改、③cli.py 硬编码回测基准 = **真缺口**）。已手动归档 `docs/windows-selfcheck-2026-10-12.md`。
 - **缺口修复（采纳方案 B 并升级）**：回测基准收进 `config.BACKTEST_BASELINE` 单一事实源，cli.py 打印改引用；新增守卫测试 `tests/test_cli_baseline_guard.py`（3 条：config 字段合法 / cli 无硬编码残留 / 数值与旧口径一致）。
 - **push_todo.py 落后**：Mac 版已 push（含说明摘要），Windows `git pull` 即覆盖，无需 Mac 动作。
+
+## 2026-10-12 sync_1012h 入库收尾 + S-4 错误测试清理
+
+- **sync_1012e（8ca01e2）** 曾入库 S-4 错误改动（test_attribution_shift.py 要求 shift(1)）；Windows 端 s234-fixes 纠正包核实 **S-4 误报**（shift 会让 4 个既有测试转红），attribution.py 已由 sync_1012h（fba3c20）覆盖为正确版（与 origin/main 一致，git diff 为空）。
+- **按纠正包处置**：删除 `tests/backtest/test_attribution_shift.py`（错误前提）；human30.py / evolve_weekly.py / 两个守卫测试保留（S-2/S-3 正确修复）。
+- 增量失败根因 = 残留错误测试，非实现问题。
