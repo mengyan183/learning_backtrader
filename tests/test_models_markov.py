@@ -52,33 +52,42 @@ def test_transition_matrix_out_of_range_zones_ignored():
 
 
 # ------------------------------------------------------------ steady_state
-def test_steady_state_sticky_matrix_leaks_mass_but_peaks_at_state():
-    """自环链（zone 0/1/3/4 无出边）：稳态**峰值在状态 2**，但未归一化。
+def test_steady_state_zero_rows_become_self_loops():
+    """无出边的零行按**自环**处理 ⇒ 返回值恒为概率分布（sum=1）。
 
-    ⚠️ BUG（记录但不修，见报告）：序列只含 zone 2 ⇒ P 仅第 2 行非零，
-    其余行为全 0（无出边）。`pi @ P` 迭代把落进零行的质量漏掉，收敛到
-    [0,0,0.2,0,0]（sum=0.2，不是概率分布）。方向对（峰在 2），但下游
-    model_report.py 直接按它比大小选"长期稳态档位"，数值不可信。
+    WT-23 修复前：序列只含 zone 2 ⇒ P 仅第 2 行非零、其余全 0（无出边），
+    `pi @ P` 迭代把落进零行的质量漏掉，返回 [0,0,0.2,0,0]（sum=0.2）✗。
+    修复后零行视作自环（"进去就出不来"）⇒ 矩阵实为单位阵 ⇒ 稳态 = 均匀分布 ✓。
     """
     P = markov.transition_matrix([2] * 5)
     pi = markov.steady_state(P)
-    assert pi[2] == pytest.approx(1.0 / ZONES)   # 实测：0.2（初值均分）
-    assert np.count_nonzero(pi) == 1             # 只有状态 2 非零
-    assert pi.sum() == pytest.approx(0.2)        # 判别力：sum≠1（质量泄漏）
+    assert np.all(np.isfinite(pi))
+    assert np.all(pi >= 0)
+    assert pi.sum() == pytest.approx(1.0)        # 判别力：必须是概率分布
+    assert np.allclose(pi, 1.0 / ZONES)          # 零行自环 ⇒ 单位阵 ⇒ 均匀
 
 
-def test_steady_state_zero_matrix_collapses_to_all_zeros():
-    """全零矩阵（无出边）⇒ 迭代衰减到全 0，而非概率分布。
+def test_steady_state_zero_matrix_is_uniform():
+    """全零矩阵（全部无出边）⇒ 全部自环 ⇒ 单位阵 ⇒ 稳态 = 均匀分布。
 
-    ⚠️ BUG（记录但不修）：`pi @ 0 = 0`，随后差值 <tol 直接返回全 0 向量。
-    这**不是概率分布**（sum=0），下游用 `max(i, key=pi[i])` 会得到任意档位。
-    本测试固化实际行为。
+    WT-23 修复前：`pi @ 0 = 0`，随后差值 <tol 直接返回**全 0 向量**（sum=0）✗，
+    下游 `max(i, key=pi[i])` 会得到任意档位。
     """
     assert markov.steady_state(None) is None
     pi = markov.steady_state(np.zeros((ZONES, ZONES)))
     assert pi is not None
-    assert np.allclose(pi, 0.0)              # 实测：全 0（非 1/5，也非 NaN）
     assert np.all(np.isfinite(pi))
+    assert pi.sum() == pytest.approx(1.0)
+    assert np.allclose(pi, 1.0 / ZONES)
+
+
+def test_steady_state_normalizes_non_stochastic_input():
+    """非随机矩阵（行和 ≠ 1）也不得把质量漏掉：返回前必须归一。"""
+    P = np.zeros((ZONES, ZONES))
+    P[0, 1] = 3.0      # 行和 = 3，不是概率
+    pi = markov.steady_state(P)
+    assert pi.sum() == pytest.approx(1.0)
+    assert np.all(pi >= 0)
 
 
 # ------------------------------------------------------------ persistence
@@ -110,12 +119,11 @@ def test_forward_dist_none_returns_none():
 
 # ------------------------------------------------------------ analyze
 def test_analyze_returns_matrix_steady_persistence():
-    """analyze 汇总矩阵/稳态/惯性；此处固化稳态**未归一化**的实际行为。
+    """analyze 汇总矩阵/稳态/惯性；稳态必须是**归一化**的概率分布。
 
-    ⚠️ BUG（记录但不修）：序列里 zone 3/4 从未出现，其行为全 0（无出边），
-    迭代 `pi @ P` 每步把落进这些行概率质量"漏掉" ⇒ 返回的稳态 sum≈0.6
-    而非 1。下游 model_report.py 直接读它选"长期稳态最可能档位"，会失真。
-    本测试固化实际行为（正确实现应 sum=1，届时本测试转红即为信号）。
+    WT-23 修复前：序列里 zone 3/4 从未出现，其行为全 0（无出边），迭代
+    `pi @ P` 每步把落进这些行的概率质量漏掉 ⇒ 稳态 sum≈0.6 ✗，下游
+    model_report.py 据此选"长期稳态最可能档位"会失真。修复后 sum=1 ✓。
     """
     zones = [0, 0, 1, 1, 2, 2, 2, 1, 0]
     out = markov.analyze(zones)
@@ -125,8 +133,8 @@ def test_analyze_returns_matrix_steady_persistence():
     assert 0.0 < out["persistence"] <= 1.0
     ss = np.asarray(out["steady_state"])
     assert np.all(ss >= 0)
-    assert ss.sum() > 0
-    assert abs(ss.sum() - 1.0) > 0.1        # 实测：未归一（质量泄漏）
+    assert np.all(np.isfinite(ss))
+    assert ss.sum() == pytest.approx(1.0)   # 判别力：概率分布
     assert "horizons" not in out  # 未给 start_zone ⇒ 不做前瞻
 
 

@@ -67,28 +67,50 @@ def test_forward_backward_gamma_rows_sum_to_one():
     assert xi.shape == (len(X) - 1, 2, 2)
 
 
-def test_forward_backward_xi_can_explode_but_mstep_still_yields_stochastic_A():
-    """极可分数据下 xi 会数值爆炸（实测层和达 ~2.5e300），M-step 仍出随机 A。
+def test_forward_backward_xi_is_proper_probability():
+    """xi 必须是合法概率量：每层和为 1、每个 (t,i) 行和为 1、全有限非负。
 
-    ⚠️ 缺陷（记录但不修）：`denom + 1e-300` 在 denom 下溢为 0 时把 xi 放大
-    到 ~1e300（实测 max 层和 2.55e300，而正常层仅 ~0.8）。幸好仍是有限值，
-    M-step 的 `A /= A.sum(axis=1)` 把它重新归一，故 train 不崩；但 xi 本身
-    **不是**概率量，任何直接使用 xi 的调用方都会拿到垃圾数值。
-    本测试同时锁死：xi ≥ 0、存在爆炸层（>1）、以及归一后 A 行和为 1。
+    WT-25 修复前：`denom = (alpha[t]*exp(lg[t+1])) @ A.T @ beta[t+1]` 把
+    `exp(lg[t+1])` 乘在**源状态 i** 上，而 numer 用的是**目的状态 j**
+    ⇒ denom ≠ Σnumer；极可分数据下 denom 下溢为 0，`+1e-300` 把 xi 放大到
+    实测 **2.55e300**（正确层和应为 2.55）。修复后按 Σnumer 归一 ⇒ 层和恒为 1 ✓。
     """
     X = _two_cluster()
     pi, A, mu, cov = hmm._init_params(X, K=2, seed=1)
     lg = hmm._log_gauss(X, mu, cov)
-    _, _, _, xi, _ = hmm._forward_backward(lg, pi, A)
+    alpha, _, _, xi, _ = hmm._forward_backward(lg, pi, A)
+    assert np.all(np.isfinite(xi))                  # 判别力：无 1e300 爆炸
     assert np.all(xi >= 0)
-    layer_sums = xi.sum(axis=(1, 2))
-    assert np.all(np.isfinite(layer_sums))
-    assert layer_sums.max() > 1.0            # 判别力：确非归一概率量
-    # M-step 归一化后仍必为随机矩阵（行和 1）——下游真正依赖的不变量
+    assert np.allclose(xi.sum(axis=(1, 2)), 1.0)    # 每层（t）和为 1
+    # 每个 (t,i) 行：状态 i 在 t 时刻**可能**（alpha>0）则行和为 1，
+    # 不可能（alpha=0）则该行全 0 —— 两种都合法，不得出现中间值
+    row_sums = xi.sum(axis=2)
+    assert np.all((row_sums == 0.0) | np.isclose(row_sums, 1.0))
+    assert np.allclose(row_sums[alpha[:-1] > 0], 1.0)
+    # M-step 仍必为随机矩阵（下游真正依赖的不变量）
     A_est = xi.sum(axis=0)
     A_est = A_est / (A_est.sum(axis=1, keepdims=True) + 1e-300)
     assert np.allclose(A_est.sum(axis=1), 1.0)
     assert np.all(A_est >= 0)
+
+
+def test_forward_backward_degenerate_emission_stays_finite():
+    """退化发射概率（exp(lg)=0，denom 为 0）⇒ xi 必须**有限**，不得 NaN/inf。
+
+    WT-25 修复前这里会得到 NaN（alpha 除以 0）或 1e300 级垃圾。
+    约定：denom=0 表示「该转移不可能发生」⇒ 该层 xi 全 0（层和 0）。
+    """
+    lg = np.full((4, 2), -1e6)      # exp(-1e6) 下溢为 0
+    pi = np.array([0.5, 0.5])
+    A = np.array([[0.5, 0.5], [0.5, 0.5]])
+    alpha, beta, gamma, xi, loglik = hmm._forward_backward(lg, pi, A)
+    assert np.all(np.isfinite(xi))
+    assert np.all(xi >= 0)
+    assert np.all(np.isfinite(alpha))
+    assert np.all(np.isfinite(beta))
+    assert np.all(np.isfinite(gamma))
+    layer_sums = xi.sum(axis=(1, 2))
+    assert np.all((layer_sums == 0.0) | np.isclose(layer_sums, 1.0))
 
 
 def test_forward_backward_sharp_clusters_give_decisive_gamma():

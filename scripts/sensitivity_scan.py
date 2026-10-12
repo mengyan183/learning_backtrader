@@ -5,6 +5,12 @@
 纪律：**只测量不改参**——本脚本运行时覆盖 config 参数，绝不写回 config.py；
      若要调参，走阶段 2 变体 + OOS 不劣化 + 人工审批（C-2/C-3）。
 
+⚠️ **OOS 红线（WT-26，2026-10-12）**：本脚本用**整段** features（含样本外）重算
+   `target_position`，**没有** train/OOS 切分 ⇒ **产物一律不得作为调参依据**。
+   该声明已写进每张表与汇总 README（`OOS_WARNING`），不再只停留在本文档字符串里。
+   方案①（扫描只用 IS、OOS 仅终验一次）因需先裁决 OOS 口径（纪律口径
+   `config.OOS_START` vs 研究口径 `evolution/baseline.json`，见 WT-18）而**另行立项**。
+
 用法（Windows 端，纯本地计算，不需要公网）：
     .venv/bin/python scripts/sensitivity_scan.py                 # 默认 4 组参数全扫
     .venv/bin/python scripts/sensitivity_scan.py --group zone    # 只扫档位买卖线
@@ -83,6 +89,24 @@ GROUPS = {"zone": ZONE_GRID, "core": CORE_GRID, "circuit": CIRCUIT_GRID, "trim":
 
 # 回测用标的（敏感性按标的分别出表）
 SYMBOLS = getattr(config, "SYMBOLS", ["TQQQ", "SOXL", "UPRO", "QQQ"])
+
+# ================================================================ OOS 红线警示（WT-26）
+# 裁决（2026-10-12，方案②「显式警示」）：**不改扫描逻辑**，但产物必须显式声明
+# 「本表不得作为调参依据」——因为 main() 用**整段** features（含样本外）重算
+# target_position，**没有** train/OOS 切分，"只测量不改参"此前只写在 docstring 里，
+# 产物本身看不出来，极易被当成调参依据（团队评审 §3① 的敞口）。
+# ⚠️ 方案①（扫描只用 IS、OOS 仅终验一次）**未采纳**：它需要先裁决用哪个 OOS 口径
+#    （纪律声明口径 `config.OOS_START` vs 研究产物口径 `evolution/baseline.json`
+#    的 `meta.is_oos.oos_start`，WT-18 明令二者不得混用）
+#    ⇒ 属新功能，另行立项。此处**不写任何字面日期**，以免踩 OOS 单一事实源守卫。
+OOS_WARNING = (
+    "> ⚠️ **本表不得作为调参依据（OOS 红线）**\n"
+    "> 扫描用**整段** features（含样本外区间）重算 `target_position`，"
+    "**没有** train/OOS 切分\n"
+    "> ⇒ 表中差异含样本外信息，据此调参即构成对历史的拟合。\n"
+    "> 本脚本只做**测量**：任何参数变更必须走阶段 2 变体 → OOS 不劣化 → 人工审批"
+    "（`docs/trading-discipline.md` 第 8 条）。\n"
+)
 
 
 # ================================================================ 参数覆盖与重算
@@ -190,6 +214,7 @@ def write_report(group, symbol, df, out_dir):
         fh.write(f"# {g['label']} — {symbol} 敏感性表\n\n")
         fh.write(f"- 参数：`{g['param']}`（基准 {g['baseline']}）\n")
         fh.write(f"- 说明：{g['note']}\n\n")
+        fh.write(OOS_WARNING + "\n")
         fh.write("| 参数值 | 年化收益 | 最大回撤 | Sharpe | IC | 敏感度 |\n")
         fh.write("|---|---|---|---|---|---|\n")
         for _, row in df.iterrows():
@@ -249,6 +274,7 @@ def main():
         fh.write("# 规则敏感性分析汇总（阶段 1️⃣）\n\n")
         fh.write("> 生成时间：%s。纪律：只测量不改参；结论进文档，调参走阶段 2 变体 + 审批。\n\n"
                  % pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"))
+        fh.write(OOS_WARNING + "\n")
         for group, symbol, path in summary:
             fh.write(f"- `{group}` × `{symbol}` → [{os.path.basename(path)}]({os.path.basename(path)})\n")
     print(f"\n🧾 汇总：{readme}")

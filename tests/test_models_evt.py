@@ -16,22 +16,32 @@ from fg_system.models import evt
 
 
 # ------------------------------------------------------------ _gpd_pwm
-def test_gpd_pwm_exponential_sample_gives_wrong_negative_shape():
-    """指数样本（真值 ξ=0）却被估成 ξ≈-2 ⇒ 暴露 PWM 权重/公式缺陷。
+def test_gpd_pwm_exponential_sample_recovers_zero_shape():
+    """指数样本（真值 ξ=0, σ=1）⇒ PWM 估计必须回到真值附近。
 
-    ⚠️ BUG（记录但不修，见报告）：指数分布对应 GPD(ξ=0, σ=1)，但
-    `_gpd_pwm` 用 `w = i/(n+1)` 作用于**已排序**样本，得到 b1/b0≈0.75
-    （正确 PWM 权重应给出 ≈0.25），于是
-        shape = (b0-2*b1)/(b0-b1) ≈ -2.03  （应为 0）
-        scale ≈ 6.15                       （应为 ~1）
-    本测试固化**实际行为**（数学期望的 ξ≈0 会在改正后被恢复，届时此断言转红）。
+    WT-24 修复前：`w = i/(n+1)` 被直接乘在**已排序**样本上（等于取了
+    `F(x)` 而非 `1-F(x)`），b1/b0≈0.75（正确 ≈0.25），加上形状/尺度公式
+    分母也用错，指数样本被估成 ξ≈-2.03、σ≈6.15 ✗。修复后应回到 (0, 1) ✓。
     """
     rng = np.random.default_rng(0)
     excess = rng.exponential(scale=1.0, size=5000)
     shape, scale = evt._gpd_pwm(excess)
-    assert shape == pytest.approx(-2.0323, abs=0.01)   # 实测：明显负偏
-    assert shape < -1.0                                # 判别力：绝非 ξ≈0
-    assert scale > 0
+    assert shape == pytest.approx(0.0, abs=0.05)     # 判别力：指数 ⇒ ξ=0
+    assert scale == pytest.approx(1.0, abs=0.05)     # 判别力：σ=1
+
+
+def test_gpd_pwm_recovers_positive_shape():
+    """已知 GPD(ξ=0.25, σ=1) 样本（逆变换采样）⇒ 估计回到真值附近。
+
+    只测 ξ=0 会漏掉「形状公式只在 ξ=0 处凑巧正确」的假修复，故补正 ξ 用例。
+    """
+    rng = np.random.default_rng(7)
+    u = rng.uniform(size=20000)
+    xi_true, sigma_true = 0.25, 1.0
+    x = sigma_true / xi_true * (u ** (-xi_true) - 1.0)   # GPD 逆变换
+    shape, scale = evt._gpd_pwm(x)
+    assert shape == pytest.approx(xi_true, abs=0.05)
+    assert scale == pytest.approx(sigma_true, abs=0.10)
 
 
 def test_gpd_pwm_insufficient_sample_returns_none():

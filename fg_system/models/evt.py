@@ -15,20 +15,34 @@ import pandas as pd
 
 
 def _gpd_pwm(excess):
-    """GPD 概率加权矩估计：excess（超阈值量, >0）→ (shape ξ, scale σ)。"""
+    """GPD 概率加权矩估计：excess（超阈值量, >0）→ (shape ξ, scale σ)。
+
+    设升序样本 x_(1..n)、p_i = i/(n+1) ≈ F(x_(i))，PWM 矩为
+        b0 = E[X]            = mean(x)
+        b1 = E[X·(1-F(X))]   = mean((1 - p_i) · x_(i))
+    对 GPD(ξ, σ) 有 b0 = σ/(1-ξ)、b1 = σ/(2(2-ξ))，反解得
+        ξ = (b0 - 4·b1) / (b0 - 2·b1)
+        σ = 2·b0·b1 / (b0 - 2·b1)
+    （指数分布是 ξ=0 的特例，可作标定：b0=1、b1=1/4 ⇒ (0, 1) ✓）
+
+    ⚠️ **WT-24 修复（2026-10-12）**：旧实现把 `p_i` **直接**当权重乘上去
+    （等于取了 F 而非 1-F，指数样本得 b1/b0≈0.75 而非 0.25），且形状/尺度
+    公式分母误写成 `(b0-b1)` ⇒ 指数样本（真值 ξ=0, σ=1）被估成
+    **ξ≈-2.03、σ≈6.15** ✗。因 `pot_analyze` 里 ξ<0 与 `(-ξ)` **双重取负**，
+    输出**看着仍合理** ⇒ **静默偏差**，直接污染"20/80 边界校准建议"。
+    """
     x = np.sort(np.asarray(excess, dtype=float))
     n = len(x)
     if n < 10:
         return None
-    # PWM 一阶
-    w = np.arange(1, n + 1) / (n + 1)
-    b0 = x.mean()
-    b1 = (w * x).mean()
-    if b0 <= 0:
+    p = np.arange(1, n + 1) / (n + 1)      # 近似 F(x_(i))（升序样本）
+    b0 = float(x.mean())
+    b1 = float(((1.0 - p) * x).mean())     # E[X(1-F(X))]
+    den = b0 - 2.0 * b1
+    if b0 <= 0 or b1 <= 0 or abs(den) < 1e-12:
         return None
-    r = b1 / b0
-    shape = (b0 - 2 * b1) / (b0 - b1)  # ξ
-    scale = (2 * b0 * b1) / (b0 - b1)  # σ 近似（标准 GPD PWM 公式）
+    shape = (b0 - 4.0 * b1) / den
+    scale = 2.0 * b0 * b1 / den
     if scale <= 0 or not np.isfinite(shape):
         return None
     return shape, scale

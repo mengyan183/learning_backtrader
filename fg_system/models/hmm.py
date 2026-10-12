@@ -49,36 +49,59 @@ def _log_gauss(X, mu, cov):
     return lg
 
 
+def _scaled_normalize(v):
+    """按和归一；和为 0 或非有限（该步无信息）⇒ 回退均匀分布。
+
+    回退而非 0/0：否则 alpha 变 NaN 会一路污染 gamma/xi（WT-25 修复配套）。
+    第二个返回值是 scale，供 loglik 累加。
+    """
+    s = float(v.sum())
+    if not np.isfinite(s) or s <= 0.0:
+        return np.full(len(v), 1.0 / len(v)), 1e-300
+    return v / s, s
+
+
 def _forward_backward(lg, pi, A):
-    """scaled 前向-后向：返回 alpha_hat, beta_hat, gamma, xi（对数域用 scaled 简化）。"""
+    """scaled 前向-后向：返回 alpha_hat, beta_hat, gamma, xi（对数域用 scaled 简化）。
+
+    ⚠️ **WT-25 修复（2026-10-12）**：xi 原先用
+        denom = (alpha[t] * np.exp(lg[t + 1])) @ A.T @ beta[t + 1] + 1e-300
+    把 `exp(lg[t+1])` 乘在**源状态 i** 上，而分子 numer[i,j] 用的是**目的状态 j**
+    ⇒ denom ≠ Σnumer（两者是两个不同的量）。极可分数据下 denom 下溢为 0，
+    `+1e-300` 把它兜成 1e-300 ⇒ xi 被放大 **1e300 倍**（实测层和 2.55e300，
+    而 Σnumer = 2.55）。因 M-step 会重归一化，训练不崩，但**任何直接消费 xi
+    的调用方都会拿到垃圾数值**。
+
+    现按 `denom = Σ_ij numer` 归一 ⇒ 每层（t）和为 1、每个 (t,i) 行和为 1；
+    denom 为 0（该转移不可能发生）时该层保持全 0，而不是放大成 1e300。
+    """
     T, K = lg.shape
     # scaled forward
     alpha = np.zeros((T, K))
-    alpha[0] = pi * np.exp(lg[0])
-    s = alpha[0].sum()
-    alpha[0] /= s
+    alpha[0], s = _scaled_normalize(pi * np.exp(lg[0]))
     scales = [s]
     for t in range(1, T):
-        alpha[t] = (alpha[t - 1] @ A) * np.exp(lg[t])
-        s = alpha[t].sum() + 1e-300
-        alpha[t] /= s
+        alpha[t], s = _scaled_normalize((alpha[t - 1] @ A) * np.exp(lg[t]))
         scales.append(s)
-    loglik = np.sum(np.log(np.asarray(scales)))
+    loglik = float(np.sum(np.log(np.asarray(scales))))
     # scaled backward
     beta = np.zeros((T, K))
     beta[-1] = 1.0
     for t in range(T - 2, -1, -1):
-        beta[t] = (beta[t + 1] * np.exp(lg[t + 1])) @ A.T
-        beta[t] /= beta[t].sum() + 1e-300
-    # gamma
+        beta[t], _ = _scaled_normalize((beta[t + 1] * np.exp(lg[t + 1])) @ A.T)
+    # gamma（逐日归一；全 0 行保持全 0，不产生 NaN）
     gamma = alpha * beta
-    gamma /= gamma.sum(axis=1, keepdims=True) + 1e-300
-    # xi
+    row = gamma.sum(axis=1, keepdims=True)
+    gamma = np.divide(gamma, row, out=np.zeros_like(gamma), where=row > 0)
+    # xi：分子张量 → 按**其自身之和**归一（保证是概率量）
     xi = np.zeros((T - 1, K, K))
     for t in range(T - 1):
-        denom = (alpha[t] * np.exp(lg[t + 1])) @ A.T @ beta[t + 1] + 1e-300
-        for i in range(K):
-            xi[t, i] = alpha[t, i] * (A[i] * np.exp(lg[t + 1]) * beta[t + 1]) / denom
+        numer = (alpha[t][:, None] * A
+                 * np.exp(lg[t + 1])[None, :] * beta[t + 1][None, :])
+        denom = float(numer.sum())
+        if denom > 0.0 and np.isfinite(denom):
+            xi[t] = numer / denom
+        # denom == 0 ⇒ 该转移不可能发生 ⇒ 保持全 0（层和为 0）
     return alpha, beta, gamma, xi, loglik
 
 

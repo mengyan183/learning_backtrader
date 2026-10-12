@@ -31,15 +31,39 @@ def transition_matrix(zones):
 
 
 def steady_state(P, max_iter=5000, tol=1e-10):
-    """转移矩阵 P → 稳态分布 π（P.T 左特征向量，迭代归一）。"""
+    """转移矩阵 P → 稳态分布 π（P.T 左特征向量，迭代归一）。
+
+    **零行（无出边）按自环处理**（WT-23，2026-10-12）：`transition_matrix`
+    对从未出现过的档位留下全 0 行。若直接迭代 `pi @ P`，落进这些行的概率
+    质量会被**漏掉** ⇒ 返回向量 sum < 1（实测 `[0,0,1,1,2,2,2,1,0]` → 0.6、
+    `P=zeros` → 全 0），**不是概率分布**；下游 `scripts/model_report.py`
+    直接用它选"长期稳态最可能档位"⇒ **结论失真**。
+
+    语义上「无出边」= 进去就出不来 ⇒ 补成自环 `P[i,i]=1` 是唯一保持概率
+    守恒的解释（也是马尔可夫链吸收态的标准处理）。
+
+    返回前统一归一，并断言 sum≈1 —— 调用方一律假定这是概率分布。
+    """
     if P is None:
         return None
+    Pn = np.asarray(P, dtype=float).copy()
+    zero_rows = Pn.sum(axis=1) <= 0.0
+    if zero_rows.any():
+        Pn[zero_rows, :] = 0.0
+        Pn[zero_rows, zero_rows] = 1.0
     pi = np.full(ZONES, 1.0 / ZONES)
     for _ in range(max_iter):
-        pi_new = pi @ P
+        pi_new = pi @ Pn
         if np.max(np.abs(pi_new - pi)) < tol:
-            return pi_new
+            pi = pi_new
+            break
         pi = pi_new
+    total = float(pi.sum())
+    if not np.isfinite(total) or total <= 0.0:
+        pi = np.full(ZONES, 1.0 / ZONES)
+    else:
+        pi = pi / total
+    assert abs(float(pi.sum()) - 1.0) < 1e-6, "steady_state 必须返回概率分布"
     return pi
 
 

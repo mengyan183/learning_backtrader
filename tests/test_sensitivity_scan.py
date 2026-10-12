@@ -297,6 +297,28 @@ def test_trim_group_is_silent_noop_when_threshold_absent(monkeypatch):
 
 
 # ================================================================ 不变量：不写生产
+def test_outputs_carry_oos_warning(monkeypatch, patched):
+    """WT-26：产物必须带**显式**的 OOS 红线警示（表 + README 都要有）。
+
+    背景：本脚本用**整段** features 扫描参数（无 train/OOS 切分）⇒「只测量不改参」
+    此前只写在 docstring 里，产物本身**看不出来**，容易被当成调参依据。
+    裁决（2026-10-12，方案②）：不改扫描逻辑，但产物必须显式声明禁止据此调参。
+    """
+    recompute_calls, metric_calls = [], []
+    _mock_heavy(monkeypatch, recompute_calls, metric_calls)
+    monkeypatch.setattr("sys.argv",
+                        ["sensitivity_scan.py", "--group", "core", "--symbols", "TQQQ"])
+    ss.main()
+
+    out_dir = patched["tmp"] / "evolution" / "sensitivity"
+    table = (out_dir / "sensitivity_core_TQQQ.md").read_text(encoding="utf-8")
+    readme = (out_dir / "README.md").read_text(encoding="utf-8")
+    for text, name in ((table, "表"), (readme, "README")):
+        assert "OOS" in text, "%s 缺 OOS 声明" % name
+        assert "调参" in text, "%s 缺「不得调参」警示" % name
+        assert "禁止" in text or "不得" in text, "%s 的警示语气不够硬" % name
+
+
 def test_main_does_not_write_config_py(monkeypatch, patched):
     """扫描**不得**改 config.py（内存级覆盖的纪律保证）。"""
     before = open(ss.config.__file__, encoding="utf-8").read()
