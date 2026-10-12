@@ -273,14 +273,19 @@ def _cmd_status(args):
                      else "（开发阶段不计违规；第 5.3 条上限仅供参考）"))
 
     # ------------------------------------------------ 供复盘对照的回测基准
+    # 单一事实源 = config.BACKTEST_BASELINE（Windows 端 WT 自查 2026-10-12 确认为真缺口）。
+    # 实时计算需数十秒（加密回测），`status` 是每日命令，故用配置值打印。
+    # 改动加密层/组合配置时必须同步更新 config.BACKTEST_BASELINE（守卫测试强制校验）。
+    from fg_system import config as _cfg
+    _bb = _cfg.BACKTEST_BASELINE
     print()
     print("=== 回测基准（仅供对照，**不是**预期收益）===")
-    print("大盘 sleeve：回撤约 -28.8% / 年化约 11.6%（组合级口径，第 12.12 条）")
-    # v2.8（第 12.23 条）：BTC 现货杠杆纳入 `btc_beta` 层后的实测值
-    # （A/B 口径：旧 -34.30%/-1.42% ⇒ 新 -29.84%/-1.94%）。
-    # **硬编码而非实时计算**：实时跑加密回测需数十秒，`status` 是每日命令。
-    # 改动加密层配置时**必须同步更新此字符串**。
-    print("加密 sleeve：回撤约 -29.8% / 年化约 -1.9%（合成轨，不代表真实预期）")
+    print("大盘 sleeve：回撤约 %.1f%% / 年化约 %.1f%%（%s）"
+          % (_bb["stock"]["max_drawdown_pct"], _bb["stock"]["annualized_pct"],
+             _bb["stock"]["note"]))
+    print("加密 sleeve：回撤约 %.1f%% / 年化约 %.1f%%（合成轨，不代表真实预期；%s）"
+          % (_bb["crypto"]["max_drawdown_pct"], _bb["crypto"]["annualized_pct"],
+             _bb["crypto"]["note"]))
     print("系统价值在**避开灾难性回撤**，不在于跑赢买入持有（设计文档 §1.3）。")
 
 

@@ -567,3 +567,14 @@ APK_PATH = os.path.join(ROOT, "mobile", "android", "app", "build", "outputs",
 # 而拆股仍表现为 50pp/150pp 跳变，判别力不受影响。
 # **不做相位 shift**：把 BTC 后移一天会构成前视偏差（§10 红线）。
 CRYPTO_ANOMALY_WINDOW = 5
+
+# ---------------------------------------------------------------- 回测基准（单一事实源）
+# `cli status` 打印的对照基准。**只允许在此维护**，改动加密层/组合配置时必须同步更新本表，
+# 禁止在 cli.py 等消费方硬编码（守卫测试 test_cli_baseline_guard 强制校验）。
+# 口径：组合级回测实测值；「仅供对照，不是预期收益」。
+BACKTEST_BASELINE = {
+    "stock": {"max_drawdown_pct": -28.8, "annualized_pct": 11.6,
+              "note": "大盘 sleeve（组合级口径，第 12.12 条）"},
+    "crypto": {"max_drawdown_pct": -29.8, "annualized_pct": -1.9,
+               "note": "加密 sleeve v2.8（btc_beta 层后实测；A/B 旧 -34.30%/-1.42% ⇒ 新 -29.84%/-1.94%）"},
+}

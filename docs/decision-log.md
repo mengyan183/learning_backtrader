@@ -261,3 +261,18 @@
 - 用户批量审批：10-09 全部变体提案 **Z（观察）**——纳入 VARIANTS 长期观察，不直接动 config，季度 walk-forward（C-5）复检后再定。
 - 回填 14 份（UPRO V-CORR 已于 10-09 20:14 单独批 Z）：SOXL/TQQQ/UPRO × V-ATR/V-VOL/V-MA/V-CORR/V-H7（不采纳类）全部归档观察。
 - 生产现状不变：WEIGHTS v2.7 六因子不变；VARIANTS 观察池扩大。
+
+### 2026-10-12 05:43
+
+- 指数：系统贪恐指数 60.54 / 档位贪婪 / 回撤 2.25%（数据日 2026-10-09）
+- 因子：VIX 68.93 / TERM 75.79 / PRICE 64.6 / BREADTH 62.13 / FED 23.0
+- 熔断：未触发；最近极端恐惧日 2025-04-04
+- 持仓快照（2026-10-12）：YINN -5.8%；GDXU -1.8%；CRCG -34.1%；CONL -3.6%；AXTX -70.2%；BTC-USDT +33.6%
+- 裁判裁决摘要（NIM）：评级: 减仓 理由: 贪恐指数60.5仅温和贪婪而目标仓位0.358偏低，守猪待兔信号对AXTX、CRCG、GDXU、YINN均为强负值，持仓与信号严重错配且六只杠杆标的深套，唯一盈利的BTC杠杆多头应优先兑现锁定收益。 风险: 若美股科技延续risk-on，TQQQ/UPRO与BTC同向上涨可能使减仓后跑输，且深套品种流动性差、被动减仓易放大冲击成本。
+- 待人工确认：以上为运行事实快照，是否采纳为规则/假说观察点？（Y/N）
+
+## 2026-10-12 note1012a 同步 + cli 基准单一事实源（WT 自查缺口 #3）
+
+- **note1012a**（2 片，公司端打包路径 `dist/feishu/text/` 不在白名单 → 被拒）：内容 = Windows 端自查回传（无代码变更；①futu_realtime /tmp lock 伪缺口不改、②_kb_add_wechat /tmp 伪缺口不改、③cli.py 硬编码回测基准 = **真缺口**）。已手动归档 `docs/windows-selfcheck-2026-10-12.md`。
+- **缺口修复（采纳方案 B 并升级）**：回测基准收进 `config.BACKTEST_BASELINE` 单一事实源，cli.py 打印改引用；新增守卫测试 `tests/test_cli_baseline_guard.py`（3 条：config 字段合法 / cli 无硬编码残留 / 数值与旧口径一致）。
+- **push_todo.py 落后**：Mac 版已 push（含说明摘要），Windows `git pull` 即覆盖，无需 Mac 动作。
