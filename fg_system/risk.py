@@ -163,6 +163,9 @@ def hrp_weights(returns, linkage="single"):
     """分层风险平价（HRP）参考权重：相关矩阵层次聚类 → 递归二分 → 逆方差。
 
     scipy 层次聚类（单连接），纯 numpy 权重计算；样本不足回退等权。
+    二分严格沿**聚类树结构**：从根节点起，按每行的左右孩子递归拆分
+    （不再用 fcluster 的全局簇号——子集递归时全局簇号会与 loc 错位，
+    导致静默退化为等分、权重失真）。
     输出仅是参考建议（纪律：不得绕过指令卡/人工审批）。
     """
     from scipy.cluster import hierarchy
@@ -171,35 +174,39 @@ def hrp_weights(returns, linkage="single"):
         return {c: 1.0 / s.shape[1] for c in s.columns} if s.shape[1] else {}
     corr = s.corr().fillna(0.0).values
     dist = np.sqrt(np.maximum(0.0, (1.0 - corr) / 2.0))
-    Z = hierarchy.linkage(dist[np.triu_indices(len(s.columns), k=1)],
+    n_leaves = len(s.columns)
+    Z = hierarchy.linkage(dist[np.triu_indices(n_leaves, k=1)],
                           method=linkage)
     labels = s.columns
+    inv = np.diag(np.linalg.pinv(s.cov().fillna(0.0).values))
 
-    def _recursive(w, idxs):
-        if len(idxs) == 1:
-            w[idxs[0]] = 1.0
+    def _leaves(node):
+        """树节点覆盖的叶子索引集合（叶子 0..n-1，内部节点 n+r）。"""
+        if node < n_leaves:
+            return [int(node)]
+        r = int(node) - n_leaves
+        return _leaves(Z[r, 0]) + _leaves(Z[r, 1])
+
+    def _recursive(w, node):
+        if node < n_leaves:  # 叶子
+            w[int(node)] = 1.0
             return
-        # 沿聚类树最后合并点二分
-        i, j = Z[len(idxs) - 2, 0].astype(int), Z[len(idxs) - 2, 1].astype(int)
-        # 用 scipy 的 fcluster 按当前节点拆分
-        cl = hierarchy.fcluster(Z, len(idxs) - 1, criterion="maxclust")
-        left = [k for k in idxs if cl[k] == 1]
-        right = [k for k in idxs if cl[k] == 2]
-        if not left or not right:  # 退化：全部同簇 → 等分
-            left, right = idxs[:len(idxs) // 2], idxs[len(idxs) // 2:]
-        inv = np.diag(np.linalg.pinv(s.cov().fillna(0.0).values))
+        r = int(node) - n_leaves
+        # 直接读树结构的两个孩子 → 与 idxs 子集严格对应（不再用全局簇号）
+        left = _leaves(Z[r, 0])
+        right = _leaves(Z[r, 1])
         wl = np.sum(inv[left]) if inv[left].sum() else 1.0
         wr = np.sum(inv[right]) if inv[right].sum() else 1.0
         alpha = wl / (wl + wr)
-        _recursive(w, left)
-        _recursive(w, right)
+        _recursive(w, Z[r, 0])
+        _recursive(w, Z[r, 1])
         for k in left:
             w[k] *= alpha
         for k in right:
             w[k] *= (1.0 - alpha)
 
     w = {}
-    _recursive(w, list(range(len(labels))))
+    _recursive(w, n_leaves + len(Z) - 1)  # 从全局根节点起递归二分
     total = sum(w.values())
     return {labels[k]: float(w[k] / total) for k in w}
 

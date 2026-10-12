@@ -17,12 +17,16 @@ def _features(targets, trend_blocked, index=100.0):
 
 # ---------------------------------------------------------------- without_trend
 
-def test_without_trend_removes_discount():
-    """关闭趋势过滤 = 把 trend_blocked 处的仓位还原为未打折值。"""
+def test_without_trend_returns_target_unchanged():
+    """关闭趋势过滤 = 原样返回。
+
+    裁决 B：v1 的 `target_position = core_position + ammo`（**无 trend 乘法**），
+    趋势折扣从未乘进 v1 target。因此「关闭趋势过滤」的对照就是**不做任何改动**，
+    blocked 行**不得**再做 ÷TREND_FILTER_FACTOR（那会让仓位翻倍，实测 0.5→1.0）。
+    """
     f = _features([0.49, 0.245, 0.245], [False, True, True])
     out = attribution.without_trend(f)
-    assert out["target_position"].iloc[0] == pytest.approx(0.49)
-    assert out["target_position"].iloc[1] == pytest.approx(0.49)
+    pd.testing.assert_series_equal(out["target_position"], f["target_position"])
 
 
 def test_without_trend_leaves_unblocked_rows_unchanged():
@@ -31,11 +35,12 @@ def test_without_trend_leaves_unblocked_rows_unchanged():
     assert out["target_position"].iloc[1] == pytest.approx(0.30)
 
 
-def test_without_trend_clips_to_one():
-    """还原后不得超过 100%。"""
-    f = _features([0.90], [True])
+def test_without_trend_does_not_rescale_blocked_rows():
+    """blocked 行原样保留，不做任何放大 / 裁剪。"""
+    f = _features([0.90, 0.245], [True, True])
     out = attribution.without_trend(f)
-    assert out["target_position"].iloc[0] <= 1.0
+    assert out["target_position"].iloc[0] == pytest.approx(0.90)
+    assert out["target_position"].iloc[1] == pytest.approx(0.245)
 
 
 def test_without_trend_missing_column_is_noop():
@@ -72,8 +77,11 @@ def test_contribution_zero_delta_when_never_blocked():
     assert table["return_delta"].iloc[0] == pytest.approx(0.0, abs=1e-9)
 
 
-def test_contribution_positive_delta_when_trend_avoids_loss():
-    """趋势过滤避开下跌时，带过滤的收益应高于不带过滤。"""
+def test_contribution_zero_delta_when_v1_target_has_no_trend_discount():
+    """裁决 B：v1 的 target 未含趋势折扣 ⇒ 对照=原样 ⇒ 两条路径收益相同、delta=0。
+
+    blocked 行**不做 ÷0.5**（旧实现会在此把 0.5 放大回 1.0，凭空造出 delta）。
+    """
     idx = pd.bdate_range("2024-01-01", periods=4)
     f = pd.DataFrame({
         "target_position": [0.49, 0.49, 0.245, 0.245],
@@ -82,11 +90,15 @@ def test_contribution_positive_delta_when_trend_avoids_loss():
     }, index=idx)
     prices = pd.Series([100.0, 100.0, 90.0, 80.0], index=idx)
     table = attribution.contribution_table(f, prices)
-    assert table["return_delta"].iloc[0] > 0
+    assert table["return_delta"].iloc[0] == pytest.approx(0.0, abs=1e-12)
 
 
-def test_contribution_negative_delta_when_trend_misses_rebound():
-    """趋势过滤错过反弹时，带过滤的收益应低于不带过滤（这是它的代价）。"""
+def test_contribution_paths_identical_without_trend():
+    """裁决 B 的核心事实：v1 数据上「带过滤」与「不带过滤」是**同一条序列**。
+
+    因此无论价格怎么走（此处含一段反弹），delta 恒为 0。旧实现会在此把对照
+    的 blocked 行 0.245 ÷0.5 = 0.49 放大，凭空吃下更多反弹 ⇒ delta 为负。
+    """
     idx = pd.bdate_range("2024-01-01", periods=4)
     f = pd.DataFrame({
         "target_position": [0.49, 0.245, 0.245, 0.245],
@@ -95,7 +107,9 @@ def test_contribution_negative_delta_when_trend_misses_rebound():
     }, index=idx)
     prices = pd.Series([100.0, 100.0, 120.0, 140.0], index=idx)
     table = attribution.contribution_table(f, prices)
-    assert table["return_delta"].iloc[0] < 0
+    assert table["with_trend_return"].iloc[0] == \
+        pytest.approx(table["without_trend_return"].iloc[0], abs=1e-12)
+    assert table["return_delta"].iloc[0] == pytest.approx(0.0, abs=1e-12)
 
 
 # ---------------------------------------------------------------- max_drawdown_table
@@ -109,8 +123,9 @@ def test_mdd_table_columns_and_sign():
     prices = pd.Series([100.0, 100.0, 80.0, 60.0], index=idx)
     t = attribution.max_drawdown_table(f, prices)
     assert "with_trend_mdd" in t.columns
-    # 趋势过滤降仓，回撤应更小 → mdd_delta > 0
-    assert t["mdd_delta"].iloc[0] > 0
+    # 裁决 B：v1 的 target 未含趋势折扣 ⇒ 对照=原样 ⇒ 两条路径仓位逐行相同
+    # ⇒ 回撤相同 ⇒ mdd_delta == 0（旧的 >0 断言基于「blocked 行已打折」的错误前提）。
+    assert t["mdd_delta"].iloc[0] == pytest.approx(0.0, abs=1e-12)
 
 
 # ---------------------------------------------------------------- verdict
@@ -131,14 +146,16 @@ def test_verdict_flags_ineffective_when_delta_small():
 
 
 def test_verdict_flags_effective_when_delta_large():
-    idx = pd.bdate_range("2024-01-01", periods=4)
-    f = pd.DataFrame({
-        "target_position": [0.49, 0.49, 0.245, 0.245],
-        "trend_blocked": [False, False, True, True],
-        "fg_index": [10.0] * 4,
-    }, index=idx)
-    prices = pd.Series([100.0, 100.0, 80.0, 60.0], index=idx)
-    table = attribution.contribution_table(f, prices)
+    """delta 达到阈值且确实触发过滤时，verdict 应判为有效。
+
+    裁决 B 后：v1 的 target 未含趋势折扣 ⇒ `contribution_table` 的 delta 恒为 0，
+    已无法从 features 造出大 delta。故此处**直接构造贡献度表**，只测 `verdict()`
+    自身的阈值逻辑（与 without_trend 无关）。
+    """
+    table = pd.DataFrame([{
+        "with_trend_return": 0.10, "without_trend_return": -0.05,
+        "return_delta": 0.15, "blocked_days": 3, "blocked_ratio": 0.5,
+    }])
     assert attribution.verdict(table)["effective"] is True
 
 

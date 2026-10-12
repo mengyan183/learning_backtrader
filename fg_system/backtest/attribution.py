@@ -5,35 +5,61 @@
 **若贡献度接近零，说明修正无效，应回到验收报告的选项 A（降低核心仓上限），
 而不是继续调趋势过滤的参数。**
 
-做法：把 features 的 target_position 在「趋势过滤生效」处还原为未打折值，
-得到一条「不带趋势过滤」的对照仓位序列，两条路径都按同一价格序列算收益。
+做法：构造一条「不带趋势过滤」的对照仓位序列，两条路径都按同一价格序列算收益。
+
+**裁决 B（2026-10-12，WT-22）**：生产入口 `run_equity_v2()` = v1 `run()` + 追加
+趋势列，而 v1 的 `target_position = core_position + ammo`（**无 trend 乘法**）
+⇒ 趋势折扣**从未乘进** v1 的 target。因此「关闭趋势过滤」的对照就是
+**原样返回**（见 `without_trend`）；blocked 行**不再** ÷`TREND_FILTER_FACTOR`
+——旧做法会把仓位**翻倍**（实测 0.5→1.0），使归因表与 `verdict()` 失真、
+**夸大**趋势过滤的贡献。
+
+⚠️ 由此推论：在 v1 数据上 `contribution_table` 的两条路径**逐行相同** ⇒
+`return_delta` / `mdd_delta` 恒为 **0** ⇒ `verdict()` 恒判「贡献度接近零」。
+这本身就是「趋势过滤在 v1 仓位口径下未产生任何差异」的**正确结论**，
+指向验收报告选项 A（降低核心仓上限）。若将来接入 v2.5 口径（target 真的乘过
+`trend`），需在 `without_trend` 处做对应还原并重新校准归因。
 """
 import pandas as pd
 
-from fg_system import config
-
 
 def without_trend(features):
-    """构造「关闭趋势过滤」的对照 features。
+    """构造「关闭趋势过滤」的对照 features —— **原样返回**。
 
-    在 trend_blocked=True 处，把 target_position 除以 TREND_FILTER_FACTOR
-    还原为未打折值（上限 1.0）。
+    ============================================================================
+    为什么「原样返回」才是正确对照（裁决 B，2026-10-12 WT-22）
+    ============================================================================
+    归因的目标是回答「**趋势过滤到底贡献了多少**」，因此对照必须是
+    「把趋势过滤关掉之后的同一条仓位序列」。
+
+    早先的实现假设 `target_position` 里**已经乘过** `TREND_FILTER_FACTOR`
+    （即被过滤时打过折），于是在 `trend_blocked=True` 处把它 ÷ factor「还原」。
+    这个前提**与实际数据不符、从未成立**：
+
+    - 生产调用方是 `pipeline.run_equity_v2()`，它 = v1 `run()` + 追加趋势列
+      （`trend` / `trend_blocked`），**v1 的 target 逐字不变**。
+    - v1 `run()` 里 `target_position = legacy.core_position + ammo`（见
+      `pipeline.py` 第 96 行），**没有任何 trend 乘法**。
+    - 趋势折扣只存在于两处：`market_signal.trend_factor_series`（算出 `trend`）与
+      `run_portfolio`（v2.5 组合级）里 —— 二者都**没有**把它乘进 v1 的 target。
+
+    因此对 v1 数据而言，「关闭趋势过滤」= **无变化**，blocked 行**不得**再 ÷0.5。
+    Mac 用真实数据实测：blocked 行 target/core 比值中位 **1.198**（0.864~2.093，
+    含弹药），**绝非 0.5** —— 旧实现的 ÷0.5 会把仓位**翻倍**（实测 0.5→1.0），
+    凭空造出一段「对照路径」，既**夸大**趋势过滤的收益贡献，又只压低对照的回撤，
+    使 `contribution_table` 与 `verdict()` 双双失真。
+
+    结论：对 **v1 数据**（target 未含趋势折扣）本函数原样返回
+    （保留为具名函数，是为了让「对照」这一语义在调用处显式可见；
+    将来若接入 v2.5 口径、target 真的乘过 trend，再在此处做对应还原）。
+
+    ⚠️ 团队评审 S-4 曾建议此处加 shift(1)，**已核实不成立、未采纳**（见
+    docs/notes/2026-10-12-s234-fixes.md）：生产调用方用的 `run_equity_v2()`
+    直接返回 v1 `run()` 的结果再追加趋势列，`target_position` 与 `trend_blocked`
+    是**同一行对齐**的；`run()` 里的 shift(1) 发生在 `run_equity_v2` 之前，
+    不改变这两列的相对对齐。
     """
-    out = features.copy()
-    if "trend_blocked" not in out.columns:
-        return out
-    # ⚠️ 团队评审 S-4 曾建议此处加 shift(1)，**已核实不成立、未采纳**（见
-    # docs/notes/2026-10-12-s234-fixes.md）：生产调用方 `cli.py:338` 用的是
-    # `pipeline.run_equity_v2()`，它直接返回 v1 `run()` 的结果再追加趋势列，
-    # `target_position` 与 `trend_blocked` 是**同一行对齐**的；`run()` 里的
-    # shift(1) 发生在 run_equity_v2 之前，不改变这两列的相对对齐。
-    # 加 shift 会让 4 个既有测试（test_attribution.py）转红。
-    # `.eq(True)` 与 `fillna(False).astype(bool)` 行为等价（NaN ⇒ False），
-    # 且不触发 pandas 的 "Downcasting object dtype on .fillna" 弃用告警。
-    blocked = out["trend_blocked"].eq(True)
-    restored = out["target_position"] / config.TREND_FILTER_FACTOR
-    out.loc[blocked, "target_position"] = restored[blocked].clip(upper=1.0)
-    return out
+    return features.copy()
 
 
 def _path_return(targets, prices):

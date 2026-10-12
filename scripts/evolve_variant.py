@@ -7,7 +7,7 @@
   2. 对每标的 × 每变体（B0 + V-H7）跑 `runner.run_single`（生产同款回测）；
   3. **等价性自查**：B0 输出 vs baseline.json 全区间 annual_return，相对差
      必须 < 1e-6（默认参数逐位相同红线；防 feed/浮点漂移）；
-  4. OOS 对比（OOS = 2024-10-01 起，与 baseline meta 同口径）：
+  4. OOS 对比（OOS 起点读 baseline.json meta.is_oos.oos_start，时间序 80/20 实测）：
      变体 OOS 年化 > B0 且最大回撤 ≤ B0 ⇒ 提案候选；否则如实记录不采纳；
   5. 产出变更提案草稿（第 8 条流程格式）→ evolution/experiments/。
 
@@ -24,11 +24,14 @@ import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from fg_system import config
+from fg_system import config, evo_meta
 from fg_system.backtest import runner
 from fg_system.backtest import variants as vmod
 
-OOS_START = "2024-10-01"   # 与 baseline meta.is_oos 同口径（时间序 80/20）
+# OOS 起点 = 研究产物口径（baseline.json meta.is_oos.oos_start，时间序 80/20 实测）。
+# 单一来源：`fg_system.evo_meta`（WT-18）。与 config.OOS_START（纪律声明口径）
+# 语义不同，不得混用，见 fg_system/evo_meta.py docstring。
+OOS_START = evo_meta.oos_start()
 TOL = 5e-5                 # baseline.json 存 round-4 值 ⇒ 容差取 half-ulp 量级
 
 

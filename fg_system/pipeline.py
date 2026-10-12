@@ -72,6 +72,7 @@ def drawdown_series(wide):
 
 def run(raw_dir=None, write=True, shift_inputs=0):
     """执行全链路，返回 features DataFrame（index = 日期）。"""
+    config.validate()   # 入口守卫：非法参数立刻崩，禁止静默跑出错误结果（WT-16）
     wide = load_wide(raw_dir, shift_inputs=shift_inputs)
 
     scores = index_mod.factor_scores(wide)
@@ -961,10 +962,30 @@ def _check_shoutu_freshness(hist, us_features):
     窗口 = 传入 `us_features.index` 的交易日序列；`floor` 是它的倒数第 `lag + 1` 个交易日。
     """
     lag = int(config.SHOUTU_SIGNAL_MAX_LAG_DAYS)
+
+    # ---------------------------------------------------------------
+    # 窗口充分性防御（WT-19）：`last_win = index[-1]` 与 `tail[...]` 需要
+    # 「非空且长度 ≥ lag + 1」的窗口。空索引 ⇒ `IndexError`（裸 traceback，
+    # 不可解释的崩溃）；单元素 / 全 NaT 索引会让 `max(0, …)` 静默夹到 0，
+    # 使「窗口不足」被误判成「信号源陈旧」—— 报错语义错误。故在此**显式拒绝**。
+    # ---------------------------------------------------------------
+    index = us_features.index
+    n = len(index)
+    if n < lag + 1:
+        raise ValueError(
+            "数据窗口不足：features 仅 %d 行，无法校验信号源新鲜度"
+            "（需 ≥ %d 个交易日 = max_lag %d + 1；路径=%s:%d）"
+            % (n, lag + 1, lag, __file__, _check_shoutu_freshness.__code__.co_firstlineno))
+    if index.hasnans:
+        raise ValueError(
+            "数据窗口含缺失日期（NaT）：features 索引无法用于新鲜度校验"
+            "（路径=%s:%d）"
+            % (__file__, _check_shoutu_freshness.__code__.co_firstlineno))
+
     last_hist = pd.Timestamp(hist["date"].max())
-    last_win = pd.Timestamp(us_features.index[-1])
-    tail = us_features.index[us_features.index <= last_win]
-    floor = pd.Timestamp(tail[max(0, len(tail) - lag - 1)])
+    last_win = pd.Timestamp(index[-1])
+    tail = index[index <= last_win]
+    floor = pd.Timestamp(tail[len(tail) - lag - 1])
     if last_hist < floor:
         raise ValueError(
             "信号源陈旧：history 最后一天 %s，生产窗口最后一天 %s"

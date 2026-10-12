@@ -214,6 +214,13 @@ VOL_WEIGHT_WINDOW = 252
 # 因此样本内起点必须晚于该日期，否则区间前段无信号（§11.5）。
 IS_START = "2019-09-20"
 IS_END = "2022-12-31"
+# 样本外起点（**纪律声明口径**：先验固定、禁止调参）。
+# ⚠️ WT-18：仓库存在**两类语义不同**的 OOS 起点，不得混用/合并：
+#   1) 本常量 = 生产纪律边界（先验固定，与 IS_START/IS_END 配对）；
+#   2) 研究产物口径 = evolution/baseline.json 的 meta.is_oos.oos_start，
+#      由 scripts/evolve_baseline.py 对收益序列做**时间序 80/20 实测**得出。
+# 研究脚本（evolve_propose / evolve_variant）统一经 fg_system.evo_meta 读 (2)，
+# 生产纪律以本常量 (1) 为准。二者数字不同属预期，详见 fg_system/evo_meta.py。
 OOS_START = "2023-01-01"           # 样本外起点（禁止调参）
 
 SMOOTHING_DAYS = 1                 # v1 不平滑
@@ -578,3 +585,148 @@ BACKTEST_BASELINE = {
     "crypto": {"max_drawdown_pct": -29.8, "annualized_pct": -1.9,
                "note": "加密 sleeve v2.8（btc_beta 层后实测；A/B 旧 -34.30%/-1.42% ⇒ 新 -29.84%/-1.94%）"},
 }
+
+# ================================================================ 参数校验（WT-16）
+# 目的：把「错误参数静默运行」变成「入口处立刻崩」。
+# `tests/test_config.py` 只断言当前值等于多少（证明数值没被改），本函数证明的是
+# **改坏了会被拦住** —— 报错必须带**字段名**与**实际值**，否则调用方无从定位。
+# 约束：只做**结构性**校验（范围/归一/递增/长度），不把参数钉死成唯一取值，
+# 以免与「参数可审慎变更」的第 8 条流程冲突。
+
+def _fail(field, value, why):
+    """统一报错：字段名 + 实际值 + 原因。"""
+    raise ValueError("%s 非法：%s（实际值 = %r）" % (field, why, value))
+
+
+def _check_weight_dict(name, weights, tol=1e-6):
+    """权重字典：① 各项非负 ② 之和 ≈ 1。先查非负，保证负值时报错能点名字段。"""
+    if not weights:
+        _fail(name, weights, "不得为空")
+    for key, val in weights.items():
+        if not (isinstance(val, (int, float)) and val == val):  # NaN 检查
+            _fail(name, weights, "字段 %r 不是数值" % key)
+        if val < 0.0:
+            _fail(name, weights, "字段 %r 为负（%r）" % (key, val))
+    total = float(sum(weights.values()))
+    if abs(total - 1.0) > tol:
+        _fail(name, weights, "各项之和须 ≈ 1.0（实际 = %.6f）" % total)
+
+
+def _check_unit_interval(name, value, lo=0.0, hi=1.0, lo_open=False, hi_open=False):
+    """标量必须落在区间内；lo_open/hi_open 控制端点是否**不可取**。"""
+    ok_lo = (value > lo) if lo_open else (value >= lo)
+    ok_hi = (value < hi) if hi_open else (value <= hi)
+    if not (ok_lo and ok_hi):
+        left = "(" if lo_open else "["
+        right = ")" if hi_open else "]"
+        _fail(name, value, "须落在 %s%s, %s%s" % (left, lo, hi, right))
+
+
+def _check_positive_int(name, value):
+    """正整数（排除 bool，因其是 int 子类但语义不符）。"""
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        _fail(name, value, "须为正整数")
+
+
+def _check_ascending(name, seq):
+    """非空且严格递增。"""
+    if not seq:
+        _fail(name, seq, "不得为空")
+    for i in range(len(seq) - 1):
+        if not (seq[i] < seq[i + 1]):
+            _fail(name, seq, "须严格递增（第 %d 项 %r ≥ 第 %d 项 %r）"
+                  % (i, seq[i], i + 1, seq[i + 1]))
+
+
+def validate():
+    """校验全部**结构性**参数；非法则 raise ValueError（含字段名与实际值）。
+
+    覆盖类别：
+      - 归一权重：WEIGHTS / CRYPTO_WEIGHTS / MARKET_CORE_RATIO（非负且和 ≈ 1.0）
+      - 加密层上限：CRYPTO_LAYER_CAP（各层 (0,1]，三层递减）
+      - 档位边界：ZONE_EDGES（非空/严格递增/落在 0-100）
+      - 饱和度：ZONE_SATURATION（长度 = len(ZONE_EDGES)+1，各值 0-1）
+      - 折扣系数：TREND_FILTER_FACTOR（0,1）
+      - 仓位上限：CORE_CAP / AMMO_CAP（(0,1]）且 CORE_CAP+AMMO_CAP ≤ 1
+      - 成本：COMMISSION / SLIPPAGE / INITIAL_CASH（>0）
+      - 窗口：RANK_WINDOW 等正整数
+      - 阈值：SPLIT_DEVIATION_THRESHOLD（0,1）/ 极贪极恐触发线（0-100）
+      - 弹药档位：DRAWDOWN_BATCHES（严格递增）
+      - 贪婪分档：CRYPTO_GREED_REDUCE 长度 = len(CRYPTO_GREED_TIERS)
+    """
+    # ── 归一权重：六因子 WEIGHTS／加密 CRYPTO_WEIGHTS／市场核心比例 ──
+    # ⚠️ `CRYPTO_LAYER_CAP` **不在此列**：它是**逐层上限**（各自 ≤1，和为 1.6），
+    #    归一化的是 `CRYPTO_LAYER_WEIGHT`（由上限派生）。对上限套「和为 1」会误杀。
+    _check_weight_dict("WEIGHTS", WEIGHTS)
+    _check_weight_dict("CRYPTO_WEIGHTS", CRYPTO_WEIGHTS)
+    _check_weight_dict("MARKET_CORE_RATIO", MARKET_CORE_RATIO)
+
+    # ── 加密层上限：每个层上限在 (0,1]，且三层必须**递减**（风险越间接、配置越少）──
+    caps = list(CRYPTO_LAYER_CAP.values())
+    for layer, cap in CRYPTO_LAYER_CAP.items():
+        if not (0.0 < cap <= 1.0):
+            _fail("CRYPTO_LAYER_CAP", CRYPTO_LAYER_CAP,
+                  "层 %r 上限 %r 须在 (0,1]" % (layer, cap))
+    for i in range(len(caps) - 1):
+        if not (caps[i] > caps[i + 1]):
+            _fail("CRYPTO_LAYER_CAP", CRYPTO_LAYER_CAP,
+                  "层上限须递减（第 %d 项 %r ≤ 第 %d 项 %r）"
+                  % (i, caps[i], i + 1, caps[i + 1]))
+
+    # ── 档位边界：非空、严格递增、落在 0-100（索引刻度）──
+    _check_ascending("ZONE_EDGES", ZONE_EDGES)
+    for edge in ZONE_EDGES:
+        if not (0.0 <= edge <= 100.0):
+            _fail("ZONE_EDGES", ZONE_EDGES, "边界 %r 越界（须在 0-100）" % edge)
+
+    # ── 饱和度：长度 = 档数（len(EDGES)+1），各值 0-1 ──
+    expected = len(ZONE_EDGES) + 1
+    if len(ZONE_SATURATION) != expected:
+        _fail("ZONE_SATURATION", ZONE_SATURATION,
+              "长度须 = len(ZONE_EDGES)+1 = %d（实际 = %d）"
+              % (expected, len(ZONE_SATURATION)))
+    for sat in ZONE_SATURATION:
+        _check_unit_interval("ZONE_SATURATION", sat)
+
+    # ── 趋势折扣系数：跌破均线时的核心仓上限折扣，须在 (0,1) ──
+    _check_unit_interval("TREND_FILTER_FACTOR", TREND_FILTER_FACTOR,
+                         lo_open=True, hi_open=True)
+
+    # ── 仓位上限：均为正，且核心仓 + 弹药仓 ≤ 100%（余额为永久现金缓冲）──
+    _check_unit_interval("CORE_CAP", CORE_CAP, lo_open=True)
+    _check_unit_interval("AMMO_CAP", AMMO_CAP, lo_open=True)
+    if CORE_CAP + AMMO_CAP > 1.0:
+        _fail("CORE_CAP/AMMO_CAP", (CORE_CAP, AMMO_CAP),
+              "核心仓 + 弹药仓须 ≤ 100%%，实际 CORE_CAP=%.4f + AMMO_CAP=%.4f = %.4f"
+              % (CORE_CAP, AMMO_CAP, CORE_CAP + AMMO_CAP))
+
+    # ── 成本与初始资金：必须为正（0 会让回测低估成本/退化，静默偏乐观）──
+    for name in ("COMMISSION", "SLIPPAGE", "INITIAL_CASH"):
+        val = globals()[name]
+        if not (isinstance(val, (int, float)) and val > 0):
+            _fail(name, val, "须为正数")
+
+    # ── 窗口类：正整数 ──
+    for name in ("RANK_WINDOW", "COMPOSITE_WINDOW", "WARMUP_DAYS",
+                 "DRAWDOWN_LOOKBACK", "TREND_MA_DAYS", "VOL_WEIGHT_WINDOW",
+                 "STALE_MAX_DAYS"):
+        _check_positive_int(name, globals()[name])
+
+    # ── 阈值：拆股偏离是比例，须在 (0,1) ──
+    _check_unit_interval("SPLIT_DEVIATION_THRESHOLD", SPLIT_DEVIATION_THRESHOLD,
+                         lo_open=True, hi_open=True)
+
+    # ── 极贪/极恐触发线：0-100 刻度 ──
+    for name in ("EXTREME_GREED_TRIGGER", "EXTREME_FEAR_TRIGGER",
+                 "EXTREME_GREED_UNLOCK_INDEX"):
+        _check_unit_interval(name, globals()[name], lo=0.0, hi=100.0)
+
+    # ── 弹药回撤档位：严格递增 ──
+    _check_ascending("DRAWDOWN_BATCHES", DRAWDOWN_BATCHES)
+    _check_ascending("CRYPTO_DRAWDOWN_BATCHES", CRYPTO_DRAWDOWN_BATCHES)
+
+    # ── 加密贪婪分档：触发线与减仓比例必须一一对应 ──
+    if len(CRYPTO_GREED_REDUCE) != len(CRYPTO_GREED_TIERS):
+        _fail("CRYPTO_GREED_REDUCE", CRYPTO_GREED_REDUCE,
+              "长度须 = len(CRYPTO_GREED_TIERS) = %d（实际 = %d）"
+              % (len(CRYPTO_GREED_TIERS), len(CRYPTO_GREED_REDUCE)))

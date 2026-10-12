@@ -44,6 +44,13 @@ import re
 import sys
 import tarfile
 
+# ⚠️ **安全解压复用**（WT-20，2026-10-12）：本文件此前用 `tar.extractall`，
+#    对恶意 tar 无任何路径穿越校验（绝对路径 / `..` / symlink 逃逸均可写任意
+#    文件）。`fg_sync_ingest._safe_extract` 已逐成员校验并拒绝上述形态 ——
+#    **复用**它，不再另写一套（避免两处实现漂移）。
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from fg_sync_ingest import _safe_extract  # noqa: E402
+
 # ⚠️ **同时收 `.md`**（2026-09-28 补）：飞书云文档支持「下载为 → Markdown」
 # ⇒ 用户导出的是 `*.md`。原来只收 `*.txt` ⇒ 导出的文档会被**静默漏掉**
 # （脚本还会报「没有 .txt」，把人引向错误方向）。
@@ -226,7 +233,9 @@ def main():
         with open(tmp, "wb") as fh:
             fh.write(blob)
         with tarfile.open(tmp, "r:xz") as tf:
-            tf.extractall(args.into)
+            # WT-20：逐成员安全解压（拒绝绝对路径 / `..` / 链接逃逸），
+            # 不再用无校验的 `tf.extractall(args.into)`。
+            _safe_extract(tf, args.into)
         print("  %-10s %8.1f KB -> 解压到 %s" % (name, len(blob) / 1024, args.into))
 
     print()
