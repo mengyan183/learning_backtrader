@@ -35,16 +35,18 @@ ss = _load()
 
 
 # ================================================================ 测试夹具
-def _make_features(tmp_path, periods=200, with_cols=True):
+def _make_features(tmp_path, periods=200, with_cols=True, start="2024-01-01"):
     """造一份最小 features.csv（含 fg_index/drawdown/zone/target_position）。
 
     返回 (features_path, Data 目录)。features 放在 <tmp>/Data/features.csv，
     使 main() 推导的 out_dir = <tmp>/evolution/sensitivity —— **全部落在
     tmp_path 内**，绝不触碰真实 Data/。
+
+    `start` 可前移到 IS 起点之前，用于 WT-27 的 IS/OOS 切分用例。
     """
     data_dir = tmp_path / "Data"
     data_dir.mkdir()
-    idx = pd.date_range("2024-01-01", periods=periods, freq="B")
+    idx = pd.date_range(start, periods=periods, freq="B")
     cols = {"fg_index": 50.0, "zone": 2, "target_position": 0.4, "drawdown": -0.05}
     if not with_cols:                        # 缺列场景
         cols.pop("fg_index")
@@ -317,6 +319,143 @@ def test_outputs_carry_oos_warning(monkeypatch, patched):
         assert "OOS" in text, "%s 缺 OOS 声明" % name
         assert "调参" in text, "%s 缺「不得调参」警示" % name
         assert "禁止" in text or "不得" in text, "%s 的警示语气不够硬" % name
+
+
+# ================================================================ WT-27：IS/OOS 显式切分
+def test_split_bounds_is_uses_config_discipline():
+    """is 口径 = **纪律声明口径**（`config.IS_START/IS_END`），脚本内不写字面日期。"""
+    start, end = ss.split_bounds("is")
+    assert start == str(ss.config.IS_START)
+    assert end == str(ss.config.IS_END)
+
+
+def test_split_bounds_oos_uses_baseline_meta():
+    """oos 口径 = **研究产物口径**（`evo_meta.oos_start()`），与 is 不同源。"""
+    from fg_system import evo_meta
+
+    start, end = ss.split_bounds("oos")
+    assert start == evo_meta.oos_start()
+    assert end is None            # 到数据末尾
+    assert start != str(ss.config.IS_START)
+
+
+def test_split_bounds_rejects_unknown():
+    """未知 split ⇒ 明确 ValueError（不静默退回默认口径）。"""
+    with pytest.raises(ValueError):
+        ss.split_bounds("nope")
+
+
+def test_slice_split_is_never_leaves_is_window():
+    """① --split is：评估行**不得越界**到样本外（下界 IS_START、上界 IS_END）。"""
+    idx = pd.date_range("2018-01-01", periods=2400, freq="B")
+    f = pd.DataFrame({"fg_index": 50.0, "target_position": 0.4}, index=idx)
+    out = ss.slice_split(f, "is")
+    assert len(out) > 0
+    assert out.index.min() >= pd.Timestamp(ss.config.IS_START)
+    assert out.index.max() <= pd.Timestamp(ss.config.IS_END)
+
+
+def test_slice_split_oos_starts_at_baseline_oos_start():
+    """② --split oos：评估行起点 = `evo_meta.oos_start()`（研究口径）。"""
+    from fg_system import evo_meta
+
+    idx = pd.date_range("2018-01-01", periods=3000, freq="B")
+    f = pd.DataFrame({"fg_index": 50.0, "target_position": 0.4}, index=idx)
+    out = ss.slice_split(f, "oos")
+    assert len(out) > 0
+    assert out.index.min() >= pd.Timestamp(evo_meta.oos_start())
+
+
+def test_help_mentions_split(monkeypatch, capsys):
+    """③ --help 必须暴露 --split（口径可发现，不靠读源码）。"""
+    monkeypatch.setattr("sys.argv", ["sensitivity_scan.py", "--help"])
+    with pytest.raises(SystemExit) as exc:
+        ss.main()
+    assert exc.value.code == 0
+    assert "--split" in capsys.readouterr().out
+
+
+def _long_features(tmp_path, monkeypatch, start="2018-01-01", periods=2400):
+    """造一份跨越 IS 与 OOS 的 features，并把路径指到 tmp_path。"""
+    feat, data_dir = _make_features(tmp_path, periods=periods, start=start)
+    _seed_prices(data_dir)
+    monkeypatch.setattr(ss.config, "FEATURES_PATH", feat)
+    monkeypatch.setattr(ss.config, "RAW_DIR", str(data_dir))
+    monkeypatch.setattr(ss.config, "SYMBOLS", ["TQQQ"])
+    return data_dir
+
+
+def test_main_is_split_feeds_only_is_rows_to_backtest(monkeypatch, tmp_path):
+    """编排不变量：默认 --split is ⇒ 喂给回测的 features **不越** IS_END。
+
+    关键：**算全量、评 IS** —— `recompute_targets` 拿到的仍是全量 features
+    （滑动窗口需要前置历史），只有送进回测的那份被截到 IS。
+    """
+    _long_features(tmp_path, monkeypatch)
+    recompute_seen, metric_seen = [], []
+
+    def fake_recompute(features, group, value):
+        recompute_seen.append((len(features), features.index.min()))
+        return features
+
+    def fake_metric(features, symbol):
+        metric_seen.append((len(features), features.index.min(), features.index.max()))
+        return {"annual_return": 0.30, "max_drawdown": -0.20, "sharpe": 1.5, "ic": 0.05}
+
+    monkeypatch.setattr(ss, "recompute_targets", fake_recompute)
+    monkeypatch.setattr(ss, "_sensitivity_metric", fake_metric)
+    monkeypatch.setattr("sys.argv",
+                        ["sensitivity_scan.py", "--group", "core", "--symbols", "TQQQ"])
+    ss.main()
+
+    assert recompute_seen and metric_seen
+    # 算全量：recompute 拿到的是完整 features（含 IS 之前的历史）
+    assert all(n > 2000 for n, _ in recompute_seen), "recompute 必须吃全量（滑动窗口需前置历史）"
+    # 评 IS：送进回测的那份不得越过 IS_END
+    assert all(hi <= pd.Timestamp(ss.config.IS_END) for _, _, hi in metric_seen)
+    assert all(lo >= pd.Timestamp(ss.config.IS_START) for _, lo, _ in metric_seen)
+
+
+def test_main_oos_split_starts_at_baseline_and_writes_final_csv(monkeypatch, tmp_path):
+    """④ --split oos ⇒ 起点 = evo_meta.oos_start()，且产出 `oos-final-*.csv` + 终验日期。"""
+    from fg_system import evo_meta
+
+    _long_features(tmp_path, monkeypatch)
+    metric_seen = []
+
+    def fake_recompute(features, group, value):
+        return features
+
+    def fake_metric(features, symbol):
+        metric_seen.append(features.index.min())
+        return {"annual_return": 0.30, "max_drawdown": -0.20, "sharpe": 1.5, "ic": 0.05}
+
+    monkeypatch.setattr(ss, "recompute_targets", fake_recompute)
+    monkeypatch.setattr(ss, "_sensitivity_metric", fake_metric)
+    monkeypatch.setattr("sys.argv",
+                        ["sensitivity_scan.py", "--group", "core", "--symbols", "TQQQ",
+                         "--split", "oos"])
+    ss.main()
+
+    assert metric_seen
+    assert min(metric_seen) >= pd.Timestamp(evo_meta.oos_start())
+    csv = tmp_path / "evolution" / "sensitivity" / "core" / "oos-final-TQQQ.csv"
+    assert csv.exists(), "OOS 终验产物应落在 evolution/sensitivity/<组>/oos-final-<标的>.csv"
+    df = pd.read_csv(csv)
+    for col in ("split", "split_start", "verified_on"):
+        assert col in df.columns, "OOS 终验产物缺列：%s" % col
+    assert set(df["split"]) == {"oos"}
+    assert df["split_start"].iloc[0] == evo_meta.oos_start()
+
+
+def test_warning_states_the_split_in_use(monkeypatch, tmp_path):
+    """⑤ 警示必须**注明切分口径**（is/oos 两套说法不同）。"""
+    is_text = ss.oos_warning("is")
+    oos_text = ss.oos_warning("oos")
+    assert "OOS" in is_text and "调参" in is_text and ("不得" in is_text or "禁止" in is_text)
+    assert "OOS" in oos_text and "调参" in oos_text and ("不得" in oos_text or "禁止" in oos_text)
+    assert is_text != oos_text, "两套口径的警示不得相同"
+    assert ss.config.IS_END in is_text, "is 警示应写明 IS 区间上界（来自 config）"
 
 
 def test_main_does_not_write_config_py(monkeypatch, patched):
