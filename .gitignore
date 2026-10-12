@@ -114,3 +114,6 @@ tests/company_sync_test.py
 
 # ---- Human 3.0 自评记录（运行态，不入库；结构与代码在仓库，数据留本地）----
 Data/human30.json
+
+# ---- CWD 坑防护（2026-10-12 WT 发现）：scripts/ 下误跑产生的数据副本 ----
+scripts/Data/

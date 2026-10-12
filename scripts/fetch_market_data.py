@@ -25,7 +25,8 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 PROXY = os.environ.get("FG_PROXY", "http://10.30.6.49:9090")
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Data", "raw")
+# ⚠️ WT 修复（2026-10-12）：不能相对脚本位置（scripts/Data/raw = CWD 坑，曾误入库），必须指向仓库根 Data/raw。
+OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Data", "raw")
 UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
