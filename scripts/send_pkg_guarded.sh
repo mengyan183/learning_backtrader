@@ -23,7 +23,24 @@ for _ in $(seq 1 15); do
 done
 
 if [ -s "$LOG" ]; then
-    echo "[脱离] 已启动，日志：$LOG"
+    # ⚠️ 日志非空**只**证明进程起来了 —— `feishu_send` 一启动就打「共 N 条」，
+    # 那一刻日志就非空，而真正的发送可能在第 N 片崩掉（2026-10-12 实测：
+    # 5 片只发出 3 片，报 `Element is not focusable` + `DONE_RC=1`，本守卫照样
+    # 打印"已启动"并 exit 0 ⇒ 假成功）。故：只有拿到**终态**才敢报结果。
+    if grep -q "DONE_RC=" "$LOG" 2>/dev/null; then
+        grep "DONE_RC=" "$LOG" | tail -1
+        if grep -q "DONE_RC=0" "$LOG"; then
+            echo "[成功] 脱离执行已完成（$LOG）"
+            exit 0
+        fi
+        echo "[失败] 脱离执行非零退出，见 $LOG"
+        echo "  → 续发：py -3.10 scripts/feishu_send.py --pkg $PKG --chat 海外投资助手 --start <下一片>"
+        exit 1
+    fi
+    echo "[已启动·结果未定] 日志：$LOG"
+    echo "  ⚠️ 本守卫证明不了「成功」—— 必须回读终态："
+    echo "     grep -E '\\[OK\\] 发出|DONE_RC=' \"$LOG\" | tail -2"
+    echo "     （只有出现「[OK] 发出 N 条」或「DONE_RC=0」才算送达）"
     exit 0
 fi
 
