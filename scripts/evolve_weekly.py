@@ -146,8 +146,25 @@ def main():
     print("\n".join(lines))
     print("\n✅ 周报 → %s" % out_path)
     if args.push:
-        subprocess.run([sys.executable, os.path.join(REPO, "scripts", "feishu_send.py"),
-                        out_path], check=False)
+        # S-3（团队评审 2026-10-12）：原实现把周报路径当**位置参数**传给
+        # `feishu_send.py`，但该脚本的 argparse **没有位置参数**（只收
+        # --chat/--dry-run/--pkg/…）⇒ argparse 直接 SystemExit(2)，而
+        # `check=False` 把非零返回吞掉 ⇒ 周报**永远推不出去且不报错**。
+        # 改为照 `evolve_approve.push_pending` 的已验证路径：写分片 → --pkg 推送，
+        # 并**检查返回码**（非零即报错退出，不再静默）。
+        text_dir = os.path.join(REPO, "dist", "feishu", "text")
+        os.makedirs(text_dir, exist_ok=True)
+        pkg = "weekly_%s" % week.replace("-", "")
+        chunk = os.path.join(text_dir, "%s-t001.txt" % pkg)
+        with open(chunk, "w", encoding="utf-8", newline="\n") as f:
+            f.write("\n".join(lines) + "\n")
+        rc = subprocess.run([sys.executable,
+                             os.path.join(REPO, "scripts", "feishu_send.py"),
+                             "--pkg", pkg]).returncode
+        if rc != 0:
+            print("✗ 周报推送失败（rc=%d）—— 分片保留在 %s，可重试" % (rc, chunk))
+            sys.exit(rc)
+        print("✅ 已推送周报（包名 %s）" % pkg)
 
 
 if __name__ == "__main__":

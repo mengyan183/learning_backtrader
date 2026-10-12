@@ -22,7 +22,15 @@ def without_trend(features):
     out = features.copy()
     if "trend_blocked" not in out.columns:
         return out
-    blocked = out["trend_blocked"].fillna(False).astype(bool)
+    # S-4（团队评审 2026-10-12）：`target_position` 在 pipeline 里**已整体
+    # shift(1)**（`pipeline.py:114`，T 日执行 T-1 收盘信号），而 `trend_blocked`
+    # **未 shift**（`pipeline.py:673`）。两者直接对齐会**错位一天** —— 等于用
+    # T 日的阻断标记去还原「代表 T-1 信号」的仓位，归因表因此系统性偏移，
+    # 而 `verdict()` 据此判断趋势过滤是否有用、进而决定是否回退核心仓上限。
+    # 故把 blocked 一并 shift(1) 后再 mask。
+    # `.eq(True)` 替代 `fillna(False).astype(bool)`：NaN ⇒ False，且不触发
+    # pandas 的 "Downcasting object dtype on .fillna" 弃用告警。
+    blocked = out["trend_blocked"].shift(1).eq(True)
     restored = out["target_position"] / config.TREND_FILTER_FACTOR
     out.loc[blocked, "target_position"] = restored[blocked].clip(upper=1.0)
     return out

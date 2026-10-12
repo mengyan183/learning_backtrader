@@ -75,16 +75,31 @@ def _load():
     try:
         with open(DATA_PATH, encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
-        return {"records": []}
+    except Exception as e:
+        # S-2（团队评审 2026-10-12）：**不得**把"文件损坏"降级成"空历史" ——
+        # 原实现 `except Exception: return {"records": []}` 之后，`record()`
+        # 的下一次 `_save()` 会把损坏文件**整个覆盖**，用户全部打卡记录
+        # 永久丢失且无任何告警（违反 §13.0「宁可没有数据，不可有错数据」）。
+        # 这里显式抛错：让人先看见、先修数据，而不是静默抹掉。
+        raise RuntimeError(
+            "human30 数据文件损坏/不可读，拒绝按空历史处理"
+            "（否则下一次写入会把它覆盖丢失）：%s（%s: %s）"
+            % (DATA_PATH, type(e).__name__, e))
 
 
 def _save(data):
     d = os.path.dirname(DATA_PATH)
     if d and not os.path.exists(d):
         os.makedirs(d, exist_ok=True)
-    with open(DATA_PATH, "w", encoding="utf-8") as f:
+    # S-2：**原子写** —— 写临时文件 + fsync 再 os.replace，避免中途中断
+    # （Windows 上终端关闭/断电很常见）留下半截 JSON；半截 JSON 会被
+    # `_load` 判为损坏 ⇒ 一旦写坏就必须人工介入，故从源头杜绝。
+    tmp = DATA_PATH + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, DATA_PATH)
 
 
 def record(mind, body, spirit, vocation, note="", when=None, market=None):
