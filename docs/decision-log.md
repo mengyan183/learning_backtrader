@@ -292,3 +292,9 @@
 
 - **sync_1012k（237b5cd）**：Windows 端交付 WT-15~22 实现（attribution 修复/config validate/evo_meta/pipeline 空窗防御/HRP 校正/restore 安全解压 + 4 组新测试）。
 - **WT-18 一致性测试抓出残留**：5 个脚本仍硬编码 2024-10-03/2024-10-01（portfolio_backtest/factor_backtest_probe/norm_compare 真常量 + risk_report/weight_sensitivity 注释）。已全部统一：真常量改读 `evo_meta.oos_start()`（baseline meta 单一来源，factor_backtest_probe 由 2024-10-01 校正为 2024-10-03）；注释去掉字面日期。OOS 测试 3 passed。
+
+## 2026-10-12 WT-26 方案①立项（WT-27）
+
+- **用户裁决**：sensitivity_scan 的 OOS 切分选**选项 A（双口径分层）**——扫描 IS = 纪律口径（config.IS_START~IS_END，2019-09-20~2022-12-31），OOS 终验 = 研究口径（evo_meta.oos_start()，2024-10-03 起）。
+- 依据：WT-18 明令双口径不得混用；A 使调参绝不触碰纪律 OOS、验收跨研究 OOS，两层纪律全满足；代价为 IS 仅 ~3.3 年（接受，配合稳定性检查）。
+- 已开 **WT-27**（docs/windows-tasks.md 待做表末行），交 Windows 端实现。
