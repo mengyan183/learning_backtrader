@@ -97,6 +97,12 @@ Windows 完成一项 → scripts/pack_many.py 打包（URL-safe base64 分片）
 
 - 打包/校验/发送工具：`scripts/pack_many.py`、`scripts/verify_pkg.py`、`scripts/send_pkg.py|bat`。
 - 发送后**必须**跑 `verify_pkg.py` 做往返 md5 比对 —— 只报"已发出"不算证据。
+- **note 类内容（回传说明/报告/自查结论）放 `docs/notes/`**（2026-10-12 用户定案）：
+  打包时传**仓库内路径**（如 `docs/notes/2026-10-12-xxx.md`）⇒ 命中白名单 `docs/**`
+  （`scripts/fg_sync_ingest.py:39` 的 `ALLOWED_DIRS = {fg_system, scripts, tests,
+  evolution, docs}`）⇒ Mac 端**自动入库**，无需人工归档。
+  ⚠️ **不要**放 `dist/feishu/text/` —— 该目录**不在**白名单内，每轮都要 Mac 手动
+  `docs: xxx 归档`（`note1012a` 即此类，已由 Mac 归档；`docs/notes/` 路径可免掉这一步）。
 
 ## 当前排期建议（2026-10-09 晚更新）
 
