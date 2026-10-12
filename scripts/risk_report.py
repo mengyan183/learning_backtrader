@@ -3,7 +3,7 @@
 """L3.2 组合风险度量报告：三标的 OOS 尾部指标（VaR/CVaR/波动/回撤）+ HRP 参考权重。
 
 - 收益口径：复用 M2.1 生产同款 runner（runner.run_single + FgStrategy +
-  next_position，含成本），OOS 2024-10-03 起，等权组合 = Σ(1/3)·腿（与
+  next_position，含成本），OOS = baseline meta oos_start（WT-18 单一来源），等权组合 = Σ(1/3)·腿（与
   portfolio_backtest 构造一致，max|diff|=0 已在 M2.1 验证）。
 - HRP：fg_system.risk.hrp_weights（相关矩阵层次聚类 + 递归二分 + 逆方差）。
 - 对照纪律第 9 条（极贪降仓 25% 底仓 / 极恐分批释弹药）：尾部指标为第 9 条

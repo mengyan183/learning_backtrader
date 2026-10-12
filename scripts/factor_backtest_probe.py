@@ -14,7 +14,7 @@
 - 执行：T 日信号 shift(1) → T+1 生效（pipeline §10.3 红线，无前视）
 - 收益：daily_ret = pos.shift(1) * close.pct_change() - cost * |Δpos|
     cost = commission 0.0003 + slippage 0.00050（config 原值单边）
-- 对照：B0 = 同期 TQQQ buy&hold；OOS 起点 2024-10-01（与既有回测同口径）
+- 对照：B0 = 同期 TQQQ buy&hold；OOS 起点 = baseline meta（单一来源）
 
 用法：
   .venv/bin/python scripts/factor_backtest_probe.py --factor putcall --symbol TQQQ
@@ -34,13 +34,14 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from fg_system import evo_meta  # noqa: E402
 from fg_system.backtest.runner import performance_metrics  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 DATA = REPO / "Data"
 RAW = DATA / "raw"
 OUT_DIR = REPO / "evolution" / "experiments" / "factor-adoption"
-OOS_START = "2024-10-01"
+OOS_START = evo_meta.oos_start()  # WT-18 单一来源
 COST = 0.0003 + 0.00050  # commission + slippage（config 原值单边）
 ROLL = 756
 

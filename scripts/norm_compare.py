@@ -27,7 +27,7 @@ BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE not in sys.path:
     sys.path.insert(0, BASE)
 
-from fg_system import config
+from fg_system import config, evo_meta
 from fg_system import index as fidx
 from fg_system import pipeline
 from fg_system.backtest import runner
@@ -35,7 +35,7 @@ from fg_system.backtest import runner
 OUT_DIR = os.path.join(BASE, "evolution", "experiments", "norm_compare")
 FEATURES = os.path.join(BASE, "Data", "features.csv")
 PRICES = os.path.join(BASE, "Data", "raw", "prices.csv")
-OOS_START = "2024-10-03"
+OOS_START = evo_meta.oos_start()  # WT-18 单一来源
 FACTOR_COLS = ["vix", "term", "price", "breadth", "fed", "putcall"]
 SYMBOLS = ["TQQQ", "SOXL", "UPRO"]
 
@@ -232,7 +232,7 @@ def render_md(res):
         d = p["dist"]
         lines.append(f"| {k} | {d[0]} | {d[1]} | {d[2]} | {d[3]} | {d[4]} | "
                      f"{p['mean_streak']:.1f} | {p['autocorr1']} |")
-    lines += ["", "## OOS 档位 → 次日组合收益（2024-10-03 起，M2.1 同口径组合）", ""]
+    lines += ["", "## OOS 档位 → 次日组合收益（baseline meta oos 起，M2.1 同口径组合）", ""]
     for k in ("A", "B", "C"):
         p = res["plans"][k]["oos"]
         if not p:

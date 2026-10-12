@@ -9,12 +9,12 @@
   不存在"双引擎不一致"。
 - 资金：INITIAL_CASH 等权 1/3 分给 TQQQ / SOXL / UPRO（无参数先验）。
 - B0：等权买入持有组合（Σ(1/n)·buy_and_hold_returns）。
-- OOS：2024-10-03 起（对齐 evolution/baseline.json meta.is_oos）。
+- OOS：`evolution/baseline.json meta.is_oos.oos_start` 起（单一来源，见 fg_system/evo_meta.py）。
 - 组合特有维度：联合回撤（跨标的下行风险）、三标的相关性矩阵（同信号高相关是
   组合风险集中度的直接证据）。
 
 用法：
-  .venv/bin/python scripts/portfolio_backtest.py [--oos-start 2024-10-03] [--json]
+  .venv/bin/python scripts/portfolio_backtest.py [--oos-start <baseline meta>] [--json]
 输出：evolution/experiments/portfolio/portfolio-oos.{md,json}
 """
 from __future__ import annotations
@@ -31,14 +31,14 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fg_system import config  # noqa: E402
+from fg_system import config, evo_meta  # noqa: E402
 from fg_system.backtest import runner  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 DATA = REPO / "Data"
 RAW = DATA / "raw"
 OUT_DIR = REPO / "evolution" / "experiments" / "portfolio"
-OOS_START = "2024-10-03"  # 对齐 baseline.json meta.is_oos.oos_start
+OOS_START = evo_meta.oos_start()  # 单一来源：baseline.json meta.is_oos（WT-18）
 SYMBOLS = config.SYMBOLS  # ["TQQQ", "SOXL", "UPRO"]
 
 

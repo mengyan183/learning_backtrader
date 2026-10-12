@@ -94,7 +94,7 @@ def render(results, base_w, base, delta) -> str:
         "- 口径：仅测不改（monkeypatch 临时扰动，try/finally 恢复；pipeline.run(write=False) 生产零改动）",
         "- 扰动：单因子 ×(1±%.0f%%)，其余等比例重归一 Σ=1" % (delta * 100),
         "- 基准 WEIGHTS：%s" % json.dumps(base_w, ensure_ascii=False),
-        "- 组合回测：M2.1 复用（等权 1/3 TQQQ/SOXL/UPRO，含成本，OOS 2024-10-03 起）",
+        "- 组合回测：M2.1 复用（等权 1/3 TQQQ/SOXL/UPRO，含成本，OOS = baseline meta）",
         "- 基准组合 OOS：年化 %.2f%% / 回撤 %.1f%% / Sharpe %.2f" % (
             base["annual_return"] * 100, base["max_drawdown"] * 100, base["sharpe"]),
         "",

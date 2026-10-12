@@ -287,3 +287,8 @@
 
 - **裁决**：without_trend 前提不成立（美股 v1 target_position 从未乘 TREND_FILTER_FACTOR，真实数据 blocked 行 target/core 中位 1.198、实测 0.5→1.0 放大）→ 归因表/verdict() 失真。
 - **用户确认**：按第 8 条流程确认实施修复（without_trend 对 v1 数据原样返回 + 更新 4 个 test_attribution 语义）→ 交 WT-22（Windows 端）执行。
+
+## 2026-10-12 sync_1012k 收尾：WT-18 OOS 起点残留清零
+
+- **sync_1012k（237b5cd）**：Windows 端交付 WT-15~22 实现（attribution 修复/config validate/evo_meta/pipeline 空窗防御/HRP 校正/restore 安全解压 + 4 组新测试）。
+- **WT-18 一致性测试抓出残留**：5 个脚本仍硬编码 2024-10-03/2024-10-01（portfolio_backtest/factor_backtest_probe/norm_compare 真常量 + risk_report/weight_sensitivity 注释）。已全部统一：真常量改读 `evo_meta.oos_start()`（baseline meta 单一来源，factor_backtest_probe 由 2024-10-01 校正为 2024-10-03）；注释去掉字面日期。OOS 测试 3 passed。
