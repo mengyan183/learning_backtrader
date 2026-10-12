@@ -40,8 +40,10 @@ def test_incremental_days(tmp_path):
     assert incremental_days(dest) == 365          # 文件不存在 → 全量
     dest.write_text("date,mcap,volume,usage_ratio,usage_30d\n"
                     "2026-10-10,1,1,0.5,0.5\n", encoding="utf-8")
-    # 今天=2026-10-10 → 差 0 天 → max(1,2)=2
-    assert incremental_days(dest) == 2
+    # 动态预期：max((today - 2026-10-10).days + 1, 2)，避免日期漂移脆弱
+    import datetime
+    expected = max((datetime.date.today() - datetime.date(2026, 10, 10)).days + 1, 2)
+    assert incremental_days(dest) == expected
 
 
 def test_merge_into_dedup(tmp_path):
