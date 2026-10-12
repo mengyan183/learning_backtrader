@@ -208,9 +208,17 @@ def main():
     args = ap.parse_args()
 
     features_path = getattr(config, "FEATURES_PATH", "Data/features.csv")
-    features = pd.read_csv(features_path, parse_dates=["date"]).set_index("date")
+    # 无数据路径统一**退出 2**（WT-17 验收口径，同 WT-10 的 validate_stablecoin_data）：
+    # 「环境未就绪」与 argparse 的用法错误同属 2 —— 裸 traceback 会被上层脚本误判成
+    # 程序 bug，exit(1) 又和「跑完了但有错」混淆，调用方无法区分「先跑 pipeline 再来」。
+    try:
+        features = pd.read_csv(features_path, parse_dates=["date"]).set_index("date")
+    except FileNotFoundError:
+        print(f"❌ 找不到 {features_path}（先跑 pipeline 生成 features.csv）", file=sys.stderr)
+        sys.exit(2)
     if "fg_index" not in features.columns or "drawdown" not in features.columns:
-        sys.exit("❌ features.csv 缺少 fg_index/drawdown 列（先跑 pipeline 生成）")
+        print("❌ features.csv 缺少 fg_index/drawdown 列（先跑 pipeline 生成）", file=sys.stderr)
+        sys.exit(2)
 
     out_dir = os.path.join(os.path.dirname(features_path), "..", "evolution", "sensitivity")
     out_dir = os.path.abspath(out_dir)
