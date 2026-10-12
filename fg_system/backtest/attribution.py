@@ -22,15 +22,15 @@ def without_trend(features):
     out = features.copy()
     if "trend_blocked" not in out.columns:
         return out
-    # S-4（团队评审 2026-10-12）：`target_position` 在 pipeline 里**已整体
-    # shift(1)**（`pipeline.py:114`，T 日执行 T-1 收盘信号），而 `trend_blocked`
-    # **未 shift**（`pipeline.py:673`）。两者直接对齐会**错位一天** —— 等于用
-    # T 日的阻断标记去还原「代表 T-1 信号」的仓位，归因表因此系统性偏移，
-    # 而 `verdict()` 据此判断趋势过滤是否有用、进而决定是否回退核心仓上限。
-    # 故把 blocked 一并 shift(1) 后再 mask。
-    # `.eq(True)` 替代 `fillna(False).astype(bool)`：NaN ⇒ False，且不触发
-    # pandas 的 "Downcasting object dtype on .fillna" 弃用告警。
-    blocked = out["trend_blocked"].shift(1).eq(True)
+    # ⚠️ 团队评审 S-4 曾建议此处加 shift(1)，**已核实不成立、未采纳**（见
+    # docs/notes/2026-10-12-s234-fixes.md）：生产调用方 `cli.py:338` 用的是
+    # `pipeline.run_equity_v2()`，它直接返回 v1 `run()` 的结果再追加趋势列，
+    # `target_position` 与 `trend_blocked` 是**同一行对齐**的；`run()` 里的
+    # shift(1) 发生在 run_equity_v2 之前，不改变这两列的相对对齐。
+    # 加 shift 会让 4 个既有测试（test_attribution.py）转红。
+    # `.eq(True)` 与 `fillna(False).astype(bool)` 行为等价（NaN ⇒ False），
+    # 且不触发 pandas 的 "Downcasting object dtype on .fillna" 弃用告警。
+    blocked = out["trend_blocked"].eq(True)
     restored = out["target_position"] / config.TREND_FILTER_FACTOR
     out.loc[blocked, "target_position"] = restored[blocked].clip(upper=1.0)
     return out
