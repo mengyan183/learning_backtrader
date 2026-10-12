@@ -221,3 +221,42 @@ def test_vma_below_ma_shrinks():
     assert (pos[90:] < base[90:] - 1e-12).any()
     # 前段（单边缓涨，close > MA）不动
     assert np.allclose(pos[55:75], base[55:75], rtol=0, atol=1e-12)
+
+
+def test_trend_ammo_exempts_ammo():
+    """V-TREND-AMMO：阻断日只打折核心仓，弹药豁免；非阻断日逐位不变。"""
+    f = _mk_features(120)
+    ammo = 0.15 + 0.02 * np.sin(np.arange(120) / 3.0)
+    f["ammo_position"] = ammo  # target = core + ammo
+    blocked = {10, 20, 30, 31, 32}
+    pf = _mk_portfolio(len(f), blocked_idx=blocked)
+    out = vmod.apply_variant(f, pf, "V-TREND-AMMO")
+    exp = f["target_position"].copy()
+    idx = f.index[list(blocked)]
+    core = exp.loc[idx] - ammo[list(blocked)]
+    exp.loc[idx] = core * 0.5 + ammo[list(blocked)]
+    assert np.allclose(out["target_position"].values, exp.values,
+                       rtol=1e-12, atol=1e-12)
+    # 非阻断日不变
+    unblocked = np.ones(len(f), dtype=bool)
+    unblocked[list(blocked)] = False
+    assert np.allclose(
+        out["target_position"].values[unblocked],
+        f["target_position"].values[unblocked], rtol=0, atol=0)
+    # 弹药在阻断日确实豁免（target 保留 ammo 部分）
+    blocked_vals = out["target_position"].values[list(blocked)]
+    ammo_vals = ammo[list(blocked)]
+    assert np.all(blocked_vals >= ammo_vals - 1e-12)
+
+
+def test_trend_ammo_no_ammo_col_falls_back():
+    """V-TREND-AMMO 缺 ammo_position 列 → 退回整体打折（V-H7 语义）。"""
+    f = _mk_features(60)
+    blocked = {5, 6, 7, 40}
+    pf = _mk_portfolio(60, blocked_idx=blocked)
+    out = vmod.apply_variant(f, pf, "V-TREND-AMMO")
+    exp = f["target_position"].copy()
+    idx = f.index[list(blocked)]
+    exp.loc[idx] = exp.loc[idx] * 0.5
+    assert np.allclose(out["target_position"].values, exp.values,
+                       rtol=1e-12, atol=1e-12)

@@ -666,17 +666,33 @@ def shoutu_core_series(us_features, weights, shoutu_wide=None, symbols=None,
 
 
 def run_equity_v2(raw_dir=None):
-    """大盘 features + 趋势列。
+    """大盘 features + 趋势列（P-2026-10-12-trend-wiring 选项 ii：core×trend + ammo）。
 
     **为什么不直接改 v1 的 `run()`**：v1 的 run() 输出已被测试锁定，
     加列虽看似无害，但任何对已验收代码的改动都是纯风险。本函数调用 v1 的 run()
     再**追加**趋势列，v1 路径零改动。
+
+    接线（C-3 已批 + 2026-10-12 变体数据定夺）：趋势过滤只打折**核心仓**、**弹药豁免**
+    （极端恐惧加仓保留逆势逻辑）；变体实验 V-TREND-AMMO 全面优于 V-H7（OOS 年化
+    +2.4~+6.3pp）⇒ 终版取选项 ii。
+
+    **shift 语义对齐（关键）**：v1 `run()` 在写入前对 `target_position` 整体
+    `shift(1)`（§10.3：T 日开盘执行 T-1 收盘信号），而 `core_position` /
+    `ammo_position` **不 shift**（pipeline.py:119-120）。故接线必须按信号日对齐：
+    `target[T] = core[T-1] × trend[T-1] + ammo[T-1]`，即用 core/ammo/trend 各
+    `shift(1)` 后重算，再保持 v1 的 warmup NaN 结构（`where target.notna()`）。
     """
     us = run(raw_dir=raw_dir, write=False)
     wide = load_wide(raw_dir)
     trend = equity_trend_series(wide).reindex(us.index).fillna(1.0)
     us["trend"] = trend
     us["trend_blocked"] = trend < 1.0
+    # 与 target_position 的 shift(1) 对齐：执行日 T 用信号日 T-1 的 core/ammo/trend
+    prev_trend = trend.shift(1).fillna(1.0)
+    prev_core = us["core_position"].shift(1)
+    prev_ammo = us["ammo_position"].shift(1).fillna(0.0)
+    wired = prev_core * prev_trend + prev_ammo
+    us["target_position"] = wired.where(us["target_position"].notna())
     return us
 
 

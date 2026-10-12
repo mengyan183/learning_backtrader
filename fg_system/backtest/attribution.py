@@ -7,59 +7,47 @@
 
 做法：构造一条「不带趋势过滤」的对照仓位序列，两条路径都按同一价格序列算收益。
 
-**裁决 B（2026-10-12，WT-22）**：生产入口 `run_equity_v2()` = v1 `run()` + 追加
-趋势列，而 v1 的 `target_position = core_position + ammo`（**无 trend 乘法**）
-⇒ 趋势折扣**从未乘进** v1 的 target。因此「关闭趋势过滤」的对照就是
-**原样返回**（见 `without_trend`）；blocked 行**不再** ÷`TREND_FILTER_FACTOR`
-——旧做法会把仓位**翻倍**（实测 0.5→1.0），使归因表与 `verdict()` 失真、
-**夸大**趋势过滤的贡献。
+**裁决 B（2026-10-12，WT-22）**：v1 的 `target_position = core_position + ammo`
+（**无 trend 乘法**）⇒ 在 v1 数据上「关闭趋势过滤」= 原样返回。
 
-⚠️ 由此推论：在 v1 数据上 `contribution_table` 的两条路径**逐行相同** ⇒
-`return_delta` / `mdd_delta` 恒为 **0** ⇒ `verdict()` 恒判「贡献度接近零」。
-这本身就是「趋势过滤在 v1 仓位口径下未产生任何差异」的**正确结论**，
-指向验收报告选项 A（降低核心仓上限）。若将来接入 v2.5 口径（target 真的乘过
-`trend`），需在 `without_trend` 处做对应还原并重新校准归因。
+**接线（P-2026-10-12-trend-wiring，C-3 已批）**：`run_equity_v2()` 现已把趋势过滤
+真实接进 target（选项 ii：`target[T] = core[T-1]×trend[T-1] + ammo[T-1]`，弹药豁免，
+见 `pipeline.run_equity_v2`）。因此「关闭趋势过滤」的对照 = **还原未接线版**
+（`core[T-1] + ammo[T-1]`），见 `without_trend`——它不再是原样返回。
 """
 import pandas as pd
 
 
 def without_trend(features):
-    """构造「关闭趋势过滤」的对照 features —— **原样返回**。
+    """构造「关闭趋势过滤」的对照 features —— **还原未接线版**。
 
     ============================================================================
-    为什么「原样返回」才是正确对照（裁决 B，2026-10-12 WT-22）
+    接线后的对照语义（P-2026-10-12-trend-wiring）
     ============================================================================
     归因的目标是回答「**趋势过滤到底贡献了多少**」，因此对照必须是
     「把趋势过滤关掉之后的同一条仓位序列」。
 
-    早先的实现假设 `target_position` 里**已经乘过** `TREND_FILTER_FACTOR`
-    （即被过滤时打过折），于是在 `trend_blocked=True` 处把它 ÷ factor「还原」。
-    这个前提**与实际数据不符、从未成立**：
+    接线后（选项 ii）：`target[T] = core[T-1] × trend[T-1] + ammo[T-1]`
+    （`trend ∈ {TREND_FILTER_FACTOR=0.5, 1.0}`，blocked 日核心仓打折、弹药豁免）。
 
-    - 生产调用方是 `pipeline.run_equity_v2()`，它 = v1 `run()` + 追加趋势列
-      （`trend` / `trend_blocked`），**v1 的 target 逐字不变**。
-    - v1 `run()` 里 `target_position = legacy.core_position + ammo`（见
-      `pipeline.py` 第 96 行），**没有任何 trend 乘法**。
-    - 趋势折扣只存在于两处：`market_signal.trend_factor_series`（算出 `trend`）与
-      `run_portfolio`（v2.5 组合级）里 —— 二者都**没有**把它乘进 v1 的 target。
+    关闭趋势过滤 ⇒ `target_no_trend[T] = core[T-1] + ammo[T-1]`：
+    用 features 里**未 shift** 的 `core_position` / `ammo_position` 各 `shift(1)`
+    还原（与 v1 `run()` 的 target shift(1) 语义对齐，pipeline.py:119-120）；
+    warmup（v1 target 为 NaN）行保持 NaN。
 
-    因此对 v1 数据而言，「关闭趋势过滤」= **无变化**，blocked 行**不得**再 ÷0.5。
-    Mac 用真实数据实测：blocked 行 target/core 比值中位 **1.198**（0.864~2.093，
-    含弹药），**绝非 0.5** —— 旧实现的 ÷0.5 会把仓位**翻倍**（实测 0.5→1.0），
-    凭空造出一段「对照路径」，既**夸大**趋势过滤的收益贡献，又只压低对照的回撤，
-    使 `contribution_table` 与 `verdict()` 双双失真。
-
-    结论：对 **v1 数据**（target 未含趋势折扣）本函数原样返回
-    （保留为具名函数，是为了让「对照」这一语义在调用处显式可见；
-    将来若接入 v2.5 口径、target 真的乘过 trend，再在此处做对应还原）。
-
-    ⚠️ 团队评审 S-4 曾建议此处加 shift(1)，**已核实不成立、未采纳**（见
-    docs/notes/2026-10-12-s234-fixes.md）：生产调用方用的 `run_equity_v2()`
-    直接返回 v1 `run()` 的结果再追加趋势列，`target_position` 与 `trend_blocked`
-    是**同一行对齐**的；`run()` 里的 shift(1) 发生在 `run_equity_v2` 之前，
-    不改变这两列的相对对齐。
+    ⚠️ 历史（裁决 B，WT-22）：接线前 v1 target 从未乘 trend ⇒ 对照=原样返回。
+    接线后该前提不再成立，必须还原；若将来改回不接线或改用其他折扣公式，
+    此处对照须同步重校。
     """
-    return features.copy()
+    out = features.copy()
+    if "core_position" not in out.columns or "ammo_position" not in out.columns:
+        # 缺列（守卫测试的纯 features 场景）：保守原样返回
+        return out
+    prev_core = out["core_position"].shift(1)
+    prev_ammo = out["ammo_position"].shift(1).fillna(0.0)
+    restored = (prev_core + prev_ammo).where(out["target_position"].notna())
+    out["target_position"] = restored
+    return out
 
 
 def _path_return(targets, prices):

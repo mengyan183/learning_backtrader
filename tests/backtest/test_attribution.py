@@ -187,3 +187,35 @@ def test_full_report_has_both_tables():
     out = attribution.full_report(f, prices)
     for col in ["return_delta", "mdd_delta", "effective", "reason"]:
         assert col in out.columns
+
+
+# ---------------------------------------------------------------- 接线后对照（P-2026-10-12-trend-wiring）
+
+def test_without_trend_restores_wired_target():
+    """接线（选项 ii）后：without_trend 还原未打折版 core+ammo（含 shift 对齐）。
+
+    接线 target[T] = core[T-1]×trend[T-1] + ammo[T-1]（弹药豁免）；
+    关闭趋势过滤 ⇒ target[T] = core[T-1] + ammo[T-1]。
+    """
+    idx = pd.bdate_range("2024-01-01", periods=4)
+    f = pd.DataFrame({
+        "core_position": [0.3, 0.3, 0.3, 0.3],
+        "ammo_position": [0.1, 0.1, 0.0, 0.0],
+        "trend": [1.0, 0.5, 0.5, 1.0],
+        "trend_blocked": [False, True, True, False],
+        # 接线版 target：T1=0.3×1.0+0.1=0.4；T2=0.3×0.5+0.1=0.25；T3=0.3×0.5+0.0=0.15
+        "target_position": [float("nan"), 0.4, 0.25, 0.15],
+    }, index=idx)
+    out = attribution.without_trend(f)
+    # 还原：T1=0.3+0.1=0.4；T2=0.3+0.1=0.4；T3=0.3+0.0=0.3；T0=NaN
+    assert out["target_position"].iloc[0] != out["target_position"].iloc[0]  # NaN
+    assert out["target_position"].iloc[1] == pytest.approx(0.4)
+    assert out["target_position"].iloc[2] == pytest.approx(0.4)
+    assert out["target_position"].iloc[3] == pytest.approx(0.3)
+
+
+def test_without_trend_restores_missing_column_noop_still_holds():
+    """缺 core/ammo 列（旧守卫场景）仍原样返回，不崩溃。"""
+    f = _features([0.49, 0.245], [True, True])
+    out = attribution.without_trend(f)
+    pd.testing.assert_series_equal(out["target_position"], f["target_position"])

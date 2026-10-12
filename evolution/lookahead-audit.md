@@ -1,6 +1,6 @@
 # 未来函数审计报告（R1.2 · freqtrade lookahead 思想）
 
-- 生成：2026-10-11 14:29 · scripts/lookahead_audit.py
+- 生成：2026-10-12 18:12 · scripts/lookahead_audit.py
 - 口径：代码层扫描 `shift(-n)`/`shift(0)`（默认违规、白名单豁免）；数据层 features 尾行不得超前原料 raw（pipeline shift(1) 设计，同日/滞后正常）
 - 结论：**PASS（违规 0）**
 

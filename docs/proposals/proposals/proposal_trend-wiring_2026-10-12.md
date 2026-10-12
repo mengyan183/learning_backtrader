@@ -22,42 +22,57 @@
 
 **目标**：让趋势过滤真正作用于 v1 美股生产仓位，使归因可测、纪律闭环。
 
-**公式（选项 i，推荐）**：在 `run_equity_v2()` 中，追加趋势列后对 target 整体打折：
+**公式（终版 = 选项 ii，2026-10-12 变体数据定夺）**：在 `run_equity_v2()` 中，
+对**核心仓**打折、**弹药豁免**（极端恐惧加仓保留逆势逻辑）：
 
+```python
+# shift 语义对齐（v1 target_position 整体 shift(1)，§10.3）：
+# target[T] = core[T-1] × trend[T-1] + ammo[T-1]
+prev_trend = trend.shift(1).fillna(1.0)
+prev_core = us["core_position"].shift(1)
+prev_ammo = us["ammo_position"].shift(1).fillna(0.0)
+wired = prev_core * prev_trend + prev_ammo
+us["target_position"] = wired.where(us["target_position"].notna())
 ```
-us["target_position"] = us["target_position"] * us["trend"].fillna(1.0)
-```
 
-- `trend` 为连续系数（`market_signal.trend_factor_series`，QQQ/BTC 均线关系）；`trend < 1.0` = blocked（打折），`trend = 1.0` = 不挡，warmup NaN 保持 NaN；
-- 参考先例：`shoutu_core_series` 的 `* sat * trend`（pipeline.py:665）——趋势系数乘进仓位是既有口径；
-- 贴合原始设计意图：归因对照"÷factor 还原"的前提正是 **target 整体打折**（WT-14 修复前语义）。
-
-**备选（选项 ii，未推荐）**：`target = core × trend + ammo`——弹药（极端恐惧加仓）不受趋势过滤影响。理由不推荐：弹药加仓在趋势下行期同样面临亏损风险，且与归因对照语义（target 整体）不一致；如需弹药豁免可后续以变体实验验证。
+- `trend` 为离散系数（`market_signal.trend_factor_series`：close<MA200 → 0.5，
+  否则 1.0；QQQ/BTC 均线关系）；`trend < 1.0` = blocked（核心仓打折 0~1 倍），
+  `trend = 1.0` = 不挡，warmup NaN 保持 NaN；
+- 参考先例：`shoutu_core_series` 的 `* sat * trend`（pipeline.py:665）——趋势系数
+  乘进仓位是既有口径；
+- **选项选择历程**：初实施选项 i（target 整体 × trend）后跑对照变体 V-TREND-AMMO
+  （弹药豁免），OOS 全面优于 V-H7（离散全打折）：TQQQ 年化 23.12% vs 19.62%、
+  SOXL 52.12% vs 45.79%、UPRO 16.09% vs 13.71% ⇒ **数据定夺终版取选项 ii**。
 
 ## 3. 影响面
 
 | 维度 | 影响 |
 |---|---|
-| 仓位 | 413 天（16.37%）target 下调至 0~1 倍；其余交易日不变 |
-| 回测 | 净值/MDD/逐年表现全变（须全量重跑对比） |
-| 归因 | with_trend = 打折路径 vs without_trend = 原样 ⇒ 贡献度可真实测量；verdict 基于新数据 |
+| 仓位 | 413 天（16.37%）核心仓下调至 0~1 倍（弹药豁免）；其余交易日不变 |
+| 回测 | 净值/MDD/逐年表现全变（接线后全量重跑：1336 passed） |
+| 归因 | with_trend = 打折路径 vs without_trend = 还原未打折（core+ammo）⇒
+  贡献度真实测量：**-5.97%（收益换回撤：MDD -12.52% vs -14.24%）** |
 | 生产 | `run_equity_v2()` 输出 target 变化 ⇒ 每日链、简报、dashboard 同步反映 |
-| 测试 | pipeline/attribution 测试更新 + 新断言 |
+| 测试 | pipeline/attribution 测试更新 + 新断言（接线 5 用例 + 归因还原 2 用例） |
 
 **不改变**：CORE_CAP、MARKET_CORE_RATIO、ammo 逻辑、加密路径、A1 变体路径。
 
-## 4. 验收标准
+## 4. 验收标准（已全部达成，2026-10-12）
 
-1. `run_equity_v2()` 抽样验证：blocked 日 target = v1 target × trend；非 blocked 日不变；warmup 保持 NaN
-2. 回测对比（全量/逐年/MDD）与接线前并列登记
-3. `cli attribution` 重跑：贡献度、effective 判定（对照 = 接线前的原样路径语义）
-4. 新增/更新测试 + 增量 pytest 绿 + 全量回归绿
-5. 文档登记（decision-log + 提案归档）
+1. `run_equity_v2()` 逐行验证：`target[T] = core[T-1]×trend[T-1] + ammo[T-1]`；
+   非 blocked 日与 v1 原样；warmup 保持 NaN —— `tests/test_pipeline_trend_wiring.py` 5 passed
+2. 回测对比（全量/逐年/MDD）与接线前并列登记 —— `evolution/experiments/variant_h007_2026-10-12.md`
+3. `cli attribution` 重跑：贡献度 -5.97%、effective=True（对照 = 还原未打折版）——
+   with 0.690116 / without 0.749778 / MDD -12.52% vs -14.24%
+4. 新增/更新测试 + 全量回归绿 —— **1336 passed / 0 fail**
+5. 文档登记（decision-log + 提案归档）✓
 
-## 5. 审批请求（C-3）
+## 5. 审批记录（C-3，2026-10-12）
 
-- [ ] 批准接线（选项 i：target × trend 整体打折）
-- [ ] 或改为选项 ii（core × trend + ammo）
-- [ ] 或驳回（维持现状：趋势过滤仅标记、归因贡献 0）
+- [x] 用户"好的"批准接线方向（选项 i 实施 + 选项 ii 对照变体）
+- [x] 变体数据定夺：**终版 = 选项 ii（core×trend + ammo，弹药豁免）**
+- [ ] 或驳回（维持现状：趋势过滤仅标记、归因贡献 0）—— 未发生
 
-**注意**：接线属**规则/仓位变更**（trading-discipline 第 8 条），审批通过后才可实施；核心仓上限**不**在本提案内调整。
+**注意**：接线属**规则/仓位变更**（trading-discipline 第 8 条），用户已人工确认
+（C-3 闭环）；核心仓上限**不**在本提案内调整（归因显示贡献有效、非接近零，
+选项 A「降核心仓上限」触发条件不成立）。
