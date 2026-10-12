@@ -282,3 +282,8 @@
 - **sync_1012e（8ca01e2）** 曾入库 S-4 错误改动（test_attribution_shift.py 要求 shift(1)）；Windows 端 s234-fixes 纠正包核实 **S-4 误报**（shift 会让 4 个既有测试转红），attribution.py 已由 sync_1012h（fba3c20）覆盖为正确版（与 origin/main 一致，git diff 为空）。
 - **按纠正包处置**：删除 `tests/backtest/test_attribution_shift.py`（错误前提）；human30.py / evolve_weekly.py / 两个守卫测试保留（S-2/S-3 正确修复）。
 - 增量失败根因 = 残留错误测试，非实现问题。
+
+## 2026-10-12 WT-14 裁决 B + 用户确认实施
+
+- **裁决**：without_trend 前提不成立（美股 v1 target_position 从未乘 TREND_FILTER_FACTOR，真实数据 blocked 行 target/core 中位 1.198、实测 0.5→1.0 放大）→ 归因表/verdict() 失真。
+- **用户确认**：按第 8 条流程确认实施修复（without_trend 对 v1 数据原样返回 + 更新 4 个 test_attribution 语义）→ 交 WT-22（Windows 端）执行。
