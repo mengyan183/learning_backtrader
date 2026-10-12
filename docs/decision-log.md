@@ -308,3 +308,12 @@
   - verdict：「趋势过滤贡献度 0.00% < 阈值 2.00%，修正无效 → 应回到验收报告**选项 A（降低核心仓上限）**，不要继续调趋势参数」
 - 语义说明：v1 target 从未乘趋势系数（裁决 B），「关闭趋势过滤」对照=无变化 ⇒ 贡献度 0 是**真实结论**，非计算错误；旧 ÷0.5 假对照夸大贡献。
 - ⚠️ 选项 A（降低核心仓上限）属**规则/仓位变更**，按 trading-discipline 第 8 条**待用户人工确认**后才可实施。
+
+## 2026-10-12 趋势过滤接线提案（P-2026-10-12-trend-wiring，待 C-3 审批）
+
+- attribution 收口证实贡献度 0.00%（with=without=0.754331），根因核实：**趋势过滤在 v1 生产路径只标记未执行**（run_equity_v2 = v1 run + 追加 trend 列，target 无乘法；唯一 `* trend` 在 shoutu_core_series 变体路径）。
+- 用户采纳建议：**暂缓降核心仓上限**，走"接线"方向。已生成提案（docs/proposals/proposals/proposal_trend-wiring_2026-10-12.md）：
+  - 推荐**选项 i**：run_equity_v2 中 `target = target × trend.fillna(1.0)`（参考 shoutu_core_series 先例，贴合归因对照语义）；
+  - 备选选项 ii（core × trend + ammo，弹药豁免）；
+  - 影响面：413 天仓位下调 0~1 倍、回测/归因/生产链路全变、不触碰 CORE_CAP 等。
+- 属规则/仓位变更（第 8 条）：**待用户 C-3 审批后实施**。
