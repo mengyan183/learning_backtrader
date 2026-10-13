@@ -1,0 +1,263 @@
+{
+ "budget": 0.4,
+ "tail": {
+  "cvar95": -0.49945,
+  "cvar99": -0.5168
+ },
+ "selected": {
+  "core_cap": 0.45,
+  "ammo_cap": 0.2,
+  "margin_pp": 4.91
+ },
+ "grid": [
+  {
+   "core_cap": 0.35,
+   "ammo_cap": 0.12,
+   "drawdown": -0.2489,
+   "margin_pp": 15.11,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.35,
+   "ammo_cap": 0.15,
+   "drawdown": -0.2724,
+   "margin_pp": 12.76,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.35,
+   "ammo_cap": 0.2,
+   "drawdown": -0.311,
+   "margin_pp": 8.9,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.35,
+   "ammo_cap": 0.25,
+   "drawdown": -0.349,
+   "margin_pp": 5.1,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.35,
+   "ammo_cap": 0.3,
+   "drawdown": -0.3866,
+   "margin_pp": 1.34,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.4,
+   "ammo_cap": 0.12,
+   "drawdown": -0.2692,
+   "margin_pp": 13.08,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.4,
+   "ammo_cap": 0.15,
+   "drawdown": -0.2925,
+   "margin_pp": 10.75,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.4,
+   "ammo_cap": 0.2,
+   "drawdown": -0.331,
+   "margin_pp": 6.9,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.4,
+   "ammo_cap": 0.25,
+   "drawdown": -0.3687,
+   "margin_pp": 3.13,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.4,
+   "ammo_cap": 0.3,
+   "drawdown": -0.4061,
+   "margin_pp": -0.61,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.45,
+   "ammo_cap": 0.12,
+   "drawdown": -0.2897,
+   "margin_pp": 11.03,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.45,
+   "ammo_cap": 0.15,
+   "drawdown": -0.3127,
+   "margin_pp": 8.73,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.45,
+   "ammo_cap": 0.2,
+   "drawdown": -0.3509,
+   "margin_pp": 4.91,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.45,
+   "ammo_cap": 0.25,
+   "drawdown": -0.3884,
+   "margin_pp": 1.16,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.45,
+   "ammo_cap": 0.3,
+   "drawdown": -0.4252,
+   "margin_pp": -2.52,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.5,
+   "ammo_cap": 0.12,
+   "drawdown": -0.3098,
+   "margin_pp": 9.02,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.5,
+   "ammo_cap": 0.15,
+   "drawdown": -0.3328,
+   "margin_pp": 6.72,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.5,
+   "ammo_cap": 0.2,
+   "drawdown": -0.4025,
+   "margin_pp": -0.25,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.5,
+   "ammo_cap": 0.25,
+   "drawdown": -0.442,
+   "margin_pp": -4.2,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.5,
+   "ammo_cap": 0.3,
+   "drawdown": -0.4445,
+   "margin_pp": -4.45,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.55,
+   "ammo_cap": 0.12,
+   "drawdown": -0.3298,
+   "margin_pp": 7.02,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.55,
+   "ammo_cap": 0.15,
+   "drawdown": -0.3525,
+   "margin_pp": 4.75,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.55,
+   "ammo_cap": 0.2,
+   "drawdown": -0.4168,
+   "margin_pp": -1.68,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.55,
+   "ammo_cap": 0.25,
+   "drawdown": -0.4553,
+   "margin_pp": -5.53,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.55,
+   "ammo_cap": 0.3,
+   "drawdown": -0.4636,
+   "margin_pp": -6.36,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.7,
+   "ammo_cap": 0.12,
+   "drawdown": -0.3824,
+   "margin_pp": 1.76,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.7,
+   "ammo_cap": 0.15,
+   "drawdown": -0.4066,
+   "margin_pp": -0.66,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.7,
+   "ammo_cap": 0.2,
+   "drawdown": -0.4454,
+   "margin_pp": -4.54,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.7,
+   "ammo_cap": 0.25,
+   "drawdown": -0.4821,
+   "margin_pp": -8.21,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  },
+  {
+   "core_cap": 0.7,
+   "ammo_cap": 0.3,
+   "drawdown": -0.5168,
+   "margin_pp": -11.68,
+   "cvar95": -0.49945,
+   "cvar99": -0.5168
+  }
+ ],
+ "OOS_WARNING": "历史路径拟合：本曲线源自 2016-2026 全样本的组合级 30 格矩阵（第 12.7 条），OOS 稳定性未单独验证，样本长度下多数格子低置信。曲线**只回答「余量还剩多少」**，**不回答「更好的组合是什么」**；**禁止**据此挑 Calmar/年化最高的格子。",
+ "scope": {
+  "answers": "只回答「余量还剩多少」（当前参数相对 -40% 回撤预算的余量）",
+  "does_not_answer": "不回答「更好的组合是什么」——禁止据此挑最高效的格子",
+  "source": "docs/trading-discipline.md 第 12.7 条组合级 30 格矩阵（只取回撤列）"
+ },
+ "forbidden_input_to": [
+  "evolve_propose"
+ ]
+}

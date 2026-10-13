@@ -14,14 +14,24 @@
   .venv/bin/python scripts/drift_monitor.py --push       # 报告推飞书
   .venv/bin/python scripts/drift_monitor.py --push-alert # 仅异常(预警/告警)时推飞书
   .venv/bin/python scripts/drift_monitor.py --quality    # 数据质量闸门（R1.5）单独跑
+  .venv/bin/python scripts/drift_monitor.py --crosscheck # D2 多源交叉校验（VIX 双源偏差表）
+  .venv/bin/python scripts/drift_monitor.py --backfill   # D2 自动回填（缺值用副源补齐）
 
 ## R1.5 数据质量闸门（freqtrade 数据自检思想）
 - 检测 Data/raw/prices.csv（白名单+SPY）、vix.csv、news_sentiment.csv：
   无效值(价格<=0/NaN/负量) / 断档(交易日缺口>5) / 跳空(单日|涨跌|超阈值) / 极端值
 - 异常 → 合并写 Data/freshness_warning.txt（[数据质量] 节，不清除停更告警）；
   --push-alert 时推飞书。正常 → 移除本脚本旧的 [数据质量] 节（不留 stale 告警）。
+
+## D2 多源交叉校验 + 自动回填（坏数据不进合成）
+- 交叉校验：同一指标**两个数据源**（如 VIX 双源）逐日比对 → **偏差表**（纯函数，
+  接收两条序列，**不联网**）。超阈值行由**人工**判定，脚本不据此改仓位。
+- 自动回填：主源**缺值**行，用副源回填；但该行副源值相对「主源最近已知值」的
+  **相对偏差 > 阈值** ⇒ 判为可疑、**不回填**（宁缺勿滥，坏数据不进合成）。
+  回填是**可注入文件路径**的纯函数，默认路径取自 config（不硬编码 Data/）。
 """
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -29,6 +39,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 import pandas as pd  # noqa: E402
 
+from fg_system import config  # noqa: E402
 from fg_system.factors.eval import evaluate, window_stats  # noqa: E402
 
 DATA = REPO / "Data"
@@ -69,6 +80,112 @@ GAP_DAYS = 5           # 交易日缺口 > 5 天 → 断档（周末+节假日�
 RECENT_DAYS = 30       # 断档/跳空/极端值仅查最近 30 交易日（坏数据发生在最新写入环节；历史真实事件非坏数据）
 WARN_PATH = DATA / "freshness_warning.txt"
 QUALITY_TAG = "[数据质量]"
+
+
+# ---------------------------------------------------------------- D2 多源交叉校验
+# 交叉校验偏差阈值（**相对偏差** = |副源−主源| / |主源|）。
+# 先验值，**禁止用回测优化**（第 4B.6 条精神）；仅作为"哪些行需要人工看"的筛选线，
+# **不得**据它自动改仓位或自动调参（规划 D2 结论层·人工）。
+CROSSCHECK_THRESHOLD = 0.05
+# 偏差表列名（**固定**，消费方据此取字段）。
+CROSSCHECK_COLUMNS = ["date", "primary", "secondary", "abs_dev", "rel_dev", "breach"]
+# 回填明细列名（**固定**）。
+BACKFILL_COLUMNS = ["date", "value", "source"]
+# 自动回填的默认目标文件：主源 VIX（路径取自 config，**不硬编码 Data/**）。
+BACKFILL_DEFAULT_PATH = os.path.join(config.RAW_DIR, "vix.csv")
+
+
+def _to_date_series(s):
+    """把输入规整为「index=日期、值=float」的干净 Series（不改入参）。"""
+    if not isinstance(s, pd.Series):
+        s = pd.Series(s)
+    out = s.astype("float64").copy()
+    out.index = pd.to_datetime(out.index)
+    return out.sort_index()
+
+
+def crosscheck_series(primary, secondary, threshold=CROSSCHECK_THRESHOLD):
+    """**多源交叉校验**（纯函数）：两条同指标序列逐日比对 → 偏差表。
+
+    参数：
+      primary   —— 主源序列（index 为日期，值为数值；如 CBOE VIX）
+      secondary —— 副源序列（如 Nasdaq VIX）
+      threshold —— 相对偏差阈值（|差|/|主源|），超此值为 `breach=True`
+
+    返回 DataFrame，列固定为 `CROSSCHECK_COLUMNS`：
+      date / primary / secondary / abs_dev / rel_dev / breach
+
+    - 仅在**共同日期**上比对（inner join）：缺一天属停更，不当作偏差。
+    - **不联网、不改入参**。`breach` 只作"需人工看"的标记，**不触发任何自动调仓**。
+    """
+    p = _to_date_series(primary)
+    s = _to_date_series(secondary)
+    common = p.index.intersection(s.index)
+    p = p.loc[common]
+    s = s.loc[common]
+    abs_dev = (s - p).abs()
+    denom = p.abs().replace(0.0, pd.NA).astype("float64")
+    rel_dev = (abs_dev / denom).astype("float64")
+    df = pd.DataFrame({
+        "date": [d.strftime("%Y-%m-%d") for d in common],
+        "primary": p.to_numpy(dtype="float64"),
+        "secondary": s.to_numpy(dtype="float64"),
+        "abs_dev": abs_dev.to_numpy(dtype="float64"),
+        "rel_dev": rel_dev.to_numpy(dtype="float64"),
+        "breach": (rel_dev > threshold).fillna(False).to_numpy(dtype=bool),
+    })
+    return df[CROSSCHECK_COLUMNS]
+
+
+def breach_rows(dev_table):
+    """从偏差表挑出**超阈值**行（供报告/告警展示）。空表 ⇒ 空子表。"""
+    if dev_table is None or len(dev_table) == 0:
+        cols = dev_table.columns if dev_table is not None else CROSSCHECK_COLUMNS
+        return pd.DataFrame(columns=list(cols))
+    return dev_table[dev_table["breach"]].reset_index(drop=True)[list(dev_table.columns)]
+
+
+def backfill_from_secondary(path, primary_col, secondary_col,
+                            threshold=CROSSCHECK_THRESHOLD):
+    """**自动回填**（可注入文件路径的纯函数）：主源缺值行用副源补齐。
+
+    触发条件（**守住"坏数据不进合成"**）：
+      - 仅考虑『主源为 NaN/空 且副源有值』的行；
+      - 逐行比对：副源值相对**主源最近已知值**（该行之前最近的非缺失主源值；
+        若无，则取之后最近的）的**相对偏差 ≤ threshold** 才回填；超阈值 ⇒ 判为可疑，
+        **保留 NaN 不回填**（宁缺勿滥）。
+      - 主源已有值 ⇒ 绝不覆盖（副源不得改写历史）。
+
+    回填后就地写回 `path`（无回填则不写，保证幂等），返回明细 DataFrame
+    （列固定 `BACKFILL_COLUMNS`）。`path` 由调用方注入（测试用 tmp_path）；
+    CLI 默认取 `BACKFILL_DEFAULT_PATH`。
+    """
+    df = pd.read_csv(path)
+    df["date"] = pd.to_datetime(df["date"])
+    p = df[primary_col].astype("float64")
+    s = df[secondary_col].astype("float64")
+
+    known = p.ffill()          # 主源最近已知值（向前填充，不改入参 df）
+    known_bfill = p.bfill()    # 若该行之前全缺，用之后最近值兜底
+    ref = known.where(known.notna(), known_bfill)
+
+    # 逐行相对偏差 = |副源 − 主源最近已知| / |主源最近已知|
+    denom = ref.abs().replace(0.0, pd.NA).astype("float64")
+    rel = (s - ref).abs() / denom
+    need = p.isna() & s.notna() & ref.notna()
+    fill_idx = df.index[need & (rel <= threshold)]
+
+    record = []
+    if len(fill_idx):
+        filled_vals = s.loc[fill_idx].to_numpy(dtype="float64")
+        df.loc[fill_idx, primary_col] = filled_vals
+        for pos, i in enumerate(fill_idx):
+            record.append({"date": df.loc[i, "date"].strftime("%Y-%m-%d"),
+                           "value": float(filled_vals[pos]),
+                           "source": secondary_col})
+        df.to_csv(path, index=False, encoding="utf-8")
+    filled = pd.DataFrame(record, columns=BACKFILL_COLUMNS)
+    return filled
 
 
 def check_price_series(df, symbol, jump=JUMP_LEV):
@@ -176,12 +293,79 @@ def quality_gate():
     return issues
 
 
+def _load_vix_source(path):
+    """读一个 VIX 源 CSV（date,close）→ index=日期 的 close 序列；不存在返回空序列。"""
+    if not os.path.exists(path):
+        return pd.Series(dtype="float64")
+    row = pd.read_csv(path, parse_dates=["date"])
+    return row.set_index("date")["close"].sort_index().astype("float64")
+
+
+def crosscheck_report(primary_path=None, secondary_path=None,
+                      threshold=CROSSCHECK_THRESHOLD):
+    """多源交叉校验报告（**只出偏差表与需人工看行**，不改仓位/不调参）。
+
+    主源默认 `config.RAW_DIR/vix.csv`（CBOE）；副源默认 `config.RAW_DIR/vix_alt.csv`
+    （若不存在则视为缺副源，报告里明示）。返回 (报告文本, 偏差表)。
+    """
+    primary_path = primary_path or os.path.join(config.RAW_DIR, "vix.csv")
+    secondary_path = secondary_path or os.path.join(config.RAW_DIR, "vix_alt.csv")
+    p = _load_vix_source(primary_path)
+    s = _load_vix_source(secondary_path)
+    lines = ["# 多源交叉校验（D2）", ""]
+    lines.append(f"主源: {primary_path}（{len(p)} 行）")
+    lines.append(f"副源: {secondary_path}（{len(s)} 行）")
+    lines.append(f"阈值: 相对偏差 > {threshold:.2%} 记为可疑（**仅人工复核，不自动改仓位**）")
+    lines.append("")
+    if len(p) == 0 or len(s) == 0:
+        lines.append("⚠️ 有源为空：无重叠可比对，跳过交叉校验（不得据此回填）。")
+        return "\n".join(lines), pd.DataFrame(columns=CROSSCHECK_COLUMNS)
+    dev = crosscheck_series(p, s, threshold=threshold)
+    bad = breach_rows(dev)
+    lines.append("共同日期 %d 天，超阈值 %d 天" % (len(dev), len(bad)))
+    if len(bad):
+        lines.append("")
+        lines.append("date | primary | secondary | abs_dev | rel_dev | breach")
+        for _, r in bad.iterrows():
+            lines.append("%s | %.2f | %.2f | %.2f | %.2f%% | %s" % (
+                r["date"], r["primary"], r["secondary"], r["abs_dev"],
+                r["rel_dev"] * 100, r["breach"]))
+    else:
+        lines.append("全部在阈值内（两源一致）。")
+    return "\n".join(lines), dev
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--push", action="store_true", help="报告推飞书")
     ap.add_argument("--push-alert", action="store_true", help="仅异常(预警/告警)时推飞书")
     ap.add_argument("--quality", action="store_true", help="R1.5 数据质量闸门：三路检测并写 freshness_warning.txt")
+    ap.add_argument("--crosscheck", action="store_true", help="D2 多源交叉校验：出 VIX 双源偏差表")
+    ap.add_argument("--backfill", action="store_true", help="D2 自动回填：主源缺值行用副源补齐（带可信度闸）")
+    ap.add_argument("--threshold", type=float, default=CROSSCHECK_THRESHOLD,
+                    help="交叉校验相对偏差阈值（默认 %.2f）" % CROSSCHECK_THRESHOLD)
     args = ap.parse_args()
+
+    if args.crosscheck or args.backfill:
+        if args.backfill:
+            path = BACKFILL_DEFAULT_PATH
+            row = pd.read_csv(path)
+            cols = list(row.columns)
+            if "close" in cols and "close_alt" in cols:
+                filled = backfill_from_secondary(path, "close", "close_alt",
+                                                 threshold=args.threshold)
+                print("自动回填 %d 行（主源缺值、副源可信）：" % len(filled))
+                for _, r in filled.iterrows():
+                    print(" - %s ← %s = %.4f" % (r["date"], r["source"], r["value"]))
+            else:
+                print("⚠️ %s 无 close/close_alt 双源列，跳过回填（不臆造列）。" % path)
+        report, _ = crosscheck_report(threshold=args.threshold)
+        print(report)
+        if args.push or args.push_alert:
+            from scripts.invest_research import push_feishu
+            ok, msg = push_feishu(report)
+            print(f"飞书推送: {'成功' if ok else f'失败 {msg}'}")
+        return 0
 
     if args.quality:
         issues = quality_gate()

@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""B1：生成「回撤预算 → 仓位上限」曲线产物（离线）。
+
+产物：`evolution/drawdown_budget_curve.json`
+
+**纪律（规划 v2.0 §方向 B「B1」+ 第 12.7 条）**：
+  - 曲线**只回答「余量还剩多少」**（回撤 / CVaR 尾部指标），
+    **不回答「更好的组合是什么」**；
+  - **禁止输出** Calmar / 年化 / Sortino / Sharpe / 年化波动 等「效率」列；
+  - 产物带 `OOS_WARNING`；**禁止**作为 `evolve_propose` 输入。
+  - 守卫测试：`tests/test_budget_curve_no_efficiency_cols.py`。
+
+用法：
+  py -3.10 scripts/build_budget_curve.py [--out evolution/drawdown_budget_curve.json]
+"""
+import argparse
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from fg_system import risk_budget
+
+
+def main():
+    ap = argparse.ArgumentParser(description="B1 回撤预算 → 仓位上限曲线")
+    ap.add_argument("--out", default=os.path.join(
+        os.path.dirname(__file__), "..", "evolution", "drawdown_budget_curve.json"))
+    args = ap.parse_args()
+
+    curve = risk_budget.build_curve()
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
+    with open(args.out, "w", encoding="utf-8") as fh:
+        json.dump(curve, fh, ensure_ascii=False, indent=1, default=str)
+
+    sel = curve["selected"]
+    print("✅ 回撤预算曲线已写入 %s" % args.out)
+    print("   预算 -%.0f%% | 当前 CORE_CAP=%.2f AMMO_CAP=%.2f ⇒ 余量 %.2fpp"
+          % (curve["budget"] * 100, sel["core_cap"], sel["ammo_cap"],
+             sel["margin_pp"]))
+    print("   尾部（30 格回撤分布）：CVaR95 %.4f / CVaR99 %.4f"
+          % (curve["tail"]["cvar95"], curve["tail"]["cvar99"]))
+    print("   ⚠️ %s" % curve["OOS_WARNING"])
+
+
+if __name__ == "__main__":
+    main()
