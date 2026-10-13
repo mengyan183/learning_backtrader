@@ -11,6 +11,8 @@
   .venv/bin/python scripts/push_todo.py --send <chat_id> # 摘要直接发到飞书会话
 
 摘要数据源（只读，不修改）：
+  docs/windows-tasks.md      —— Windows 端可做任务（待做非 ✅）
+  docs/mac-tasks.md          —— **仅 Mac 可做**任务（需公网/真实 Data；待做非 ✅）
   docs/blocked-registry.md   —— 等待型（🟡）清单
   docs/dual-end-workflow.md  —— Windows 端可做任务（B 表）
   docs/NEXT-SESSION.md       —— 最近落地 ✅ 行
@@ -24,7 +26,7 @@ import sys
 import urllib.request
 from datetime import datetime
 
-REPO = "/Users/xingguo/learning_backtrader"
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HOME = os.path.expanduser("~")
 CFG_PATH = os.path.join(HOME, ".openclaw", "openclaw.json")
 
@@ -38,6 +40,18 @@ def git_head():
         return r.stdout.strip() if r.returncode == 0 else "(git 不可用)"
     except Exception:
         return "(git 不可用)"
+
+
+def _status_cell(line):
+    """表格行的**最后一列**（状态列）。
+
+    为什么要单独取列：原实现用 `re.search(r"\\|\\s*✅\\s*\\|", line)` 判定"已完成"，
+    它**只匹配「单元格里恰好只有一个 ✅」**；而真实状态列写成 `✅ sync_1010e 入库（b5e9ec4）`
+    或 `✅ 完成` 时**匹配不上** ⇒ 已完成的行被当成待办**反复下发**
+    （`docs/review/规划审查-2026-10-10.md` 差异 1 即此现象，2026-10-12 定位到根因）。
+    """
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    return cells[-1] if cells else ""
 
 
 def parse_waiting():
@@ -56,10 +70,10 @@ def parse_waiting():
     return waiting
 
 
-def parse_win_tasks():
+def parse_win_tasks(path=None):
     """docs/windows-tasks.md「待做任务」表中状态非 ✅ 的任务（编号+任务名+说明摘要）。"""
     tasks = []
-    path = os.path.join(REPO, "docs", "windows-tasks.md")
+    path = path or os.path.join(REPO, "docs", "windows-tasks.md")
     try:
         with open(path, encoding="utf-8") as f:
             in_todo = False
@@ -75,11 +89,45 @@ def parse_win_tasks():
                     if m:
                         num, name, desc = m.group(1), m.group(2).strip(), m.group(3).strip()
                         # 只收状态非 ✅ 的行（避免"已完成"区或误标）
-                        if not re.search(r"\|\s*✅\s*\|", line):
+                        if "✅" not in _status_cell(line):
                             desc_short = desc if len(desc) <= 40 else desc[:37] + "…"
                             tasks.append(f"{num} {name} — {desc_short}")
     except OSError as e:
         tasks.append(f"ERR windows-tasks 读取失败：{e}")
+    return tasks
+
+
+def parse_mac_tasks(path=None):
+    """docs/mac-tasks.md「待做任务」表中状态非 ✅ 的任务（编号+任务名+说明摘要）。
+
+    与 parse_win_tasks 反向：这些是**仅 Mac 可做**（需公网 / 需真实 Data / 需实检）
+    的任务，由 Windows 端登记、Mac 端执行。Mac 有公网 ⇒ 本表随 fg-sync 入库后
+    可直接读，无需"推送"；此处把它并进快照，是为了让 Mac 端在收到「同步待办」时
+    同时也看到**自己**该执行什么。
+    """
+    tasks = []
+    path = path or os.path.join(REPO, "docs", "mac-tasks.md")
+    try:
+        with open(path, encoding="utf-8") as f:
+            in_todo = False
+            for line in f:
+                if line.startswith("## 待做任务"):
+                    in_todo = True
+                    continue
+                if in_todo and line.startswith("## "):
+                    break
+                if in_todo:
+                    # 行形如：| MT-01 | 任务名 | 说明 | 验收 | 状态 |
+                    m = re.match(r"\|\s*(MT-\d+)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|", line)
+                    if m:
+                        num, name, desc = m.group(1), m.group(2).strip(), m.group(3).strip()
+                        # 只收状态非 ✅ 的行；任务名去掉 markdown 强调符（快照是纯文本）
+                        if "✅" not in _status_cell(line):
+                            name = name.replace("**", "")
+                            desc_short = desc if len(desc) <= 40 else desc[:37] + "…"
+                            tasks.append(f"{num} {name} — {desc_short}")
+    except OSError as e:
+        tasks.append(f"ERR mac-tasks 读取失败：{e}")
     return tasks
 
 
@@ -102,6 +150,7 @@ def build_summary():
     head = git_head()
     waiting = parse_waiting()
     win = parse_win_tasks()
+    mac = parse_mac_tasks()
     recent = recent_changes()
 
     parts = []
@@ -115,6 +164,13 @@ def build_summary():
     else:
         parts.append("  （暂无独立待办；默认动作：全量 pytest 回归 ~900 用例）")
     parts.append("")
+    parts.append("【Mac 端待执行（需公网/真实 Data）】")
+    if mac:
+        for task in mac:
+            parts.append(f"  · {task}")
+    else:
+        parts.append("  （无）")
+    parts.append("")
     parts.append("【等待型（数据积累中，勿开工）】")
     if waiting:
         for num, item in waiting:
@@ -127,7 +183,7 @@ def build_summary():
         parts.append(f"  · {r}")
     parts.append("")
     parts.append("开工流程：选任务 → 本地开发 → scripts/make_feishu_bundle.py 打包 → 飞书回传 fg-sync")
-    parts.append("完整待办：docs/blocked-registry.md · docs/NEXT-SESSION.md · docs/dual-end-workflow.md")
+    parts.append("完整待办：docs/windows-tasks.md · docs/mac-tasks.md · docs/blocked-registry.md · docs/NEXT-SESSION.md · docs/dual-end-workflow.md")
     return "\n".join(parts)
 
 

@@ -1,0 +1,36 @@
+# Mac 端待执行任务清单（Mac Tasks）
+
+> 用途：给 Mac 端（家里服务机）一份**具体的、可立即开工**的任务清单，与 `docs/windows-tasks.md` **对称**。
+> 定位：**Windows 端无公网、无 `Data/`** ⇒ 凡"抓数 / 需真实 `Data` / 需实检"的任务**必须**登记到本表，由 Mac 执行。
+> 来源：`docs/2026-10-12-贪恐系统迭代规划v2.0.md`（规划） / `docs/blocked-registry.md` / `docs/review/*`。
+> 机制：Windows 端完成一项 → 打包回传 fg-sync → Mac 入库后把状态改为 ✅ 并提交（与 WT 表反向对称）。
+> **登记方式已由 Mac 接受** ✓（2026-10-12，用户确认 ✓）。
+> **Mac 侧如何看到本表** ✓：本表随 fg-sync 入库到 Mac 仓库（`docs/**` 在白名单内 ✓）⇒ Mac **可直接读** ✓，**无需"推送"** ✓（与 `windows-tasks.md` 不同 —— 那张表必须靠飞书推，因为 Windows 无公网 ✗）。
+> ✅ **触发方式已定：B** ✓（2026-10-12 用户裁定）—— 已并入 `scripts/push_todo.py` 快照的 **【Mac 端待执行（需公网/真实 Data）】** 段（`parse_mac_tasks()`）✓ ⇒ Mac 收到「同步待办」时，摘要里就会列出本表**待做**行 ✓（**不新建推送通道** ✓ —— Mac 有公网，本表随 fg-sync 入库即可直读 ✓）。
+> 更新纪律：新增/解除任务必须同步本表；每行五要素齐全（编号/任务/说明/验收/状态）。
+> 创建：2026-10-12（用户定案：涉及数据的任务登记入系统，交 Mac 执行）。配套：`docs/dual-end-workflow.md`（分工原则）。
+
+状态标记：待做 / 进行中 / ✅ 完成（进行中任务 Mac 端完成收尾后改 ✅）
+
+---
+
+## 待做任务（仅 Mac 可做：需公网 / 需真实 Data / 需实检）
+
+| 编号 | 任务 | 说明与来源 | 验收标准 | 状态 |
+|---|---|---|---|---|
+| MT-01 | **A5 闸门补 `inv_vol` 组合权重轨** | 规划 A5（`docs/2026-10-12-贪恐系统迭代规划v2.0.md`）需要"**策略 vs 含损耗买入持有**"的**同暴露、同时段**对照；但实测 `scripts/evolve_baseline.py:70-71` 只用 `runner.run_single(f, symbol)`（单标的）+ `p["close"].pct_change()`（单标的满仓 buy&hold）⇒ `evolution/baseline.json` **没有 `inv_vol` 组合权重轨**（`risk_weight_series` / `run_portfolio` **从未被调用**）。**两种交付方式二选一**：**(a)** 给 `evolve_baseline.py` 增加 `run_portfolio` + `risk_weight_series` 输出，把组合轨写进 `baseline.json`（推荐，可复用）；**(b)** 单独产出一份 `evolution/a5-comparison.csv`（列：date, strategy_ret, bh_single_ret, bh_portfolio_ret, weights）。**前置**：`Data/raw/prices.csv` + `Data/features.csv`（Mac 有）。 | 产物含**组合权重**买入持有轨（非单标的满仓）；与 `strategy` **同时段、同暴露**；`WEIGHTING="inv_vol"`（`config.py`）；附 `meta.generated_at` 与 `features_range` | 待做 |
+| MT-02 | **加密侧真实轨损耗（可选，A5 的 ① 项）** | A5 口径①要求"**只在真实轨上做**"，但 `config.CRYPTO_PRODUCT_COST_RATE`（MSTX 57.9% 等）是**按构造校准值**（`config.py` 自述"**不得当作费率使用**"），`baseline.json` 中**无 MSTX 的 `product_cost` 字段** ⇒ 加密侧目前**不可作结论**。需 Mac 用**真实** MSTX/CONL/BITX 价格序列跑 `leverage.py::decompose` 反推。**不阻塞 MT-01**。 | 产出加密侧 `product_cost_annual` / `vol_decay_annual`（真实轨）；与 `leverage.py` 口径一致；若数据不可得 ⇒ 明确回"不可得"并说明原因 | 待做（可选） |
+| MT-03 | **收口 `docs/windows-tasks.md` 的 WT-15~26 状态**（登记滞后 ✗） | 2026-10-12 实测：**WT-15~26 的实现与测试早已存在** ✓ —— `fg_system/models/{hmm,markov,evt}.py`+`tests/test_models_*.py`、`fg_system/config.py::validate()`+`tests/test_config_validate.py`、`scripts/sensitivity_scan.py`（含 OOS 警示 ✓）、`fg_system/evo_meta.py`+`tests/test_oos_single_source.py`、`fg_system/pipeline.py` 窗口防御、`fg_system/risk.py` HRP 树递归、`scripts/restore_from_base64.py` 复用 `_safe_extract`、`fg_system/backtest/attribution.py::without_trend` 返回原样 —— **均已交付** ✓（提交 `c4013db`(WT-15/16/17) ✓、`3866626`(WT-18~22) ✓；WT-23~26 为**未提交工作区改动** ✓）。但该表状态列仍写"待做"✗ ⇒ 会**继续被 `push_todo.py` 下发** ✗。**按本表头纪律，状态由 Mac 入库后改为 ✅** ✓。交付依据见 `docs/notes/2026-10-12-wt15-17-delivered.md`、`docs/notes/2026-10-12-wt22-26-done.md`、`docs/notes/2026-10-12-wt27-done.md`。 | 12 行（WT-15~26）状态列改为 ✅ 并附完成依据；改完 `py -3.10 -m pytest` 相关文件全绿 | 待做 |
+
+## 默认动作（不占编号）
+
+- 每日链 05:30（数据+指数+简报）/ 假说重检 18:00 / C-5 季度 walk-forward：**已由 launchd 自动跑**，无需登记。
+- 本清单为空时：以 `docs/dual-end-workflow.md` A 类表 + `docs/NEXT-SESSION.md` 为准自查。
+
+---
+
+## 已完成（留痕）
+
+| 编号 | 任务 | 完成依据 | 完成日期 |
+|---|---|---|---|
+| （暂无） | | | |

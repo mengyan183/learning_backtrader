@@ -31,6 +31,7 @@
 | 知识库 | YouTube 字幕抓取 + ChromaDB 入库 + 自动更新 | 公网 + chroma 库 | kb 集合在 Mac |
 | 盘中监控 | 异动 → 新闻联动 → 飞书告警 | 富途订阅 + NewsAPI | 均在 Mac |
 | 网页触发 | 刷新 freshness 检查 → live 同步 | 读 Mac 本地文件 | 依赖看板服务 |
+| **数据计算** | **按 `docs/mac-tasks.md` 执行登记的数据任务**（如 MT-01 补 `inv_vol` 组合权重轨） | 真实 `Data/` + 公网 | **2026-10-12 新增**：Windows 端凡"需真实 Data 的产物"一律登记此表，不再靠临时 note 发 prompt。**触发**：已并入 `scripts/push_todo.py` 快照的【Mac 端待执行】段 ⇒ 收到「同步待办」即可见 ✓ |
 
 ## B. Windows 可做（可分流，开发/计算类）
 
