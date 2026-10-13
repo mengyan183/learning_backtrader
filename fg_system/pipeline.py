@@ -204,14 +204,15 @@ def instruction_card(out, current_position=None, state=None):
     fg = row["fg_index"]
     zone = int(row["zone"]) if not pd.isna(row["zone"]) else 2
 
+    # 目标总仓位以「核心+弹药」显示值之和为准（避免独立 round 产生 0.1pp 恒等差）
+    _core = round((row["core_position"] or 0) * 100, 1)
+    _ammo = round((row["ammo_position"] or 0) * 100, 1)
     lines = [
         "信号日：%s（收盘）   执行日：%s（开盘）"
         % (sig_date.strftime("%Y-%m-%d"), exec_date.strftime("%Y-%m-%d")),
         "fg_index：%.1f（%s）" % (fg, ZONE_NAMES[zone]),
         "核心仓：%.1f%%   弹药仓：%.1f%%   目标总仓位：%.1f%%" % (
-            (row["core_position"] or 0) * 100,
-            (row["ammo_position"] or 0) * 100,
-            (target or 0) * 100),
+            _core, _ammo, _core + _ammo),
         "熔断状态：%s" % ("熔断中" if row["circuit_breaker"] else "正常"),
     ]
     if row.get("note"):

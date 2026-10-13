@@ -152,5 +152,9 @@ def test_repo_is_derived_not_hardcoded():
     """
     pt = _load()
     assert pt.REPO == REPO, f"REPO 应为仓库根 {REPO}，实际 {pt.REPO}"
-    assert not pt.REPO.startswith("/Users/"), "不得硬编码 Mac 绝对路径"
+    # 硬编码守卫：源码中不得出现 Mac 绝对路径字面量（推导结果在 Mac 上
+    # 以 /Users 开头是正常现象，不能据此断言）。
+    src = open(SCRIPT, encoding="utf-8").read()
+    assert "/Users/xingguo/learning_backtrader" not in src, \
+        "不得硬编码 Mac 绝对路径"
     assert os.path.isdir(os.path.join(pt.REPO, "docs")), "REPO 下应能看到 docs/"

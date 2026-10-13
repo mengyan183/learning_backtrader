@@ -70,7 +70,11 @@ def sync_funding(proxy: bool = True):
     for col in ("funding_btc", "funding_eth"):
         hist.loc[hist["date"].astype(str) == str(today), col] = rows.get(col)
     new = pd.DataFrame({"date": [pd.Timestamp(today)], **{c: [rows.get(c)] for c in rows}})
-    hist = pd.concat([hist, new]).drop_duplicates(subset=["date"], keep="last").sort_values("date")
+    # 统一 date 为 date 对象再排序，避免 Timestamp 与 datetime.date 混合比较崩溃
+    # （2026-10-02 起 TypeError: Cannot compare Timestamp with datetime.date）
+    hist = pd.concat([hist, new]).drop_duplicates(subset=["date"], keep="last")
+    hist["date"] = pd.to_datetime(hist["date"]).dt.date
+    hist = hist.sort_values("date")
     hist.to_csv(RAW / "funding_rate.csv", index=False)
     print(f"资金费率更新: {today} BTC {rows.get('funding_btc')}% ETH {rows.get('funding_eth')}%")
 
@@ -79,13 +83,17 @@ def build_sentiment():
     """合并 vix_history + funding_rate + putcall → Data/raw/sentiment.csv（日频）"""
     import pandas as pd
     vix = pd.read_csv(RAW / "vix_history.csv", parse_dates=["date"])
+    vix["date"] = vix["date"].dt.date  # 统一 date 对象（与 funding/putcall 对齐）
     vix["vix_chg"] = vix["vix"].pct_change() * 100
     fr = pd.read_csv(RAW / "funding_rate.csv", parse_dates=["date"]) if (RAW / "funding_rate.csv").exists() else None
+    if fr is not None:
+        fr["date"] = fr["date"].dt.date
     out = vix
     if fr is not None:
         out = out.merge(fr, on="date", how="left")
     pc = pd.read_csv(RAW / "putcall.csv", parse_dates=["date"]) if (RAW / "putcall.csv").exists() else None
     if pc is not None:
+        pc["date"] = pc["date"].dt.date
         pc = pc.rename(columns={
             "total_ratio": "putcall_total",
             "equity_ratio": "putcall_equity",
@@ -94,10 +102,10 @@ def build_sentiment():
         out = out.merge(pc, on="date", how="left")
     out.to_csv(RAW / "sentiment.csv", index=False)
     cols = len(out.columns)
-    print(f"sentiment.csv: {len(out)} 行 ({out['date'].min().date()} → {out['date'].max().date()})，{cols} 列")
+    print(f"sentiment.csv: {len(out)} 行 ({out['date'].min()} → {out['date'].max()})，{cols} 列")
     if pc is not None and "putcall_total" in out.columns:
         last = out.dropna(subset=["putcall_total"]).iloc[-1]
-        print(f"  Put-Call 最新 {last['date'].date()}: total={last['putcall_total']:.2f} equity={last['putcall_equity']:.2f}")
+        print(f"  Put-Call 最新 {last['date']}: total={last['putcall_total']:.2f} equity={last['putcall_equity']:.2f}")
 
 
 if __name__ == "__main__":

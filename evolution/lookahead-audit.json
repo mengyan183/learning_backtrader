@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-12T18:12:30",
+  "generated_at": "2026-10-13T10:50:20",
   "cheat_on": false,
   "verdict": "PASS",
   "code": {
@@ -54,11 +54,11 @@
     "unclassified": []
   },
   "data": {
-    "features_tail": "2026-10-09",
+    "features_tail": "2026-10-12",
     "raw_tails": {
-      "vix.csv": "2026-10-09",
-      "sentiment.csv": "2026-10-09",
-      "prices.csv": "2026-10-09"
+      "vix.csv": "2026-10-12",
+      "sentiment.csv": "2026-10-12",
+      "prices.csv": "2026-10-12"
     },
     "ahead_of_raw": false
   }
