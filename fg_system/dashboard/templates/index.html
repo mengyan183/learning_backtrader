@@ -503,6 +503,18 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
   bar.id = "rtBar";
   var sub = document.querySelector(".sub");
   if (sub && sub.parentNode) { sub.parentNode.insertBefore(bar, sub.nextSibling); }
+  // 最近收盘日期（INDEX 尾行）——实时行情新鲜度基准：
+  // 富途断连/停更时 /realtime 会一直返回旧缓存（如 10-05 价），
+  // 若行情时间戳早于最近收盘日期则视为陈旧，不覆盖页面最新收盘价。
+  var lastClose = new Date(INDEX[INDEX.length - 1][0]);
+  lastClose.setHours(0, 0, 0, 0);
+  function stale(ts) {
+    if (!ts) { return true; }
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) { return true; }
+    d.setHours(0, 0, 0, 0);
+    return d < lastClose;
+  }
   function poll() {
     fetch("/realtime").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       if (!d) { return; }
@@ -512,6 +524,7 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
         var sym = cards[i].getAttribute("data-sym");
         var rt = prices[sym] || prices[sym.replace("-USDT", "")];
         if (!rt || rt.price == null) { continue; }
+        if (stale(rt.ts)) { continue; }   // 陈旧行情不覆盖收盘价
         var mid = cards[i].querySelector(".h-mid");
         if (mid) {
           mid.innerHTML = mid.innerHTML.replace(/现价[^<]*/,
@@ -527,10 +540,10 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
         }
       }
       var pi = d.market_signal || d.preview_index;
-      if (pi && pi.fg_index != null) {
-        var mkt = d.market_signal;
-        var tz = mkt && mkt.in_trading_hours === true ? "盘中" : (mkt && mkt.in_trading_hours === false ? "盘外" : "");
-        var fresh = mkt && mkt.freshness_ts ? " · 行情 " + (mkt.freshness_ts || "").slice(0, 16).replace("T", " ") : "";
+      var mkt = d.market_signal;
+      if (pi && pi.fg_index != null && mkt && !stale(mkt.freshness_ts)) {
+        var tz = mkt.in_trading_hours === true ? "盘中" : (mkt.in_trading_hours === false ? "盘外" : "");
+        var fresh = mkt.freshness_ts ? " · 行情 " + (mkt.freshness_ts || "").slice(0, 16).replace("T", " ") : "";
         bar.innerHTML = "🟢 盘中预览：<b>" + pi.fg_index + "</b> " + pi.zone +
           "（收盘 " + pi.closed_index + "，Δ" + (pi.delta >= 0 ? "+" : "") +
           pi.delta + "）" + (tz ? " · " + tz : "") + fresh +
