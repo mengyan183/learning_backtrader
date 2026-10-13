@@ -77,7 +77,7 @@ def fed_context(today=None):
         "macro_window": False, "macro_window_days": config.MACRO_EVENT_WINDOW_DAYS,
         # 市场预期（CME FedWatch，可缺失）
         "fw_meeting": None, "fw_hold": None, "fw_hike": None, "fw_ease": None,
-        "fw_delta_1w": None, "fw_date": None,
+        "fw_delta_1w": None, "fw_curve": None, "fw_migrate": None, "fw_date": None,
     }
     fw = _load_fedwatch()
     if fw is not None:
@@ -94,6 +94,20 @@ def fed_context(today=None):
                               else float("nan"))
             wk = fw.get("wk_hike_pct")
             ctx["fw_delta_1w"] = (ctx["fw_hike"] - float(wk)) if wk == wk else None
+            # P-FW（2026-10-13，诺奖预期管理先验）：预期路径斜率 = 近端 vs
+            # 远端（m_hike_pct，下一档会议）加息预期差；显著陡峭 → 预期路径
+            # 迁移标记（|Δ1w|≥10pp 短期迁移 / |Δm|≥15pp 中期路径陡峭）。
+            _m = fw.get("m_hike_pct")
+            if _m is not None and _m == _m:
+                ctx["fw_curve"] = (ctx["fw_hike"] - float(_m))
+                _d1 = ctx["fw_delta_1w"]
+                _dc = ctx["fw_curve"]
+                if _d1 is not None and abs(_d1) >= 10.0:
+                    ctx["fw_migrate"] = ("⚠️ 预期显著迁移：加息概率一周%s %.0fpp"
+                                         % ("回升" if _d1 > 0 else "回落", abs(_d1)))
+                elif abs(_dc) >= 15.0:
+                    ctx["fw_migrate"] = ("⚠️ 预期路径陡峭：近端 vs 远端加息预期差"
+                                         " %.0fpp（市场押注路径方向）" % abs(_dc))
             ctx["fw_date"] = str(fw.get("date") or "")
         except (TypeError, ValueError):
             pass
@@ -161,6 +175,8 @@ def fed_brief_text(ctx):
             arrow = "↑" if d > 0.05 else ("↓" if d < -0.05 else "→")
             fw += "（加息概率 %s，一周%s%.1fpp）" % (
                 "回升" if d > 0.05 else ("回落" if d < -0.05 else "持平"), arrow, abs(d))
+        if ctx["fw_migrate"]:
+            fw += "；" + ctx["fw_migrate"]
         parts.append(fw)
     parts.append(ctx["sentiment_tone"])
     return "；".join(parts)
@@ -189,6 +205,9 @@ def fed_card_html(ctx):
                    "%s（一周%s %.1fpp）</span>"
                    % (color, "回升" if d > 0.05 else ("回落" if d < -0.05 else "持平"),
                       "↑" if d > 0.05 else ("↓" if d < -0.05 else "→"), abs(d)))
+        if ctx["fw_migrate"]:
+            fw += "<span class='tag tag-zone' style='background:#8250df'>%s</span>" \
+                % ctx["fw_migrate"]
         fw += "</div>"
     return (
         "<div class='fed-card'>"
