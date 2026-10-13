@@ -1,15 +1,18 @@
 # 下次会话先读这个（进度快照）
 
-**更新**：2026-10-11（规划 v1.0 评审通过并纳入系统计划） · **对应提交**：远端 main = `42dcbb7`（B-10 变更记录补记）→ 本提交后新增「规划纳入」commit
+**更新**：2026-10-13 · **对应提交**：远端 main = `8e8ca9d`（MT-04/05/06 完成）
 
 ---
 
 ## 一句话现状
 
-- **同步链路已全通** ✓：公司 Windows → 飞书「海外投资助手」机器人 → OpenClaw(Mac) `fg-sync` skill → 贪恐仓库，**855 片大包（117 文件）已全量入库并推送**；白名单误伤修复、push 卡死根治（详见 `docs/fg-sync-accelerate.md`）
-- **GitHub 已统一为唯一主线** ✓：两条线合并完成（以远程为底 + 本地新增重放），issue #3 已关闭，A 类阻塞全解除，C 系列全落地
-- **下一步**：**WT-01~WT-13 全部 ✅**；**Mac 侧待办（等待型）**：① B 类数据积累（H-001 观察点 7/20、B-3/B-5 快照、B-8/B-9/B-10）；② F-009/F-010 因子样本积累（各 4/2 日）；③ dashboard 服务已重启至最新代码（PID 36732，10-10 17:58）。C-5 季度自动重检已设 launchd（1/4/7/10 月 1 日 08:00）
-- **🆕 2026-10-11 规划纳入**：《贪恐系统发展迭代规划 v1.0》`docs/2026-10-11-贪恐系统发展迭代规划.md`（用户已评审通过，纳入系统计划）。**17 个落地项**（R1.x/M2.x/L3.x）已映射进 `roadmap.md`「2026-10-11 规划纳入」章节；**P0 启动项 = R1.1 factor_screen 评测协议升级 + R1.2 未来函数审计**（无裁判则后续因子/权重改动无据可依）；R1.3~R1.6 为近期 P1/P2；其余 M/L 系挂起等前置
+- **同步链路已全通** ✓：公司 Windows → 飞书「海外投资助手」机器人 → OpenClaw(Mac) `fg-sync` skill → 贪恐仓库；**`sync_1013a/b`（10-13）已入库** ✓（详见 `docs/fg-sync-accelerate.md`、`docs/dual-end-workflow.md`）
+- **gitee 为唯一主线** ✓：读走 `git -c http.proxy=http://10.30.6.49:9090`，写走飞书分片，**不做 merge**（历史无关）✓
+- **任务表已清空** ✓：`docs/windows-tasks.md` **WT-01~26 全部 ✅** ✓；`docs/mac-tasks.md` **MT-01~06 全部 ✅** ✓ ⇒ 无下发任务
+- **🆕 规划 v2.0 阶段 1 已基本落地** ✓（`docs/2026-10-12-贪恐系统迭代规划v2.0.md`）：**A5** ✅（MT-01 交付真实同暴露对照：组合买入持有 年化 **44.11%**/回撤 -76.93% vs 组合策略 **13.72%**/-38.77%）；**A3c** ✅（`fg_system/attempts.py` 台账）；**A3b** ✅（`fg_system/fdr.py`）；**A3a 方法就绪** ✅（`scripts/evolve_dsr_method.py`）；**D1** ✅（设计文档 §5.1 加时点标注）；**A4/D6** 待（时间型/后置）
+- **Mac 侧待办（等待型）**：① B 类数据积累（H-001 观察点、B-3/B-5 快照、B-8/B-9/B-10）；② F-009/F-010 因子样本积累。C-5 季度自动重检已设 launchd（1/4/7/10 月 1 日 08:00）
+- ⚠️ **Windows 端环境**：默认 `python` = **3.14 且无 `backtrader`** ✗ ⇒ 跑测试**必须 `py -3.10`** ✓；**无公网** ⇒ 凡"需真实 `Data`"的任务登记 `docs/mac-tasks.md` ✓
+- ⚠️ **状态列仅供参考** ✗：本仓库多次出现"已完成但状态仍写待做"✗（WT-15~26 即如此）⇒ **开工前先 grep/跑测试确认代码现状** ✓
 
 ---
 
@@ -48,7 +51,7 @@
 
 | 项 | 值 |
 |---|---|
-| 仓库 | `/Users/xingguo/learning_backtrader`；remote `github.com/mengyan183/learning_backtrader.git` |
+| 仓库 | Mac `/Users/xingguo/learning_backtrader`；Windows `D:\3-code\learning_backtrader`；**remote `gitee.com/xingbaoyin/learning_backtrader.git`**（读走公司代理 `http://10.30.6.49:9090`）|
 | push 网络 | **必须走 ClashX 代理 7890**（直连被 TUN 劫持/超时）；有效推送：`export GH_TOKEN=$(gh auth token)` + `git -c http.proxy=http://127.0.0.1:7890 -c credential.helper= -c credential.helper="!f(){ echo \"username=x-access-token\"; echo \"password=$GH_TOKEN\"; }; f" push origin main`（绕过 osxkeychain 卡死） |
 | credential | 系统级 CommandLineTools gitconfig 有 `osxkeychain`（会卡死 push）；repo 级 `!gh auth git-credential`（不带 fill） |
 | 模型 | OpenClaw 主模型 `nvidia/deepseek-ai/deepseek-v4.1-flash`；fallback `[zai/glm-4.7-flash, litellm/hermes-agent, ollama/qwen2.5-coder:3b-64k]`（zai 有 429 史）；ollama 11434 |
