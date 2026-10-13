@@ -133,6 +133,43 @@ def test_features_missing_required_columns_exits_2(monkeypatch, tmp_path, capsys
     assert "缺少 fg_index/drawdown" in capsys.readouterr().err
 
 
+def test_missing_prices_file_exits_2(monkeypatch, tmp_path, capsys):
+    """RAW_DIR 缺 `prices.csv`（默认标的筛选用）⇒ **退出 2**，不得裸 traceback。
+
+    实测背景：Windows 端 `Data/features.csv` 存在但 `Data/raw/*` 不全时，
+    脚本会在数据读取处抛 FileNotFoundError ⇒ 退出 1 + 堆栈，被上层误判成程序 bug。
+    口径统一：环境未就绪一律 2。
+    """
+    feat, data_dir = _make_features(tmp_path)          # features 有，prices **不写**
+    monkeypatch.setattr(ss.config, "FEATURES_PATH", feat)
+    monkeypatch.setattr(ss.config, "RAW_DIR", str(data_dir))
+    monkeypatch.setattr("sys.argv", ["sensitivity_scan.py"])
+    with pytest.raises(SystemExit) as exc:
+        ss.main()
+    assert exc.value.code == 2
+    assert "prices.csv" in capsys.readouterr().err
+
+
+def test_pipeline_data_missing_exits_2(monkeypatch, patched, capsys):
+    """扫描期数据读取失败（如缺 `raw/putcall.csv`）⇒ **退出 2**，不是裸 traceback。
+
+    重现 Windows 端实测：`recompute_targets → pipeline.run()` 读 raw 文件时
+    FileNotFoundError。此时必须转成「环境未就绪」的 2，而非把堆栈丢给上层。
+    """
+    def boom(features, group, value):
+        raise FileNotFoundError("No such file: raw/putcall.csv")
+
+    monkeypatch.setattr(ss, "recompute_targets", boom)
+    monkeypatch.setattr("sys.argv",
+                        ["sensitivity_scan.py", "--group", "core", "--symbols", "TQQQ"])
+    with pytest.raises(SystemExit) as exc:
+        ss.main()
+    assert exc.value.code == 2
+    err = capsys.readouterr().err
+    assert "putcall.csv" in err, "应把缺失的数据文件明确报出来"
+    assert "先跑 pipeline" in err, "退出前必须给出可操作提示"
+
+
 # ================================================================ 编排：组合数
 def test_main_scans_grid_times_symbols(monkeypatch, patched, capsys):
     """编排不变量：N 个参数值 × M 个标的 ⇒ recompute/metric 各调用 N×M 次。

@@ -311,8 +311,18 @@ def main():
 
     out_dir = os.path.join(os.path.dirname(features_path), "..", "evolution", "sensitivity")
     out_dir = os.path.abspath(out_dir)
-    symbols = args.symbols or [s for s in SYMBOLS if s in set(
-        pd.read_csv(os.path.join(config.RAW_DIR, "prices.csv"))["symbol"])][:4]
+    # 默认标的筛选取 `raw/prices.csv`：同属「环境未就绪」⇒ 缺文件同样退出 2，
+    # 而不是裸 FileNotFoundError（口径与上面 features.csv 守卫一致）。
+    prices_path = os.path.join(config.RAW_DIR, "prices.csv")
+    if args.symbols:
+        symbols = args.symbols
+    else:
+        try:
+            known = set(pd.read_csv(prices_path)["symbol"])
+        except FileNotFoundError:
+            print(f"❌ 找不到 {prices_path}（先跑 pipeline 生成 raw 数据）", file=sys.stderr)
+            sys.exit(2)
+        symbols = [s for s in SYMBOLS if s in known][:4]
 
     groups = [args.group] if args.group else list(GROUPS)
     summary = []
@@ -328,9 +338,16 @@ def main():
                 # 「算全量、评 IS」（WT-27）：先**全量**重算 target_position —— 因子/
                 # 仓位的滑动窗口需要 IS 之前的前置历史，先截再算会让 IS 前段失真 ✗；
                 # 只有**送进回测的那一份**才截到 args.split 区间 ✓。
-                recomputed = recompute_targets(features, group, value)
-                evaluated = slice_split(recomputed, args.split)
-                results.append((value, _sensitivity_metric(evaluated, symbol)))
+                # 扫描期要读 raw 数据（pipeline.run）与 prices.csv（指标）⇒ 缺文件即
+                # 「环境未就绪」，统一收口为退出 2（WT-17 验收口径），不把堆栈丢给上层。
+                try:
+                    recomputed = recompute_targets(features, group, value)
+                    evaluated = slice_split(recomputed, args.split)
+                    results.append((value, _sensitivity_metric(evaluated, symbol)))
+                except FileNotFoundError as exc:
+                    print(f"❌ 缺少扫描所需数据文件：{exc}（先跑 pipeline 生成 raw 数据）",
+                          file=sys.stderr)
+                    sys.exit(2)
             df = sensitivity_table(group, symbol, results)
             path = write_report(group, symbol, df, out_dir, split=args.split)
             summary.append((group, symbol, path))
