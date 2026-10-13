@@ -92,12 +92,35 @@ def _holdings_block(features, shoutu=None, prices=None):
         return any(sym == b or sym.startswith(b + "-") for b in spot)
 
     cards = []
+    # 现价口径：优先取 prices.csv **最新交易日**收盘（快照价在休市/盘前同步时
+    # 滞后一个交易日——futu nominal_price 在美股休市时返回上一交易日收盘）。
+    # 该交易日无数据的标的（加密 BTC-USDT / 未覆盖 CONL 等）回退快照价。
+    _px_date = None
+    if prices is not None and "date" in getattr(prices, "columns", []):
+        try:
+            _px_date = prices["date"].max()
+        except Exception:
+            _px_date = None
     for _, r in latest.iterrows():
         sym = str(r.get("symbol", "")).strip()
         name = str(r.get("name", "")).strip()
-        mv = _num(r.get("market_value"))
         qty = _num(r.get("qty"))
         price = _num(r.get("price"))
+        if _px_date is not None:
+            try:
+                _px_row = prices[(prices["date"] == _px_date)
+                                 & (prices["symbol"] == sym)]["close"].dropna()
+                if _px_row.empty and "-" in sym:
+                    _px_row = prices[(prices["date"] == _px_date)
+                                     & (prices["symbol"] == sym.replace("-USDT", ""))
+                                     ]["close"].dropna()
+                if not _px_row.empty:
+                    price = float(_px_row.iloc[-1])
+            except Exception:
+                pass
+        mv = _num(r.get("market_value"))
+        if price and qty and (not mv or abs(mv - price * qty) > 1e-6):
+            mv = round(price * qty, 2)   # 市值随最新收盘同步
         cost = _num(r.get("cost"))
         pnl = ((price - cost) / cost * 100.0) if cost and cost > 0 and price else None
         raw = None
