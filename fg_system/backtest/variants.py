@@ -115,6 +115,11 @@ VARIANTS = {
         "ma_period": 50,
         "basis": "阶段 2 ④：均线过滤防贪婪档追高，先验非调参",
     },
+    "V-TREND-AMMO": {
+        "label": "趋势过滤接线·弹药豁免（blocked 日 core×0.5 + ammo；P-2026-10-12 选项 ii）",
+        "factor": 0.5,
+        "basis": "2026-10-12 趋势接线提案选项 ii：核心仓随趋势打折、弹药（极端恐惧加仓）豁免，保留越恐惧越买逆势逻辑；与生产接线选项 i（target×trend 全打折）并列对比",
+    },
     # B2：组合级 vol targeting（消费 portfolio_features.basket_ret 的组合状态源）
     "V-PVOL": {
         "label": "组合级波动率目标（min(1.0, vol_target/σ_组合)，三标的同一因子）",
@@ -262,6 +267,24 @@ def apply_variant(features, portfolio_features, variant):
         below = (out["close"] < ma).fillna(False)
         out.loc[below, "target_position"] = (
             out.loc[below, "target_position"] * spec["factor"])
+        return out
+
+    if variant == "V-TREND-AMMO":
+        # 选项 ii（弹药豁免）：blocked 日只打折核心仓，弹药保持原值
+        # 参考 V-H7 的 pf 对齐模式；缺列时保守返回原样
+        pf = portfolio_features.copy()
+        if "date" in pf.columns:
+            pf = pf.set_index("date")
+        common = out.index.intersection(pf.index)
+        blocked = pf.loc[common, "trend_blocked_us"].fillna(False).astype(bool)
+        mask = out.index.isin(common[blocked.values])
+        # 缺 ammo_position 列：退回 V-H7 语义（整体打折）
+        if "ammo_position" not in out.columns:
+            out.loc[mask, "target_position"] = (
+                out.loc[mask, "target_position"] * spec["factor"])
+            return out
+        core = out.loc[mask, "target_position"] - out.loc[mask, "ammo_position"]
+        out.loc[mask, "target_position"] = core * spec["factor"] + out.loc[mask, "ammo_position"]
         return out
 
     if variant in ("V-PVOL", "V-DDC"):
