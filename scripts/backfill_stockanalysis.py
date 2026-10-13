@@ -11,6 +11,9 @@
 用法：
     python scripts/backfill_stockanalysis.py --dry-run   # 预览将补哪些行
     python scripts/backfill_stockanalysis.py             # 实际补缺（幂等）
+    python scripts/backfill_stockanalysis.py --auto      # 每日链自动模式：仅当本地
+                                                         # prices 落后最近交易日才请求
+                                                         # 备用源（正常日 0 请求）
 
 语义：对 config.FETCH_SYMBOLS 每个标的，请求 history 后只取【本地缺失日期】
 的行（本地 max(date) 之后），与 prices.csv 幂等合并。不覆盖已有数据。
@@ -27,6 +30,35 @@ from fg_system import config
 
 SA_API = "https://stockanalysis.com/api/symbol/s/{symbol}/history?range=30D&period=Daily"
 PRICE_COLUMNS = ["date", "symbol", "open", "high", "low", "close", "volume"]
+
+
+def recent_trading_day(today=None):
+    """最近一个【已收盘】的交易日（北京时间视角）。
+
+    美股美东 16:00 收盘 = 北京时间次日凌晨（夏令时次日 04:00）⇒ 每日链
+    05:30 运行时最后一个完整交易日是【本地今天 - 1 天】；再跳过周六日。
+    法定假日 Nasdaq 无新数据时备用源也无新增，幂等无害，无需假日历。
+    """
+    import pandas as pd
+    d = (today or pd.Timestamp.now().normalize()) - pd.Timedelta(days=1)
+    while d.weekday() >= 5:          # 5=周六 6=周日
+        d -= pd.Timedelta(days=1)
+    return d
+
+
+def needs_backfill(path, today=None):
+    """本地 prices 全局最新日期是否落后最近交易日。"""
+    import pandas as pd
+    if not os.path.exists(path):
+        return True
+    try:
+        df = pd.read_csv(path, usecols=["date"], parse_dates=["date"])
+    except Exception:
+        return True
+    if df.empty:
+        return True
+    latest = df["date"].max()
+    return latest < recent_trading_day(today)
 
 
 def fetch_symbol(symbol, retries=3):
@@ -54,11 +86,17 @@ def fetch_symbol(symbol, retries=3):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="只预览不写盘")
+    ap.add_argument("--auto", action="store_true",
+                    help="自动模式：仅当本地 prices 落后最近交易日才请求备用源")
     args = ap.parse_args()
 
     path = os.path.join(config.RAW_DIR, "prices.csv")
     symbols = config.FETCH_SYMBOLS
     import pandas as pd
+
+    if args.auto and not needs_backfill(path):
+        print("数据已最新（prices 最新日期 >= 最近交易日），跳过备用源，0 请求")
+        return 0
 
     old = pd.DataFrame()
     if os.path.exists(path):
