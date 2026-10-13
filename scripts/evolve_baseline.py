@@ -151,6 +151,60 @@ def build_crypto():
     return out
 
 
+def build_portfolio(features_all, prices):
+    """A5 组合权重轨：inv_vol 组合买入持有 vs 策略组合（同暴露、同时段）。
+
+    MT-01（2026-10-13，mac-tasks）：
+    - 权重：`pipeline.risk_weight_series`（生产口径 `UNDERLYING_MAP`，Σw=1，
+      无杠杆底层 σ，整体 shift(1) 防前视，不足窗口退化等权）
+    - 组合买入持有轨：`pipeline.weighted_basket_returns`（每日再平衡到目标
+      权重的篮子，缺失标的重归一化，不把缺失当 0 收益）
+    - 组合策略轨：各标的 `run_single` 收益按同一权重合成（同时段同暴露）
+    - 指标口径与单标的一致（full/yearly/is/oos，time_80_20）
+    """
+    from fg_system import pipeline
+    from fg_system.data import loader
+
+    wide = loader.to_wide_ohlcv(prices)
+    wide = wide.reindex(features_all.index).sort_index()
+    weights = pipeline.risk_weight_series(wide, symbols=list(config.SYMBOLS))
+    bh = pipeline.weighted_basket_returns(wide, weights, list(config.SYMBOLS))
+
+    strat = pd.DataFrame(index=wide.index)
+    for sym in config.SYMBOLS:
+        f = features_all.copy()
+        p = prices[prices["symbol"] == sym].set_index("date").sort_index()
+        f = f.join(p[["open", "high", "low", "close", "volume"]], how="inner")
+        _, ret = runner.run_single(f, sym)
+        if ret is not None:
+            strat[sym] = ret.reindex(wide.index)
+    w = weights.reindex(wide.index)
+    strat_port = (strat * w).sum(axis=1, min_count=1)
+
+    def _pack(ser):
+        ser = ser.dropna()
+        is_r, oos_r = _split_is_oos(ser)
+        return {
+            "full": _metrics_dict(ser),
+            "yearly": _yearly_dict(ser),
+            "is": _metrics_dict(is_r),
+            "oos": _metrics_dict(oos_r),
+        }
+
+    return {
+        "strategy": _pack(strat_port),
+        "buy_and_hold": _pack(bh),
+        "weights_last": {s: _round(float(w[s].iloc[-1]), 4)
+                         for s in config.SYMBOLS},
+        "meta": {
+            "weighting": config.WEIGHTING,
+            "vol_window": config.VOL_WEIGHT_WINDOW,
+            "underlying_map": dict(config.UNDERLYING_MAP),
+            "basket": "daily_rebalance_to_target",
+        },
+    }
+
+
 def main():
     ap = argparse.ArgumentParser(description="A-2 回测基准恢复")
     ap.add_argument("--out", default=os.path.join(
@@ -192,6 +246,7 @@ def main():
             "features_range": [str(features["date"].min().date()),
                                str(features["date"].max().date())],
             "symbols": list(config.SYMBOLS),
+            "WEIGHTING": config.WEIGHTING,
             "is_oos": {"method": "time_80_20",
                        "is_end": str(is_end.date()) if is_end is not None else None,
                        "oos_start": (str(oos_start.date())
@@ -200,6 +255,7 @@ def main():
                      "变体必须与此文件对比（evolution-plan 阶段②）"),
         },
         "symbols": symbols,
+        "portfolio": build_portfolio(features_all, prices),
         "attribution": build_attribution(features_all, prices),
         "crypto": build_crypto(),
     }

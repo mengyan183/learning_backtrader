@@ -1,0 +1,38 @@
+{
+ "available": true,
+ "symbols": {
+  "MSTX": {
+   "available": true,
+   "n": 2,
+   "underlying": "MSTR",
+   "range": [
+    "2024-08-15",
+    "2026-09-29"
+   ],
+   "n_days": 531,
+   "sigma": 0.8603,
+   "vol_decay_annual": 0.5843,
+   "product_cost_annual": 0.2509,
+   "total_annual": 0.8352,
+   "config_product_cost_rate": 0.579
+  },
+  "CONL": {
+   "available": true,
+   "n": 2,
+   "underlying": "COIN",
+   "range": [
+    "2022-08-09",
+    "2026-09-29"
+   ],
+   "n_days": 1038,
+   "sigma": 0.8315,
+   "vol_decay_annual": 0.6611,
+   "product_cost_annual": 0.0155,
+   "total_annual": 0.6766,
+   "config_product_cost_rate": 0.0216
+  },
+  "BITX": {
+   "available": false
+  }
+ }
+}
