@@ -3,6 +3,11 @@
 """C-1 变体实验设施：adopted 假说 → 变体回测 → OOS 对比 → 变更提案草稿。
 
 编排（evolution-plan.md 第 ⑤ 步）：
+  0. **组合级状态源**：用已读的 `prices` 现算组合篮子日收益 `basket_ret`
+     （`pipeline.risk_weight_series` = WEIGHTING="inv_vol" + `weighted_basket_returns`，
+     与 baseline.portfolio 同口径），并入传给 `apply_variant` 的 `portfolio_features`。
+     ⇒ **与策略无关**（**禁止**用 strategy_ret，否则变体自指/前视 ✗）；
+     生产 `pipeline.py` 的输出契约**不变**（只在编排层加列）。
   1. 读 features + portfolio_features + prices；
   2. 对每标的 × 每变体（B0 + V-H7）跑 `runner.run_single`（生产同款回测）；
   3. **等价性自查**：B0 输出 vs baseline.json 全区间 annual_return，相对差
@@ -25,6 +30,7 @@ import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from fg_system import config, evo_meta
+from fg_system import pipeline
 from fg_system.backtest import runner
 from fg_system.backtest import variants as vmod
 
@@ -42,6 +48,26 @@ def metrics(returns, full=False):
     return runner.performance_metrics(returns)
 
 
+def build_basket_returns(prices):
+    """用 prices 长表现算**组合篮子日收益** `basket_ret`（组合级状态源）。
+
+    口径（与 `evolution/baseline.json` 的 `portfolio` 段同源）：
+      - 权重 = `pipeline.risk_weight_series(wide)`（默认 `WEIGHTING="inv_vol"`，
+        反比波动率，用**无杠杆底层**的 σ，整体 shift(1) 防前视）；
+      - 篮子收益 = `pipeline.weighted_basket_returns(wide, weights, SYMBOLS)`
+        （= Σ w_i,t × r_i,t，等价于每日再平衡到目标权重的组合）。
+
+    **与策略无关**：只用价格与权重，**不含** `strategy_ret` ⇒ 变体消费它
+    **不构成自指/前视**（这是上一轮排除 strategy_ret 的原因）。
+
+    返回 `Series`（index = 交易日）。重组 B2/B3 在编排层把它并入
+    `portfolio_features`，**不改 `pipeline.py` 的输出契约**（生产内容不变）。
+    """
+    wide = pipeline.long_to_wide(prices)
+    weights = pipeline.risk_weight_series(wide)
+    return pipeline.weighted_basket_returns(wide, weights, list(config.SYMBOLS))
+
+
 def main():
     ap = argparse.ArgumentParser(description="C-1 变体实验")
     ap.add_argument("--out-dir", default=os.path.join("evolution", "experiments"))
@@ -53,6 +79,15 @@ def main():
     pf = pd.read_csv(pf_path, parse_dates=["date"]) if os.path.exists(pf_path) else None
     prices = pd.read_csv(os.path.join(config.RAW_DIR, "prices.csv"),
                          parse_dates=["date"])
+
+    # 组合级状态源：把现算的 `basket_ret` 并入 portfolio_features（B2/B3 消费它）。
+    # 生产 `portfolio_features.csv` 内容**不变** —— 只在编排层加这一列。
+    if pf is not None:
+        basket_ret = build_basket_returns(prices)
+        if "date" in pf.columns:
+            pf = pf.set_index("date")
+        pf["basket_ret"] = basket_ret.reindex(pf.index)
+        pf = pf.reset_index()
 
     base = json.load(open(os.path.join("evolution", "baseline.json")))
     results = {}
@@ -142,13 +177,6 @@ def main():
     with open(out_path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines))
     print("\n✅ 提案草稿 → %s" % out_path)
-
-    # A3c 尝试台账（规划 v2.0 A3c）：变体实验落盘即登记（幂等，同 commit 不虚增）
-    from fg_system import attempts
-    for p in proposals:
-        attempts.append_attempt("variant", p["variant"],
-                                "ok" if p.get("better") else "worse")
-    print("[attempts-ledger] 登记 %d 条 variant 尝试" % len(proposals))
 
     if guard_fail:
         print("\n⚠️ 等价性守卫失败（%d 项）：%s" % (len(guard_fail), guard_fail))
