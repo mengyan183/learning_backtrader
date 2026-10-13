@@ -11,7 +11,13 @@
 代码层无约束」的先例 ⇒ 必须机械化断言）：
   1. 曲线产物**每个网格**只含 {回撤, CVaR} 类字段，不含效率列；
   2. 产物整体带 `OOS_WARNING`；
-  3. 产物显式声明「只答余量、不答更优组合」且「禁止喂 evolve_propose」。
+  3. 产物显式声明「只答余量、不答更优组合」且「禁止喂 evolve_propose」；
+  4. **数据源自证**（MT-07 后新增 ✓）：曲线取自真实组合日序列
+     `evolution/baseline.json` 的 `portfolio.daily`（**非**规划第 12.7 条的
+     纸面矩阵 ✗）⇒ `source` 必须写明来源 + `daily_points` 必须与序列长度一致；
+  5. **口径自证**：曲线算出的 `max_drawdown` 必须与
+     `portfolio.strategy.full.max_drawdown`（**-0.387651**）一致
+     ⇒ 不一致即口径有差，**不得硬凑** ✗。
 """
 import json
 import os
@@ -22,6 +28,7 @@ from fg_system import risk_budget
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CURVE_PATH = os.path.join(REPO, "evolution", "drawdown_budget_curve.json")
+BASELINE_PATH = os.path.join(REPO, "evolution", "baseline.json")
 
 # 「效率」列名特征（禁止出现）：年化收益 / 风险调整后收益 / 波动率。
 FORBIDDEN_SUBSTRINGS = (
@@ -104,3 +111,55 @@ def test_curve_json_artifact_matches_builder():
     built = json.loads(json.dumps(risk_budget.build_curve(), default=str))
     assert on_disk["grid"] == built["grid"]
     assert on_disk["OOS_WARNING"] == built["OOS_WARNING"]
+
+
+def _load_baseline_daily():
+    """读真实组合日序列（`baseline.portfolio.daily`）；缺失则 skip。"""
+    if not os.path.exists(BASELINE_PATH):
+        pytest.skip("baseline.json 未生成（需先落盘主线 MT-07 产物）")
+    with open(BASELINE_PATH, encoding="utf-8") as fh:
+        baseline = json.load(fh)
+    daily = baseline.get("portfolio", {}).get("daily")
+    if not daily:
+        pytest.skip("baseline.portfolio.daily 缺失（需 MT-07 主线产物）")
+    return baseline, daily
+
+
+def test_curve_source_is_portfolio_daily():
+    """曲线数据源必须是真实组合日序列（`baseline.portfolio.daily`）。
+
+    结构性防护：禁止回退到规划第 12.7 条的**纸面矩阵**（纸面常量 ✗）。
+    """
+    baseline, daily = _load_baseline_daily()
+    curve = risk_budget.build_curve()
+
+    source = json.dumps(curve.get("source", ""), ensure_ascii=False)
+    assert "baseline" in source and "daily" in source, (
+        "曲线未声明数据源为 baseline.portfolio.daily：%r" % source)
+
+    # 点数必须与真实序列一致（防止用别的序列/纸面分布冒名顶替）
+    n = len(daily["strategy_ret"])
+    assert curve.get("daily_points") == n, (
+        "daily_points=%r 与 baseline.portfolio.daily 点数 %d 不一致"
+        % (curve.get("daily_points"), n))
+
+
+def test_curve_max_drawdown_matches_baseline_full():
+    """口径自证：曲线 max_drawdown 必须与 `full.max_drawdown` 一致（不硬凑）。"""
+    baseline, _daily = _load_baseline_daily()
+    expected = baseline["portfolio"]["strategy"]["full"]["max_drawdown"]
+    curve = risk_budget.build_curve()
+
+    got = curve.get("max_drawdown")
+    assert got is not None, "曲线缺少 max_drawdown（口径自证字段）"
+    assert abs(got - expected) < 1e-6, (
+        "曲线 max_drawdown=%r 与 baseline full.max_drawdown=%r 不一致"
+        "（口径有差，不得硬凑）" % (got, expected))
+    # 交叉核对：与 risk.py 对真实序列的直接计算一致
+    from fg_system import risk
+    import pandas as pd
+    _b, daily = _load_baseline_daily()
+    direct = risk.max_drawdown(pd.Series(daily["strategy_ret"]))
+    assert abs(got - direct) < 1e-12, (
+        "曲线 max_drawdown=%r 与 risk.max_drawdown(strategy_ret)=%r 不一致"
+        % (got, direct))

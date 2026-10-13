@@ -18,7 +18,6 @@ from fg_system import config
 from fg_system import leverage
 from fg_system import fed
 from fg_system import risk as risk_mod
-from fg_system import human30
 from fg_system.dashboard import pwa
 
 ZONE_COLORS = ["#8b0000", "#d9534f", "#f0ad4e", "#5cb85c", "#006400"]
@@ -92,35 +91,12 @@ def _holdings_block(features, shoutu=None, prices=None):
         return any(sym == b or sym.startswith(b + "-") for b in spot)
 
     cards = []
-    # 现价口径：优先取 prices.csv **最新交易日**收盘（快照价在休市/盘前同步时
-    # 滞后一个交易日——futu nominal_price 在美股休市时返回上一交易日收盘）。
-    # 该交易日无数据的标的（加密 BTC-USDT / 未覆盖 CONL 等）回退快照价。
-    _px_date = None
-    if prices is not None and "date" in getattr(prices, "columns", []):
-        try:
-            _px_date = prices["date"].max()
-        except Exception:
-            _px_date = None
     for _, r in latest.iterrows():
         sym = str(r.get("symbol", "")).strip()
         name = str(r.get("name", "")).strip()
+        mv = _num(r.get("market_value"))
         qty = _num(r.get("qty"))
         price = _num(r.get("price"))
-        if _px_date is not None:
-            try:
-                _px_row = prices[(prices["date"] == _px_date)
-                                 & (prices["symbol"] == sym)]["close"].dropna()
-                if _px_row.empty and "-" in sym:
-                    _px_row = prices[(prices["date"] == _px_date)
-                                     & (prices["symbol"] == sym.replace("-USDT", ""))
-                                     ]["close"].dropna()
-                if not _px_row.empty:
-                    price = float(_px_row.iloc[-1])
-            except Exception:
-                pass
-        mv = _num(r.get("market_value"))
-        if price and qty and (not mv or abs(mv - price * qty) > 1e-6):
-            mv = round(price * qty, 2)   # 市值随最新收盘同步
         cost = _num(r.get("cost"))
         pnl = ((price - cost) / cost * 100.0) if cost and cost > 0 and price else None
         raw = None
@@ -507,136 +483,24 @@ def _svg_line(points, width=900, height=260, pad=36, y_min=None, y_max=None,
         width, height, "".join(parts))
 
 
-def _human30_block():
-    """Human 3.0 状态卡（组合骨架）：Level 徽章 + 四象限数值 + 短板/建议。无记录时降级提示。"""
-    rec = human30.latest()
-    if not rec:
-        return ('<div class="card"><h3>🌱 Human 3.0</h3>'
-                '<p style="color:#888">尚无自评记录。打卡：'
-                '<code>python scripts/human30_cli.py --set --mind .. --body .. --spirit .. --vocation ..</code></p></div>')
-    agg = human30.aggregate(rec)
-    colors = {"mind": "#2b5da6", "body": "#a67c2b", "spirit": "#3a7d3a", "vocation": "#8a4a7a"}
-    quad_html = "".join(
-        '<div style="display:inline-block;min-width:130px;margin:4px 8px 4px 0;'
-        'padding:8px 10px;border:1px solid #e0e0e0;border-radius:6px">'
-        '<div style="color:%s;font-weight:700">%s</div>'
-        '<div style="font-size:20px;font-weight:700">%.0f</div>'
-        '<div style="font-size:11px;color:#888">%s</div></div>'
-        % (colors[q], human30.LABELS[q], rec[q], "短板" if q == agg["weakest"] else "")
-        for q in human30.QUADRANTS)
-    adv = human30.advice(rec, human30.history(2)[-2] if len(human30.history(2)) >= 2 else None)
-    adv_html = "".join("<li>%s</li>" % a for a in adv[:3])
-    warn = ' <span style="color:#c62828;font-weight:700">⚠️ 失衡</span>' if agg["imbalanced"] else ""
-    # 连续未打卡提醒（确定性规则）
-    gap = human30.days_since_last()
-    gap_html = ""
-    if gap is not None and gap >= 1:
-        gap_html = ('<p style="margin:2px 0 4px;font-size:12px;color:#c62828">'
-                    '⏰ 已连续 %d 天未打卡——记录断档，极端档位归因将缺样本</p>' % gap)
-    # Level 进度条：avg 在 0-100 标尺上的位置 + L1/L2/L3 区间色带
-    pct = max(0.0, min(100.0, agg["avg"]))
-    bar = (
-        '<div style="position:relative;height:14px;border-radius:7px;margin:8px 0 4px;'
-        'background:linear-gradient(90deg,#888 0%%,#888 40%%,#f9a825 40%%,#f9a825 70%%,#2e7d32 70%%,#2e7d32 100%%);overflow:visible">'
-        '<div style="position:absolute;left:calc(%s%% - 6px);top:-3px;width:12px;height:20px;'
-        'border-radius:3px;background:#fff;border:2px solid #333;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div></div>'
-        '<div style="display:flex;justify-content:space-between;font-size:10px;color:#888">'
-        '<span>0 · L1 从众者</span><span>40 · L2 个体主义者</span><span>70 · L3 综合者</span><span>100</span></div>'
-        % pct)
-    # 历史打卡表（最近 10 次，服务端渲染；report 尾部正则自动套横向滚动容器）
-    hist = human30.history(10)
-    rows = ""
-    if hist:
-        rows = '<tr><th style="text-align:left">日期</th><th>心</th><th>体</th><th>精神</th><th>职</th><th>均分</th></tr>'
-        for r in hist:
-            a = human30.aggregate(r)
-            rows += ("<tr><td>%s</td><td>%.0f</td><td>%.0f</td><td>%.0f</td><td>%.0f</td>"
-                     "<td>%.1f</td></tr>" % (r["date"], r["mind"], r["body"],
-                                             r["spirit"], r["vocation"], a["avg"]))
-    return (
-        '<div class="card"><h3>🌱 Human 3.0'
-        ' <span style="background:%s;color:#fff;border-radius:10px;padding:2px 10px;font-size:12px">%s</span>%s</h3>'
-        '<p style="margin:2px 0 4px;color:#666;font-size:12px">%s · 最近打卡 %s · 四象限均分 %s</p>'
-        '%s'
-        '<div style="margin-top:6px">%s</div>'
-        '<details style="margin-top:6px"><summary style="cursor:pointer;font-size:13px">建议（规则化，无 LLM）</summary>'
-        '<ul style="margin:6px 0 0;padding-left:18px;font-size:13px">%s</ul></details>'
-        '<h4 style="margin:12px 0 4px;font-size:13px">最近打卡（%d 次）</h4>'
-        '<table class="card" style="width:100%%;border-collapse:collapse;font-size:12px">%s</table>'
-        '%s%s'
-        '<p style="margin:8px 0 0;font-size:12px;color:#888">记录文件：Data/human30.json（运行态不入库）· '
-        '下方表单可直接打卡（当日重复覆盖）</p></div>'
-        % ("#2e7d32" if agg["level"] == 3 else "#f9a825" if agg["level"] == 2 else "#888",
-           agg["level_name"], warn, agg["level_desc"], rec["date"], agg["avg"],
-           bar, quad_html, adv_html, len(hist), rows, gap_html, _human30_window_card()))
-
-
-def _human30_window_card():
-    """近 7 日统计卡（确定性）：记录数 / Level 分布 / 短板计数 / 均分趋势。"""
-    w = human30.window_stats(7)
-    if w["no_data"]:
-        return ""
-    lv = w["level_counts"]
-    lv_txt = " / ".join(
-        "L%d ×%d" % (k, lv[k]) for k in (1, 2, 3) if lv.get(k))
-    wk = w["weakest_counts"]
-    wk_txt = "、".join(
-        "%s ×%d" % (k, v) for k, v in sorted(wk.items(), key=lambda x: -x[1]))
-    avg_now = w["avg_series"][-1]["avg"] if w["avg_series"] else "-"
-    avg_first = w["avg_series"][0]["avg"] if w["avg_series"] else "-"
-    delta = avg_now - avg_first
-    arrow = "▲" if delta > 0.5 else ("▼" if delta < -0.5 else "→")
-    return (
-        '<div style="margin-top:10px;padding:8px 10px;border:1px dashed #ccc;'
-        'border-radius:6px;font-size:12px">'
-        '<strong>近 7 日汇总</strong>：打卡 %d 次 · 均分 %s→%s %s · 意识层级 %s'
-        '%s</div>'
-        % (w["records"], avg_first, avg_now, arrow, lv_txt,
-           (" · 短板高频：" + wk_txt) if wk_txt else ""))
-
-
-def _human30_json():
-    """前端趋势图数据：最近 90 天四象限 + 均分 + 窗口统计 + 未打卡天数。"""
-    recs = human30.history(90)
-    w7 = human30.window_stats(7)
-    return {
-        "labels": [human30.LABELS[q] for q in human30.QUADRANTS],
-        "keys": human30.QUADRANTS,
-        "dates": [r["date"] for r in recs],
-        "series": {q: [r[q] for r in recs] for q in human30.QUADRANTS},
-        "avg": [round(sum(r[q] for q in human30.QUADRANTS) / 4.0, 1) for r in recs],
-        "latest": recs[-1] if recs else None,
-        "days_since_last": human30.days_since_last(),
-        "window7": w7,
-    }
-
-
 def _factors_block(valid):
-    keys = [k for k in ["vix", "term", "price", "breadth", "fed", "putcall"] if k in valid.columns]
+    keys = [k for k in ["vix", "term", "price", "breadth", "fed"] if k in valid.columns]
     if not keys:
         return "<p>因子数据不可用</p>"
-    colors = ["#58a6ff", "#d29922", "#7ee787", "#f85149", "#bc8cff", "#ffa657"]
+    colors = ["#58a6ff", "#d29922", "#7ee787", "#f85149", "#bc8cff"]
     labels = {"vix": "波动率 VIX", "term": "期限利差", "price": "价格动量",
-              "breadth": "市场广度", "fed": "美联储政策", "putcall": "Put-Call 情绪"}
-    try:
-        from fg_system.index import ZONE_NAMES, factor_zone
-    except Exception:
-        ZONE_NAMES, factor_zone = [], (lambda x: None)
+              "breadth": "市场广度", "fed": "美联储政策"}
     out = ["<div class='f-grid'>"]
     for i, k in enumerate(keys):
         pts = [(d.strftime("%Y-%m-%d"), float(v))
                for d, v in valid[k].items() if not pd.isna(v)]
         cur = pts[-1][1] if pts else float("nan")
-        z = factor_zone(cur)
-        zname = ZONE_NAMES[z] if (z is not None and z < len(ZONE_NAMES)) else ""
-        zone_badge = ("<span class='f-zone' data-zone='%d'>%s</span>"
-                      % (z, zname) if zname else "")
         out.append("<div class='f-card'><div class='f-head'>"
                    "<span class='f-name'>%s</span>"
-                   "<span class='f-val' style='color:%s'>%s</span>%s</div>"
+                   "<span class='f-val' style='color:%s'>%s</span></div>"
                    "<div class='f-chart' id='chartF%d'></div></div>"
                    % (labels.get(k, k), colors[i % 4],
-                      ("%.2f" % cur) if cur == cur else "—", zone_badge, i))
+                      ("%.2f" % cur) if cur == cur else "—", i))
     out.append("</div>")
     return "".join(out)
 
@@ -782,12 +646,10 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         loss=_loss_block(prices),
         external_note=("已录入 %d 条外部指数记录" % len(external)
                        if external else "未录入（不影响其他功能）"),
-        human30=_human30_block(),
-        human30_json=_json(_human30_json()),
         index_json=_json(index_points),
         factors_json=_json({
-            k: [(d.strftime("%Y-%m-%d"), float(v)) for d, v in valid[k].dropna().items()]
-            for k in ["vix", "term", "price", "breadth", "fed", "putcall"] if k in valid.columns
+            k: [(d.strftime("%Y-%m-%d"), float(v)) for d, v in valid[k].items()]
+            for k in ["vix", "term", "price", "breadth", "fed"] if k in valid.columns
         }),
         position_json=_json([
             (d.strftime("%Y-%m-%d"), float(v))
@@ -801,7 +663,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
 
     # 每个表格套横向滚动容器：窄屏下宽表不撑破页面（手机端必需）。
     # 用后处理而不是改各个 _*_block：表格分散在 6 处，集中处理不会漏。
-    html = re.sub(r"""(<table class=['"]card['"][^>]*>.*?</table>)""",
+    html = re.sub(r"""(<table class=['"]card['"]>.*?</table>)""",
                   r'<div class="scroll">\1</div>', html, flags=re.S)
 
     # G-1（WT-12 审查）：`docs/system-boundary.md` §5 要求「警告存在时，
@@ -913,10 +775,64 @@ def _crypto_block(crypto_features, coinglass_value=None):
     return "\n".join(html)
 
 
-def build_v2(us_features, crypto_features, path=None, coinglass_value=None):
-    """v2 仪表盘：v1 全部区块 + 加密区块 + coinglass 人工对照。
+def _stress_block(holdings, shocks=None, budget=None):
+    """B4 压力测试节：情景表 + 「直接归零」单独回答（**只加不改**）。
+
+    - 情景表：逐标的最坏实测 + **强制**「直接归零」情形（`risk_stress`）。
+    - 「直接归零」：净值归零**无法用价格序列检测** ⇒ 单独回答「绝对上限与
+      三层 80/50/30 会不会被击穿」（`risk_stress.zero_out_answer`）。
+    - **纯函数 + 注入输入**：不读取 `Data/`；`holdings` 为 {符号: 相对仓位}。
+    """
+    from fg_system import risk_stress as _rs
+
+    repo = _rs.stress_report(holdings, shocks=shocks,
+                             budget=budget if budget is not None
+                             else _rs.DRAWDOWN_BUDGET)
+    ans = _rs.zero_out_answer()
+
+    html = ["<h2>压力测试（尾部风险·逐标的最坏实测）</h2>"]
+    html.append("<table class='card'>")
+    html.append("<tr><th>情景</th><th>标的</th><th>冲击</th>"
+                "<th>仓位</th><th>损失</th></tr>")
+    for r in repo["scenarios"]:
+        html.append("<tr><td>%s</td><td>%s</td><td>%.2f%%</td>"
+                    "<td>%.2f%%</td><td>%+.2f%%</td></tr>"
+                    % (r["scenario"], r["symbol"], r["shock"] * 100,
+                       r["position"] * 100, r["loss"] * 100))
+    html.append("</table>")
+    if repo["unknown_floors"]:
+        html.append("<p>未标定最坏实测（不猜）：%s</p>"
+                    % "、".join(repo["unknown_floors"]))
+    for name, blk in repo["by_scenario"].items():
+        flag = "⚠ 击穿预算" if blk["breaches_budget"] else "未击穿预算"
+        html.append("<p>%s 组合损失 %.2f%%（预算 %.0f%%）⇒ %s</p>"
+                    % (name, blk["total_loss"] * 100, repo["budget"] * 100, flag))
+
+    html.append("<h3>「直接归零」单独回答（无法用价格序列检测）</h3>")
+    html.append("<table class='card'>")
+    html.append("<tr><th>层</th><th>三层上限</th><th>层预算（相对净值）</th></tr>")
+    for layer, cap in config.CRYPTO_LAYER_CAP.items():
+        html.append("<tr><td>%s</td><td>%.0f%%</td><td>%.2f%%</td></tr>"
+                    % (_LAYER_LABELS.get(layer, layer), cap * 100,
+                       ans["layer_budget"][layer] * 100))
+    html.append("</table>")
+    html.append("<p>加密核心仓绝对上限 %.2f%%；整个加密 sleeve 归零最大损失 "
+                "%.2f%%（回撤预算 %.0f%%）⇒ 绝对上限 %s、三层 %s。</p>"
+                % (ans["crypto_core_cap"] * 100, ans["max_loss_all_crypto"] * 100,
+                   ans["drawdown_budget"] * 100,
+                   "未被击穿" if not ans["abs_cap_breached"] else "被击穿",
+                   "未被击穿" if not ans["layer_caps_breached"] else "被击穿"))
+    html.append("<p style='font-size:12px;color:#8b949e'>来源：%s</p>"
+                % ans["source"])
+    return "\n".join(html)
+
+
+def build_v2(us_features, crypto_features, path=None, coinglass_value=None,
+             stress_holdings=None):
+    """v2 仪表盘：v1 全部区块 + 加密区块 + coinglass 人工对照 + B4 压力测试节。
 
     复用 v1 的 `build()` 产出大盘部分（v1 渲染逻辑零改动），再注入加密区块。
+    `stress_holdings` 为 {符号: 相对仓位}（缺省空 dict ⇒ 只出「直接归零」回答）。
     """
     path = path or os.path.join(config.REPORTS_DIR, "dashboard_v2.html")
     build(us_features, path=path)
@@ -924,7 +840,9 @@ def build_v2(us_features, crypto_features, path=None, coinglass_value=None):
     with open(path, encoding="utf-8") as f:
         html = f.read()
     html = html.replace("</body>",
-                        _crypto_block(crypto_features, coinglass_value) + "\n</body>")
+                        _crypto_block(crypto_features, coinglass_value)
+                        + "\n" + _stress_block(stress_holdings or {})
+                        + "\n</body>")
     with open(path, "w", encoding="utf-8") as f:
         f.write(html)
     return path
