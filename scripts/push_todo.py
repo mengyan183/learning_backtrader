@@ -162,7 +162,7 @@ def build_summary():
         for task in win:
             parts.append(f"  · {task}")
     else:
-        parts.append("  （暂无独立待办；默认动作：全量 pytest 回归 ~900 用例）")
+        parts.append("  （暂无独立待办；默认动作：全量 pytest 回归 —— Windows 用 py -3.10，Mac 基线 1366 passed）")
     parts.append("")
     parts.append("【Mac 端待执行（需公网/真实 Data）】")
     if mac:
