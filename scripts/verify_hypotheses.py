@@ -933,6 +933,9 @@ def main(argv=None):
                 if line.startswith(("- 判定：", "- 状态：", "- 判据：", "- 口径")):
                     print("    %s" % line)
             blocks += text + [""]
+            # A3c 尝试台账（规划 v2.0 A3c）：假说重验即登记（幂等，同 commit 不虚增）
+            from fg_system import attempts
+            attempts.append_attempt("hypothesis", hid, meta.get("status", "ok"))
 
     if args.out:
         out = append_results(blocks, dry_run=False, out_path=args.out)

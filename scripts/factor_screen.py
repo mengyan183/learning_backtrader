@@ -302,7 +302,14 @@ def main(argv=None):
     json_path = EVO / "factor-screen-results.json"
     json_path.write_text(json.dumps(reports, ensure_ascii=False, indent=2, default=str),
                          encoding="utf-8")
+    # A3c 尝试台账（规划 v2.0 A3c）：因子评测落盘即登记（幂等，同 commit 不虚增）
+    from fg_system import attempts
+    for rep in reports:
+        v = rep.get("verdict") or {}
+        attempts.append_attempt("factor_screen", rep.get("name", "unknown"),
+                                v.get("status", "reported"))
     print(f"\n[factor_screen] md → {md_path}\n[factor_screen] json → {json_path}")
+    print(f"[attempts-ledger] 登记 {len(reports)} 条 factor_screen 尝试")
 
 
 if __name__ == "__main__":

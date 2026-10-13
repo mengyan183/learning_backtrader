@@ -143,6 +143,13 @@ def main():
         fh.write("\n".join(lines))
     print("\n✅ 提案草稿 → %s" % out_path)
 
+    # A3c 尝试台账（规划 v2.0 A3c）：变体实验落盘即登记（幂等，同 commit 不虚增）
+    from fg_system import attempts
+    for p in proposals:
+        attempts.append_attempt("variant", p["variant"],
+                                "ok" if p.get("better") else "worse")
+    print("[attempts-ledger] 登记 %d 条 variant 尝试" % len(proposals))
+
     if guard_fail:
         print("\n⚠️ 等价性守卫失败（%d 项）：%s" % (len(guard_fail), guard_fail))
         sys.exit(1)
