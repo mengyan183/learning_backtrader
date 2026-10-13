@@ -24,6 +24,23 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LEDGER = os.path.join(REPO, "evolution", "attempts-ledger.jsonl")
 
 KINDS = ("factor_screen", "variant", "hypothesis")
+SCHEMA_KIND = "__schema__"   # 台账头记录（占位说明，不计数）
+
+
+def ensure_ledger(ledger=None):
+    """确保台账文件存在：缺失时写入一条 __schema__ 头（不计数、git 可跟踪）。"""
+    ledger = ledger or LEDGER
+    if os.path.exists(ledger):
+        return ledger
+    os.makedirs(os.path.dirname(ledger), exist_ok=True)
+    rec = {"ts": datetime.now().isoformat(timespec="seconds"),
+           "kind": SCHEMA_KIND,
+           "key": "attempts-ledger v1",
+           "verdict": "schema: {ts, kind: factor_screen|variant|hypothesis, key, verdict, git_sha}; idempotent key: git_sha+kind+key",
+           "git_sha": "schema"}
+    with open(ledger, "w", encoding="utf-8") as fh:
+        fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    return ledger
 
 
 def git_head(repo=None):
@@ -62,6 +79,7 @@ def append_attempt(kind, key, verdict, ledger=None, git_sha=None, ts=None):
     """
     assert kind in KINDS, "kind 必须是 %s 之一" % (KINDS,)
     ledger = ledger or LEDGER
+    ensure_ledger(ledger)
     git_sha = git_sha or git_head()
     ts = ts or datetime.now().isoformat(timespec="seconds")
     key = str(key)
@@ -76,7 +94,7 @@ def append_attempt(kind, key, verdict, ledger=None, git_sha=None, ts=None):
 
 
 def count_attempts(ledger=None, kind=None):
-    """台账行数（可按 kind 过滤）。"""
+    """台账行数（可按 kind 过滤；__schema__ 头不计）。"""
     ledger = ledger or LEDGER
     n = 0
     if not os.path.exists(ledger):
@@ -89,6 +107,8 @@ def count_attempts(ledger=None, kind=None):
             try:
                 rec = json.loads(line)
             except ValueError:
+                continue
+            if rec.get("kind") == SCHEMA_KIND:
                 continue
             if kind is None or rec.get("kind") == kind:
                 n += 1

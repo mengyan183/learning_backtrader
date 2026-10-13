@@ -159,3 +159,10 @@
    **"可能 / 可行 / 可见 / 可得 / 可复算 / 应对"** ✓ ⇒ 一律误报 ✓；而真处置动作常是
    **"加/定/拆/纳入"** 等不含这三字的动词 ✗ ⇒ 又漏报 ✓）。**判据仍是语义的**：
    该条旁边是否已有**处置动作** ⇒ 有则降级为待办 + 编号 ✗。
+
+## 12. 双端环境事实（2026-10-13 补）
+
+- **Windows 端**：默认 `python` = **3.14 且无 `backtrader`** ⇒ 跑测试**必须 `py -3.10`**；无公网 ⇒ 凡"需真实 `Data` / 需抓数"任务登记 `docs/mac-tasks.md`。
+- **Mac 端**：venv `.venv/bin/python`（Py3.10），有公网与真实 `Data/`；push 目标是 **github**（远端 `origin`）。
+- **同步链路**：Mac → github → gitee 镜像 → Windows 从 gitee 拉取；Windows → 飞书分片（`###FG:`）→ Mac `fg-sync` 入库。
+- **任务表**：`docs/windows-tasks.md`（WT 系列）与 `docs/mac-tasks.md`（MT 系列）为双端唯一任务清单，状态列以 ✅ 收口，不得"已实现但状态仍待做"。

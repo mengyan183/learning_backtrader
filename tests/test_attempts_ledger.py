@@ -22,8 +22,12 @@ def _rows(path):
     with open(path, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
-            if line:
-                out.append(json.loads(line))
+            if not line:
+                continue
+            rec = json.loads(line)
+            if rec.get("kind") == attempts.SCHEMA_KIND:
+                continue  # 台账头不计数
+            out.append(rec)
     return out
 
 
@@ -70,6 +74,30 @@ def test_count_attempts_kind_filter(ledger):
                             ledger=ledger, git_sha="a")
     assert attempts.count_attempts(ledger) == 2
     assert attempts.count_attempts(ledger, kind="variant") == 1
+
+
+def test_schema_header_not_counted(ledger):
+    """台账头（__schema__）不计数；缺失时自动创建。"""
+    p = attempts.ensure_ledger(ledger)
+    assert os.path.exists(p)
+    # 原始行读取（含 schema 头）
+    raw = []
+    with open(p, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line:
+                raw.append(json.loads(line))
+    assert len(raw) == 1 and raw[0]["kind"] == attempts.SCHEMA_KIND
+    # schema 头不影响 count
+    assert attempts.count_attempts(ledger) == 0
+    # 追加真实记录后 count=1，且 schema 头仍在
+    attempts.append_attempt("hypothesis", "H-030", "ok",
+                            ledger=ledger, git_sha="abc")
+    assert attempts.count_attempts(ledger) == 1
+    assert len(raw) + 1 == len(_rows(ledger)) + 1  # schema 仍存在（raw 未变）
+    with open(p, encoding="utf-8") as fh:
+        first = json.loads(fh.readline().strip())
+    assert first["kind"] == attempts.SCHEMA_KIND
 
 
 def test_invalid_kind_rejected(ledger):

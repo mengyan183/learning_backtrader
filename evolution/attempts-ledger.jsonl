@@ -1,0 +1,1 @@
+{"ts": "2026-10-13T13:56:24", "kind": "__schema__", "key": "attempts-ledger v1", "verdict": "schema: {ts, kind: factor_screen|variant|hypothesis, key, verdict, git_sha}; idempotent key: git_sha+kind+key", "git_sha": "schema"}
