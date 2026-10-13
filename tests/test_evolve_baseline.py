@@ -21,9 +21,9 @@ def test_meta_has_WEIGHTING(baseline):
 
 
 def test_portfolio_section_present(baseline):
-    """必须含 portfolio 段（策略轨 + 组合权重买入持有轨）。"""
+    """必须含 portfolio 段（策略轨 + 组合权重买入持有轨 + MT-07 日序列）。"""
     p = baseline["portfolio"]
-    assert set(p) == {"strategy", "buy_and_hold", "weights_last", "meta"}
+    assert set(p) == {"strategy", "buy_and_hold", "daily", "weights_last", "meta"}
 
 
 def test_portfolio_strategy_and_bh_same_periods(baseline):
@@ -43,3 +43,27 @@ def test_portfolio_meta_weighting_declared(baseline):
     p = baseline["portfolio"]
     assert p["meta"]["weighting"] == "inv_vol"
     assert p["meta"]["basket"] == "daily_rebalance_to_target"
+
+
+def test_portfolio_daily_series_feeds_cvar(baseline):
+    """MT-07（B1）：daily 序列可直接喂 cvar()，且 max_drawdown 交叉核对一致。"""
+    import pandas as pd
+    from fg_system.risk import cvar, max_drawdown
+
+    d = baseline["portfolio"]["daily"]
+    assert len(d["date"]) >= 30                      # 点数门槛
+    assert len(d["date"]) == len(d["strategy_ret"]) == len(d["bh_portfolio_ret"])
+    assert len(d["strategy_nav"]) == len(d["date"])
+    # 序列可直接喂 cvar()（尾部概率语义：0.05 = 最差 5%）
+    rets = pd.Series(d["strategy_ret"])
+    c95, c99 = cvar(rets, 0.05), cvar(rets, 0.01)
+    assert c95 is not None and c99 is not None
+    assert c99 < c95                                  # 更极端尾部损失更大
+    # 交叉核对：用 daily 序列重算 max_drawdown 应与 full.max_drawdown 一致
+    md_new = max_drawdown(rets)
+    md_old = baseline["portfolio"]["strategy"]["full"]["max_drawdown"]
+    assert abs(abs(md_new) - abs(md_old)) < 0.005
+    # meta 附 generated_at + features_range + daily_points
+    assert baseline["portfolio"]["meta"]["generated_at"]
+    assert baseline["portfolio"]["meta"]["features_range"]
+    assert baseline["portfolio"]["meta"]["daily_points"] == len(d["date"])

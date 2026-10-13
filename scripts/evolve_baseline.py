@@ -191,9 +191,25 @@ def build_portfolio(features_all, prices):
             "oos": _metrics_dict(oos_r),
         }
 
+    # MT-07（B1）：组合级日序列 —— date, strategy_ret, bh_portfolio_ret,
+    # strategy_nav, bh_portfolio_nav。两轨都非 NaN 处对齐（可直接喂 cvar()）。
+    daily = pd.DataFrame({
+        "strategy_ret": strat_port,
+        "bh_portfolio_ret": bh,
+    }).dropna()
+    daily["strategy_nav"] = (1.0 + daily["strategy_ret"]).cumprod()
+    daily["bh_portfolio_nav"] = (1.0 + daily["bh_portfolio_ret"]).cumprod()
+
     return {
         "strategy": _pack(strat_port),
         "buy_and_hold": _pack(bh),
+        "daily": {
+            "date": [str(d.date()) for d in daily.index],
+            "strategy_ret": [_round(x, 8) for x in daily["strategy_ret"]],
+            "bh_portfolio_ret": [_round(x, 8) for x in daily["bh_portfolio_ret"]],
+            "strategy_nav": [_round(x, 8) for x in daily["strategy_nav"]],
+            "bh_portfolio_nav": [_round(x, 8) for x in daily["bh_portfolio_nav"]],
+        },
         "weights_last": {s: _round(float(w[s].iloc[-1]), 4)
                          for s in config.SYMBOLS},
         "meta": {
@@ -201,6 +217,10 @@ def build_portfolio(features_all, prices):
             "vol_window": config.VOL_WEIGHT_WINDOW,
             "underlying_map": dict(config.UNDERLYING_MAP),
             "basket": "daily_rebalance_to_target",
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "features_range": "%s → %s" % (str(features_all.index.min().date()),
+                                           str(features_all.index.max().date())),
+            "daily_points": len(daily),
         },
     }
 
