@@ -29,6 +29,7 @@ sys.path.insert(0, REPO)
 
 from fg_system.factors import eval as feval          # noqa: E402
 from fg_system.factors import crude as fcrude        # noqa: E402
+from fg_system.md_section import write_section       # noqa: E402
 
 WTI = os.path.join(REPO, "Data", "raw", "fred_DCOILWTICO.csv")
 PRICES = os.path.join(REPO, "Data", "raw", "prices.csv")
@@ -99,40 +100,6 @@ def event_study(signal_ret, qqq_close, threshold=0.05, horizons=(5, 20)):
             }
         out[name] = row
     return out
-
-
-def write_section(path, section, title):
-    """幂等写入：把 section 写入 path。
-
-    幂等键 = 标题 title。若文件中已存在该标题，则先删除从该标题（含其紧邻的
-    `---` 分隔行）到文件末尾的旧内容，再写入新 section；否则追加到末尾。
-    ⇒ 同一输入重复运行不会产生重复段，且重跑以最新结果替换旧段。
-    """
-    old = ""
-    if os.path.exists(path):
-        with open(path, encoding="utf-8") as f:
-            old = f.read()
-    if old:
-        lines = old.splitlines()
-        idx = None
-        for i, ln in enumerate(lines):
-            if ln.strip() == title.strip():
-                idx = i
-                break
-        if idx is not None:
-            # 标题前若紧邻 `---` 分隔行，一并删除，避免残留孤立分隔符
-            cut = idx
-            j = idx - 1
-            while j >= 0 and lines[j].strip() == "":
-                j -= 1
-            if j >= 0 and lines[j].strip() == "---":
-                cut = j
-            head = "\n".join(lines[:cut]).rstrip()
-            old = (head + "\n\n") if head else ""
-        else:
-            old = old.rstrip() + "\n\n"
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(old + section.lstrip("\n") + ("" if section.endswith("\n") else "\n"))
 
 
 def main():
