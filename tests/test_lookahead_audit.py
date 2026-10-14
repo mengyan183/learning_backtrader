@@ -77,5 +77,25 @@ def test_list_whitelist():
     assert "screening.py" in out
 
 
+def test_data_tolerates_one_day_t1_lag(tmp_path, monkeypatch):
+    """数据层容忍 ≤1 自然日上游 T+1 发布滞后；超前 ≥2 天才判违规。"""
+    import pandas as pd
+    feat = tmp_path / "features.csv"
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    pd.DataFrame({"date": ["2026-10-13"]}).to_csv(feat, index=False)
+    for name in ("vix.csv", "sentiment.csv", "prices.csv"):
+        pd.DataFrame({"date": ["2026-10-12"]}).to_csv(raw / name, index=False)
+    monkeypatch.setattr(la, "FEATURES_PATH", feat)
+    monkeypatch.setattr(la, "RAW_DIR", raw)
+    assert la.check_data()["ahead_of_raw"] is False  # 超前 1 天 → 容忍
+
+    # 超前 2 天（真停更 / 真前瞻风险）→ 判违规并带 ahead_days
+    pd.DataFrame({"date": ["2026-10-14"]}).to_csv(feat, index=False)
+    data = la.check_data()
+    assert data["ahead_of_raw"] is True
+    assert data["violations"] and all(v["ahead_days"] >= 2 for v in data["violations"])
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

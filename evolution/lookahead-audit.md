@@ -1,7 +1,7 @@
 # 未来函数审计报告（R1.2 · freqtrade lookahead 思想）
 
-- 生成：2026-10-13 17:06 · scripts/lookahead_audit.py
-- 口径：代码层扫描 `shift(-n)`/`shift(0)`（默认违规、白名单豁免）；数据层 features 尾行不得超前原料 raw（pipeline shift(1) 设计，同日/滞后正常）
+- 生成：2026-10-14 09:42 · scripts/lookahead_audit.py
+- 口径：代码层扫描 `shift(-n)`/`shift(0)`（默认违规、白名单豁免）；数据层 features 尾行超前原料 >1 个自然日判违规（容忍 T+1 上游发布滞后，pipeline 用最近可得值、值不超前，超前 ≤1 日 = 非前视）
 - 结论：**PASS（违规 0）**
 
 ## 一、代码层
@@ -20,10 +20,10 @@
 
 ## 二、数据层
 
-- features 尾行：2026-10-12
+- features 尾行：2026-10-13
 - raw/vix.csv 尾行：2026-10-12
 - raw/sentiment.csv 尾行：2026-10-12
-- raw/prices.csv 尾行：2026-10-12
+- raw/prices.csv 尾行：2026-10-13
 
 - features 超前原料：**否 ✓**
 

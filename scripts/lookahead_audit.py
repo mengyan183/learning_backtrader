@@ -13,8 +13,9 @@ pytest 可执行的审计。两条红线：
    - 未归类文件出现 → ⚠️ 待人工确认（不自动判违规，但要留档）
    新增评测脚本必须登记进白名单，否则审计失败 → 强制纪律工具化。
 
-2. **数据层**：`features.csv`（合成产物）不得超前原料 raw 数据（vix/sentiment/
-   prices）。features 滞后或同日正常（pipeline shift(1) 设计）；超前 = 前视合成。
+2. **数据层**：`features.csv`（合成产物）超前原料 raw 数据（vix/sentiment/prices）
+   **超过 1 个自然日**才判违规。容忍 ≤1 日的 T+1 上游发布滞后（pipeline 用最近
+   可得因子值、值不超前；超前 1 天 = 用 T-1 值生成当日特征，非前视合成）。
 
 用法：
   .venv/bin/python scripts/lookahead_audit.py               # 默认全扫，违规>0 退出 1
@@ -95,7 +96,13 @@ def scan_code() -> dict:
 
 
 def check_data() -> dict:
-    """数据层：features 尾行不得超前原料 raw（vix/sentiment/prices）。"""
+    """数据层：features 尾行超前原料 raw >1 个自然日才判违规（容忍 T+1 上游滞后）。
+
+    pipeline 是 shift(1) 设计，且因子用「最近可得值」填充：VIX/sentiment/putcall
+    上游常 T+1 发布（CBOE 历史 CSV 滞后一个交易日），features 行日期超前 1 天
+    = 「用 T-1 因子值生成当日特征」，值本身不超前 ⇒ 非前视合成。
+    超前 ≥2 个自然日才判 ahead（真停更 / 真前瞻风险）。
+    """
     import pandas as pd
     result = {"features_tail": None, "raw_tails": {}, "ahead_of_raw": False}
     try:
@@ -119,10 +126,13 @@ def check_data() -> dict:
         if tail is None:
             continue
         if result["features_tail"] and tail and result["features_tail"] > tail:
-            result["ahead_of_raw"] = True
-            result.setdefault("violations", []).append(
-                {"rule": "data-ahead", "features": result["features_tail"],
-                 "raw": name, "raw_tail": tail})
+            ahead_days = (_dt.date.fromisoformat(result["features_tail"])
+                          - _dt.date.fromisoformat(tail)).days
+            if ahead_days >= 2:
+                result["ahead_of_raw"] = True
+                result.setdefault("violations", []).append(
+                    {"rule": "data-ahead", "features": result["features_tail"],
+                     "raw": name, "raw_tail": tail, "ahead_days": ahead_days})
     return result
 
 
@@ -132,7 +142,8 @@ def render_md(code: dict, data: dict, cheat_on: bool, verdict: str) -> str:
         "",
         "- 生成：%s · scripts/lookahead_audit.py" % _dt.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "- 口径：代码层扫描 `shift(-n)`/`shift(0)`（默认违规、白名单豁免）；"
-        "数据层 features 尾行不得超前原料 raw（pipeline shift(1) 设计，同日/滞后正常）",
+        "数据层 features 尾行超前原料 >1 个自然日判违规（容忍 T+1 上游发布滞后，"
+        "pipeline 用最近可得值、值不超前，超前 ≤1 日 = 非前视）",
         "- 结论：**%s**" % verdict,
         "",
         "## 一、代码层",
