@@ -130,11 +130,11 @@
 </nav>
 
 <script>
-var INDEX = {{ index_json }};
-var FACTORS = {{ factors_json }};
-var POSITION = {{ position_json }};
-var EXTERNAL = {{ external_json }};
-var HUMAN30 = {{ human30_json }};
+var INDEX = {{ index_json | default('null') }};
+var FACTORS = {{ factors_json | default('null') }};
+var POSITION = {{ position_json | default('null') }};
+var EXTERNAL = {{ external_json | default('null') }};
+var HUMAN30 = {{ human30_json | default('null') }};
 function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a = arguments[i]; for (k in a) { if (a.hasOwnProperty(k)) { o[k] = a[k]; } } } return o; }
 (function () {
   var tabs = document.querySelectorAll(".tab-btn");

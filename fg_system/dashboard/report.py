@@ -656,6 +656,8 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
             for d, v in valid["target_position"].dropna().items()
         ]) if "target_position" in valid.columns else _json([]),
         external_json=_json(external),
+        human30=_human30_block(),
+        human30_json=_json(_human30_dashboard_json()),
         # 「添加到主屏幕」所需标签（manifest / 图标 / theme-color）——
         # 让手机**不需要 APK** 也能有独立图标，见 pwa 模块 docstring。
         pwa_head=pwa.HEAD_TAGS,
@@ -704,6 +706,49 @@ def build(features, path=None, title="贪婪恐惧指数仪表盘", prices_path=
 
 def _json(obj):
     return json.dumps(obj, ensure_ascii=False, default=str)
+
+
+def _human30_block():
+    """🌱 Human 3.0 状态卡（看板「Human 3.0」tab 顶部）。
+
+    无记录返回提示文案；有记录返回：最新日期 · 均分 · 意识层级 ·
+    连续未打卡提醒 · 四象限明细。
+    """
+    from fg_system import human30 as _h30
+    rec = _h30.latest()
+    if not rec:
+        return "<p style='color:#888'>暂无打卡记录（可在本页下方表单打卡）</p>"
+    agg = _h30.aggregate(rec)
+    q = _h30.QUADRANTS
+    gap = _h30.days_since_last()
+    warn = (" · ⏰ 已连续 %d 天未打卡（记录断档，极端档位归因将缺样本）" % gap
+            if gap is not None and gap >= 1 else "")
+    line = "<p>%s · 均分 <b>%s</b> · 意识层级 <b>L%s %s</b>%s</p>" % (
+        rec["date"], agg["avg"], agg["level"], agg["level_name"], warn)
+    detail = "<p style='font-size:12px;color:#8b949e'>%s</p>" % (
+        " · ".join("%s %d" % (_h30.LABELS[k], rec[k]) for k in q))
+    return line + detail
+
+
+def _human30_dashboard_json():
+    """Human 3.0 看板数据（雷达 + 趋势图）；无记录返回 None → 渲染为 null。
+
+    结构：{dates, keys, labels, series, avg, latest}，与 index.html 前端
+    HUMAN30 的消费方式对应（前端对 null 有守卫，不渲染）。
+    """
+    from fg_system import human30 as _h30
+    recs = _h30.history(n=90)
+    if not recs:
+        return None
+    q = _h30.QUADRANTS
+    return {
+        "dates": [r["date"] for r in recs],
+        "keys": q,
+        "labels": [_h30.LABELS[k] for k in q],
+        "series": {k: [r[k] for r in recs] for k in q},
+        "avg": [round(sum(r[k] for k in q) / len(q), 1) for r in recs],
+        "latest": {k: recs[-1][k] for k in q},
+    }
 
 
 def _load_external_index():
