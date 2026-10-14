@@ -6,6 +6,8 @@
 本模块对应设计文档 §5.2~§5.5 的固定问卷 + 确定性规则。
 ⚠️ 规则本身为〔自创〕（原文靠 LLM 判断），已在 docs/human30-v2-design.md 中明示。
 """
+import json
+
 from . import model
 
 
@@ -93,4 +95,88 @@ def judge_traits(answers):
             raise ValueError("Trait %s 答案非法：%r（可选 %s）"
                              % (t, v, sorted(TRAIT_TIERS)))
         out[t] = TRAIT_TIERS[v]
+    return out
+
+
+# ---------------------------------------------------------------- 🟡 主路径（H-REV-001）
+
+_PROMPT_TMPL = """你在做 Human 3.0 发展层级评估。基于下面的追问记录，
+判定四个象限各自的**层级**（1/2/3）、**相位**（"dissonance"/"uncertainty"/"discovery" 之一）与 **Traits**（knowledge/experience/skill，各 1/2/3）。
+
+追问记录（JSON）：
+%s
+
+严格只输出合法 JSON，字段名勿改，缺字段即失败：
+{"mind": {"level": 1|2|3, "confidence": "high|medium|low", "phase": "dissonance"|"uncertainty"|"discovery",
+          "traits": {"knowledge": 1|2|3, "experience": 1|2|3, "skill": 1|2|3}},
+ "body": {...}, "spirit": {...}, "vocation": {...}}"""
+
+
+def _extract_json(text):
+    import re
+    m = re.search(r"```(?:json)?\s*(.*?)\s*```", text, re.S)
+    if m:
+        text = m.group(1)
+    return json.loads(text)
+
+
+def _undetermined():
+    """诚实"未判定"降级（**不猜** ✗）：四象限 level=None + fallback 标 ✓。"""
+    out = {q: {"level": None, "confidence": "low",
+               "detail": {"answers": []}, "phase": None, "traits": {}}
+           for q in model.QUADRANTS}
+    out["degraded"] = True
+    out["via"] = "deterministic"
+    out["fallback"] = "fixed_questionnaire"
+    return out
+
+
+def judge_via_llm(transcript, client=None, fixed_answers=None):
+    """🟡 主路径：LLM 自适应追问判定（**已登记例外 H-REV-001**）。
+
+    transcript: {象限: [{"q": 追问原文, "a": 回答}, ...]}
+    返回与 `judge_all()` **同构** ✓，外加 `degraded` / `via`（/`fallback`）。
+
+    降级（🟡 失败：抛错 / 非法 JSON / 字段非法 / 空 transcript）：
+      · 给了 `fixed_answers`（{象限: [1|2|3] × 3}）⇒ 走 `judge_all(fixed_answers)` ✓
+      · 否则 ⇒ `_undetermined()` ✓
+    🔴 **不得**把自由文本机械映射成 1/2/3 ✗（那是发明新规则 ✗）。
+    """
+    from . import llm
+
+    llm.require_exception()          # 守卫 3（**调用时**检查 ✓）
+
+    def _degrade():
+        if fixed_answers is not None:
+            base = judge_all(fixed_answers)
+            base["degraded"] = True
+            base["via"] = "deterministic"
+            return base
+        return _undetermined()
+
+    if not transcript or not any(transcript.get(q) for q in model.QUADRANTS):
+        return _degrade()
+    try:
+        text, via = llm.call_llm(
+            _PROMPT_TMPL % json.dumps(transcript, ensure_ascii=False), client=client)
+        data = _extract_json(text)
+        out = {}
+        for q in model.QUADRANTS:
+            d = data[q]
+            if d.get("level") not in (1, 2, 3, None):
+                return _degrade()
+            if d.get("phase") not in (set(model.PHASES) | {"unknown", None}):
+                return _degrade()
+            tr = d.get("traits") or {}
+            if not set(model.TRAITS) <= set(tr):
+                return _degrade()
+            out[q] = {"level": d.get("level"),
+                      "confidence": d.get("confidence") or "medium",
+                      "detail": {"answers": transcript.get(q) or []},
+                      "phase": d.get("phase"),
+                      "traits": {k: tr[k] for k in model.TRAITS}}
+    except Exception:
+        return _degrade()
+    out["degraded"] = False
+    out["via"] = via
     return out

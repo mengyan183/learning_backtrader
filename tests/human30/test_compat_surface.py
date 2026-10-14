@@ -79,3 +79,16 @@ def test_metatype_surface_present():
                  "archetype_names", "lifestyle", "cross_quadrant",
                  "false_transformation", "regression"):
         assert hasattr(human30.metatype, name), "metatype 缺：%s" % name
+
+
+def test_p4_surface_present():
+    """P4 新增：llm / render 的公开名必须可从包访问。"""
+    from fg_system import human30
+    for mod, names in (("llm", ("is_exception_registered", "require_exception",
+                                "call_llm", "extract_json")),
+                       ("render", ("render_report", "level_word", "phase_word"))):
+        assert hasattr(human30, mod), "包未 re-export %s" % mod
+        for n in names:
+            assert hasattr(getattr(human30, mod), n), "%s 缺：%s" % (mod, n)
+    assert hasattr(human30.assess, "judge_via_llm")
+    assert hasattr(human30.metatype, "generate")

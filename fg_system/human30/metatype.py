@@ -10,6 +10,8 @@
   §1.4  回退 / 假性转变〔主文〕+〔Prompt〕
 🟡 Metatype 命名与叙述属 P4（走已登记 H-REV-001）。
 """
+import json
+
 from . import model
 
 
@@ -158,3 +160,55 @@ def regression(levels, prev_levels):
                     and prev_levels.get(q) is not None
                     and levels[q] < prev_levels[q])
             for q in model.QUADRANTS}
+
+
+# ---------------------------------------------------------------- 🟡 Metatype（H-REV-001）
+
+_META_PROMPT = """你在做 Human 3.0 的 **Metatype 命名**（原文的招牌输出）。
+
+四象限层级（JSON）：%s
+
+请给出：
+1. `metatype`：一个**动态名称**（2~4 个词，英文或中文均可，**不得含数字** ✗）
+2. `narrative`：2~3 句叙述
+
+严格只输出合法 JSON，字段名勿改：
+{"metatype": "...", "narrative": "..."}"""
+
+_BAND_WORD = {"low": "起步期", "mid": "发展期", "high": "整合期"}
+
+
+def _fallback_metatype(levels):
+    """确定性降级：Archetype 词表 + 整体档位（🔴 **不含数字** ✗）。"""
+    names = archetype_names(levels)
+    try:
+        band = band_of(total_score(levels)["avg_level"])
+    except ValueError:
+        band = None
+    band_word = _BAND_WORD.get(band, "未判定")
+    return "以 %s 为主线的%s组合" % (names.get("vocation") or "未判定", band_word)
+
+
+def generate(levels, client=None):
+    """🟡 Metatype 命名与叙述（**已登记例外 H-REV-001**）。
+
+    成功: {"metatype": str, "narrative": str, "via": str, "degraded": False}
+    降级: {"metatype": <词表+档位，不含数字>, "narrative": "",
+           "via": "deterministic", "degraded": True}
+    """
+    from . import llm
+
+    llm.require_exception()          # 守卫 3（**调用时**检查 ✓）
+    try:
+        text, via = llm.call_llm(
+            _META_PROMPT % json.dumps(levels, ensure_ascii=False), client=client)
+        data = llm.extract_json(text)
+        name = (data.get("metatype") or "").strip()
+        if not name:
+            raise ValueError("metatype 为空")
+        return {"metatype": name,
+                "narrative": (data.get("narrative") or "").strip(),
+                "via": via, "degraded": False}
+    except Exception:
+        return {"metatype": _fallback_metatype(levels), "narrative": "",
+                "via": "deterministic", "degraded": True}
