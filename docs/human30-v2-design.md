@@ -156,15 +156,46 @@ Transcend and Include ／ **Pre-Trans Fallacy** ／ Development Is Non-Linear �
 ---
 
 ## 3. 架构
+
+### 3.0 🔴 命名冲突与处置（**评审漏项 C-4**，2026-10-14 实测发现）
+`fg_system/human30.py`（v1 文件）与 `fg_system/human30/`（v2 包）**同名** ✗ ⇒
+Python 导入**优先选包** ✗ ⇒ 建包后 `from fg_system import human30` 拿到的是**空的 v2 包** ✗
+⇒ **实测 27 处回归** ✗（`test_human30.py` 14 errors、`robustness` 5、`review` 4、
+`l35_kb_closure` 3，以及 `dashboard/server.py` / `report.py` / `human30_cli.py` /
+`human30_review.py` / `invest_research.py`）。
+
+> ⚠️ 本条**我和 4 位评审员都漏了** ✗ —— 我原写"旧 `human30.py` 变薄兼容层"在物理上不成立 ✗；
+> 评审角色 C 亦判定"兼容层总体成立" ✗。由实施 subagent 的回归验证抓到 ✓。
+
+⇒ **定死（用户 2026-10-14 决策）**：v1 **迁进包内**，`fg_system/human30.py` **删除** ✓，
+并加 `tests/human30/test_compat_surface.py` 守卫 —— **漏一个名就红** ✓。
+
+### 3.0.1 🔴 v1 代码**彻底分解**（实施中发现计划缺陷，2026-10-14 修正）
+原计划让 `__init__.py` 从 `legacy.py` 取 `record` ✗ ⇒ **C-3 的修复会落在 `store.record` 里成为死代码** ✗
+（生产走的是 `legacy` 的旧版 ✗）⇒ **取消 `legacy.py`** ✗，改为彻底分解：
+
 ```
 fg_system/human30/
-├── __init__.py       # 对外 API（兼容 v1 全部函数）
-├── model.py          # 常量：象限/层级/相位/Traits/Archetype 词表/Lifestyle/指标表
-├── store.py          # 读写 + 原子写 + 损坏抛错 + 懒迁移
-├── assess.py         # 判层 + 相位 + Traits + 假性转变/回退 + 跨象限（含 🟡 与降级双路）
-└── metatype.py       # 整体分 + Lifestyle + Metatype（🟡）
-fg_system/human30.py  # 薄兼容层：re-export（旧调用点不改）
+├── __init__.py       # 对外 API：re-export model / store / metrics 全部名
+├── model.py          # 常量与词表（象限/层级/相位/Traits/Archetype/Lifestyle/指标/QUESTIONS/LIKERT_SCORES）
+├── store.py          # 数据层（DATA_PATH / _load / _save / record / latest / history）+ 同日合并(C-3) + 懒迁移
+├── metrics.py        # 指标层（aggregate / advice / brief_line / days_since_last / window_stats / to_csv / insight_summary / answers_to_scores / record_from_answers）+ C-1
+├── assess.py         # 判层/相位/Traits/假性转变/回退/跨象限（🟡 + 降级双路）—— P2
+└── metatype.py       # 整体分 + Lifestyle + Metatype（🟡）—— P4
 ```
+（`fg_system/human30.py` **已删除** ✓）
+
+**monkeypatch 兼容**：v1 的 3 个测试用 `monkeypatch.setattr(human30, "DATA_PATH", ...)` ✗。
+包命名空间的属性是**副本** ✗ ⇒ `store.py` 必须有解析器：
+```python
+def _data_path():
+    """优先取包命名空间上的 DATA_PATH（兼容 v1 测试的 monkeypatch），否则退回本模块。"""
+    import sys
+    pkg = sys.modules.get("fg_system.human30")
+    p = getattr(pkg, "DATA_PATH", None) if pkg is not None else None
+    return p or DATA_PATH
+```
+`_load` / `_save` 内一律用 `_data_path()` ✓ ⇒ **v1 测试一字不改仍全绿** ✓。
 **约束**：v1 既有对外函数签名与返回结构**不得破坏** ⇒ `scripts/invest_research.py:650`、
 `fg_system/dashboard/report.py:711`、`fg_system/dashboard/server.py:195/154` **无需同时修改** ✓
 
@@ -225,7 +256,11 @@ _save(data)                                                                     
    而 `rec` 只含 `date/mind/body/spirit/vocation/note/market` ⇒ **v2 新字段（`levels`/`phases`/`traits`/`flags`/`assessment`/`schema`）会被抹掉** ✗
 
 ⇒ **定死**：
-- `store.append()` 必须做「**同日合并**」（读到同日旧记录 → **深合并** v2 字段）**而非"删旧+append"** ✗
+- `store.append()` 必须做「**同日合并**」（读到同日旧记录 → **顶层覆盖**：新记录出现的顶层 key 整体取新值；未出现的顶层 key 保留旧值）**而非"删旧+append"** ✗
+  > ⚠️ **2026-10-14 实施修正**：原写"深合并"是**错的** ✗ —— 递归合并 dict 会让 v1 要求"非法 `market` 值不残留"的测试转红 ✗
+  > （`tests/test_human30.py::test_record_with_market_snapshot`）。**顶层覆盖**才同时满足两条硬要求 ✓：
+  > `market` 在新记录里 ⇒ 整体替换（非法值丢弃 ✓）；`schema`/`levels`/`phases` 不在新记录里 ⇒ 保留 ✓。
+  > 实现见 `fg_system/human30/store.py::_merge_same_day` ✓。
 - 序列化时**保留所有未知字段**（不得因白名单丢字段）✓
 - 排序用 `r.get("date")`，畸形记录**不崩**（跳过或置后）✓
 - **只在确实有变更时才 `_save`** ✓
