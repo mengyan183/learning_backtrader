@@ -69,3 +69,13 @@ def test_assess_surface_present():
     for name in ("judge_level", "judge_all", "judge_phase",
                  "judge_traits", "phase_label"):
         assert hasattr(human30.assess, name), "assess 缺：%s" % name
+
+
+def test_metatype_surface_present():
+    """P3 新增：metatype 的公开名必须可从包访问。"""
+    from fg_system import human30
+    assert hasattr(human30, "metatype"), "包未 re-export metatype"
+    for name in ("total_score", "band_of", "quadrant_levels", "archetype_name",
+                 "archetype_names", "lifestyle", "cross_quadrant",
+                 "false_transformation", "regression"):
+        assert hasattr(human30.metatype, name), "metatype 缺：%s" % name

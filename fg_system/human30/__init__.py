@@ -5,7 +5,7 @@
 对外 API = re-export model / store / metrics 的全部名字，
 保证 `from fg_system import human30` 与 v1 完全兼容（守卫见 tests/human30/test_compat_surface.py）。
 """
-from . import model, store, metrics, assess              # noqa: F401
+from . import model, store, metrics, assess, metatype   # noqa: F401
 from .model import (                                     # noqa: F401
     QUADRANTS, LABELS, LEVELS, PHASES, PHASE_LABELS, TRAITS,
     AQAL_POSITIONS, ARCHETYPES, LIFESTYLE_ARCHETYPES,
