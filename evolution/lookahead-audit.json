@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-14T09:42:34",
+  "generated_at": "2026-10-14T19:19:24",
   "cheat_on": false,
   "verdict": "PASS",
   "code": {
@@ -21,8 +21,13 @@
         "code": "df[\"ret_next\"] = df[\"close\"].shift(-1) / df[\"close\"] - 1"
       },
       {
+        "file": "scripts/crude_factor_check.py",
+        "line": 92,
+        "code": "fwd = q.shift(-h) / q - 1.0"
+      },
+      {
         "file": "scripts/factor_screen_extend.py",
-        "line": 206,
+        "line": 260,
         "code": "fut = spy.shift(-h) / spy - 1.0"
       },
       {
@@ -56,7 +61,7 @@
   "data": {
     "features_tail": "2026-10-13",
     "raw_tails": {
-      "vix.csv": "2026-10-12",
+      "vix.csv": "2026-10-13",
       "sentiment.csv": "2026-10-12",
       "prices.csv": "2026-10-13"
     },

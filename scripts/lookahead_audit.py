@@ -55,6 +55,7 @@ RESEARCH_WHITELIST = {
     "scripts/putcall_factor_check.py",  # B-6 Put-Call 因子检验
     "scripts/attribution_check.py",     # C-10 实盘-回测归因（只统计不判决）
     "scripts/verify_hypotheses.py",     # H 假说事件研究（事件后收益衡量）
+    "scripts/crude_factor_check.py",    # MT-10 原油候选因子实检（IC/IR + 事件研究，仅研究参考）
     "scripts/evolve_walkforward.py",    # C-5 季度 walk-forward 裁判
     "scripts/evolve_baseline.py",       # A-2 回测基线恢复
     "scripts/norm_compare.py",       # R1.4 归一化对照实验（forward return 取证）

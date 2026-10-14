@@ -87,6 +87,8 @@ def event_study(signal_ret, qqq_close, threshold=0.05, horizons=(5, 20)):
     for name, ev in (("up", events_up), ("down", events_down)):
         row = {}
         for h in horizons:
+            # 前瞻收益（shift(-h)）：仅供研究/评测（事件研究取证），
+            # 禁止用于生成仓位 —— 已在 lookahead_audit RESEARCH_WHITELIST 登记。
             fwd = q.shift(-h) / q - 1.0
             ev_fwd = fwd.loc[ev.index].dropna()
             baseline = fwd.dropna()
