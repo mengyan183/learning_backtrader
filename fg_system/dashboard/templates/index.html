@@ -111,11 +111,22 @@
 </div>
 </div>
 
+<div class="sec-wrap" data-name="任务">
+<h2>定时任务执行情况</h2>
+<div class="sec">
+<p id="taskSummary" style="color:#888">加载中…</p>
+<div id="taskTable"></div>
+<div id="taskMsg" style="margin-top:6px;font-size:12px;color:#888"></div>
+<p style="font-size:12px;color:#888;margin-top:8px">异常项可点击「重试」后台触发对应脚本（仅白名单），约 1-2 分钟后自动刷新本区块查看恢复。</p>
+</div>
+</div>
+
 <nav class="tabbar">
 <button class="tab-btn on" data-tab="0">市场</button>
 <button class="tab-btn" data-tab="1">持仓</button>
 <button class="tab-btn" data-tab="2">系统</button>
 <button class="tab-btn" data-tab="3">Human 3.0</button>
+<button class="tab-btn" data-tab="4">任务</button>
 </nav>
 
 <script>
@@ -492,6 +503,73 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
     };
     window.addEventListener("resize", rz);
   }
+
+  // 定时任务监控（T-2026-10-14）：/api/tasks 状态 + 白名单一键重试
+  var taskMsg = document.getElementById("taskMsg");
+  function retryTask(name) {
+    if (!taskMsg) { return; }
+    taskMsg.textContent = "触发重试 " + name + " …";
+    fetch("/api/tasks/retry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target: name })
+    }).then(function (r) {
+      if (r.ok) {
+        return r.json().then(function (d) {
+          taskMsg.textContent = "✅ 已触发 " + name + "（PID " + d.pid +
+            "），约 1-2 分钟后自动刷新本区块";
+          setTimeout(loadTasks, 15000);
+        });
+      }
+      return r.text().then(function (t) { taskMsg.textContent = "❌ " + t; });
+    }).catch(function (e) { taskMsg.textContent = "❌ 请求失败：" + e; });
+  }
+  function loadTasks() {
+    var sum = document.getElementById("taskSummary");
+    var box = document.getElementById("taskTable");
+    if (!sum || !box) { return; }
+    fetch("/api/tasks", { cache: "no-store" }).then(function (r) {
+      return r.json();
+    }).then(function (d) {
+      sum.textContent = d.all_ok
+        ? "✅ 全部正常：" + d.data.length + " 项数据 + " + d.tasks.length + " 个任务注册在位"
+        : "⚠️ " + d.issues.length + " 项异常（见下，可点重试）";
+      var html = "<table style='width:100%;font-size:12px;border-collapse:collapse'>" +
+        "<tr style='color:#8b949e;text-align:left'>" +
+        "<th style='padding:4px'>数据/任务</th><th>最后日期</th><th>状态</th><th></th></tr>";
+      for (var i = 0; i < d.data.length; i++) {
+        var r = d.data[i];
+        html += "<tr style='border-top:1px solid rgba(255,255,255,.06)'>" +
+          "<td style='padding:4px'>" + r.name + "</td>" +
+          "<td>" + (r.last || "—") + "</td>" +
+          "<td>" + (r.ok
+            ? "<span style='color:#3fb950'>正常</span>"
+            : "<span style='color:#f85149'>停更 " + (r.lag == null ? "? " : r.lag + " 天") + "</span>") + "</td>" +
+          "<td>" + (r.ok ? "" : "<button data-retry='" + r.name + "' style='padding:2px 10px;cursor:pointer;font-size:12px'>重试</button>") + "</td></tr>";
+      }
+      for (var j = 0; j < d.tasks.length; j++) {
+        var t = d.tasks[j];
+        html += "<tr style='border-top:1px solid rgba(255,255,255,.06)'>" +
+          "<td style='padding:4px'>" + t.label + "</td><td colspan='2'>" +
+          (t.registered
+            ? "<span style='color:#3fb950'>已注册</span>"
+            : "<span style='color:#f85149'>未注册</span>") + "</td><td></td></tr>";
+      }
+      html += "</table>";
+      box.innerHTML = html;
+      var btns = box.querySelectorAll("[data-retry]");
+      for (var b = 0; b < btns.length; b++) {
+        (function (btn) {
+          btn.addEventListener("click", function () {
+            retryTask(btn.getAttribute("data-retry"));
+          });
+        })(btns[b]);
+      }
+    }).catch(function () {
+      sum.textContent = "状态加载失败（服务未重启？）";
+    });
+  }
+  loadTasks();
 })();
 </script>
 

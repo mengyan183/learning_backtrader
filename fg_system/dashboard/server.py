@@ -290,6 +290,108 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             return Response("factors api 失败：%s: %s" % (type(exc).__name__, exc),
                             status=500, mimetype="text/plain; charset=utf-8")
 
+    # ---- 定时任务监控 API（2026-10-14）：状态查询 + 白名单一键重试 ----
+
+    # 重试白名单：数据项 → 执行方式。
+    # 形式：["scripts/相对脚本", 参数...] ｜ ["-c", "代码"] ｜
+    #      ["launchctl:{kickstart 子命令}"]（重试 launchd 任务本身，
+    #      含 <uid> 占位；shoutu 系走任务，保持"shoutu 抓取由定时任务独占"纪律）。
+    # **只允许这些映射**，绝不执行任意命令（页面按钮无法注入命令）。
+    _RETRY_MAP = {
+        "vix":            ["scripts/fetch_sentiment.py"],
+        "sentiment":      ["scripts/fetch_sentiment.py"],
+        "funding_rate":   ["scripts/fetch_sentiment.py"],
+        "putcall":        ["scripts/fetch_putcall.py"],
+        "fedwatch":       ["scripts/fetch_fedwatch.py"],
+        "kalshi_fed":     ["scripts/fetch_kalshi_fed.py"],
+        "shoutu_fng":     ["launchctl:kickstart gui/<uid>/com.xingguo.fg-shoutu-refresh"],
+        "shoutu_history": ["launchctl:kickstart gui/<uid>/com.fg.shoutu-history"],
+        "news_sentiment": ["scripts/fetch_news.py"],
+        "stablecoin_usage": ["scripts/fetch_stablecoin_usage.py", "--incremental"],
+        "prices":         ["-c", "from fg_system.data import fetch; fetch.update_prices()"],
+        "features":       ["-c", "from fg_system import pipeline; pipeline.run(write=True)"],
+    }
+
+    @app.route("/api/tasks")
+    def _tasks_api():
+        """定时任务与数据新鲜度状态（复用 scripts/task_monitor.collect_status）。"""
+        import datetime as _dt
+        try:
+            root = os.path.dirname(os.path.dirname(os.path.dirname(
+                os.path.abspath(__file__))))
+            if root not in sys.path:
+                sys.path.insert(0, root)
+            from scripts import task_monitor as _tm
+            st = _tm.collect_status()
+            out = {
+                "checked_at": _dt.datetime.now().isoformat(timespec="seconds"),
+                "all_ok": st["all_ok"],
+                "issues": st["issues"],
+                "data": st["data"],
+                "tasks": st["tasks"],
+            }
+            resp = Response(_json_ok(out), mimetype="application/json")
+            resp.headers["Cache-Control"] = "no-store"
+            return resp
+        except Exception as exc:
+            return Response("tasks api 失败：%s: %s" % (type(exc).__name__, exc),
+                            status=500, mimetype="text/plain; charset=utf-8")
+
+    @app.route("/api/tasks/retry", methods=["POST"])
+    def _tasks_retry():
+        """页面「重试」：白名单映射 → 后台执行对应抓取/合成脚本，立即返回。
+
+        互斥：Data/task_retry.lock 记 target+pid，进程存活时拒绝新重试
+        （同一时刻只允许一个重试在跑，防重复触发与写盘冲突）。
+        日志：logs/task_retry.log（追加）。
+        """
+        import datetime as _dt
+        import json as _json
+        import subprocess as _sp
+        payload = request.get_json(force=True, silent=True) or {}
+        target = str(payload.get("target") or "")
+        cmd = _RETRY_MAP.get(target)
+        if not cmd:
+            return Response("不支持的 target：%s" % target, status=400,
+                            mimetype="text/plain; charset=utf-8")
+
+        lock_p = os.path.join(config.DATA_DIR, "task_retry.lock")
+        if os.path.exists(lock_p):
+            try:
+                with open(lock_p, encoding="utf-8") as f:
+                    d = _json.load(f)
+                try:
+                    os.kill(int(d.get("pid", -1)), 0)
+                    return Response("已有重试正在运行（%s，PID %s），请稍候再试"
+                                    % (d.get("target"), d.get("pid")),
+                                    status=409, mimetype="text/plain; charset=utf-8")
+                except (ProcessLookupError, ValueError, TypeError):
+                    pass
+            except Exception:
+                pass
+
+        if cmd[0] == "-c":
+            full = [sys.executable, "-c", cmd[1]]
+        elif cmd[0].startswith("launchctl:"):
+            import shlex as _shlex
+            spec = cmd[0].split(":", 1)[1].replace("<uid>", str(os.getuid()))
+            full = ["launchctl"] + _shlex.split(spec)
+        else:
+            full = [sys.executable,
+                    os.path.join(config.ROOT, cmd[0])] + list(cmd[1:])
+        log = os.path.join(config.ROOT, "logs", "task_retry.log")
+        os.makedirs(os.path.dirname(log), exist_ok=True)
+        with open(log, "a", encoding="utf-8") as f:
+            f.write("\n=== %s 重试 %s ===\n"
+                    % (_dt.datetime.now().isoformat(timespec="seconds"), target))
+        proc = _sp.Popen(full, cwd=config.ROOT,
+                         stdout=open(log, "a", encoding="utf-8"),
+                         stderr=_sp.STDOUT)
+        with open(lock_p, "w", encoding="utf-8") as f:
+            _json.dump({"target": target, "pid": proc.pid,
+                        "started": _dt.datetime.now().isoformat(timespec="seconds")}, f)
+        return _json_ok({"ok": True, "target": target, "pid": proc.pid})
+
     return app
 
 

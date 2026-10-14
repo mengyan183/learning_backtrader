@@ -95,38 +95,41 @@ def save_state(state: dict):
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="贪恐系统定时任务与数据新鲜度监控")
-    ap.add_argument("--push-alert", action="store_true",
-                    help="存在异常时推飞书（launchd 调度默认带此参数）")
-    args = ap.parse_args(argv)
+def collect_status(today=None):
+    """纯检查（不推送、不写 state）：返回监控明细 dict，供 CLI 与 dashboard API 复用。
 
-    today = date.today()
-    day_key = today.isoformat()
-    issues = []          # 本次发现的所有异常
-    keys = []            # 去重 key（同日同项只推一次）
+    返回：{"data": [{"name","last","lag","tol","ok"}],
+           "tasks": [{"label","registered","ok"}],
+           "issues": [...], "all_ok": bool}
+    """
+    today = today or date.today()
+    data_rows, issues, keys = [], [], []
 
-    # 1) 数据新鲜度
     for name, rel, col, tol in DATA_CHECKS:
         p = REPO / rel
         if not p.exists():
+            data_rows.append({"name": name, "last": None, "lag": None,
+                              "tol": tol, "ok": False})
             issues.append("%s：文件缺失 %s" % (name, rel))
             keys.append("%s:missing" % name)
             continue
         dmax = _last_date_csv(p, col)
         if dmax:
             lag = (today - date.fromisoformat(dmax)).days
+            data_rows.append({"name": name, "last": dmax, "lag": lag,
+                              "tol": tol, "ok": lag <= tol})
             if lag > tol:
                 issues.append("%s：数据停更 %s（最后 %s，容忍 ≤%d 天）"
                               % (name, lag, dmax, tol))
                 keys.append("%s:%s" % (name, dmax))
         else:
             md = _mtime_days(p, today)
+            data_rows.append({"name": name, "last": "date列缺失",
+                              "lag": md, "tol": tol, "ok": md <= tol + 1})
             if md > tol + 1:
                 issues.append("%s：date 列缺失且文件 %d 天未写入" % (name, md))
                 keys.append("%s:mtime%d" % (name, md))
 
-    # 2) launchd 注册状态
     try:
         out = subprocess.run(["launchctl", "list"], capture_output=True,
                              text=True, timeout=15).stdout
@@ -136,10 +139,29 @@ def main(argv=None) -> int:
         out = ""
     registered = {line.split()[-1] for line in out.splitlines()
                   if line.split() and len(line.split()) >= 3}
+    task_rows = []
     for t in TASKS:
-        if t not in registered:
+        ok = t in registered
+        task_rows.append({"label": t, "registered": ok, "ok": ok})
+        if not ok:
             issues.append("定时任务未注册：%s" % t)
             keys.append("task:%s" % t)
+
+    return {"data": data_rows, "tasks": task_rows,
+            "issues": issues, "keys": keys, "all_ok": not issues}
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description="贪恐系统定时任务与数据新鲜度监控")
+    ap.add_argument("--push-alert", action="store_true",
+                    help="存在异常时推飞书（launchd 调度默认带此参数）")
+    args = ap.parse_args(argv)
+
+    today = date.today()
+    day_key = today.isoformat()
+    st = collect_status(today)
+    issues = st["issues"]
+    keys = st["keys"]
 
     # 3) 去重 + 推送
     state = load_state()
