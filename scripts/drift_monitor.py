@@ -14,7 +14,8 @@
   .venv/bin/python scripts/drift_monitor.py --push       # 报告推飞书
   .venv/bin/python scripts/drift_monitor.py --push-alert # 仅异常(预警/告警)时推飞书
   .venv/bin/python scripts/drift_monitor.py --quality    # 数据质量闸门（R1.5）单独跑
-  .venv/bin/python scripts/drift_monitor.py --crosscheck # D2 多源交叉校验（VIX 双源偏差表）
+  .venv/bin/python scripts/drift_monitor.py --crosscheck # D2 多源交叉校验（默认 --source vix）
+  .venv/bin/python scripts/drift_monitor.py --crosscheck --source fed  # fed：FedWatch vs Kalshi KXFED
   .venv/bin/python scripts/drift_monitor.py --backfill   # D2 自动回填（缺值用副源补齐）
 
 ## R1.5 数据质量闸门（freqtrade 数据自检思想）
@@ -301,18 +302,69 @@ def _load_vix_source(path):
     return row.set_index("date")["close"].sort_index().astype("float64")
 
 
+def _load_source(path, value_col):
+    """读一个交叉校验源 CSV（date,<value_col>）→ index=日期 的取值序列。
+
+    源文件不存在 ⇒ 返回**空序列**（调用方据此走「有源为空」安全跳过分支）；
+    统一走 `date` + 指定列，避免各源列名差异散落在报告逻辑里。
+    """
+    if not os.path.exists(path):
+        return pd.Series(dtype="float64")
+    row = pd.read_csv(path, parse_dates=["date"])
+    return row.set_index("date")[value_col].sort_index().astype("float64")
+
+
+# 交叉校验的**源组**：按名字选一组可比的主/副源（`--source`）。
+# - vix：VIX 双源（主 CBOE vix.csv / 副 Nasdaq vix_alt.csv），列 = close。
+#   行为与历史一致（默认源）。
+# - fed：美联储利率决议**市场隐含概率**双源 ——
+#     主源 = 原 fed 源 fedwatch.csv（CME FedWatch，fg_system/fed.py 消费），
+#     副源 = kalshi_fed.csv（Kalshi KXFED，scripts/fetch_kalshi_fed.py 产出）。
+#   ⚠️ 口径提示：两源均为「市场隐含概率(%)」，可比的是**同列 hike_pct**；
+#   但 Kalshi 是 **Kalshi 自有市场**的隐含概率、FedWatch 是 **CME 期货**隐含概率，
+#   两者都非**实际利率**——不可与 FRED DFF（实际有效联邦基金利率）直接比。
+#   偏差仅作「需人工复核」标记，**不自动改仓位/调参**。
+SOURCES = {
+    "vix": {
+        "primary": os.path.join(config.RAW_DIR, "vix.csv"),
+        "secondary": os.path.join(config.RAW_DIR, "vix_alt.csv"),
+        "value": "close",
+        "label": "VIX 双源（close）",
+    },
+    "fed": {
+        "primary": os.path.join(config.RAW_DIR, "fedwatch.csv"),
+        "secondary": os.path.join(config.RAW_DIR, "kalshi_fed.csv"),
+        "value": "hike_pct",
+        "label": "fed 市场隐含加息概率（hike_pct）",
+    },
+}
+DEFAULT_SOURCE = "vix"
+
+
 def crosscheck_report(primary_path=None, secondary_path=None,
-                      threshold=CROSSCHECK_THRESHOLD):
+                      threshold=CROSSCHECK_THRESHOLD, source=DEFAULT_SOURCE):
     """多源交叉校验报告（**只出偏差表与需人工看行**，不改仓位/不调参）。
 
-    主源默认 `config.RAW_DIR/vix.csv`（CBOE）；副源默认 `config.RAW_DIR/vix_alt.csv`
-    （若不存在则视为缺副源，报告里明示）。返回 (报告文本, 偏差表)。
+    `source` 选一组可比源（见 `SOURCES`，默认 `vix`）；**仅按名取默认路径**，
+    显式注入 `primary_path`/`secondary_path` 时优先（测试用，保持向后兼容位置参数）：
+      - `vix`：主源 `config.RAW_DIR/vix.csv`（CBOE）/ 副源 `.../vix_alt.csv`。
+      - `fed`：主源 `config.RAW_DIR/fedwatch.csv`（CME FedWatch，原 fed 源）
+        / 副源 `.../kalshi_fed.csv`（Kalshi KXFED）；比对列 `hike_pct`。
+
+    **任一源缺失 ⇒ 视为缺源，报告明示并跳过**（不得据此回填）。
+    返回 (报告文本, 偏差表)。
     """
-    primary_path = primary_path or os.path.join(config.RAW_DIR, "vix.csv")
-    secondary_path = secondary_path or os.path.join(config.RAW_DIR, "vix_alt.csv")
-    p = _load_vix_source(primary_path)
-    s = _load_vix_source(secondary_path)
+    if source not in SOURCES:
+        raise ValueError("未知交叉校验源 %r（可选：%s）"
+                         % (source, "、".join(SOURCES)))
+    cfg = SOURCES[source]
+    value_col = cfg["value"]
+    primary_path = primary_path or cfg["primary"]
+    secondary_path = secondary_path or cfg["secondary"]
+    p = _load_source(primary_path, value_col)
+    s = _load_source(secondary_path, value_col)
     lines = ["# 多源交叉校验（D2）", ""]
+    lines.append("源组: %s（%s）" % (source, cfg["label"]))
     lines.append(f"主源: {primary_path}（{len(p)} 行）")
     lines.append(f"副源: {secondary_path}（{len(s)} 行）")
     lines.append(f"阈值: 相对偏差 > {threshold:.2%} 记为可疑（**仅人工复核，不自动改仓位**）")
@@ -340,8 +392,11 @@ def main():
     ap.add_argument("--push", action="store_true", help="报告推飞书")
     ap.add_argument("--push-alert", action="store_true", help="仅异常(预警/告警)时推飞书")
     ap.add_argument("--quality", action="store_true", help="R1.5 数据质量闸门：三路检测并写 freshness_warning.txt")
-    ap.add_argument("--crosscheck", action="store_true", help="D2 多源交叉校验：出 VIX 双源偏差表")
+    ap.add_argument("--crosscheck", action="store_true", help="D2 多源交叉校验：出双源偏差表")
     ap.add_argument("--backfill", action="store_true", help="D2 自动回填：主源缺值行用副源补齐（带可信度闸）")
+    ap.add_argument("--source", choices=sorted(SOURCES), default=DEFAULT_SOURCE,
+                    help="交叉校验源组（默认 %s）：vix=VIX 双源；"
+                         "fed=CME FedWatch vs Kalshi KXFED（hike_pct）" % DEFAULT_SOURCE)
     ap.add_argument("--threshold", type=float, default=CROSSCHECK_THRESHOLD,
                     help="交叉校验相对偏差阈值（默认 %.2f）" % CROSSCHECK_THRESHOLD)
     args = ap.parse_args()
@@ -359,7 +414,7 @@ def main():
                     print(" - %s ← %s = %.4f" % (r["date"], r["source"], r["value"]))
             else:
                 print("⚠️ %s 无 close/close_alt 双源列，跳过回填（不臆造列）。" % path)
-        report, _ = crosscheck_report(threshold=args.threshold)
+        report, _ = crosscheck_report(source=args.source, threshold=args.threshold)
         print(report)
         if args.push or args.push_alert:
             from scripts.invest_research import push_feishu

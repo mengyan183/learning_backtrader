@@ -228,3 +228,80 @@ def test_crosscheck_report_missing_secondary_is_safe(tmp_path):
     assert "有源为空" in report
     assert len(dev) == 0
     assert list(dev.columns) == dm.CROSSCHECK_COLUMNS
+
+
+# ---------------------------------------------------------------- 源选择（D2 fed 接线）
+# 需求：`crosscheck_report` 支持按**名字选一组源**（`--source vix|fed`）：
+#   - vix 组：主源 vix.csv(close) / 副源 vix_alt.csv(close)  —— **行为保持不变**
+#   - fed 组：主源 fedwatch.csv(hike_pct，CME FedWatch 市场隐含概率)
+#             / 副源 kalshi_fed.csv(hike_pct，Kalshi KXFED 市场隐含概率)
+# 副源缺失时**安全跳过并提示**（既有设计）。
+def test_sources_registry_has_vix_and_fed():
+    """源组注册表：至少含 vix / fed 两组，各带主副源与取值列。"""
+    from fg_system import config
+
+    assert "vix" in dm.SOURCES and "fed" in dm.SOURCES
+    vix = dm.SOURCES["vix"]
+    fed = dm.SOURCES["fed"]
+    # vix 组：双源同列 close，路径与既有默认一致（行为不变）
+    assert vix["value"] == "close"
+    assert vix["primary"] == os.path.join(config.RAW_DIR, "vix.csv")
+    assert vix["secondary"] == os.path.join(config.RAW_DIR, "vix_alt.csv")
+    # fed 组：主源 = 原 fed 源（CME FedWatch），副源 = Kalshi KXFED；同列 hike_pct
+    assert fed["value"] == "hike_pct"
+    assert fed["primary"] == os.path.join(config.RAW_DIR, "fedwatch.csv")
+    assert fed["secondary"] == os.path.join(config.RAW_DIR, "kalshi_fed.csv")
+
+
+def test_crosscheck_report_selects_fed_group_by_name(tmp_path):
+    """`source="fed"` ⇒ 用 fed 组：主源 fedwatch.csv / 副源 kalshi_fed.csv。"""
+    p = tmp_path / "fedwatch.csv"
+    s = tmp_path / "kalshi_fed.csv"
+    p.write_text("date,meeting,hike_pct\n"
+                 "2026-10-05,2026-11-04,22.0\n"
+                 "2026-10-06,2026-11-04,21.0\n", encoding="utf-8")
+    s.write_text("date,meeting,hike_pct\n"
+                 "2026-10-05,2026-11-04,21.0\n"   # 差 1.0 / 22.0 ≈ 4.5% ≤ 5%
+                 "2026-10-06,2026-11-04,30.0\n",  # 差 9.0 / 21.0 ≈ 42.9% 超阈值
+                 encoding="utf-8")
+    report, dev = dm.crosscheck_report(source="fed", primary_path=str(p),
+                                       secondary_path=str(s), threshold=0.05)
+    assert list(dev["date"]) == ["2026-10-05", "2026-10-06"]
+    assert list(dev["breach"]) == [False, True]
+    assert "2026-10-06" in report
+
+
+def test_crosscheck_report_vix_group_unchanged(tmp_path):
+    """`source` 缺省 / 显式 `vix` ⇒ 与既有 vix 双源行为**完全一致**（同表）。"""
+    p = tmp_path / "vix.csv"
+    s = tmp_path / "vix_alt.csv"
+    p.write_text("date,close\n2026-10-05,20.0\n2026-10-07,30.0\n", encoding="utf-8")
+    s.write_text("date,close\n2026-10-05,20.0\n2026-10-07,40.0\n", encoding="utf-8")
+    default_report, default_dev = dm.crosscheck_report(str(p), str(s),
+                                                       threshold=0.05)
+    vix_report, vix_dev = dm.crosscheck_report(source="vix", primary_path=str(p),
+                                               secondary_path=str(s),
+                                               threshold=0.05)
+    pd.testing.assert_frame_equal(default_dev, vix_dev)
+    assert default_report == vix_report
+    assert "共同日期 2 天，超阈值 1 天" in vix_report
+
+
+def test_crosscheck_report_fed_missing_secondary_is_safe(tmp_path):
+    """fed 组：副源（Kalshi KXFED）缺失 ⇒ 安全跳过并提示，偏差表为空但不崩。"""
+    p = tmp_path / "fedwatch.csv"
+    p.write_text("date,meeting,hike_pct\n2026-10-05,2026-11-04,22.0\n",
+                 encoding="utf-8")
+    report, dev = dm.crosscheck_report(source="fed", primary_path=str(p),
+                                       secondary_path=str(tmp_path / "nope.csv"),
+                                       threshold=0.05)
+    assert "有源为空" in report
+    assert len(dev) == 0
+    assert list(dev.columns) == dm.CROSSCHECK_COLUMNS
+
+
+def test_crosscheck_report_unknown_source_raises(tmp_path):
+    """未知源名 ⇒ 明确报错（不静默跑 vix，避免看错口径）。"""
+    import pytest
+    with pytest.raises((KeyError, ValueError)):
+        dm.crosscheck_report(source="spx")
