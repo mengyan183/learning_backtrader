@@ -43,3 +43,29 @@ def test_data_path_is_repo_root_Data_dir():
     repo_root = os.path.dirname(data_dir)
     assert os.path.isdir(os.path.join(repo_root, "fg_system"))
     assert os.path.isfile(os.path.join(repo_root, ".gitignore"))
+
+
+def test_gitignore_is_non_empty():
+    """守卫弱点修正（P1 评审）：只查 .gitignore 存在不够 —— 空文件也能过。
+
+    这里改为断言它**非空**且含 Data 相关忽略项。
+    """
+    import os
+    from fg_system import human30
+    repo_root = os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(human30.__file__))))
+    gi = os.path.join(repo_root, ".gitignore")
+    assert os.path.isfile(gi)
+    with open(gi, encoding="utf-8") as f:
+        text = f.read()
+    assert len(text.strip()) > 0, ".gitignore 为空 ✗"
+    assert "Data/" in text, ".gitignore 未忽略 Data/ ✗"
+
+
+def test_assess_surface_present():
+    """P2 新增：assess 的公开名必须可从包访问。"""
+    from fg_system import human30
+    assert hasattr(human30, "assess"), "包未 re-export assess"
+    for name in ("judge_level", "judge_all", "judge_phase",
+                 "judge_traits", "phase_label"):
+        assert hasattr(human30.assess, name), "assess 缺：%s" % name

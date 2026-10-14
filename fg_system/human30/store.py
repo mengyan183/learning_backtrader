@@ -117,12 +117,14 @@ def record(mind, body, spirit, vocation, note="", when=None, market=None):
 
 
 def latest():
+    """最新一条记录（已懒迁移）；无记录返回 None。"""
     records = _load().get("records", [])
-    return records[-1] if records else None
+    return migrate_record(records[-1]) if records else None
 
 
 def history(n=30):
-    return _load().get("records", [])[-n:]
+    """最近 n 条记录（时间升序，均已懒迁移）。"""
+    return [migrate_record(r) for r in _load().get("records", [])[-n:]]
 
 
 def bucket_level(score):
