@@ -1,109 +1,30 @@
-# Human 3.0 组合骨架
+# Human 3.0（**已合并** → 见 `docs/human30-v2-design.md`）
 
-> 2026-10-10 用户拍板：在贪恐系统中新增 Human 3.0 系统。
-> 形态 = **组合骨架**（四象限自评 + 每日状态记录 + 简报输出），交付 = **dashboard 新 tab**。
-> 框架来源：Dan Koe Human 3.0（四象限 × 三级意识）+ 孙宇晨×邵艾伦访谈行动原则（先开地图/先行动/小自我/AI 自动化）。
+> **U-5 合并（2026-10-15，P6）**：本文件原为 **v1 组合骨架**的设计说明，
+> 其内容已被 v2 重设计**取代** ⇒ 合并为**一份**：**`docs/human30-v2-design.md`**。
+> 本页只保留**变更指引**，避免旧结论误导。
 
-## 定位
+## 为什么合并（v1 文档已过时/含错）
 
-贪恐系统管"市场"，Human 3.0 管"人"：交易者的认知/身体/精神/事业四象限状态。
-骨架期落地**确定性规则**（无 LLM 判决，符合仓库纪律），后续可扩展。
-
-## 四象限（0-100 自评）
-
-| 象限 | 代码 | 含义 |
-|---|---|---|
-| 心/认知 | mind | 思维、心智模型、认知升级（AI 素养） |
-| 体/行动 | body | 健康、健身、执行力（薄肌理论落点） |
-| 精神/意义 | spirit | 关系、心态、小自我、生命感 |
-| 职/事业 | vocation | 事业、系统、选择权、轻资产 |
-
-## 意识层级判定（可复算规则）
-
-```
-avg = 四象限均值（0-100）
-avg < 40        → L1 从众者 Conformist（外部权威驱动·社会模板）
-40 <= avg <= 70 → L2 个体主义者 Individualist（内部权威驱动·我的方式）
-avg > 70        → L3 综合者 Synthesist（多视角整合·策略设计）
-std > 20        → 失衡标记（短板象限显著落后）
-```
-
-## 建议规则（确定性，无 LLM）
-
-- 短板 < 40：优先补短板（木桶效应，四象限同步升级）
-- 短板 40-70：次短板，保持节奏小幅提升
-- 全 ≥ 70：已达综合者态 → 外化输出（传承/教学/沉淀系统）
-- 失衡（std>20）：提示聚焦短板，勿让短板拖垮整体迁移能力
-- 较上次下降 ≥5 的象限：趋势提示
-- 固定注入孙学引擎行动原则一行（骨架期仅提示）
-
-## 数据与接入
-
-| 项 | 位置 |
+| v1 文档曾写 | v2 实际 |
 |---|---|
-| 核心模块 | `fg_system/human30.py`（record/latest/history/aggregate/advice/brief_line） |
-| 打卡 CLI | `scripts/human30_cli.py`（--set/--latest/--history） |
-| 数据文件 | `Data/human30.json`（运行态，.gitignore 不入库） |
-| 网页面板 | dashboard 第 4 个 tab「Human 3.0」（Level 进度条 + 四象限状态卡 + 快速打卡表单 + 雷达图 + 最近 30 次趋势 + 历史表） |
-| 页面打卡端点 | `POST /api/human30`（Flask，0-100 校验，当日覆盖，返回最新记录+聚合） |
-| 每日简报 | `build_brief_sections` 新增「🌱 Human 3.0 状态」板块（无记录时跳过） |
-| 测试 | `tests/test_human30.py`（level 边界/聚合/建议/记录幂等）＋ `tests/dashboard/test_server.py`（端点写入/校验/当日覆盖） |
+| 核心模块 = `fg_system/human30.py` | 🔴 该**单文件已删除**，改为 **`fg_system/human30/` 包**（`model`/`store`/`metrics`/`assess`/`metatype`/`llm`/`render`）|
+| 「骨架期**无 LLM 判决**」 | 🔴 已改为 **P-B′**：判层走 🟡 LLM 追问（**已登记 H-REV-001**），失败确定性降级 |
+| 意识层级 = 四象限**均值** 0-100 分档 | 🔴 改为**每象限各自判层**（L1/L2/L3）+ 整体分 `Σ(层级分)/12` |
+| 建议规则 = 「短板 < 40 优先补短板」等 | 🔴 改为原文口径：**Lifestyle 6 类 / Archetype 词表 / 跨象限解锁·阻塞 / 假性转变·回退** |
+| 四象限 = 0-100 自评 | ⚠️ 仍保留**日频打卡**（标注为〔自创〕）；**层级评估**改为**周期性完整问卷**（原文节奏）|
 
-## 用法
+## 去哪看什么
 
-```bash
-# 打卡（当日重复则覆盖）—— CLI 方式
-.venv/bin/python scripts/human30_cli.py --set --mind 65 --body 55 --spirit 60 --vocation 50 --note "今日状态"
-# 查询
-.venv/bin/python scripts/human30_cli.py --latest
-# 历史
-.venv/bin/python scripts/human30_cli.py --history 30
-```
+| 想知道 | 看 |
+|---|---|
+| **设计全文**（原文对照、判定机制、输出格式、守卫、分期）| `docs/human30-v2-design.md` |
+| **边界与红线**（不进判决链 / 🟡 例外 / 数据不入库）| `docs/system-boundary.md` **§7** |
+| **LLM 例外的正式登记** | `docs/decision-log.md` 2026-10-14 条（**H-REV-001**）|
+| **分期状态** | `docs/roadmap.md`「Human 3.0 v2」节 |
+| **落地历史**（P1~P5 计划与回传说明）| `docs/plans/2026-10-1*-human30v2-p*.md`、`docs/notes/2026-10-1*-human30v2-p*-回传说明.md` |
 
-**页面打卡**：dashboard「Human 3.0」tab 底部表单直接打分（心/体/精神/职 0-100 + 备注），
-保存后当日覆盖并刷新页面；等价于 CLI `--set`。
+## 不变的两条
 
-## 后续扩展（骨架之外，未落地）
-
-- 与交易行为联动（如极端档位时记录交易者状态 → 归因）
-- AI 复盘（用 LLM 生成解读——需单独审批，绕开"无 LLM 判决"纪律需走 C-2/C-3 流程）
-
-## 三期：全部待推进项落地（2026-10-10）
-
-- **市场快照联动**：打卡自动附带当日 fg_index/zone（Data/features.csv 尾行）——只记事实不判案；
-  CLI `--set` 与页面 POST 均自动注入；记录结构新增可选 `market` 字段
-- **连续未打卡提醒**：页面状态卡 + 简报板块均显示「已连续 N 天未打卡」（确定性规则）
-- **近 7 日汇总**：页面「近 7 日汇总」卡 + 简报追加「近 7 日：打卡 N 次 · 意识层级」；
-  核心为 `human30.window_stats(days)`（记录数/Level 分布/短板高频/均分趋势）
-- **趋势图时段切换**：页面 7/30/90 天按钮（`drawH30(n)` 前端过滤重绘，数据源扩至 90 天）
-- **CSV 导出**：`human30.to_csv(path)` + CLI `--export 路径.csv`（utf-8-sig，含市场快照列）
-- **AI 复盘提案**：`docs/proposals/human30-ai-review.md`（C-2 流程，待 C-3 审批；
-  边界=LLM 只解读自评、不碰交易判决，失败自动降级确定性统计）
-- 测试：tests/test_human30.py 新增 4 项（市场快照/未打卡天数/窗口统计/CSV），全量 pytest 1089 passed
-
-## H-REV-001：AI 复盘（C-3 已审批 2026-10-10）
-
-- **形态**：`scripts/human30_review.py`（Ollama qwen2.5-coder:3b 本地生成）
-- **边界（提案硬约束）**：LLM 只解读自评序列与成长，**不判交易**——prompt 禁止交易字眼 +
-  输出后 `_guard_filter` 二次过滤（交易策略/仓位/买卖/止损等 → 行动）；固定前缀
-  `AI 复盘（🟡 研究参考，非系统信号）`；数据只读；无调参
-- **降级**：模型不可达/超时/无记录 → 自动降级为确定性窗口统计（window_stats），绝不阻塞简报
-- **幻觉修复**：市场快照缺失显示 `N/A` 且 prompt 明示「N/A 一律跳过不要解读」，
-  防止模型把缺省误读为 zone=0 极度恐惧
-- **接入**：简报每日板块末行 + 页面「AI 复盘（H-REV-001 · 点按生成）」折叠块
-  （GET /api/human30/review，threaded=True 不阻塞其他请求）
-- 测试：tests/test_human30_review.py 4 项（无记录降级/LLM 失败降级/守卫过滤/N-A 行），
-  全量 pytest 1093 passed
-
-## 四期：问答打卡（引导式，无 LLM）
-
-- **形态**：页面「问答打卡（30 秒）」区块，每象限 1 题、Likert 5 级（强烈不同意→强烈同意）
-- **确定性映射**：`answers_to_scores()` 查表 1→20 / 2→40 / 3→60 / 4→80 / 5→100，
-  非法 level 抛 ValueError（400）；无 LLM、无中间解释层
-- **同链路**：`record_from_answers()` → 与直填 0-100 完全同一写入/统计路径（均分/Level/短板/趋势一致）
-- **端点**：POST /api/human30 兼容两种载荷——原 `{mind..vocation: 0-100}` 与新增
-  `{answers: {mind..vocation: 1-5}}`；页面问答提交后 reload 刷新状态卡
-- 问题库（可复算、可审计）：心=清晰思考不被情绪带走；体=精力足以执行计划；
-  精神=做的事有意义；职=推进了重要事项
-- 测试：test_human30.py +2（映射/写入同链路）、test_server.py +2（端点 answers 200/400），
-  全量 pytest 1097 passed
+- **数据在 Mac 本地**：`Data/human30.json`（`.gitignore` 忽略，不入库）⇒ Windows 侧看板显示「本机无数据」。
+- **打卡入口**：网页面板第 4 个 tab，或 `scripts/human30_cli.py`。
