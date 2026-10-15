@@ -102,12 +102,30 @@ def ingest_package(pkg, total, chat_id):
     try:
         r = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=180)
         out = (r.stdout + r.stderr).strip()
-        # 入库成功后写标记（无论 commit 是否成功——文件已落盘即可视为已处理）
-        with open(marker, "w") as f:
-            f.write(cur_hash)
-        send_feishu(f"✅ {pkg} 已收齐 {total} 片，开始入库…\n{out}", chat_id)
+        rc = r.returncode
     except subprocess.TimeoutExpired:
-        send_feishu(f"⏳ {pkg} 入库超时，请稍后查收", chat_id)
+        out = "⏳ 入库超时（180s），请稍后查收"
+        rc = 3
+    # 成功（rc=0，或"无变更可提交"=已入库过同内容）才写标记并清理分片；
+    # 失败保留分片、不写标记，允许 watcher/重发重试（与 fg-sync-watcher.py 对齐，2026-10-15）。
+    if rc == 0 or "可能无变更可提交" in out:
+        with open(marker, "w", encoding="utf-8") as f:
+            f.write(cur_hash)
+        for i in range(1, total + 1):
+            p = os.path.join(IN_DIR, f"{pkg}_{i}.md")
+            if os.path.exists(p):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+        if os.path.exists(sync_file):
+            try:
+                os.unlink(sync_file)
+            except OSError:
+                pass
+        send_feishu(f"✅ {pkg} 已收齐 {total} 片，开始入库…\n{out}", chat_id)
+    else:
+        send_feishu(f"⛔ {pkg} 入库失败（rc={rc}），分片已保留待排查：\n{out}", chat_id)
 
 
 def run_todo_snapshot(chat_id):

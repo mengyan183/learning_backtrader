@@ -77,8 +77,10 @@ def main():
         total = d["total"]
         if not total or d["recv"] < total:
             continue  # 未收齐，静默等待
-        # 幂等：hash 一致且 .done 存在 → 跳过
-        marker = os.path.join(IN_DIR, f"{pkg}.done")
+        # 幂等：hash 一致且 .done 存在 → 跳过。
+        # ⚠️ 标记文件名用完整包名（sync_ 前缀）——与 fg-sync-bypass.py 共用
+        #    `sync_<包>.done`，否则双路径各写各的标记 ⇒ 同一包被处理两次（2026-10-15 修复）。
+        marker = os.path.join(IN_DIR, f"sync_{pkg}.done")
         h = hashlib.sha256()
         for i in range(1, total + 1):
             fp = os.path.join(IN_DIR, f"sync_{pkg}_{i}.md")
