@@ -543,7 +543,9 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
           "<td style='padding:4px'>" + r.name + "</td>" +
           "<td>" + (r.last || "—") + "</td>" +
           "<td>" + (r.ok
-            ? "<span style='color:#3fb950'>正常</span>"
+            ? (r.lag > 0
+              ? "<span style='color:#d29922'>正常 · 滞后 " + r.lag + " 天（容忍 " + r.tol + " 天）</span>"
+              : "<span style='color:#3fb950'>正常（最新）</span>")
             : "<span style='color:#f85149'>停更 " + (r.lag == null ? "? " : r.lag + " 天") + "</span>") + "</td>" +
           "<td>" + (r.ok ? "" : "<button data-retry='" + r.name + "' style='padding:2px 10px;cursor:pointer;font-size:12px'>重试</button>") + "</td></tr>";
       }
