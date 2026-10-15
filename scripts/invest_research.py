@@ -645,6 +645,18 @@ def _drawdown_of(snap):
     return dd
 
 
+# P0（2026-10-15 C-3 批准）：交易前检查单的「视角自问」两项。
+# 视角 = 思维顾问 / 研究参考，**永不进信号、不改任何确定性规则**（nuwa 结合方案 §1 红线）。
+# 确定性模板文案，**不调 LLM** ✗。
+_PERSPECTIVE_PROMPTS = (
+    "🟡 思维顾问自问（研究参考，非系统信号）\n"
+    "☐ 🔍 芒格审视：这笔交易**反过来看**，最大的错误会是什么？"
+    "（逆向思考 / 认知偏误自查）\n"
+    "☐ 🛡 塔勒布审视：最坏情景发生，我的损失是否在可承受范围？"
+    "（尾部风险 / skin in the game）"
+)
+
+
 def behavior_checklist(snap):
     """P2 极端档位 + 抄底三黑 行为检查清单（简报节）。
 
@@ -792,6 +804,7 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
         secs.append("hr")
     _bc = behavior_checklist(snap)
     if _bc:
+        _bc = _bc + "\n" + _PERSPECTIVE_PROMPTS
         secs.append(("🧠 行为检查清单", _bc))
         secs.append("hr")
     _h30 = _human30_brief()
@@ -998,6 +1011,7 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         lines += ["## 📉 减仓操作（双引擎：价格风控 × 贪恐系数）【研究参考】", _act_sec, ""]
     _bc = behavior_checklist(snap)
     if _bc:
+        _bc = _bc + "\n" + _PERSPECTIVE_PROMPTS
         lines += ["## 🧠 行为检查清单【研究参考】", _bc, ""]
     lines += [
         "## 🏛️ 美联储动态",
