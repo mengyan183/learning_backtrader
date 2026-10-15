@@ -49,12 +49,8 @@ def _holdings_block(features, shoutu=None, prices=None):
         return "".join(out) + "<p>持仓快照为空</p>"
     latest = pos[pos["date"] == pos["date"].max()]
     acc_all = pd.DataFrame(columns=["account", "net_value", "cash"])
-    net = None
     try:
         acc_all = pd.read_csv(config.ACCOUNTS_PATH)
-        _stock = acc_all[(acc_all["account"] == "stock")
-                         & (acc_all["date"] == acc_all["date"].max())]
-        net = float(_stock.iloc[-1]["net_value"]) if not _stock.empty else None
         # 分平台敞口（**绝不跨平台混算** ✗）：用最新日的全部平台行 ✓
         acc = acc_all[acc_all["date"] == acc_all["date"].max()]
     except Exception:
@@ -99,6 +95,10 @@ def _holdings_block(features, shoutu=None, prices=None):
     # （此前一律除富途 net ⇒ OKX 的 BTC 被算成 14.8% ✗）
     exposure = _account_exposure(acc, latest)
     cards = []
+    # 模型目标 vs 实盘偏离：**合计**口径 = Σ市值 / Σ净值（两平台都合并）✓。
+    # 它是**整体**指标，不属于任何单个平台 ⇒ 用 `_all_net()` ✓；
+    # 🔴 绝不把它当「逐标的占比」的分母 ✗（那正是 §12.40 记的那个 bug ✗）。
+    _dev_net = _all_net(exposure)
     for _, r in latest.iterrows():
         sym = str(r.get("symbol", "")).strip()
         name = str(r.get("name", "")).strip()
@@ -108,10 +108,9 @@ def _holdings_block(features, shoutu=None, prices=None):
         cost = _num(r.get("cost"))
         pnl = ((price - cost) / cost * 100.0) if cost and cost > 0 and price else None
         raw = None
-        _row_acct = str(r.get("account", "")).strip()
-        _row_net = exposure.get(_row_acct, {}).get("net") \
-            if _row_acct in exposure else net
-        ratio = (mv / _row_net * 100.0) if _row_net and mv is not None else None
+        # 该行所属账户的净值（**绝不跨平台** ✗）；取不到 ⇒ None（**不猜** ✗）
+        _rnet = _row_net(r.get("account"), exposure)
+        ratio = (mv / _rnet * 100.0) if _rnet and mv is not None else None
         in_s = _covered(sym)
         in_sh = sym in in_shoutu
         pnl_cls = ("up" if pnl and pnl >= 0 else "down") if pnl is not None else ""
@@ -243,13 +242,14 @@ def _holdings_block(features, shoutu=None, prices=None):
         else:
             trend_txt = None
         # P1 风控仓位（1% 风险规则：建议市值上限 = 净值×1% / 2×ATR20）
+        # 基准净值必须**该行所属账户**（富途 stock / OKX crypto 量级不同 ✓）。
         risk_adv = None
-        if net and mv is not None and price:
+        if _rnet and mv is not None and price:
             _atr_p = risk_mod.atr_pct(prices, sym, price)
-            _lim, _ratio = risk_mod.position_limit(net, mv, _atr_p)
+            _lim, _ratio = risk_mod.position_limit(_rnet, mv, _atr_p)
             if _lim is not None and _lim > 0:
-                _pct_now = mv / net * 100.0
-                _pct_lim = _lim / net * 100.0
+                _pct_now = mv / _rnet * 100.0
+                _pct_lim = _lim / _rnet * 100.0
                 if mv > _lim:
                     risk_adv = ("⚠ 仓位 %.1f%% 超 1%%风险上限（%.1f%%）：建议减仓"
                                 % (_pct_now, _pct_lim))
@@ -287,7 +287,7 @@ def _holdings_block(features, shoutu=None, prices=None):
                _r_tags, risk_adv or "",
                sys_bg, sys_txt, s_bg, s_txt,
                cov_cls, cov_txt, advise))
-    out.append(_deviation_line(features, latest, net, acc))
+    out.append(_deviation_line(features, latest, _dev_net, acc))
     body = "".join(out)
     if not cards:
         return body + "<p>无持仓记录</p>"
@@ -354,6 +354,39 @@ def _account_exposure(acc, pos_latest):
             "has_margin": (cash is not None and cash < 0),
         }
     return out
+
+
+def _row_net(acc, exposure):
+    """**该行所属账户**的净值（**绝不跨平台** ✗）；取不到 ⇒ `None`（**不猜** ✗）。
+
+    背景：持仓分富途（stock）/ OKX（crypto）两个平台，净值量级不同
+    ⇒ 用另一个平台的净值当分母会把占比算错（实测 BTC 曾偏小约 4.3× ✗）。
+
+    复用 `_account_exposure()` 的**按平台**结果 ✓，不另起一套口径 ✓；
+    🔴 账户为空 / 不在敞口表 / 该平台 net 取不到 ⇒ `None` ✗——
+    **不得**回落成其它平台（尤其富途）的净值 ✗（那正是本 bug 本身 ✗）。
+    """
+    if exposure is None:
+        return None
+    acct = str(acc).strip() if acc is not None else ""
+    if not acct or acct == "nan":
+        return None
+    return exposure.get(acct, {}).get("net")
+
+
+def _all_net(exposure):
+    """**两平台合计**净值（仅用于 `_deviation_line` 的**整体**合计口径 ✓）。
+
+    ⚠️ 它**不是**逐标的占比的分母 ✗。
+    🔴 口径与 `_deviation_line` 完全一致 ✓：**只累加「数据完整」的平台**
+    （`net > 0` **且** `mv is not None` ✓）——`net` 缺失 / `mv` 缺失 / `net <= 0`
+    ⇒ **不计入** ✓（宁小不猜 ✗）；全都不完整 ⇒ `None` ✓。
+    """
+    if not exposure:
+        return None
+    vals = [e["net"] for e in exposure.values()
+            if e.get("net") and e.get("net") > 0 and e.get("mv") is not None]
+    return float(sum(vals)) if vals else None
 
 
 def _deviation_line(features, latest, net=None, acc=None):
