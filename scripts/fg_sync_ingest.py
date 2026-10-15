@@ -10,8 +10,10 @@
   3. 白名单过滤 —— 只放行代码/测试/文档目录；拒绝 Data/**（密钥+运行态）、
                 .git/**、.venv/**、__pycache__/**、*.pyc、*.key、*.secret。
   4. 冲突检查 —— 与 `git status --porcelain` 未提交修改取交集；有冲突则**中止**，
-                列出冲突文件等确认，绝不自动覆盖。
-  5. 入库     —— 无冲突才复制进仓库 → git add -A → commit → push。
+                列出冲突文件等确认，绝不自动覆盖（patch 目标文件同样受保护 ✓）。
+  5. 入库     —— 无冲突才复制进仓库 → git add 本次文件 → commit → push；
+                含 `__patch__/<包名>.diff` 统一 diff 包时，先转 git patch 用
+                `git apply` 应用（MT-20），失败保留分片并告警。
   6. 测试回传 —— `.venv/bin/python -m pytest -q`，汇总结果到 stdout（供 agent 回发飞书）。
 
 用法（OpenClaw/agent 侧）：
@@ -90,9 +92,64 @@ def _safe_extract(tf, dest):
     return out
 
 
-def _git(repo, *args):
-    return subprocess.run(["git", "-C", repo, *args],
+def _git(repo, *args, input=None):
+    return subprocess.run(["git", "-C", repo, *args], input=input,
                           capture_output=True, text=True, timeout=60)
+
+
+# pack_many.py --patch 的 diff 包前缀（故意不命中白名单，需本文件显式 apply）
+PATCH_PREFIX = "__patch__/"
+
+
+def _split_patch_payload(payload):
+    """解析 pack_many --patch 的 payload → [(rel, [diff块行])]。
+
+    payload 结构（每文件一块，difflib.unified_diff 文本）：
+        --- docs/xxx.md ---
+        --- docs/xxx.md@origin/main
+        +++ docs/xxx.md
+        @@ -l,c +l,c @@
+        ...
+    分隔头 `--- <rel> ---` 开始新文件块；无 `@@` hunk 的空块跳过。
+    """
+    lines = payload.splitlines()
+    blocks = []
+    cur_rel, cur = None, []
+    for ln in lines:
+        m = re.match(r"^--- (.+) ---$", ln)
+        if m:
+            if cur_rel is not None:
+                blocks.append((cur_rel, cur))
+            cur_rel = m.group(1).strip()
+            cur = []
+            continue
+        if cur_rel is not None:
+            cur.append(ln)
+    if cur_rel is not None:
+        blocks.append((cur_rel, cur))
+    return [(rel, blk) for rel, blk in blocks if any(ln.startswith("@@") for ln in blk)]
+
+
+def _to_git_patch(rel, blk):
+    """把 pack_many 的 unified diff 块转成 git apply 可解析的 patch（MT-20）。
+
+    difflib 的 fromfile/tofile 头（`--- rel@ref` / `+++ rel`）重写为
+    `--- a/rel` / `+++ b/rel`（git 风格，路径无 a/b 前缀也可定位），
+    `@@` hunk 与 +/-/context 行原样保留。
+    """
+    out = ["diff --git a/%s b/%s" % (rel, rel),
+           "--- a/%s" % rel, "+++ b/%s" % rel]
+    for ln in blk:
+        if ln.startswith("--- ") or ln.startswith("+++ "):
+            continue
+        out.append(ln)
+    return "\n".join(out) + "\n"
+
+
+def _patch_targets(payload):
+    """提取 diff 包涉及的全部目标文件（用于冲突检查）。"""
+    return {m.group(1).strip()
+            for m in re.finditer(r"^--- (.+) ---$", payload, re.M)}
 
 
 def _dirty_paths(repo):
@@ -178,6 +235,10 @@ def main():
             with tarfile.open(tarpath, "r:xz") as tf:
                 members = _safe_extract(tf, tmp)
 
+        # 分类：__patch__/ 前缀 = 统一 diff 包（MT-20，不命中白名单，单独 apply）
+        patch_diffs = sorted(m for m in members if m.startswith(PATCH_PREFIX))
+        members = [m for m in members if not m.startswith(PATCH_PREFIX)]
+
         allowed, denied = [], []
         for m in members:
             (allowed if _allowed(m, full_repo=args.full_repo) else denied).append(m)
@@ -187,22 +248,56 @@ def main():
                 print("   - " + d)
             if len(denied) > 20:
                 print("   … 共 %d 个被拒" % len(denied))
-        if not allowed:
-            print("❌ 没有任何文件通过白名单，中止。")
+        if not allowed and not patch_diffs:
+            print("❌ 没有任何文件通过白名单（也无 __patch__ 包），中止。")
             return 2
 
-        # 冲突检查：与仓库未提交修改取交集
+        # 冲突检查：与仓库未提交修改取交集（普通文件 + patch 目标文件）
         dirty, err = _dirty_paths(args.repo)
         if err:
             print("⚠️ 无法读取 git 状态（%s），中止（不冒险覆盖）。" % err)
             return 2
         conflict = sorted(set(allowed) & set(dirty))
+        patch_targets = set()
+        for pd in patch_diffs:
+            with open(os.path.join(tmp, pd), encoding="utf-8",
+                      errors="replace") as fh:
+                patch_targets |= _patch_targets(fh.read())
+        conflict += sorted(patch_targets & set(dirty))
         if conflict:
             print("⛔ 与 Mac 本地未提交修改冲突，中止（不自动覆盖），冲突文件：")
             for c in conflict:
                 print("   - " + c)
             print("处理方式：先在 Mac 提交/丢弃本地改动，再重新触发同步。")
             return 2
+
+        # 应用 __patch__/ diff 包（MT-20）：任一失败 ⇒ 保留分片告警，绝不半途入库
+        applied = []
+        for pd in patch_diffs:
+            pkg = os.path.basename(pd)
+            if pkg.endswith(".diff"):
+                pkg = pkg[:-len(".diff")]
+            with open(os.path.join(tmp, pd), encoding="utf-8",
+                      errors="replace") as fh:
+                payload = fh.read()
+            blocks = _split_patch_payload(payload)
+            if not blocks:
+                print("⚠️ %s：无可应用变更（与基准无差异或空 diff）" % pd)
+                continue
+            for rel, blk in blocks:
+                patch_text = _to_git_patch(rel, blk)
+                r = _git(args.repo, "apply", "--whitespace=nowarn", "-",
+                         input=patch_text)
+                if r.returncode != 0:
+                    print("⛔ patch 应用失败（%s → %s），分片已保留待排查："
+                          % (pkg + ".diff", rel))
+                    print(r.stderr.strip())
+                    return 2
+                applied.append(rel)
+                print("📦 应用 patch：%s → %s" % (pkg + ".diff", rel))
+        if applied:
+            print("应用 patch %d 个文件：%s" % (len(applied), ", ".join(applied[:8]) +
+                  (" …" if len(applied) > 8 else "")))
 
         # 入库：复制白名单内文件 → git add/commit/push
         copied = []
@@ -217,8 +312,9 @@ def main():
         print("入库 %d 个文件：%s" % (len(copied), ", ".join(copied[:8]) +
               (" …" if len(copied) > 8 else "")))
 
-        # 只 add 本次入库文件，避免 git add -A 把运行态/未提交改动连带提交
-        r = _git(args.repo, "add", "--", *copied)
+        # 只 add 本次入库/应用文件，避免 git add -A 把运行态/未提交改动连带提交
+        add_all = sorted(set(copied) | set(applied))
+        r = _git(args.repo, "add", "--", *add_all)
         if r.returncode != 0:
             print("❌ git add 失败：" + r.stderr.strip()); return 2
         r = _git(args.repo, "commit", "-m", args.commit)
