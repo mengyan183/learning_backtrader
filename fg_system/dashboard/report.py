@@ -48,12 +48,17 @@ def _holdings_block(features, shoutu=None, prices=None):
     if pos.empty:
         return "".join(out) + "<p>持仓快照为空</p>"
     latest = pos[pos["date"] == pos["date"].max()]
+    acc_all = pd.DataFrame(columns=["account", "net_value", "cash"])
+    net = None
     try:
-        acc = pd.read_csv(config.ACCOUNTS_PATH)
-        acc = acc[(acc["account"] == "stock") & (acc["date"] == acc["date"].max())]
-        net = float(acc.iloc[-1]["net_value"]) if not acc.empty else None
+        acc_all = pd.read_csv(config.ACCOUNTS_PATH)
+        _stock = acc_all[(acc_all["account"] == "stock")
+                         & (acc_all["date"] == acc_all["date"].max())]
+        net = float(_stock.iloc[-1]["net_value"]) if not _stock.empty else None
+        # 分平台敞口（**绝不跨平台混算** ✗）：用最新日的全部平台行 ✓
+        acc = acc_all[acc_all["date"] == acc_all["date"].max()]
     except Exception:
-        net = None
+        acc = acc_all
 
     # 市场贪恐环境（最新）+ 系统信号（最新目标仓位与变化方向）
     fg, zone = None, "—"
@@ -90,6 +95,9 @@ def _holdings_block(features, shoutu=None, prices=None):
             return True
         return any(sym == b or sym.startswith(b + "-") for b in spot)
 
+    # 分平台敞口：逐标的占比的**分母必须是该标的所属平台**的净值 ✓
+    # （此前一律除富途 net ⇒ OKX 的 BTC 被算成 14.8% ✗）
+    exposure = _account_exposure(acc, latest)
     cards = []
     for _, r in latest.iterrows():
         sym = str(r.get("symbol", "")).strip()
@@ -100,7 +108,10 @@ def _holdings_block(features, shoutu=None, prices=None):
         cost = _num(r.get("cost"))
         pnl = ((price - cost) / cost * 100.0) if cost and cost > 0 and price else None
         raw = None
-        ratio = (mv / net * 100.0) if net and mv is not None else None
+        _row_acct = str(r.get("account", "")).strip()
+        _row_net = exposure.get(_row_acct, {}).get("net") \
+            if _row_acct in exposure else net
+        ratio = (mv / _row_net * 100.0) if _row_net and mv is not None else None
         in_s = _covered(sym)
         in_sh = sym in in_shoutu
         pnl_cls = ("up" if pnl and pnl >= 0 else "down") if pnl is not None else ""
@@ -276,7 +287,7 @@ def _holdings_block(features, shoutu=None, prices=None):
                _r_tags, risk_adv or "",
                sys_bg, sys_txt, s_bg, s_txt,
                cov_cls, cov_txt, advise))
-    out.append(_deviation_line(features, latest, net))
+    out.append(_deviation_line(features, latest, net, acc))
     body = "".join(out)
     if not cards:
         return body + "<p>无持仓记录</p>"
@@ -285,40 +296,126 @@ def _holdings_block(features, shoutu=None, prices=None):
 
 _SIDE_WORDS = {"over": "高于目标", "under": "低于目标", "on_target": "接近目标"}
 
+_ACCOUNT_WORDS = {"stock": "富途", "crypto": "OKX"}
 
-def _deviation_line(features, latest, net):
-    """模型目标仓位 vs 实盘持仓占净值的偏离（**只报事实，不带指令** ✗）。
+
+def _account_exposure(acc, pos_latest):
+    """按平台算敞口（**绝不跨平台混算** ✗）。
+
+    返回 `{account: {"net","mv","cash","ratio","has_margin"}}`；
+    某平台**取不到完整数据** ⇒ 该键值为 `None`（**不猜** ✗、**不静默跳过** ✗）。
+
+    - `mv` = 该平台**全部** `market_value` 之和 ✓；
+      🔴 若其中有 **NaN** ⇒ 该平台判为 `None`（**禁止** `sum()` 默认 skipna 静默丢掉 ✗
+      —— 那会让分子偏小）
+    - `net` = `accounts.csv` 里 `account == 该平台` 且 `date == date.max()` 的 `net_value`
+    - `cash` = 同行的 `cash`；`has_margin` = `cash is not None and cash < 0`
+    - `ratio` = `mv / net`（`net` 为 0/None ⇒ `None`）
+    """
+    out = {}
+    accounts = set()
+    if pos_latest is not None and not pos_latest.empty:
+        try:
+            accounts |= set(str(a) for a in pos_latest["account"].dropna().unique())
+        except (KeyError, TypeError, ValueError):
+            pass
+    if acc is not None and not acc.empty:
+        try:
+            accounts |= set(str(a) for a in acc["account"].dropna().unique())
+        except (KeyError, TypeError, ValueError):
+            pass
+    for acct in accounts:
+        net = None
+        cash = None
+        if acc is not None and not acc.empty:
+            try:
+                rows = acc[(acc["account"] == acct)
+                           & (acc["date"] == acc["date"].max())]
+            except (KeyError, TypeError, ValueError):
+                rows = acc.iloc[0:0]
+            if not rows.empty:
+                net = _num(rows.iloc[-1].get("net_value"))
+                cash = _num(rows.iloc[-1].get("cash"))
+        # 该平台持仓的市值之和；任一 NaN ⇒ 整体判 None（不静默丢）
+        mv = None
+        if pos_latest is not None and not pos_latest.empty:
+            try:
+                sub = pos_latest[pos_latest["account"] == acct]["market_value"]
+            except (KeyError, TypeError, ValueError):
+                sub = None
+            if sub is not None and len(sub):
+                vals = [_num(v) for v in sub]
+                mv = float(sum(vals)) if all(v is not None for v in vals) else None
+        ratio = None
+        if net and mv is not None:
+            ratio = mv / net
+        out[acct] = {
+            "net": net, "mv": mv, "cash": cash, "ratio": ratio,
+            "has_margin": (cash is not None and cash < 0),
+        }
+    return out
+
+
+def _deviation_line(features, latest, net=None, acc=None):
+    """模型目标仓位 vs 实盘持仓占净值的偏离（**只报事实，不带指令** ✗，方案 C ✓）。
 
     - 模型目标仓位 = `features["target_position"]` 最后一行（模型数据日 = index.max）
-    - 实盘仓位 = 持仓市值合计 / 净值（持仓快照日 = `latest["date"]`）
-    - 两个日期**都显示**（实测 `features.csv` 与 `positions.csv` 末日不同 ✗，
-      不显示日期即误导 ✓）
-    - 任一缺失 ⇒ 「模型/持仓数据不足，暂不比对」（**不崩** ✓）
+    - **合计** = Σ`mv` / Σ`net`（**两个平台都合并** ✓ —— 这是修掉跨平台混算的关键 ✓）
+    - 各平台**单独**列百分比 ✓；`cash < 0` ⇒ 追加「含融资，现金 <cash>」✓
+    - 某平台数据不全 ⇒ 该平台显示「数据不全」✓（**不崩** ✓）；
+      全部不全 ⇒ 「模型/持仓数据不足，暂不比对」✓
+    - 两个日期**都显示** ✓（实测 `features.csv` 与 `positions.csv` 末日不同 ✗）
+    - 只报事实：**不得**出现「应减仓/该降杠杆」等祈使句 ✗
     """
     tp = features["target_position"].dropna() \
         if "target_position" in features.columns else features.iloc[0:0]
-    mv_total = None
     snap_date = None
-    if not latest.empty:
-        try:
-            mv_total = float(pd.to_numeric(latest["market_value"]).sum())
-        except (KeyError, TypeError, ValueError):
-            mv_total = None
+    if latest is not None and not latest.empty:
         try:
             snap_date = pd.to_datetime(latest["date"].iloc[0]).strftime("%Y-%m-%d")
         except Exception:
             snap_date = None
-    if tp.empty or net is None or mv_total is None:
+    # 兼容旧调用点（只传 net）：构造一个"stock"账户速记，避免破坏既有行为
+    if acc is None:
+        acc = pd.DataFrame([{"account": "stock", "net_value": net, "cash": None}]) \
+            if net is not None else pd.DataFrame(columns=["account", "net_value", "cash"])
+    exp = _account_exposure(acc, latest)
+
+    # 合计：分母只累加"数据完整"的平台（net 与 mv 都齐）
+    full = {a: e for a, e in exp.items()
+            if e["net"] is not None and e["mv"] is not None and e["net"] > 0}
+    mv_total = sum(e["mv"] for e in full.values()) if full else None
+    net_total = sum(e["net"] for e in full.values()) if full else None
+
+    if tp.empty:
         return ("<p class='sub'>模型目标 vs 实盘偏离：模型/持仓数据不足，暂不比对</p>")
     model_date = (tp.index.max().strftime("%Y-%m-%d")
                   if hasattr(tp.index.max(), "strftime") else str(tp.index.max()))
-    d = risk_mod.target_vs_actual(float(tp.iloc[-1]), net, mv_total)
+    d = (risk_mod.target_vs_actual(float(tp.iloc[-1]), net_total, mv_total)
+         if net_total and mv_total is not None else None)
     if d is None:
         return ("<p class='sub'>模型目标 vs 实盘偏离：模型/持仓数据不足，暂不比对</p>")
-    return ("<p class='sub'>模型目标 %.1f%% · 实盘 %.1f%% · 偏离 %+.1f pp（%s）"
+
+    parts = []
+    # 已知平台固定顺序；其余平台（若有）追加在后（**不静默跳过** ✗）
+    order = [a for a in ("stock", "crypto") if a in exp]
+    order += [a for a in exp if a not in order]
+    for acct in order:
+        e = exp[acct]
+        word = _ACCOUNT_WORDS.get(acct, acct)
+        if e["ratio"] is None:
+            parts.append("%s 数据不全" % word)
+        elif e["has_margin"]:
+            parts.append("%s %.1f%%〔含融资，现金 %s〕"
+                         % (word, e["ratio"] * 100.0, _fmt(e["cash"])))
+        else:
+            parts.append("%s %.1f%%" % (word, e["ratio"] * 100.0))
+    detail = " / ".join(parts) if parts else ""
+    per_txt = ("（%s）" % detail) if detail else ""
+    return ("<p class='sub'>模型目标 %.1f%% · 实盘 合计 %.1f%%%s · 偏离 %+.1f pp（%s）"
             "（模型数据日 %s / 持仓快照日 %s）</p>"
-            % (d["target"] * 100.0, d["actual"] * 100.0, d["gap_pp"],
-               _SIDE_WORDS.get(d["side"], d["side"]),
+            % (d["target"] * 100.0, d["actual"] * 100.0, per_txt,
+               d["gap_pp"], _SIDE_WORDS.get(d["side"], d["side"]),
                model_date, snap_date or "—"))
 
 
