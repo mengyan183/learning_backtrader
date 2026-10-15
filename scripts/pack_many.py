@@ -10,13 +10,29 @@
     py -3.10 scripts/pack_many.py sync_1010c AGENTS.md
     py -3.10 scripts/pack_many.py sync_1010d docs/windows-tasks.md scripts/foo.py
 
+    # 增量模式（只发统一 diff，用于大文件如 docs/trading-discipline.md）：
+    py -3.10 scripts/pack_many.py sync_1015a --patch docs/trading-discipline.md
+    py -3.10 scripts/pack_many.py sync_1015b --patch --base-ref origin/main a.md b.py
+
 约定（与 pack_one.py 一致）：
     · 包名只允许 [A-Za-z0-9_]（Mac 端标记正则是 ###FG:([A-Za-z0-9_]+):(\\d+)/(\\d+)###）。
     · 同一包名重复发送是**幂等**的：Mac 端按 <包>_<序号> 逐片覆盖，总数一致即可。
     · 路径必须是仓库内相对路径（tar 内路径决定 Mac 端白名单）。
+
+【--patch 增量模式（2026-10-15 新增）】
+背景：docs/trading-discipline.md 有 336 KB ⇒ 整份发要 118 片（且 116 片那次真的挂在
+飞书会话上）。本模式只发**统一 diff**（difflib.unified_diff），片数降到个位数。
+
+🔴 回落规则（任一满足 ⇒ 走原来的整文件 tar 路径，并在 stdout 明确打印原因，绝不静默）：
+    · 拿不到基准（git show 失败：非 git 仓库 / ref 不存在 / 无代理致超时）
+    · 某文件在基准里不存在（新增文件）
+    · diff 字节数 ≥ 整文件 tar 字节数（不值得）
 """
+import argparse
+import difflib
 import io
 import os
+import subprocess
 import sys
 import tarfile
 
@@ -32,27 +48,122 @@ if hasattr(sys.stdout, "reconfigure"):
 
 OUT_DIR = os.path.join(REPO, "dist", "feishu", "text")
 MAX_CHARS = 1500
+DEFAULT_BASE_REF = "origin/main"
+
+# 🔴 patch 模式的 tar 条目前缀 —— **不得**命中 Mac 白名单目录
+# （ALLOWED_DIRS = fg_system/ scripts/ tests/ evolution/ docs/，见 scripts/fg_sync_ingest.py:39）
+# ⇒ Mac 端不会误当普通文件入库，需人工/新流程 apply。
+PATCH_PREFIX = "__patch__/"
+
+
+def _base_text(rel, base_ref):
+    """读基准内容：git -C <REPO> show <base_ref>:<rel>（失败返回 None）。
+
+    ⚠️ 必须带代理：本仓库是 blob:none 部分克隆，`git show` 会按需拉 blob，
+       不带代理走直连 ⇒ **静默挂死**（见 docs/dual-end-workflow.md §C.1 / §2）。
+       `FG_PROXY` 非空时用 `-c http.proxy=$FG_PROXY -c https.proxy=$FG_PROXY`。
+    ⚠️ 抽成独立函数以便测试猴补（本环境不许跑 git），见 tests/test_pack_many_patch.py。
+    """
+    cmd = ["git", "-C", REPO]
+    proxy = os.environ.get("FG_PROXY", "")
+    if proxy:
+        cmd += ["-c", "http.proxy=%s" % proxy, "-c", "https.proxy=%s" % proxy]
+    cmd += ["show", "%s:%s" % (base_ref, rel)]
+    try:
+        out = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.decode("utf-8", "replace")
+
+
+def _patch_payload(srcs, base_ref):
+    """生成统一 diff 文本。返回 (payload_bytes, 回落原因列表)。
+
+    只要有**任一**回落条件成立 ⇒ 返回 (None, [原因...])，由调用方走整文件路径。
+    """
+    reasons = []
+    chunks = []
+    for rel in srcs:
+        cur = open(os.path.join(REPO, rel.replace("/", os.sep)),
+                   encoding="utf-8", errors="replace").read()
+        base = _base_text(rel, base_ref)
+        if base is None:
+            reasons.append("%s：拿不到基准（%s 不存在 / 非 git 仓库 / 无代理）"
+                           % (rel, base_ref))
+            continue
+        diff = "".join(difflib.unified_diff(
+            base.splitlines(True), cur.splitlines(True),
+            fromfile="%s@%s" % (rel, base_ref), tofile=rel))
+        if not diff:
+            # 无差异：不回落，但也没东西可发 —— 视为空 diff（继续，允许所有文件都空）
+            chunks.append("--- %s ---\n（与基准无差异）\n" % rel)
+            continue
+        chunks.append("--- %s ---\n%s" % (rel, diff))
+    if reasons:
+        return None, reasons
+    return "".join(chunks).encode("utf-8"), []
+
+
+def _tar_bytes(entries):
+    """entries: [(name, data_bytes)] → xz tar 字节（mtime=0，可复现）。"""
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:xz") as tf:
+        for name, data in entries:
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            tf.addfile(info, io.BytesIO(data))
+    return buf.getvalue()
 
 
 def main():
-    if len(sys.argv) < 3:
-        sys.exit("用法：py -3.10 scripts/pack_many.py <包名> <文件1> [文件2 ...]")
-    pkg = sys.argv[1]
-    srcs = sys.argv[2:]
+    ap = argparse.ArgumentParser(add_help=True)
+    ap.add_argument("pkg")
+    ap.add_argument("srcs", nargs="+")
+    ap.add_argument("--patch", action="store_true",
+                    help="增量模式：只发统一 diff")
+    ap.add_argument("--base-ref", default=DEFAULT_BASE_REF,
+                    help="patch 基准 ref（默认 origin/main）")
+    args = ap.parse_args()
+    pkg = args.pkg
+    srcs = args.srcs
+
+    # 校验文件存在（两种模式都要，保持原有报错行为）
+    for rel in srcs:
+        if not os.path.isfile(os.path.join(REPO, rel.replace("/", os.sep))):
+            sys.exit("❌ 找不到：%s" % rel)
 
     os.makedirs(OUT_DIR, exist_ok=True)
-    buf = io.BytesIO()
-    with tarfile.open(fileobj=buf, mode="w:xz") as tf:
-        for rel in srcs:
-            path = os.path.join(REPO, rel.replace("/", os.sep))
-            if not os.path.isfile(path):
-                sys.exit("❌ 找不到：%s" % rel)
-            data = open(path, "rb").read()
-            info = tarfile.TarInfo(rel)   # mtime=0，与 pack_one.py 一致 ⇒ 可复现
-            info.size = len(data)
-            tf.addfile(info, io.BytesIO(data))
 
-    blob = buf.getvalue()
+    mode = "full"
+    fallback_reasons = []
+
+    if args.patch:
+        payload, reasons = _patch_payload(srcs, args.base_ref)
+        if payload is not None:
+            # 整文件 tar 字节数（用于「diff 是否更小」的比较）
+            full_entries = [(rel, open(os.path.join(REPO, rel.replace("/", os.sep)),
+                                       "rb").read()) for rel in srcs]
+            full_blob = _tar_bytes(full_entries)
+            patch_blob = _tar_bytes([(PATCH_PREFIX + pkg + ".diff", payload)])
+            if len(patch_blob) >= len(full_blob):
+                fallback_reasons.append(
+                    "diff 打包 %d 字节 ≥ 整文件 tar %d 字节（不值得）"
+                    % (len(patch_blob), len(full_blob)))
+            else:
+                mode = "patch"
+                blob = patch_blob
+        if mode == "full":
+            if reasons:
+                fallback_reasons.extend(reasons)
+
+    if mode == "full":
+        entries = [(rel, open(os.path.join(REPO, rel.replace("/", os.sep)),
+                              "rb").read()) for rel in srcs]
+        blob = _tar_bytes(entries)
+
     b64 = _b64url(blob)
     pieces = [b64[i:i + MAX_CHARS] for i in range(0, len(b64), MAX_CHARS)]
 
@@ -61,8 +172,18 @@ def main():
         with open(dst, "w", encoding="utf-8", newline="\n") as fh:
             fh.write("###FG:%s:%d/%d###%s###FG:end###\n" % (pkg, n, len(pieces), piece))
 
-    print("包名 %s：%d 个文件 → %d 字节(xz) → %d 片（每片 ≤%d 字符）"
-          % (pkg, len(srcs), len(blob), len(pieces), MAX_CHARS))
+    if args.patch and mode == "full":
+        print("⚠️ --patch 已回落为整文件打包：")
+        for r in fallback_reasons:
+            print("    · %s" % r)
+
+    # ⚠️ 不加 --patch 时，stdout 必须与改动前**逐字节一致** ⇒ 不带「模式」字段。
+    if args.patch:
+        print("包名 %s：模式 %s：%d 个文件 → %d 字节(xz) → %d 片（每片 ≤%d 字符）"
+              % (pkg, mode, len(srcs), len(blob), len(pieces), MAX_CHARS))
+    else:
+        print("包名 %s：%d 个文件 → %d 字节(xz) → %d 片（每片 ≤%d 字符）"
+              % (pkg, len(srcs), len(blob), len(pieces), MAX_CHARS))
     for rel in srcs:
         print("    %s  (%d 字节)"
               % (rel, os.path.getsize(os.path.join(REPO, rel.replace("/", os.sep)))))

@@ -104,6 +104,37 @@ Windows 完成一项 → scripts/pack_many.py 打包（URL-safe base64 分片）
   evolution, docs}`）⇒ Mac 端**自动入库**，无需人工归档。
   ⚠️ **不要**放 `dist/feishu/text/` —— 该目录**不在**白名单内，每轮都要 Mac 手动
   `docs: xxx 归档`（`note1012a` 即此类，已由 Mac 归档；`docs/notes/` 路径可免掉这一步）。
+- **大文件用 `--patch`（2026-10-15 新增）**：`docs/trading-discipline.md` 有 336 KB
+  ⇒ 整份发要 **118 片**（且 116 片那次真挂过）。改用
+  `py -3.10 scripts/pack_many.py <包名> --patch <文件...>` ⇒ 只发**统一 diff**，
+  片数降到个位数。⚠️ 回落规则：拿不到基准 / diff 不更小 / 出任何错 ⇒ **自动回落整文件**并打印原因。
+  ⚠️ **Mac 侧需要 apply 步骤**（见 `docs/mac-tasks.md`）—— 落 `__patch__/` 前缀，**不进白名单**。
+
+### C.2 🔴 铁律：**不得用 Windows 侧的 `Data/` 副本推断 Mac 侧状态**（2026-10-15 新增）
+
+**背景**：`Data/**` **不在白名单内**（见 §C 白名单）⇒ **不入库、不随 fg-sync 回传** ✗。
+⇒ Windows 侧的 `Data/` 只是**某次手工拷贝的旧快照** ✗，**永远不会自己更新** ✗。
+
+**已犯两次** ✗（两次都导致误判，都被 Mac 实测推翻）：
+
+1. **2026-10-15 上午**：据 Windows 侧 `Data/features.csv` 停在 `2026-09-18` ✗，
+   误判「Mac 侧数据停更、9~10 月最剧烈那段是**数据盲区**」✗ ——
+   **实际 Mac 侧 `features.csv` 一直是好的** ✓（真断点是 `run_portfolio` **从未被任何生产代码调用** ✗，
+   见 `docs/mac-tasks.md` **MT-12 ✅**）。
+2. **同日**：据 Windows 侧 `Data/state.json` 的 `cb_trigger_date: 2023-12-13` ✗，
+   误判「该字段**已过期**」✗ —— **实际真值是 `2024-12-06` / `index 85.77`** ✓（**MT-18 ✅**）。
+
+**判据（照此执行）**：
+
+- 凡涉及**任何 `Data/` 内容**的判断 ✗ ⇒ **一律登记 `docs/mac-tasks.md`** ✓，
+  由 Mac **贴原文**回传后再下结论 ✓；**不得**在 Windows 侧自行推断 ✗。
+- Windows 侧只能看 `Data/` 的**格式**（列名 / 行结构 ✓），**不能看值** ✗。
+- 需要"基准"时，只用**会入库的东西** ✓（`evolution/**` ✓、`docs/**` ✓、代码 ✓）——
+  它们才随 fg-sync 同步 ✓。
+- ⚠️ 同理：`Data/freshness_warning.txt`、`Data/human30.json` 等**运行态文件**同样不入库 ✗，
+  **不存在** ≠ **没在跑** ✗（`human30.json` 在 Mac 本地 ✓，Windows 侧看板显示「本机无数据」是**预期** ✓）。
+
+---
 
 ## 当前排期建议（2026-10-09 晚更新）
 
