@@ -709,25 +709,41 @@ def _json(obj):
 
 
 def _human30_block():
-    """🌱 Human 3.0 状态卡（看板「Human 3.0」tab 顶部）。
+    """🌱 Human 3.0 状态卡（**禁分数与 Level 数字** ✗，§8）。
 
-    无记录返回提示文案；有记录返回：最新日期 · 均分 · 意识层级 ·
-    连续未打卡提醒 · 四象限明细。
+    三种情形：
+      · 本机无数据文件 ⇒ §8.1 跨机文案 ✓（**不是**空白 ✗）
+      · 有文件无记录   ⇒ 提示去下方表单打卡 ✓
+      · 有记录         ⇒ 四象限 Archetype/相位/层级词 + Lifestyle + Metatype + 断档提醒 ✓
     """
     from fg_system import human30 as _h30
+    from fg_system.human30 import metatype as _mt
+    from fg_system.human30 import render as _rd
+    from fg_system.human30 import store as _st
+
+    # 🔴 §7.1 禁的是**分数与 Level 数字** ✗（日期 ✓ 与 CSS 值 ✓ 不算 ✗）——
+    #   此处仍用模板既有 `class='sub'`（灰色小字 ✓）而非内联样式，是为了与看板其余块统一 ✓。
+    if not os.path.exists(_st._data_path()):
+        return ("<p class='sub'>本机无 Human 3.0 数据（数据在 Mac 本地）</p>")
     rec = _h30.latest()
     if not rec:
-        return "<p style='color:#888'>暂无打卡记录（可在本页下方表单打卡）</p>"
-    agg = _h30.aggregate(rec)
-    q = _h30.QUADRANTS
+        return "<p class='sub'>暂无打卡记录（可在本页下方表单打卡）</p>"
+
+    levels = rec.get("levels") or {}
+    phases = rec.get("phases") or {}
+    # 日期是必需信息 ✓（它不是分数 ✗，§7.1 只禁「分数与 Level 数字」✗）
+    lines = ["<p>%s</p>" % rec["date"]]
+    lines += ["<p class='sub'>%s</p>" % ln
+              for ln in _rd.quadrant_lines(levels, phases)]
+    lines.append("<p class='sub'>%s</p>"
+                 % _rd.lifestyle_line(_mt.lifestyle(levels)))
+    lines.append("<p class='sub'>%s</p>"
+                 % _rd.metatype_line(_mt.deterministic_metatype(levels)))
     gap = _h30.days_since_last()
-    warn = (" · ⏰ 已连续 %d 天未打卡（记录断档，极端档位归因将缺样本）" % gap
-            if gap is not None and gap >= 1 else "")
-    line = "<p>%s · 均分 <b>%s</b> · 意识层级 <b>L%s %s</b>%s</p>" % (
-        rec["date"], agg["avg"], agg["level"], agg["level_name"], warn)
-    detail = "<p style='font-size:12px;color:#8b949e'>%s</p>" % (
-        " · ".join("%s %d" % (_h30.LABELS[k], rec[k]) for k in q))
-    return line + detail
+    if gap is not None and gap >= 1:
+        lines.append("<p class='sub' style='color:orange'>⏰ 已断档多日未打卡"
+                     "（记录断档，极端档位归因将缺样本）</p>")
+    return "".join(lines)
 
 
 def _human30_dashboard_json():
@@ -737,6 +753,8 @@ def _human30_dashboard_json():
     HUMAN30 的消费方式对应（前端对 null 有守卫，不渲染）。
     """
     from fg_system import human30 as _h30
+    from fg_system.human30 import metatype as _mt
+    from fg_system.human30 import render as _rd
     recs = _h30.history(n=90)
     if not recs:
         return None
@@ -748,6 +766,13 @@ def _human30_dashboard_json():
         "series": {k: [r[k] for r in recs] for k in q},
         "avg": [round(sum(r[k] for k in q) / len(q), 1) for r in recs],
         "latest": {k: recs[-1][k] for k in q},
+        "levels": {k: recs[-1].get("levels", {}).get(k) for k in q},
+        "level_words": {k: _rd.level_word(recs[-1].get("levels", {}).get(k))
+                        for k in q},
+        "phases": {k: recs[-1].get("phases", {}).get(k) for k in q},
+        "lifestyle": _mt.lifestyle(recs[-1].get("levels", {}) or {}),
+        "metatype": _mt.deterministic_metatype(recs[-1].get("levels", {}) or {}),
+        "has_data": True,
     }
 
 

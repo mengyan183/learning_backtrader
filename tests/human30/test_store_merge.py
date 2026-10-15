@@ -20,7 +20,7 @@ def test_same_day_second_record_keeps_v2_fields(data_path):
         "spirit": 60.0, "vocation": 60.0, "note": "旧",
         "schema": 2, "levels": {"mind": 2}, "phases": {"mind": "dissonance"},
     }]})
-    store.record(70, 70, 70, 70, note="新")
+    store.record(70, 70, 70, 70, note="新", when="2026-10-14")
     rec = store.latest()
     assert rec["mind"] == 70.0 and rec["note"] == "新"
     assert rec["schema"] == 2

@@ -648,33 +648,43 @@ def behavior_checklist(snap):
 
 
 def _human30_brief():
-    """🌱 Human 3.0 状态节（组合骨架）。无记录返回 None（不输出空板块）。"""
+    """🌱 Human 3.0 状态节（**v2 口径**：象限 Archetype/相位 + 核心问题；禁分数数字 ✗）。
+
+    无记录返回 None（不输出空板块）。v1 的 `brief_line()` / `advice()` **不再使用** ✗
+    （它们输出 `Level 2.0` / `均分 xx.x` ✗，与 §7.1 冲突；函数本体保留给旧调用点 ✓）。
+    """
     import sys as _sys
     _sys.path.insert(0, str(REPO))
     from fg_system import human30 as _h30
-    line = _h30.brief_line()
-    if not line:
-        return None
+    from fg_system.human30 import metatype as _mt
+    from fg_system.human30 import render as _rd
+
     rec = _h30.latest()
-    adv = _h30.advice(rec, _h30.history(2)[-2] if len(_h30.history(2)) >= 2 else None)
-    out = [line] + ["· " + a for a in adv[:3]]
-    # 连续未打卡提醒（确定性：断档会让极端档位归因缺样本）
+    if not rec:
+        return None
+    levels = rec.get("levels") or {}
+    phases = rec.get("phases") or {}
+    out = ["· " + ln for ln in _rd.quadrant_lines(levels, phases)]
+    out.append("· %s 核心问题：%s"
+               % (_rd.AI_PREFIX,
+                  _mt.deterministic_metatype(levels).get("metatype") or "未判定"))
     gap = _h30.days_since_last()
     if gap is not None and gap >= 1:
-        out.append(f"⏰ 已连续 {gap} 天未打卡（上次 {rec['date']}）——记录断档，极端档位归因将缺样本")
-    # 近 7 日统计（有记录才输出）
+        out.append("⏰ 已断档多日未打卡（上次 %s）——记录断档，极端档位归因将缺样本"
+                   % rec["date"])
     w = _h30.window_stats(7)
     if not w["no_data"]:
         lv = w["level_counts"]
-        lv_txt = " / ".join(f"L{k}×{lv[k]}" for k in (1, 2, 3) if lv.get(k))
-        out.append(f"近 7 日：打卡 {w['records']} 次 · 意识层级 {lv_txt}")
-    # AI 复盘（H-REV-001，C-3 已审批；LLM 只解读自评、失败自动降级确定性统计，不阻塞简报）
+        lv_txt = " / ".join(_rd.level_word(k) for k in (1, 2, 3) if lv.get(k))
+        out.append("近 7 日：意识层级以 %s 为主" % (lv_txt or "未判定"))
+    # 🟡 AI 复盘（H-REV-001）：明标研究参考；内部失败已降级，不阻塞简报 ✓
     try:
-        from human30_review import review as _h30_review  # scripts/ 已在 sys.path
+        from human30_review import review as _h30_review
         out.append(_h30_review(days=7))
     except Exception:
-        pass  # review() 内部已降级，兜底不阻塞简报
-    out.append("（自评打卡：页面表单 或 scripts/human30_cli.py --set --mind .. --body .. --spirit .. --vocation ..）")
+        pass
+    out.append("（自评打卡：页面表单 或 scripts/human30_cli.py --set --mind .. "
+               "--body .. --spirit .. --vocation ..）")
     return "\n".join(out)
 
 

@@ -128,6 +128,23 @@ def test_no_numeric_score_in_rendered_output():
     assert not re.search(r"\b\d+\.\d+\b", body)
 
 
+def test_brief_block_has_no_score_digits(tmp_path, monkeypatch):
+    """守卫 5 扩展：简报节同样禁分数数字 ✗。"""
+    from fg_system.human30 import store as _st
+    p = tmp_path / "h.json"
+    monkeypatch.setattr(_st, "DATA_PATH", str(p))
+    _st._save({"records": [{
+        "date": "2026-10-15", "mind": 70.0, "body": 60.0,
+        "spirit": 40.0, "vocation": 65.0, "note": "",
+    }]})
+    from fg_system.human30 import metatype as _mt, render as _rd
+    rec = _st.latest()
+    t = "\n".join(_rd.quadrant_lines(rec["levels"], rec["phases"])
+                  + [_rd.metatype_line(_mt.deterministic_metatype(rec["levels"]))])
+    assert not re.search(r"\bL[123]\b", t)
+    assert not re.search(r"\d+\.\d+", t)
+
+
 # ---------------------------------------------------------------- 守卫 6
 def test_output_no_trade_verbs():
     """守卫 6：渲染输出无交易动词 ✗。"""

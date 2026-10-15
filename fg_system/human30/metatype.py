@@ -212,3 +212,9 @@ def generate(levels, client=None):
     except Exception:
         return {"metatype": _fallback_metatype(levels), "narrative": "",
                 "via": "deterministic", "degraded": True}
+
+
+def deterministic_metatype(levels):
+    """确定性 Metatype（看板/简报默认用 ✓，**不调 LLM** ✗）。"""
+    return {"metatype": _fallback_metatype(levels), "narrative": "",
+            "via": "deterministic", "degraded": True}

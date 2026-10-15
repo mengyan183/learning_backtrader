@@ -77,11 +77,7 @@ def _merge_same_day(old, new):
 
 
 def record(mind, body, spirit, vocation, note="", when=None, market=None):
-    """追加一条自评记录（同日重复打卡则覆盖当日）。返回该记录。
-
-    ⚠️ 本步**故意照搬 v1 的「删旧 + append」写法**（characterization first），
-    让下一个 Task 的 C-3 测试能先红后绿。**不要**提前改成合并逻辑 ✗。
-    """
+    """追加一条自评记录（同日重复打卡则**合并**当日：新值覆盖、旧 v2 字段保留）。返回该记录。"""
     for v in (mind, body, spirit, vocation):
         if not (0 <= v <= 100):
             raise ValueError("四象限评分必须在 0-100 之间")

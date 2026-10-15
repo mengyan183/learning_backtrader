@@ -93,3 +93,34 @@ def render_report(levels, phases=None, metatype=None, lifestyle=None,
         out.append("⚠️ %s" % DEGRADED_NOTE)
         out.append("")
     return "\n".join(out)
+
+
+def quadrant_lines(levels, phases=None, lifestyle=None, cross=None):
+    """四象限明细（**无数字** ✗）：Archetype 名 · 相位 · 意识层级词。"""
+    phases = phases or {}
+    return ["%s：%s · %s · %s" % (
+        model.LABELS[q],
+        _mt.archetype_name(q, levels.get(q)),
+        phase_word(phases.get(q)),
+        level_word(levels.get(q))) for q in model.QUADRANTS]
+
+
+def lifestyle_line(lifestyle):
+    """Lifestyle 一行（**无数字** ✗）。"""
+    ls = lifestyle or {}
+    name = ls.get("name") or "未判定"
+    prob = ls.get("problem") or ""
+    return "Lifestyle：%s%s" % (name, ("（核心问题：%s）" % prob) if prob else "")
+
+
+def metatype_line(metatype):
+    """Metatype 一行（🟡 明标 ✓；降级 ⇒ 明示非原框架 ✓）。"""
+    mt = metatype or {}
+    body = mt.get("metatype") or "未判定"
+    if mt.get("degraded"):
+        return "Metatype：%s（确定性降级，非原框架的追问判定）" % body
+    return "Metatype：%s %s" % (AI_PREFIX, body)
+
+
+def degraded_note():
+    return DEGRADED_NOTE
