@@ -18,6 +18,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 
 HOME = os.path.expanduser("~")
 IN_DIR = os.path.join(HOME, ".openclaw", "tmp", "fg-sync-in")
@@ -77,6 +78,17 @@ def main():
         total = d["total"]
         if not total or d["recv"] < total:
             continue  # 未收齐，静默等待
+        # 延迟兜底：分片刚落盘（最近分片 mtime < 60s）说明 bypass 主通道正在/即将
+        # 处理（bypass 落盘后立即 ingest_package），本 tick 跳过，避免双路径并发跑
+        # 同一 fg_sync_tool.py 导致 git 竞争/冲突误判与重复回传（2026-10-15）。
+        # 只有分片滞留 ≥60s（bypass 未触发或失败）才兜底入库。
+        newest = 0.0
+        for i in range(1, total + 1):
+            fp = os.path.join(IN_DIR, f"sync_{pkg}_{i}.md")
+            if os.path.exists(fp):
+                newest = max(newest, os.path.getmtime(fp))
+        if time.time() - newest < 60:
+            continue
         # 幂等：hash 一致且 .done 存在 → 跳过。
         # ⚠️ 标记文件名用完整包名（sync_ 前缀）——与 fg-sync-bypass.py 共用
         #    `sync_<包>.done`，否则双路径各写各的标记 ⇒ 同一包被处理两次（2026-10-15 修复）。
@@ -122,6 +134,9 @@ def main():
             rc = 3
         # 仅确认入库成功（rc=0，或"无变更可提交"=已入库过同内容）才写 done 并清理；
         # 失败（rc=2/3 或白名单拒绝）保留分片供排查、不写 done，允许重发重试。
+        # 回传纪律：bypass 是唯一成功回传通道（用户每次发 ###FG: 均触发 bypass）。
+        # watcher 兜底成功**静默**（写 done+清理即可），避免与 bypass 双 ✅；
+        # 兜底失败仍回传 ⛔（bypass 失效时用户需要被告警）。
         if rc == 0 or "可能无变更可提交" in out:
             with open(marker, "w", encoding="utf-8") as f:
                 f.write(cur)
@@ -131,10 +146,6 @@ def main():
                     os.remove(fp)
             if os.path.exists(sync_file):
                 os.remove(sync_file)
-            bypass.send_feishu(
-                f"✅ {pkg} 已收齐 {total} 片，开始入库…\n{out}",
-                "oc_a9306b326943821490184d073dae9a65",
-            )
             handled += 1
         else:
             bypass.send_feishu(
