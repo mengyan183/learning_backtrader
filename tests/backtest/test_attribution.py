@@ -159,19 +159,33 @@ def test_verdict_flags_effective_when_delta_large():
     assert attribution.verdict(table)["effective"] is True
 
 
-def test_verdict_recommends_fallback_when_ineffective():
-    """无效时必须给出「回到选项 A」的建议，而不是继续调趋势参数。"""
-    idx = pd.bdate_range("2024-01-01", periods=3)
-    f = pd.DataFrame({
-        "target_position": [0.49, 0.49, 0.49],
-        "trend_blocked": [True, True, True],
-        "fg_index": [50.0] * 3,
-    }, index=idx)
-    prices = pd.Series([100.0, 100.0, 100.0], index=idx)
-    table = attribution.contribution_table(f, prices)
+def test_verdict_negative_delta_reports_negative_and_no_fallback_advice():
+    """负贡献（拖累收益）时：effective=False、reason 如实报负，且**不得**给出
+    「回到选项 A / 降低核心仓上限」的建议（MT-21：收益维度为负 ≠ 应回退核心仓上限，
+    是否保留须结合 max_drawdown_table 人工裁决）。"""
+    table = pd.DataFrame([{
+        "with_trend_return": 0.67, "without_trend_return": 0.73,
+        "return_delta": -0.059, "blocked_days": 413, "blocked_ratio": 0.16,
+    }])
     v = attribution.verdict(table)
-    if not v["effective"]:
-        assert "选项 A" in v["reason"]
+    assert v["effective"] is False
+    reason = v["reason"]
+    assert "负" in reason
+    assert "选项 A" not in reason
+    assert "降低核心仓上限" not in reason
+
+
+def test_verdict_zero_delta_has_no_fallback_advice():
+    """delta=0（收益维度无改善）时：effective=False，reason 也**不得**含回退建议。"""
+    table = pd.DataFrame([{
+        "with_trend_return": 0.50, "without_trend_return": 0.50,
+        "return_delta": 0.0, "blocked_days": 3, "blocked_ratio": 0.2,
+    }])
+    v = attribution.verdict(table)
+    assert v["effective"] is False
+    reason = v["reason"]
+    assert "选项 A" not in reason
+    assert "降低核心仓上限" not in reason
 
 
 # ---------------------------------------------------------------- full_report

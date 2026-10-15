@@ -5,6 +5,10 @@
 **若贡献度接近零，说明修正无效，应回到验收报告的选项 A（降低核心仓上限），
 而不是继续调趋势过滤的参数。**
 
+⚠️ **MT-21 已推翻该建议**：生产口径实测趋势过滤为 **−5.90% 收益 / +1.72pp 回撤**，
+即「收益略降但回撤改善」。收益维度为负**不等于**应回退核心仓上限；是否保留趋势过滤
+取决于收益/回撤偏好，须结合 `max_drawdown_table` 的 `mdd_delta` 人工裁决。
+
 做法：构造一条「不带趋势过滤」的对照仓位序列，两条路径都按同一价格序列算收益。
 
 **裁决 B（2026-10-12，WT-22）**：v1 的 `target_position = core_position + ammo`
@@ -104,20 +108,27 @@ def max_drawdown_table(features, prices):
 def verdict(table, min_delta=0.02):
     """判定趋势过滤是否有效（设计文档 §12 风险 7）。
 
-    min_delta 是「有效」的最低累计收益改善（默认 2 个百分点）。
-    低于此值 → effective=False，并给出应回退到「降低核心仓上限」的建议。
+    min_delta 是「有效」的最低累计**收益改善**阈值（默认 2 个百分点），
+    即 `delta` 为**有符号**值，**不是** `abs(delta)`：负贡献（拖累收益）
+    应判 effective=False 并如实报负。
+
+    ⚠️ MT-21：本函数**只看收益表**，没有资格对「核心仓上限」等回撤维度下结论；
+    负贡献分支的结论一律以 `max_drawdown_table` 的 `mdd_delta` 为准，人工裁决。
     """
     delta = float(table["return_delta"].iloc[0])
     blocked_days = int(table["blocked_days"].iloc[0])
-    effective = abs(delta) >= min_delta and blocked_days > 0
+    effective = delta >= min_delta and blocked_days > 0
     if blocked_days == 0:
         reason = "趋势过滤从未触发（blocked_days=0），本次回测无法评估其价值"
+    elif delta <= -min_delta:
+        reason = ("趋势过滤贡献度 %.2f%%（**负**贡献，拖累收益）—— 是否保留取决于收益/回撤偏好，"
+                  "请结合 max_drawdown_table 的 mdd_delta 人工裁决；**不得**据此回退核心仓上限"
+                  % (delta * 100))
     elif not effective:
-        reason = ("趋势过滤贡献度 %.2f%% < 阈值 %.2f%%，修正无效 → "
-                  "应回到验收报告选项 A（降低核心仓上限），不要继续调趋势参数"
-                  % (delta * 100, min_delta * 100))
+        reason = ("趋势过滤贡献度 %.2f%% < 阈值 %.2f%%，收益维度未显示价值 —— "
+                  "结论以 max_drawdown_table 为准" % (delta * 100, min_delta * 100))
     else:
-        reason = "趋势过滤贡献度 %.2f%%，有效" % (delta * 100)
+        reason = "趋势过滤贡献度 %.2f%%，收益维度为正" % (delta * 100)
     return {"effective": effective, "delta": delta,
             "blocked_days": blocked_days, "reason": reason}
 
