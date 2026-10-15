@@ -28,19 +28,21 @@ def test_crypto_drawdown_series_nan_during_warmup():
 
 
 def test_crypto_trend_series_uses_btc():
+    """默认常数（C-3 选项 B，=1.0）下 BTC 趋势列恒 1.0（不折扣）。"""
     idx = pd.bdate_range("2020-01-01", periods=300)
     btc = pd.Series(np.linspace(200000, 50000, 300), index=idx)
     wide = pd.DataFrame({("BTC", "close"): btc})
     tf = pipeline.crypto_trend_series(wide)
-    assert tf.iloc[-1] == pytest.approx(config.TREND_FILTER_FACTOR)
+    assert tf.eq(1.0).all()
 
 
 def test_equity_trend_series_uses_qqq():
+    """默认常数（C-3 选项 B，=1.0）下 QQQ 趋势列恒 1.0（不折扣）。"""
     idx = pd.bdate_range("2020-01-01", periods=300)
     qqq = pd.Series(np.linspace(500, 200, 300), index=idx)
     wide = pd.DataFrame({("QQQ", "close"): qqq})
     tf = pipeline.equity_trend_series(wide)
-    assert tf.iloc[-1] == pytest.approx(config.TREND_FILTER_FACTOR)
+    assert tf.eq(1.0).all()
 
 
 # ---------------------------------------------------------------- 组合管道
@@ -157,11 +159,14 @@ def test_run_portfolio_deeper_drawdown_market_is_capped():
 
 
 def test_run_portfolio_crypto_trend_blocks_core():
-    """加密趋势过滤生效时，加密核心仓必须减半。"""
+    """加密趋势过滤生效时，加密核心仓必须减半。
+
+    显式构造 trend=0.5 的场景（全局常数已随 C-3 选项 B 改为 1.0）。
+    """
     idx = pd.bdate_range("2024-01-01", periods=3)
     cr = _cr(idx, [10.0] * 3)
-    cr["trend"] = config.TREND_FILTER_FACTOR
+    cr["trend"] = 0.5
     out = pipeline.run_portfolio(_us(idx, [np.nan] * 3), cr, write=False)
     full = config.CORE_CAP * config.MARKET_CORE_RATIO["crypto"]
-    assert out["crypto_core"].iloc[0] == pytest.approx(full * config.TREND_FILTER_FACTOR)
+    assert out["crypto_core"].iloc[0] == pytest.approx(full * 0.5)
     assert bool(out["trend_blocked_crypto"].iloc[0]) is True

@@ -242,7 +242,10 @@ MARKET_CORE_RATIO = {"us_equity": 0.80, "crypto": 0.20}
 
 # ---------------------------------------------------------------- 趋势过滤（§6.1）
 TREND_MA_DAYS = 200              # 趋势均线周期
-TREND_FILTER_FACTOR = 0.5        # 跌破均线时核心仓上限折扣
+# C-3 批准（2026-10-15）：选项 B 移除趋势折扣 ⇒ 置 1.0（trend 恒 1.0、trend_blocked 恒 False）。
+# 依据：MT-21 全样本 收益 -5.90pp / 回撤 +1.72pp；MT-22 OOS 101/120 窗不劣化。
+# 回退：改回 0.5 即恢复（无需改代码）。
+TREND_FILTER_FACTOR = 1.0
 # 趋势判断基准，必须是无杠杆标的（§4.5 约束 2）
 TREND_BENCHMARK = {"us_equity": "QQQ", "crypto": "BTC"}
 
@@ -646,7 +649,7 @@ def validate():
       - 加密层上限：CRYPTO_LAYER_CAP（各层 (0,1]，三层递减）
       - 档位边界：ZONE_EDGES（非空/严格递增/落在 0-100）
       - 饱和度：ZONE_SATURATION（长度 = len(ZONE_EDGES)+1，各值 0-1）
-      - 折扣系数：TREND_FILTER_FACTOR（0,1）
+      - 折扣系数：TREND_FILTER_FACTOR（0,1]
       - 仓位上限：CORE_CAP / AMMO_CAP（(0,1]）且 CORE_CAP+AMMO_CAP ≤ 1
       - 成本：COMMISSION / SLIPPAGE / INITIAL_CASH（>0）
       - 窗口：RANK_WINDOW 等正整数
@@ -688,9 +691,10 @@ def validate():
     for sat in ZONE_SATURATION:
         _check_unit_interval("ZONE_SATURATION", sat)
 
-    # ── 趋势折扣系数：跌破均线时的核心仓上限折扣，须在 (0,1) ──
+    # ── 趋势折扣系数：跌破均线时的核心仓上限折扣，须在 (0,1] ──
+    # C-3 2026-10-15：改为 (0, 1] —— 1.0 = 不做折扣（选项 B 的正当取值），0 与 >1 仍拒。
     _check_unit_interval("TREND_FILTER_FACTOR", TREND_FILTER_FACTOR,
-                         lo_open=True, hi_open=True)
+                         lo_open=True, hi_open=False)
 
     # ── 仓位上限：均为正，且核心仓 + 弹药仓 ≤ 100%（余额为永久现金缓冲）──
     _check_unit_interval("CORE_CAP", CORE_CAP, lo_open=True)

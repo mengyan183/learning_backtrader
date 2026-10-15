@@ -106,8 +106,9 @@ def test_crypto_greed_reduce_descending():
     assert all(r[i] > r[i + 1] for i in range(len(r) - 1))
 
 
-def test_trend_filter_factor_between_zero_and_one():
-    assert 0.0 < config.TREND_FILTER_FACTOR < 1.0
+def test_trend_filter_factor_in_half_open_unit_interval():
+    """折扣系数须落在 (0,1]：1.0 = 不做折扣（C-3 选项 B 的正当取值）。"""
+    assert 0.0 < config.TREND_FILTER_FACTOR <= 1.0
 
 
 def test_trend_benchmark_covers_all_markets():
@@ -204,5 +205,12 @@ def test_trend_benchmark_not_changed_by_v2_2():
     见 docs/trading-discipline.md 第 12.3 条——本测试防止有人「顺手」把它改掉。
     """
     assert config.TREND_MA_DAYS == 200
-    assert config.TREND_FILTER_FACTOR == 0.5
+    # C-3 2026-10-15 选项 B（原 0.5）：移除趋势折扣 ⇒ 恒 1.0（trend 恒 1.0、不阻断）。
+    assert config.TREND_FILTER_FACTOR == 1.0
     assert config.TREND_BENCHMARK == {"us_equity": "QQQ", "crypto": "BTC"}
+
+
+def test_trend_filter_factor_is_one_after_c3_option_b():
+    """C-3 批准 2026-10-15：选项 B 移除趋势折扣 ⇒ 常数恒 1.0。"""
+    from fg_system import config
+    assert config.TREND_FILTER_FACTOR == 1.0

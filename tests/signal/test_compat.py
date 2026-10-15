@@ -120,6 +120,7 @@ def test_market_core_trend_discount_is_new_behavior(monkeypatch):
     """趋势折扣是 v2 新增行为：v1 的 core_position 不含它。"""
     monkeypatch.setitem(config.MARKET_CORE_RATIO, "us_equity", 1.0)
     v1 = legacy.core_position(10.0)
-    v2 = ms.market_core(10.0, trend=config.TREND_FILTER_FACTOR, market="us_equity")
-    assert v2 == pytest.approx(v1 * config.TREND_FILTER_FACTOR)
+    # 显式传 trend=0.5 验证折扣行为（全局常数已随 C-3 选项 B 改为 1.0）。
+    v2 = ms.market_core(10.0, trend=0.5, market="us_equity")
+    assert v2 == pytest.approx(v1 * 0.5)
     assert v2 < v1

@@ -18,10 +18,22 @@ def test_trend_factor_is_one_above_ma():
 
 
 def test_trend_factor_is_discounted_below_ma():
+    """显式传参 factor=0.5（不依赖全局常数，常数现为 1.0）。"""
+    close = pd.Series(np.linspace(200, 100, 300),
+                      index=pd.bdate_range("2020-01-01", periods=300))
+    tf = ms.trend_factor_series(close, factor=0.5)
+    assert tf.iloc[-1] == pytest.approx(0.5)
+
+
+def test_trend_series_all_ones_under_default_config():
+    """默认常数下 trend 恒 1.0 ⇒ trend_blocked 恒 False（B 生效）。
+
+    造一段明确「收盘 < MA」的下跌序列（200→100），默认常数（=1.0）下不做折扣。
+    """
     close = pd.Series(np.linspace(200, 100, 300),
                       index=pd.bdate_range("2020-01-01", periods=300))
     tf = ms.trend_factor_series(close)
-    assert tf.iloc[-1] == pytest.approx(config.TREND_FILTER_FACTOR)
+    assert tf.eq(1.0).all()
 
 
 def test_trend_factor_is_one_during_ma_warmup():
@@ -49,9 +61,10 @@ def test_market_core_without_trend():
 
 
 def test_market_core_with_trend_discount():
-    core = ms.market_core(10.0, trend=config.TREND_FILTER_FACTOR, market="us_equity")
+    """显式传 trend=0.5（不依赖全局常数，常数现为 1.0）。"""
+    core = ms.market_core(10.0, trend=0.5, market="us_equity")
     full = config.CORE_CAP * config.MARKET_CORE_RATIO["us_equity"]
-    assert core == pytest.approx(full * config.TREND_FILTER_FACTOR)
+    assert core == pytest.approx(full * 0.5)
 
 
 def test_market_core_nan_index_returns_none():
@@ -175,10 +188,10 @@ def test_market_target_greed_tier_respects_trend_filter():
     """趋势过滤优先级最高：档位也要被趋势系数打折。"""
     st = ms.MarketState(market="crypto")
     out, st = ms.market_target(
-        index_value=86.0, drawdown=0.0, trend=config.TREND_FILTER_FACTOR,
+        index_value=86.0, drawdown=0.0, trend=0.5,
         state=st, market="crypto")
     full = config.CORE_CAP * config.MARKET_CORE_RATIO["crypto"]
-    assert out.core_position == pytest.approx(full * config.TREND_FILTER_FACTOR * 2.0 / 3.0)
+    assert out.core_position == pytest.approx(full * 0.5 * 2.0 / 3.0)
 
 
 def test_market_target_without_tier_uses_five_tier():
@@ -195,10 +208,10 @@ def test_market_target_trend_priority_over_extreme_fear():
     """趋势过滤优先级最高：极恐 + 跌破均线时，上限取趋势结果。"""
     st = ms.MarketState(market="us_equity")
     out, st = ms.market_target(
-        index_value=5.0, drawdown=0.0, trend=config.TREND_FILTER_FACTOR,
+        index_value=5.0, drawdown=0.0, trend=0.5,
         state=st, market="us_equity")
     full = config.CORE_CAP * config.MARKET_CORE_RATIO["us_equity"]
-    assert out.core_position == pytest.approx(full * config.TREND_FILTER_FACTOR)
+    assert out.core_position == pytest.approx(full * 0.5)
 
 
 def test_market_target_reports_extreme_fear():
