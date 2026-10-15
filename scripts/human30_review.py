@@ -102,7 +102,7 @@ def _facts_line(days=7):
                 days, w["records"], latest["mind"], latest["body"],
                 latest["spirit"], latest["vocation"], agg["avg"],
                 agg["level_name"].split(" ")[0], agg["weakest_label"], lv_txt))
-def review(days=7, model="qwen2.5-coder:3b", host="http://localhost:11434"):
+def review(days=7, model="qwen2.5-coder:3b-64k", host="http://localhost:11434"):
     """生成 AI 复盘（≤260 字）：确定性事实句 + LLM 建议。
 
     架构（防 3b 模型数字错位/概括漂移）：
