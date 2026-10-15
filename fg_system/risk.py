@@ -238,3 +238,31 @@ def risk_report(returns_df, weights=None):
         "weights": w,
     }
     return out
+
+
+def target_vs_actual(target_position, net_value, market_value):
+    """模型目标仓位 vs 实盘仓位的偏离（**只报事实，不给指令** ✗）。
+
+    - `target_position`：模型目标占比（0~1）
+    - `net_value` / `market_value`：实盘净值与持仓市值（同币种）
+    返回 `{"target", "actual", "gap_pp", "side"}`；
+    任一输入缺失/非法 ⇒ `None`（**不猜** ✗）。
+    `gap_pp` 单位是**百分点**（actual − target）；|gap| ≤ 1pp 视为 `on_target`。
+    """
+    try:
+        t = float(target_position)
+        n = float(net_value)
+        m = float(market_value)
+    except (TypeError, ValueError):
+        return None
+    if n <= 0 or not (0.0 <= t <= 1.0):
+        return None
+    actual = m / n
+    gap_pp = (actual - t) * 100.0
+    if abs(gap_pp) <= 1.0:
+        side = "on_target"
+    elif gap_pp > 0:
+        side = "over"
+    else:
+        side = "under"
+    return {"target": t, "actual": actual, "gap_pp": gap_pp, "side": side}

@@ -276,10 +276,50 @@ def _holdings_block(features, shoutu=None, prices=None):
                _r_tags, risk_adv or "",
                sys_bg, sys_txt, s_bg, s_txt,
                cov_cls, cov_txt, advise))
+    out.append(_deviation_line(features, latest, net))
     body = "".join(out)
     if not cards:
         return body + "<p>无持仓记录</p>"
     return body + "<div class='h-grid'>" + "".join(cards) + "</div>"
+
+
+_SIDE_WORDS = {"over": "高于目标", "under": "低于目标", "on_target": "接近目标"}
+
+
+def _deviation_line(features, latest, net):
+    """模型目标仓位 vs 实盘持仓占净值的偏离（**只报事实，不带指令** ✗）。
+
+    - 模型目标仓位 = `features["target_position"]` 最后一行（模型数据日 = index.max）
+    - 实盘仓位 = 持仓市值合计 / 净值（持仓快照日 = `latest["date"]`）
+    - 两个日期**都显示**（实测 `features.csv` 与 `positions.csv` 末日不同 ✗，
+      不显示日期即误导 ✓）
+    - 任一缺失 ⇒ 「模型/持仓数据不足，暂不比对」（**不崩** ✓）
+    """
+    tp = features["target_position"].dropna() \
+        if "target_position" in features.columns else features.iloc[0:0]
+    mv_total = None
+    snap_date = None
+    if not latest.empty:
+        try:
+            mv_total = float(pd.to_numeric(latest["market_value"]).sum())
+        except (KeyError, TypeError, ValueError):
+            mv_total = None
+        try:
+            snap_date = pd.to_datetime(latest["date"].iloc[0]).strftime("%Y-%m-%d")
+        except Exception:
+            snap_date = None
+    if tp.empty or net is None or mv_total is None:
+        return ("<p class='sub'>模型目标 vs 实盘偏离：模型/持仓数据不足，暂不比对</p>")
+    model_date = (tp.index.max().strftime("%Y-%m-%d")
+                  if hasattr(tp.index.max(), "strftime") else str(tp.index.max()))
+    d = risk_mod.target_vs_actual(float(tp.iloc[-1]), net, mv_total)
+    if d is None:
+        return ("<p class='sub'>模型目标 vs 实盘偏离：模型/持仓数据不足，暂不比对</p>")
+    return ("<p class='sub'>模型目标 %.1f%% · 实盘 %.1f%% · 偏离 %+.1f pp（%s）"
+            "（模型数据日 %s / 持仓快照日 %s）</p>"
+            % (d["target"] * 100.0, d["actual"] * 100.0, d["gap_pp"],
+               _SIDE_WORDS.get(d["side"], d["side"]),
+               model_date, snap_date or "—"))
 
 
 def _num(v):

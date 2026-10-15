@@ -36,6 +36,10 @@ def _setup(tmp_path, monkeypatch, feat_last, price_last):
     monkeypatch.setattr(cf, "FEATURES", str(tmp_path / "features.csv"))
     monkeypatch.setattr(cf, "PRICES", str(tmp_path / "prices.csv"))
     monkeypatch.setattr(cf, "WARN", str(tmp_path / "freshness_warning.txt"))
+    # 既有 3 条测试只关心 features/prices 口径：把新增的产物列表清空，
+    # 保证它们的行为**与改动前完全一致**（新口径由下面的新用例单独覆盖）。
+    monkeypatch.setattr(cf, "EXTRA_FRESH", [])
+    monkeypatch.setattr(cf, "REF_PRODUCTS", [])
     _write(cf.FEATURES, [feat_last])
     _write(cf.PRICES, [price_last])
 
@@ -67,3 +71,51 @@ def test_exit_nonzero_when_features_missing(tmp_path, monkeypatch):
     _setup(tmp_path, monkeypatch, date.today(), date.today())
     os.remove(cf.FEATURES)
     assert cf.main() == 1
+
+
+# -------------------------------------------------- 覆盖不足修复（S-0）
+# 背景：features.csv 停更会被抓到，但 pipeline 的另一个产物
+# portfolio_features.csv 同样停更（实测 09-18）却**没有任何检查** ⇒ 护栏有盲区。
+# 下面三例锁住：多余产物必须被查（fresh / 缺失都算 issue），
+# 而参考快照类产物只报尾行日期、**不判 issue**（不改退出码）。
+
+
+def _extra_fresh(tmp_path, monkeypatch, last):
+    """把 EXTRA_FRESH 指到一个 tmp csv，尾行日期 = last。"""
+    path = tmp_path / "portfolio_features.csv"
+    _write(str(path), [last])
+    monkeypatch.setattr(cf, "EXTRA_FRESH", [("组合特征", str(path))])
+
+
+def test_extra_fresh_stale_is_issue(tmp_path, monkeypatch):
+    """组合特征尾行滞后 > 阈值 ⇒ 返回非零，且告警里点名「组合特征」。"""
+    today = date.today()
+    _setup(tmp_path, monkeypatch, today, today)
+    _extra_fresh(tmp_path, monkeypatch, today - timedelta(days=cf.MAX_LAG_DAYS + 5))
+    rc = cf.main()
+    assert rc == 1, "组合特征停更却返回 %r ⇒ 覆盖盲区未修复" % (rc,)
+    assert "组合特征" in open(cf.WARN, encoding="utf-8").read()
+
+
+def test_extra_fresh_missing_is_issue(tmp_path, monkeypatch):
+    """组合特征不存在 ⇒ 返回非零，告警含「不存在」。"""
+    today = date.today()
+    _setup(tmp_path, monkeypatch, today, today)
+    monkeypatch.setattr(cf, "EXTRA_FRESH",
+                        [("组合特征", str(tmp_path / "nope.csv"))])
+    rc = cf.main()
+    assert rc == 1
+    assert "不存在" in open(cf.WARN, encoding="utf-8").read()
+
+
+def test_ref_products_missing_still_exit_zero(tmp_path, monkeypatch, capsys):
+    """参考产物（快照/历史）缺失**不判 issue** ⇒ 退出码仍为 0，但 stdout 必须可见「缺失」。"""
+    today = date.today()
+    _setup(tmp_path, monkeypatch, today, today)
+    monkeypatch.setattr(cf, "REF_PRODUCTS",
+                        [("守猪待兔", str(tmp_path / "nope.csv"))])
+    rc = cf.main()
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "缺失" in out
+    assert "守猪待兔" in out

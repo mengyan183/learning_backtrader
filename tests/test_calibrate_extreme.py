@@ -133,6 +133,40 @@ def test_main_few_triggers_reports_below_min(monkeypatch, tmp_path, capsys):
     assert "样本不足的项：circuit_breaker" in out
 
 
+def test_main_single_trigger_insufficient_no_crash(monkeypatch, tmp_path, capsys):
+    """实测口径：历史熔断**只触发过 2 次**（2023-12-13 / 2024-01）⇒ 达不到
+    MIN_EVENTS=10 ⇒ 脚本**必须**如实输出「样本不足」且**不崩**（不静默给结论 ✗）。
+
+    本测试用**只有 1 次触发**的最小样本锁住这一行为：不抛异常 + 输出含「样本不足」。
+    """
+    feat = _write_features(tmp_path, [("2023-12-13", 88.0, "true", "false")])
+    prices = _write_prices(tmp_path, [
+        ("2023-12-13", "TQQQ", 100.0), ("2023-12-14", "TQQQ", 101.0),
+    ])
+    monkeypatch.setattr(ce, "FEATURES", feat)
+    monkeypatch.setattr(ce, "PRICES", prices)
+    rc = ce.main()                       # 不得抛异常
+    out = capsys.readouterr().out
+    assert "样本不足" in out
+    assert "1 < %d 次" % ce.MIN_EVENTS in out
+    # 不得因样本不足就给出"校准结论"（只测量、不判结论）
+    assert "触发后前瞻收益" not in out
+
+
+def test_main_few_triggers_never_crash_with_nan_fg(monkeypatch, tmp_path, capsys):
+    """触发当日 fg_index 为 nan（extreme 行常见）时也不得崩 ⇒ 样本不足照常输出。"""
+    feat = _write_features(tmp_path, [
+        ("2024-01-05", "nan", "false", "1"),
+    ])
+    monkeypatch.setattr(ce, "FEATURES", feat)
+    monkeypatch.setattr(ce, "PRICES", _write_prices(tmp_path, []))
+    rc = ce.main()
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "样本不足" in out
+
+
+
 def test_main_enough_triggers_prints_forward_returns(monkeypatch, tmp_path, capsys):
     """触发次数 >= MIN_EVENTS ⇒ 打印前瞻收益表（T+4/8/16）。"""
     n = ce.MIN_EVENTS
