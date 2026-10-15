@@ -624,20 +624,58 @@ def _zone_int(fg):
     return min(zi, 4)
 
 
+def _drawdown_of(snap):
+    """从 snap 取标的指数回撤（`snap["fg"]["drawdown"]`，唯一既有数据源）。
+
+    形态兼容：`pipeline.drawdown_series()` 产出 `1 - basket/peak` ⇒ **正数形态**
+    （0.0559 = 5.59% 回撤）；亦兼容负数（-0.0559）与百分数字面量（5.59）。
+    取不到 ⇒ 返回 None（不猜、不崩）。
+    """
+    dd = (snap.get("fg") or {}).get("drawdown")
+    if dd is None:
+        return None
+    try:
+        dd = float(dd)
+    except (TypeError, ValueError):
+        return None
+    if dd != dd:            # NaN
+        return None
+    if abs(dd) > 1:         # 百分数字面量 ⇒ 归一到小数
+        dd = dd / 100.0
+    return dd
+
+
 def behavior_checklist(snap):
-    """P2 极端档位行为检查清单（简报节）。
+    """P2 极端档位 + 抄底三黑 行为检查清单（简报节）。
 
     知识库来源：Duomo 行为一致性 / ChatWithTraders Market Wizards
     （交易心理 57 条为最大主题簇，档位极端时最容易犯行为错误）。
+    §4.5 抄底三黑：弹药释放按回撤（`DRAWDOWN_BATCHES`）触发 ⇒ 清单随之出现。
     """
     fg = (snap.get("fg") or {}).get("fg_index")
     zi = _zone_int(fg)
     if zi == 0:
         return ("极度恐惧档位 · 行为检查清单【研究参考】\n"
                 "☐ 恐慌割肉检查：卖出理由是否来自基本面恶化，而非仅因系数低？\n"
-                "☐ 弹药纪律：熔断/极端日释放的弹药按计划分批，不一次打光\n"
-                "☐ 分批节奏：恐惧区加仓按 1/3 步进，留子弹应对更低\n"
-                "☐ 集中优势兵力：弹药集中于最高确信标的，不平均撒网（过度分散=同时押注所有方向）")
+                "☐ 抄底三黑①过早满仓：弹药按计划分批，「不一次打光」"
+                "（此刻还有几批未释放？）\n"
+                "☐ 抄底三黑②单一重仓：既不平均撒网（同时押注所有方向），"
+                "也不把弹药砸在一个标的上\n"
+                "☐ 抄底三黑③档差没拉开：三批对应 -20% / -40% / -60%，"
+                "不挤在同一个小坑里打完\n"
+                "（详见 trading-discipline.md §4.5）")
+    dd = _drawdown_of(snap)          # 从 snap 取回撤（小数，负数或正数都兼容）
+    if dd is not None and abs(dd) >= 0.20:      # 与 config.DRAWDOWN_BATCHES[0] 同源
+        # 阈值故意写死 0.20：简报层不依赖 config 计算（避免耦合）；
+        # 同源 = config.DRAWDOWN_BATCHES[0]，改 config 时此处须同步。
+        return ("回撤已达首档（弹药开始释放）· 行为检查清单【研究参考】\n"
+                "☐ 抄底三黑①过早满仓：弹药按计划分批，「不一次打光」"
+                "（此刻还有几批未释放？）\n"
+                "☐ 抄底三黑②单一重仓：既不平均撒网（同时押注所有方向），"
+                "也不把弹药砸在一个标的上\n"
+                "☐ 抄底三黑③档差没拉开：三批对应 -20% / -40% / -60%，"
+                "不挤在同一个小坑里打完\n"
+                "（详见 trading-discipline.md §4.5）")
     if zi == 4:
         return ("极度贪婪档位 · 行为检查清单【研究参考】\n"
                 "☐ 追高检查：是否在贪婪区追入未持有的标的？等待信号回中性\n"
