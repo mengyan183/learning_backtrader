@@ -108,7 +108,12 @@ Windows 完成一项 → scripts/pack_many.py 打包（URL-safe base64 分片）
   ⇒ 整份发要 **118 片**（且 116 片那次真挂过）。改用
   `py -3.10 scripts/pack_many.py <包名> --patch <文件...>` ⇒ 只发**统一 diff**，
   片数降到个位数。⚠️ 回落规则：拿不到基准 / diff 不更小 / 出任何错 ⇒ **自动回落整文件**并打印原因。
-  ⚠️ **Mac 侧需要 apply 步骤**（见 `docs/mac-tasks.md`）—— 落 `__patch__/` 前缀，**不进白名单**。
+  ✅ **Mac 侧 apply 已就绪（`MT-20` ✅ 2026-10-15）**：`scripts/fg_sync_ingest.py` 识别
+  `__patch__/<包名>.diff` ⇒ `git apply` 应用 + **失败保留分片**（告警 + `rc=2` 可重试）；
+  已**真端到端**实测（真 `--patch` 包 1 片 → 应用成功 → 增量 pytest 21 passed）。
+  ⚠️ 落 `__patch__/` 前缀 ⇒ **不命中白名单** ⇒ **故意**不让它当普通文件入库。
+  ⚠️ 打包端必须带 `FG_PROXY`（本仓库是 partial clone，`git show` 不带代理会**静默挂死**）。
+  ⚠️ `--patch` 需在**有 `origin/main` 的 git 仓库**内跑（`REPO` 取自脚本自身路径）。
 
 ### C.2 🔴 铁律：**不得用 Windows 侧的 `Data/` 副本推断 Mac 侧状态**（2026-10-15 新增）
 
