@@ -1,1 +1,4 @@
 {"ts": "2026-10-13T13:56:24", "kind": "__schema__", "key": "attempts-ledger v1", "verdict": "schema: {ts, kind: factor_screen|variant|hypothesis, key, verdict, git_sha}; idempotent key: git_sha+kind+key", "git_sha": "schema"}
+{"ts": "2026-10-16T13:44:14", "kind": "hypothesis", "key": "H-065", "verdict": "ok", "git_sha": "bbb32d721f364232465839d0e5f961de834428f6"}
+{"ts": "2026-10-16T14:26:38", "kind": "hypothesis", "key": "H-068", "verdict": "ok", "git_sha": "8bda5f3a2079c1965a176cc06d721f79f9747434"}
+{"ts": "2026-10-16T14:54:18", "kind": "hypothesis", "key": "H-069", "verdict": "ok", "git_sha": "282c13d9e4d1ff784b7b1d7aab15c1f854d0e0a5"}

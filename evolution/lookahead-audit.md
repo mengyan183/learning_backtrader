@@ -1,6 +1,6 @@
 # 未来函数审计报告（R1.2 · freqtrade lookahead 思想）
 
-- 生成：2026-10-14 19:23 · scripts/lookahead_audit.py
+- 生成：2026-10-16 14:53 · scripts/lookahead_audit.py
 - 口径：代码层扫描 `shift(-n)`/`shift(0)`（默认违规、白名单豁免）；数据层 features 尾行超前原料 >1 个自然日判违规（容忍 T+1 上游发布滞后，pipeline 用最近可得值、值不超前，超前 ≤1 日 = 非前视）
 - 结论：**PASS（违规 0）**
 
@@ -15,16 +15,16 @@
 | 🟡 白名单 | `scripts/factor_screen_extend.py:260` | `fut = spy.shift(-h) / spy - 1.0` |
 | 🟡 白名单 | `scripts/norm_compare.py:135` | `fwd = df["ret"].shift(-1)` |
 | 🟡 白名单 | `scripts/putcall_factor_check.py:30` | `spy["next_ret"] = spy["ret"].shift(-1)  # 当日收盘 → 次日收盘` |
-| 🟡 白名单 | `scripts/verify_hypotheses.py:486` | `- 「后续 H 日收益」= close.shift(-H)/close - 1（事件日起 H 个交易日后）。` |
-| 🟡 白名单 | `scripts/verify_hypotheses.py:545` | `fwd = close.shift(-h) / close - 1.0            # H 日前瞻收益` |
-| 🟡 白名单 | `scripts/verify_hypotheses.py:581` | `"4/8/16 日收益（close.shift(-H)/close-1）vs 全样本基线，各 horizon "` |
+| 🟡 白名单 | `scripts/verify_hypotheses.py:541` | `- 「后续 H 日收益」= close.shift(-H)/close - 1（事件日起 H 个交易日后）。` |
+| 🟡 白名单 | `scripts/verify_hypotheses.py:600` | `fwd = close.shift(-h) / close - 1.0            # H 日前瞻收益` |
+| 🟡 白名单 | `scripts/verify_hypotheses.py:636` | `"4/8/16 日收益（close.shift(-H)/close-1）vs 全样本基线，各 horizon "` |
 
 ## 二、数据层
 
-- features 尾行：2026-10-13
-- raw/vix.csv 尾行：2026-10-13
-- raw/sentiment.csv 尾行：2026-10-12
-- raw/prices.csv 尾行：2026-10-13
+- features 尾行：2026-10-15
+- raw/vix.csv 尾行：2026-10-14
+- raw/sentiment.csv 尾行：2026-10-14
+- raw/prices.csv 尾行：2026-10-15
 
 - features 超前原料：**否 ✓**
 

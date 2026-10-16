@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-14T19:23:05",
+  "generated_at": "2026-10-16T14:53:16",
   "cheat_on": false,
   "verdict": "PASS",
   "code": {
@@ -42,28 +42,28 @@
       },
       {
         "file": "scripts/verify_hypotheses.py",
-        "line": 486,
+        "line": 541,
         "code": "- 「后续 H 日收益」= close.shift(-H)/close - 1（事件日起 H 个交易日后）。"
       },
       {
         "file": "scripts/verify_hypotheses.py",
-        "line": 545,
+        "line": 600,
         "code": "fwd = close.shift(-h) / close - 1.0            # H 日前瞻收益"
       },
       {
         "file": "scripts/verify_hypotheses.py",
-        "line": 581,
+        "line": 636,
         "code": "\"4/8/16 日收益（close.shift(-H)/close-1）vs 全样本基线，各 horizon \""
       }
     ],
     "unclassified": []
   },
   "data": {
-    "features_tail": "2026-10-13",
+    "features_tail": "2026-10-15",
     "raw_tails": {
-      "vix.csv": "2026-10-13",
-      "sentiment.csv": "2026-10-12",
-      "prices.csv": "2026-10-13"
+      "vix.csv": "2026-10-14",
+      "sentiment.csv": "2026-10-14",
+      "prices.csv": "2026-10-15"
     },
     "ahead_of_raw": false
   }
