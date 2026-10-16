@@ -53,7 +53,7 @@ BREADTH_SYMBOLS = ["SPY", "QQQ", "RSP", "IWM"]
 #   AXTI/CRCL 为其无杠杆底层（因子输入必须用底层，§4.5 约束 1）。
 RESEARCH_SYMBOLS = ["GLD", "GDX", "GDXJ", "GDXU", "SLV",
                     "FXI", "MCHI", "KWEB", "CQQQ", "ASHR", "YINN",
-                    "AXTI", "AXTX", "CRCL", "CRCG"]
+                    "AXTI", "AXTX", "CRCL", "CRCG", "TLT"]
 FETCH_SYMBOLS = ["TQQQ", "SOXL", "UPRO", "QQQ", "SOXX", "SMH", "SPY", "RSP",
                  "IWM"] + RESEARCH_SYMBOLS
 
