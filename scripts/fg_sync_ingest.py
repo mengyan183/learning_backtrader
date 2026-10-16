@@ -166,27 +166,26 @@ def _dirty_paths(repo):
 
 
 def _clean_processed(src, keep=None):
-    """成功后清理已处理的分片原文与标记文件（自动清理，2026-10-09）。
+    """（已停用目录级清扫 2026-10-16）成功后清理已处理的分片原文与标记文件。
 
-    只删除 src 目录根下的 `.md` / `.txt`（分片原文 + 聚合 sync_in.md）与
-    `.done` 标记；目录本身、非文本文件、`keep` 白名单（如保留的归档目录名）
-    一律不动。删除失败不致命（下次处理可再清），记录一行即可。
+    🔴 **不再从 ingest 调用** —— 目录级清扫会把**其他包**的残留分片连坐删除
+    （实测 `sync_1016t` 分片被 `sync_1016u` 成功入库时的清理连带删除，2026-10-16）。
+    清理职责已移交 `fg-sync-watcher.py` / `fg-sync-bypass.py`（各清**本包**分片+done，
+    watcher 幂等分支兜底模型直跑路径）。
+    本函数保留仅供显式调用方使用；若被调用，只清 sync_in.md 与 .done、**不动分片**。
     """
-    keep = set(keep or ())
     if not os.path.isdir(src):
         return
     for fn in sorted(os.listdir(src)):
-        if fn in keep:
-            continue
         p = os.path.join(src, fn)
         if not os.path.isfile(p):
             continue
-        if fn.endswith((".md", ".txt", ".done")):
+        if fn in ("sync_in.md",) or fn.endswith(".done"):
             try:
                 os.unlink(p)
             except OSError as exc:
                 print("⚠️ 自动清理跳过 %s：%s" % (fn, exc))
-    print("🧹 已自动清理处理后的分片原文（保留目录：%s）" % (", ".join(sorted(keep)) or "无"))
+    print("🧹 已清理聚合文件与 .done 标记（分片原文保留，由 watcher/bypass 各清本包）")
 
 
 def main():
@@ -377,7 +376,6 @@ def main():
             print("❌ 增量 pytest 有失败，详见仓库根 pytest 输出；同步文件已入库，请修复后再提交。")
             return 2
         print("✅ 增量 pytest 通过（同步相关测试）。")
-        _clean_processed(args.src)
         return 0
 
     tr = subprocess.run([py, "-m", "pytest", "-q"], cwd=args.repo,
@@ -389,7 +387,6 @@ def main():
         print("❌ pytest 有失败，详见仓库根 pytest 输出；同步文件已入库，请修复后再提交。")
         return 2
     print("✅ pytest 通过。同步完成，可回复公司端：文件已入库并测试通过。")
-    _clean_processed(args.src)
     return 0
 
 

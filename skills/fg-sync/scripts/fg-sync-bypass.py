@@ -106,9 +106,13 @@ def ingest_package(pkg, total, chat_id):
     except subprocess.TimeoutExpired:
         out = "⏳ 入库超时（180s），请稍后查收"
         rc = 3
-    # 成功（rc=0，或"无变更可提交"=已入库过同内容）才写标记并清理分片；
-    # 失败保留分片、不写标记，允许 watcher/重发重试（与 fg-sync-watcher.py 对齐，2026-10-15）。
-    if rc == 0 or "可能无变更可提交" in out:
+    # 成功判定（2026-10-16 加固，与 fg-sync-watcher.py 对齐）：
+    #   success = (rc==0 或"无变更可提交"=已入库过同内容) **且** out 不含 ⛔/❌。
+    # 失败关键字优先：commit 无变更后 pytest 失败（out 混入"可能无变更可提交"）会被旧判定
+    # 误判成功 ⇒ ✅ 前缀 + ❌ 内容 + 误写 done ⇒ 分片被清（1016u 实测）。加固后此类判失败。
+    success = ((rc == 0 or "可能无变更可提交" in out)
+               and "⛔" not in out and "❌" not in out)
+    if success:
         with open(marker, "w", encoding="utf-8") as f:
             f.write(cur_hash)
         for i in range(1, total + 1):

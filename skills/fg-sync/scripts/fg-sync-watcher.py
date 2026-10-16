@@ -132,12 +132,13 @@ def main():
         except subprocess.TimeoutExpired:
             out = "⏳ 入库超时（180s），请稍后查收"
             rc = 3
-        # 仅确认入库成功（rc=0，或"无变更可提交"=已入库过同内容）才写 done 并清理；
-        # 失败（rc=2/3 或白名单拒绝）保留分片供排查、不写 done，允许重发重试。
-        # 回传纪律：bypass 是唯一成功回传通道（用户每次发 ###FG: 均触发 bypass）。
-        # watcher 兜底成功**静默**（写 done+清理即可），避免与 bypass 双 ✅；
-        # 兜底失败仍回传 ⛔（bypass 失效时用户需要被告警）。
-        if rc == 0 or "可能无变更可提交" in out:
+        # 仅确认入库成功才写 done 并清理（2026-10-16 加固）：
+        #   success = (rc==0 或"无变更可提交"=已入库过同内容) **且** out 不含 ⛔/❌。
+        # 失败关键字优先：即使 out 混入"可能无变更可提交"（如 commit 无变更后 pytest 失败），
+        # 只要含 ⛔/❌ ⇒ 判失败 ⇒ 不写 done、不清分片、允许重发重试（1016t/1016u 误判根因）。
+        success = ((rc == 0 or "可能无变更可提交" in out)
+                   and "⛔" not in out and "❌" not in out)
+        if success:
             with open(marker, "w", encoding="utf-8") as f:
                 f.write(cur)
             for i in range(1, total + 1):
