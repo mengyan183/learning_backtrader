@@ -8,15 +8,21 @@ level 分量的**官方长期数据源 + 交叉校验基准**。
 
 通道：fred.stlouisfed.org/graph/fredgraph.csv?id=<SERIES> 免 API key 直连 CSV
 （美国站点，直连失败自动走本地代理 7890，与 fetch_stablecoin_usage 同模式）。
+有本地 key（Data/fred_key 或环境变量 FRED_API_KEY）时自动升级为官方
+api.stlouisfed.org 全历史通道（MT-27：BAMLH0A0HYM2 免 key 只有近 3 年窗口，
+key 可抓 1996 至今）。🔴 key 只存本地，不入库、不随 fg-sync 回传。
 
 产出：
   Data/raw/fred_DFF.csv      observation_date,DFF     （有效联邦基金利率 %）
   Data/raw/fred_T10Y2Y.csv   observation_date,T10Y2Y  （10Y-2Y 国债利差 %）
+  Data/raw/fred_DGS10.csv    observation_date,DGS10   （10Y 国债收益率 %）
+  Data/raw/fred_BAMLH0A0HYM2.csv  observation_date,BAMLH0A0HYM2 （HY OAS %）
 增量 append，同日期幂等覆盖；仅入 Data/raw，**不改任何生产计算**。
 
 用法：.venv/bin/python scripts/fetch_fred.py [--series DFF,T10Y2Y] [--debug]
 """
 import argparse
+import json
 import os
 import sys
 import urllib.request
@@ -26,6 +32,8 @@ sys.path.insert(0, REPO)
 RAW = os.path.join(REPO, "Data", "raw")
 
 BASE = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=%s"
+API_URL = ("https://api.stlouisfed.org/fred/series/observations"
+           "?series_id=%s&api_key=%s&file_type=json&observation_start=1776-07-04")
 PROXY = "http://127.0.0.1:7890"
 SERIES = {
     "DFF": "有效联邦基金利率(%)，1954-至今，fed 因子 level 分量官方源",
@@ -37,8 +45,42 @@ SERIES = {
 }
 
 
+def read_fred_key():
+    """读本地 FRED API key：环境变量 FRED_API_KEY 优先，其次 Data/fred_key 文件。
+    🔴 key 只存本地（Data/ 不入库、不随 fg-sync 回传）。无 key 返回 None。"""
+    env = os.environ.get("FRED_API_KEY", "").strip()
+    if env:
+        return env
+    kf = os.path.join(REPO, "Data", "fred_key")
+    if os.path.exists(kf):
+        k = open(kf, encoding="utf-8").read().strip()
+        if k:
+            return k
+    return None
+
+
 def fetch_series(sid, debug=False):
-    """免 key 下载 FRED CSV；直连失败自动走代理。返回 (lines, source)。"""
+    """下载 FRED 序列。有本地 key 走官方 API（全历史，observation_start=1776）；
+    无 key 走免 key CSV 直连（直连失败自动走代理）。返回 (lines, source)。"""
+    key = read_fred_key()
+    if key:
+        url = API_URL % (sid, key)
+        try:
+            raw = urllib.request.urlopen(url, timeout=25).read().decode("utf-8")
+            obs = (json.loads(raw) or {}).get("observations", []) or []
+            lines = ["observation_date,%s" % sid] + [
+                "%s,%s" % (o.get("date"), o.get("value"))
+                for o in obs
+                if o.get("value", ".") not in (".", "", None)
+            ]
+            if debug:
+                print(f"[fred] {sid} 走 api-key：{len(lines)-1} 行，"
+                      f"首行 {lines[1]}，尾行 {lines[-1]}")
+            return lines, "api-key"
+        except Exception as e:
+            if debug:
+                print(f"[fred] {sid} api-key 失败: {e}")
+            raise SystemExit(f"FRED {sid} 下载失败（key 通道不可达）")
     url = BASE % sid
     for label, opener in (
         ("direct", urllib.request.build_opener()),
