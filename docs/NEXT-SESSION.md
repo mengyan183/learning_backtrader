@@ -1,23 +1,39 @@
 # 下次会话先读这个（进度快照）
 
-**更新**：2026-10-13 · **对应提交**：远端 main = `8e8ca9d`（MT-04/05/06 完成）
+**更新**：2026-10-16 · **对应提交**：远端 main = `c750f0d`（MT-33：H-069 裁决 A 落地 + §C.3 教训⑧改写/⑨a⑨b）
 
 ---
 
 ## 一句话现状
 
-- **同步链路已全通** ✓：公司 Windows → 飞书「海外投资助手」机器人 → OpenClaw(Mac) `fg-sync` skill → 贪恐仓库；**`sync_1013a/b`（10-13）已入库** ✓（详见 `docs/fg-sync-accelerate.md`、`docs/dual-end-workflow.md`）
-- **gitee 为唯一主线** ✓：读走 `git -c http.proxy=http://10.30.6.49:9090`，写走飞书分片，**不做 merge**（历史无关）✓
-- **任务表已清空** ✓：`docs/windows-tasks.md` **WT-01~26 全部 ✅** ✓；`docs/mac-tasks.md` **MT-01~06 全部 ✅** ✓ ⇒ 无下发任务
-- **✅ 规划 v2.0 阶段 1 完成**（2026-10-13 ✓）：验收项 **A5 / A3c / A3b / A3a / D1 全 ✅** ✓；**A4 移作阶段 2 前置** ⏩（是 A1 的前置，喂阶段 2 样本）；**D6 后置阶段 3** ✓。下一阶段 = **阶段 2**（A1 样本达标后 + B1 + B5 + D2 + D7）
-- **🆕 规划 v2.0 阶段 1 已基本落地** ✓（`docs/2026-10-12-贪恐系统迭代规划v2.0.md`）：**A5** ✅（MT-01 交付真实同暴露对照：组合买入持有 年化 **44.11%**/回撤 -76.93% vs 组合策略 **13.72%**/-38.77%）；**A3c** ✅（`fg_system/attempts.py` 台账）；**A3b** ✅（`fg_system/fdr.py`）；**A3a 方法就绪** ✅（`scripts/evolve_dsr_method.py`）；**D1** ✅（设计文档 §5.1 加时点标注）；**A4/D6** 待（时间型/后置）
-- **Mac 侧待办（等待型）**：① B 类数据积累（H-001 观察点、B-3/B-5 快照、B-8/B-9/B-10）；② F-009/F-010 因子样本积累。C-5 季度自动重检已设 launchd（1/4/7/10 月 1 日 08:00）
+- **同步链路已全通** ✓：公司 Windows → 飞书「海外投资助手」机器人 → OpenClaw(Mac) `fg-sync` skill → 贪恐仓库（详见 `docs/dual-end-workflow.md`）
+- **gitee 为唯一主线** ✓：读走 `git fetch`（公司代理 `http://10.30.6.49:9090`），写走飞书分片，**不做 merge**（历史无关）✓
+- 🔴 **任务表已清空** ✓：`docs/windows-tasks.md` **WT-01~31 全部 ✅** ✓；`docs/mac-tasks.md` **MT-01~33 全部 ✅** ✓ ⇒ **无下发任务** ⚠️（⇒ 需**定新目标**，否则下个会话无活可干）
+- 🔴 **任务通道已固化（2026-10-16）**：**凡「需 Mac 执行」的事必须登记进 `docs/mac-tasks.md`** ✓（状态 `待执行` 即触发器 ✓，Mac 完成后回写 ✅）；**note 只是说明附件、不构成任务** ✗
+- **规划 v2.0**：**阶段 1 ✅**（A5/A3c/A3b/A3a/D1，2026-10-13 ✓）；**阶段 2 ✅**（敏感性四组 + 变体回测 V-H7/V-ATR/V-VOL/V-CORR/V-MA + B2/B3，2026-10-09~14 ✓）⇒ **下一阶段待定** ⏩（阶段 3 / A4 前置，**需与用户确认** ✗）
+- 🔴 **H-065 线已整体归档（2026-10-16）** ✗：H-065（60 日 corr ✗）/ H-068（5 日 corr ✗）/ H-069（当日股债同跌率 ✗）**三个指标全否** ⇒ 「挤压期避险失效」**不再派生新假说** ✗（再换指标即过拟合）
+- **Mac 侧待办（等待型）**：① B 类数据积累（H-001 观察点、B-3/B-5 快照、B-8/B-9）；② F-009/F-010 因子样本积累。C-5 季度自动重检已设 launchd（1/4/7/10 月 1 日 08:00）
 - ⚠️ **Windows 端环境**：默认 `python` = **3.14 且无 `backtrader`** ✗ ⇒ 跑测试**必须 `py -3.10`** ✓；**无公网** ⇒ 凡"需真实 `Data`"的任务登记 `docs/mac-tasks.md` ✓
 - ⚠️ **状态列仅供参考** ✗：本仓库多次出现"已完成但状态仍写待做"✗（WT-15~26 即如此）⇒ **开工前先 grep/跑测试确认代码现状** ✓
 
 ---
 
-## 当前状态基线（2026-10-09）
+## 🆕 2026-10-10 ~ 10-16 增量（本轮重点）
+
+- ✅ **双端链路加固**：`--patch` 增量包（**MT-20** ✓）+ **分片丢失根因修复**（**`9c2be0d`** ✓：失败包误写 `done` 判定加固 ✓ + 停用目录级连坐清理 ✓）
+- 🔴 **§C.3 预登记自检清单从 5 条 → 9 条** ✓（`docs/dual-end-workflow.md`）—— 由 **H-065 一条假说连踩 5 个坑**反推得出：
+  ① 自变量不含结论 / ② 判据不与定义重叠 / ③ 稀有事件禁占比比较 / ④ 措辞与意图逐字对齐 / ⑤ 指标尺度匹配机制尺度 /
+  ⑥ 样本低于下限只报数不推断 / ⑦ 非盲登记须显式标注 + 分段稳健 / ⑧ patch 基准 / ⑨a 全样本显著 ≠ 稳健 / ⑨b 子样本下限按**功效**算
+- 🔴 **patch 通道实测 3/3 失败** ✗（`sync_1016t` 整包 0/5 ✗ / `v` 部分生效 ✗ / `x` 失败 ✗），根因 = **Mac 在收到包之后、入库之前提交了同一文件** ✗
+  ⇒ 分工：**表格类文档走 `mac-tasks.md` 登记** ✓ / **代码·测试用整文件包** ✓ / patch 仅在**确认远端无新提交**时用 ✓（`9c2be0d` 后 `sync_1016ab` 首次成功 ✓）
+- ✅ **C-3 趋势过滤移除已落地并真数据复核**（**MT-23** ✓）：`TREND_FILTER_FACTOR` 0.5 → 1.0 ✓；`trend` 恒 1.0 ✓；30 天观察窗已启动 ✓
+- ✅ **nuwa P0 简报渲染复核**（**MT-24** ✓）；**H-065 数据接入**（**MT-26/27/28**：TLT + DGS10 + **BAA10Y 1986 起** ✓）
+- ✅ **抗风险 S-0~S-5**（**MT-11~15** ✓）：`features.csv`/`portfolio_features.csv` 停更修复 + **组合级接入每日链** ✓、freshness 护栏 ✓、回撤预算曲线 ✓、模型目标 vs 实盘偏离行 ✓
+- ✅ **归因标尺修复**（**MT-21/22** ✓）：生产口径下趋势过滤 **收益 −5.90pp / 回撤改善 +1.72pp**；OOS **101/120 窗不劣化** ✓
+
+---
+
+## 当前状态基线（2026-10-09，历史留痕）
 
 - ✅ **回测裁判恢复**：`fg_system/backtest/*` 还原（issue #3 关闭），`evolution/baseline.json` 产出（IS 至 2024-09-30 / OOS 自 2024-10-01）
 - ✅ **A 类阻塞全解除**：H-005 rejected / H-007 adopted（2026-10-08 验证）
@@ -40,13 +56,20 @@
 - ✅ **守猪待兔修复**：历史通道重建（fetch_shoutu.py），解除信号陈旧
 - ✅ **新鲜度/简报/网页刷新系列修复**：freshness 交易日差≥1 天即触发、刷新触发 live 同步、简报减仓双引擎
 
-## 双端同步链路（重点）
+## 双端同步链路（重点，2026-10-16 更新）
 
-- **打包端**（公司 Windows）：`scripts/make_feishu_bundle.py` → `###FG:包名:序号/总数###…###FG:end###`（≤8KB/条）
+- **打包端**（公司 Windows）：`py -3.10 scripts/pack_many.py <包名> <文件…>` → `dist/feishu/text/<包名>-tNNN.txt`（≤1500 字符/片）
+  - `--patch --base-ref origin/main` ⇒ 只发统一 diff（片数大减 ✓）；⚠️ 基准被推进 ⇒ 上下文不匹配失败 ✗
+  - ⚠️ patch 打包**不会清理**同名旧分片 ✗（重打前先删 `<包名>-t*.txt` ✓）
+- **发送**：`cmd //c start "" "scripts\send_pkg.bat" "<包名>"`（脱离会话 ✓）
+  - ⚠️ Git Bash 里必须写 **`cmd //c`** ✗（`/c` 会被当路径 ⇒ bat 报「此时不应有 -n」✗）
+  - ⚠️ 脱离窗口**偶发卡死**（日志停在「打开会话」✗）⇒ 降级 `py -3.10 scripts/send_pkg.py <包名> --start N --limit M`（前台分批 ✓，`--limit 2` 最稳 ✓）
+  - 发送后**必须** `scripts/verify_pkg.py <包名> <文件…>` 做往返 md5 ✓（patch 包不适用 ⇒ 改为解包核对 diff ✓）
 - **接收端**（Mac）：feishu 插件旁路（`FG-SYNC BYPASS` 注入 monitor mjs）→ 落盘 `~/.openclaw/tmp/fg-sync-in/` → `fg_sync_tool.py --quick --brief` 单命令（聚合→解压→白名单→冲突→入库→pytest→回传）
 - **白名单**：`ALLOWED_DIRS={fg_system,scripts,tests,evolution,docs}` + 根级文件（含 `.gitignore/.gitattributes`）；`--full-repo` 一次性全库授权（跳过目录白名单但保留 `_denied`：Data/、密钥、.git、node_modules、__pycache__）
+- 🔴 **任务登记（2026-10-16 固化）**：需 Mac 执行 ⇒ 写进 `docs/mac-tasks.md` ✓（状态 `待执行` = 触发器 ✓）；Mac 完成后回写 ✅ 并提交 ✓
 - **已归档**：855 片 `sync_code_*.md` → `~/.openclaw/tmp/fg-sync-in/archive_synccode_20261009/`（避免重复解析）
-- **已知坑**：URL-safe base64 含 `-`/`_` 手动解码必错；`.done` 幂等标记（内容 hash）；ingest 读目录下全部 .md
+- **已知坑**：URL-safe base64 含 `-`/`_` 手动解码必错 ✗；`.done` 幂等标记（内容 hash）✓；ingest 读目录下全部 .md
 
 ## 环境备忘
 
@@ -58,14 +81,16 @@
 | 模型 | OpenClaw 主模型 `nvidia/deepseek-ai/deepseek-v4.1-flash`；fallback `[zai/glm-4.7-flash, litellm/hermes-agent, ollama/qwen2.5-coder:3b-64k]`（zai 有 429 史）；ollama 11434 |
 | 网关 | OpenClaw 18789；重启 gateway 用 `kill -9 <PID>`（`launchctl kickstart` 静默失效）；日志 `~/Library/Logs/openclaw/gateway.log` |
 | 飞书 | appId `cli_a93abe057178dbb4`（secret 在 `~/.openclaw/openclaw.json`）；chat_id `oc_a9306b326943821490184d073dae9a65`；API 基 `https://open.feishu.cn/open-apis` |
-| 测试 | `.venv/bin/python -m pytest tests/ -q`（850+ passed 基线）；增量 `--quick` <10s |
+| 测试 | `.venv/bin/python -m pytest tests/ -q`（**1711 passed** 基线，2026-10-16 ✓）；增量 `--quick` <10s |
 | 数据源 | 海外需代理 7890（家里 Mac）；公司电脑用公司代理 |
 
 ## 给下次会话的提醒
 
 - **别长回复**——会话容易因上下文超限重启。
-- **写「待办」前先 grep 文档**——曾多次把已完成任务当成待办。
-- **引用 issue/清单前先核对**——issue #3 清单 19 个（不是 20）。
+- **写「待办」前先 grep 文档 + 跑测试**——曾多次把已完成任务当成待办。
+- 🔴 **任务必须登记 `docs/mac-tasks.md`**——note 只是说明附件，**不构成任务** ✗。
+- 🔴 **任何假说/因子/变体入库前，先过 §C.3 的 9 条自检**（`docs/dual-end-workflow.md`）。
+- 🔴 **patch 发文档易失败** ⇒ 表格类走 `mac-tasks.md` 登记；代码/测试用整文件包。
 - **push 卡死先查僵尸 git-credential 进程**——`pkill -f git-credential`，然后用 GH_TOKEN 内联方式推。
 - **同步链路排障**：先查 `~/Library/Logs/openclaw/gateway.log`（搜 `FG-bypass handled`）；旁路脚本 `~/.openclaw/tmp/fg-sync-bypass.py`；分片目录 `~/.openclaw/tmp/fg-sync-in/`。
 - **待补充（用户 10-09 发飞书）**：公司端补齐内容（B 类数据积累观察点、回测文件已发过飞书——两个 md 文档已还原入库）。
