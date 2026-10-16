@@ -569,8 +569,9 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
       for (var j = 0; j < d.tasks.length; j++) {
         var t = d.tasks[j];
         html += "<tr style='border-top:1px solid rgba(255,255,255,.06)'>" +
-          "<td style='padding:4px'>" + t.label + "</td><td colspan='2'>" +
-          (t.registered
+          "<td style='padding:4px'>" + t.label + "</td>" +
+          "<td>" + (t.last_run || "—") + "</td>" +
+          "<td>" + (t.registered
             ? "<span style='color:#3fb950'>已注册</span>"
             : "<span style='color:#f85149'>未注册</span>") + "</td><td></td></tr>";
       }

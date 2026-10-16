@@ -60,6 +60,29 @@ TASKS = [
     "com.fg.quarterly-walkforward",   # 季度首日 08:00 重标定
 ]
 
+# 任务 → 日志文件（plist StandardOutPath）。launchd 不暴露"最后运行时间"，
+# 以日志文件最后写入时间（mtime）作为最近一次运行的近似（2026-10-16 新增展示）。
+TASK_LOG = {
+    "com.xingguo.fg-auto-update":     "logs/auto-update.out.log",
+    "com.xingguo.fg-daily":           "/tmp/fg_daily.log",
+    "com.xingguo.fg-kb-update":       "/tmp/fg_kb_update.log",
+    "com.xingguo.fg-shoutu-refresh":  "logs/shoutu-refresh.out.log",
+    "com.fg.shoutu-daily":            "logs/shoutu_daily.log",
+    "com.fg.shoutu-history":          "logs/shoutu_history_daily.out.log",
+    "com.fg.quarterly-walkforward":   "logs/walkforward_launchd.log",
+}
+
+
+def _task_last_run(label: str):
+    """读任务日志 mtime 作为最近运行时间近似；无日志返回 None。"""
+    rel = TASK_LOG.get(label)
+    if not rel:
+        return None
+    p = Path(rel) if rel.startswith("/") else REPO / rel
+    if not p.exists():
+        return None
+    return datetime.fromtimestamp(p.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+
 
 def _last_date_csv(path: Path, col: str):
     """全量扫描取 date 列最大值（文件按日期追加，仍取 max 防乱序）。"""
@@ -142,7 +165,8 @@ def collect_status(today=None):
     task_rows = []
     for t in TASKS:
         ok = t in registered
-        task_rows.append({"label": t, "registered": ok, "ok": ok})
+        task_rows.append({"label": t, "registered": ok, "ok": ok,
+                          "last_run": _task_last_run(t)})
         if not ok:
             issues.append("定时任务未注册：%s" % t)
             keys.append("task:%s" % t)
