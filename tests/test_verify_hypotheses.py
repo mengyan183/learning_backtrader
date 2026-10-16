@@ -258,7 +258,7 @@ WT07_NEW = [
     "H-014", "H-015", "H-016", "H-017", "H-018", "H-019", "H-020",
     "H-021", "H-022", "H-023",
     "H-026", "H-028",
-    "H-030", "H-031", "H-033", "H-034", "H-035", "H-036", "H-037",
+    "H-030", "H-031", "H-034", "H-035", "H-036", "H-037",
     "H-038", "H-039", "H-040", "H-041",
 ]
 
@@ -630,3 +630,96 @@ def test_h031_help_classified_as_custom_not_pending(capsys):
     pending_line = [ln for ln in out.splitlines() if ln.strip().startswith("- 挂起")][0]
     assert "H-031" in custom_line
     assert "H-031" not in pending_line
+
+
+# ------------------------------------------- 表格结构自检（2026-10-16 体检 §五）
+_HDR = ("| id | 日期 | 假设 | 判据 | 数据 | 状态 | 备注 |\n"
+        "|---|---|---|---|---|---|---|\n")
+
+
+def _write_table(tmp_path, rows):
+    p = tmp_path / "hypotheses.md"
+    p.write_text(_HDR + "".join(rows), encoding="utf-8")
+    return str(p)
+
+
+def test_check_table_passes_on_real_table():
+    """真实 `evolution/hypotheses.md` 必须通过自检（列数/状态枚举/PENDING 一致）。"""
+    errors, _warnings = vh.check_hypotheses_table()
+    assert errors == []
+
+
+def test_check_table_detects_unescaped_pipe_column_miscount(tmp_path):
+    """裸 `|` 未转义 ⇒ 列数错位，必须报错（体检发现 4 行此类破损）。"""
+    path = _write_table(tmp_path, [
+        "| H-900 | 2026-10-16 | 假设 | 取 |盈亏|=0.5 | 数据 | open | 备注 |\n"])
+    errors, _w = vh.check_hypotheses_table(path)
+    assert any("H-900" in e and "列数" in e for e in errors)
+
+
+def test_check_table_accepts_escaped_pipe(tmp_path, monkeypatch):
+    """转义后的 `\\|` 不参与切分 ⇒ 列数正确、无错。"""
+    monkeypatch.setattr(vh, "PENDING", {})   # 隔离：只验列数断言
+    path = _write_table(tmp_path, [
+        "| H-901 | 2026-10-16 | 假设 | 取 \\|盈亏\\|=0.5 | 数据 | open | 备注 |\n"])
+    errors, _w = vh.check_hypotheses_table(path)
+    assert errors == []
+
+
+def test_check_table_rejects_state_outside_enum(tmp_path):
+    """状态必须 ∈ 固定枚举（体检 §五②）。"""
+    path = _write_table(tmp_path, [
+        "| H-902 | 2026-10-16 | 假设 | 判据 | 数据 | **falsified** | 备注 |\n"])
+    errors, _w = vh.check_hypotheses_table(path)
+    assert any("H-902" in e and "枚举" in e for e in errors)
+
+
+def test_check_table_allows_state_suffix_as_warning(tmp_path, monkeypatch):
+    """`open（修订口径）` 这类后缀 ⇒ 取前缀通过，但记一条警告。"""
+    monkeypatch.setattr(vh, "PENDING", {})   # 隔离：只验状态断言
+    path = _write_table(tmp_path, [
+        "| H-903 | 2026-10-16 | 假设 | 判据 | 数据 | open（修订口径） | 备注 |\n"])
+    errors, warnings = vh.check_hypotheses_table(path)
+    assert errors == []
+    assert any("H-903" in w for w in warnings)
+
+
+def test_check_table_detects_pending_state_conflict(tmp_path):
+    """`PENDING` 里的假说不得是 `adopted`/`archived`（体检 §五③）。"""
+    hid = sorted(vh.PENDING)[0]
+    path = _write_table(tmp_path, [
+        "| %s | 2026-10-16 | 假设 | 判据 | 数据 | archived | 备注 |\n" % hid])
+    errors, _w = vh.check_hypotheses_table(path)
+    assert any(hid in e and "PENDING" in e for e in errors)
+
+
+def test_check_table_detects_missing_pending_id(tmp_path):
+    """`PENDING` 里的 id 必须真实存在于表中。"""
+    hid = sorted(vh.PENDING)[0]
+    path = _write_table(tmp_path, [
+        "| H-904 | 2026-10-16 | 假设 | 判据 | 数据 | open | 备注 |\n"])
+    errors, _w = vh.check_hypotheses_table(path)
+    assert any(hid in e and "不在假说表" in e for e in errors)
+
+
+def test_h033_not_in_pending():
+    """H-033 已于 2026-10-10 判 `falsified` ⇒ 不得再留在 `PENDING`（自检副产品）。"""
+    assert "H-033" not in vh.PENDING
+    assert "H-033" not in vh.SUPPORTED
+
+
+def test_check_table_cli_returns_zero_on_real_table(capsys):
+    """CLI `--check-table` 在真实表上返回 0。"""
+    rc = vh.main(["--check-table"])
+    assert rc == 0
+    assert "自检通过" in capsys.readouterr().out
+
+
+def test_check_table_cli_returns_one_on_broken_table(tmp_path, monkeypatch, capsys):
+    """CLI `--check-table` 在破损表上返回 1（可被 CI 当失败用）。"""
+    path = _write_table(tmp_path, [
+        "| H-905 | 2026-10-16 | 假设 | 取 |x|=1 | 数据 | open | 备注 |\n"])
+    monkeypatch.setattr(vh, "HYP_TABLE_PATH", path)
+    rc = vh.main(["--check-table"])
+    assert rc == 1
+    assert "自检未通过" in capsys.readouterr().out

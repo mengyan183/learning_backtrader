@@ -76,6 +76,7 @@ WT-05 修订口径（2026-10-10，见 hypotheses.md 五行的 **2026-10-10 WT-01
 import argparse
 import math
 import os
+import re
 import sys
 
 import numpy as np
@@ -1310,8 +1311,6 @@ PENDING = {
               "Data/accounts.csv（本机仅 1 日快照）"),
     "H-030": ("量价-资金背离（价格/成交上涨而 TVL 未跟随）分组对比",
               "DeFi TVL 数据源未接入（B 类待数据）"),
-    "H-033": ("币股经营现金流型 vs Crypto Beta 型分组后续收益差异",
-              "币股上市不足一年，市场下跌期样本不足"),
     "H-034": ("稳定币使用效率 = 链上月交易量/流通量 的领先性 IC",
               "稳定币链上交易量数据源未接入（B 类待数据）"),
     "H-035": ("position_multiplier=3.0 vs 2.0 的布尔位触发率",
@@ -1427,6 +1426,103 @@ def append_results(blocks, dry_run=False, out_path=None):
     return out
 
 
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HYP_TABLE_PATH = os.path.join(_REPO_ROOT, "evolution", "hypotheses.md")
+
+#: 状态列**固定枚举**（体检 §五②：状态只用固定枚举、不加粗）。
+#: 允许「枚举值 + 全角括号后缀」（如 `open（修订口径）`）⇒ 取前缀比对。
+VALID_STATES = ("open", "verifying", "adopted", "falsified", "archived",
+                "pending-revise")
+
+#: 表格列数（`| id | 标题 | 假设 | 判据 | 数据 | 状态 | 备注 |`）。
+HYP_TABLE_COLS = 7
+
+#: 挂起假说在表内**允许**的状态（挂起 = 等数据/等样本 ⇒ 不该已归档/已采纳）。
+_PENDING_ALLOWED_STATES = ("open", "verifying", "pending-revise")
+
+
+def check_hypotheses_table(path=None):
+    """对 `evolution/hypotheses.md` 做**结构自检**（体检报告 §五 ①②③）。
+
+    动机：2026-10-16 体检发现 **4 行表格破损长期存在** ✗（裸 `|` 未转义 ⇒
+    列数错位）+ 状态格式不统一（`**falsified**` ✗）+ 状态与备注脱钩
+    （H-005 ✗）—— 这三类问题**都没有自动校验** ⇒ 会反复发生。
+
+    三条断言：
+      ① **列数 == 7**（裸 `|` 未转义 ⇒ 直接报错并给出修复提示）；
+      ② **状态 ∈ 固定枚举**（`VALID_STATES`；允许 `open（…）` 这类后缀）；
+      ③ **`PENDING` 与表内状态交叉一致**（挂起假说不得是 `adopted`/`archived`，
+         且 `PENDING` 里的 id 必须真实存在于表中）。
+
+    :param path: 表格路径；默认 `evolution/hypotheses.md`。
+    :returns: ``(errors, warnings)`` —— 两个字符串列表；``errors`` 非空 ⇒ 应失败。
+    """
+    path = path or HYP_TABLE_PATH
+    errors, warnings = [], []
+    if not os.path.exists(path):
+        return ["假说表缺失：%s" % path], warnings
+
+    split = re.compile(r"(?<!\\)\|")  # 只按**未转义**的竖线切分
+    rows, seen = {}, []
+    with open(path, encoding="utf-8") as fh:
+        for lineno, ln in enumerate(fh, 1):
+            if not ln.lstrip().startswith("|"):
+                continue
+            cells = [c.strip() for c in split.split(ln.strip().strip("|"))]
+            if len(cells) < 2 or not re.match(r"^H-\d+$", cells[0]):
+                continue
+            hid = cells[0]
+            seen.append(hid)
+            if hid in rows:
+                errors.append("① %s 重复出现（行 %d）" % (hid, lineno))
+            rows[hid] = cells
+            if len(cells) != HYP_TABLE_COLS:
+                errors.append(
+                    "① %s 列数 = %d（应为 %d）⇒ 疑似**裸 `|` 未转义**"
+                    "（行 %d）" % (hid, len(cells), HYP_TABLE_COLS, lineno))
+
+    for hid in seen:
+        cells = rows[hid]
+        if len(cells) != HYP_TABLE_COLS:
+            continue
+        state = cells[5]
+        base = re.split(r"[（(]", state, 1)[0].strip()
+        if base not in VALID_STATES:
+            errors.append("② %s 状态 = %r 不在固定枚举 %s"
+                          % (hid, state, list(VALID_STATES)))
+        elif state != base:
+            warnings.append("② %s 状态带后缀 = %r（枚举值 %r）"
+                            % (hid, state, base))
+
+    for hid in sorted(PENDING):
+        if hid not in rows:
+            errors.append("③ PENDING 里的 %s 不在假说表中" % hid)
+        elif len(rows[hid]) == HYP_TABLE_COLS:
+            base = re.split(r"[（(]", rows[hid][5], 1)[0].strip()
+            if base not in _PENDING_ALLOWED_STATES:
+                errors.append("③ PENDING 的 %s 状态 = %r ⇒ 挂起假说不应是"
+                              "已归档/已采纳" % (hid, rows[hid][5]))
+
+    return errors, warnings
+
+
+def _run_check_table(path=None):
+    """`--check-table` 入口：打印自检结果，返回退出码（0 通过 / 1 有错）。"""
+    errors, warnings = check_hypotheses_table(path)
+    print("假说表自检：%s" % (path or HYP_TABLE_PATH))
+    for w in warnings:
+        print("  ⚠️  %s" % w)
+    if errors:
+        for e in errors:
+            print("  ❌ %s" % e)
+        print("\n❌ 自检未通过：%d 个错误 / %d 个警告" % (len(errors), len(warnings)))
+        return 1
+    print("  ✅ ① 列数 == %d ② 状态 ∈ 固定枚举 ③ PENDING 交叉一致"
+          % HYP_TABLE_COLS)
+    print("\n✅ 自检通过（%d 个警告）" % len(warnings))
+    return 0
+
+
 def build_arg_parser():
     p = argparse.ArgumentParser(
         prog="verify_hypotheses.py",
@@ -1456,12 +1552,19 @@ def build_arg_parser():
     p.add_argument("--out", default=None,
                    help="结果文件路径。**默认不传 ⇒ 只打印 stdout，不写文件**；"
                         "显式传此参数才追加写（不覆盖已有内容）。")
+    p.add_argument("--check-table", action="store_true",
+                   help="只对 evolution/hypotheses.md 做**表格结构自检**"
+                        "（列数 == %d / 状态 ∈ 固定枚举 / PENDING 交叉一致），"
+                        "不跑任何假说。有错 ⇒ 退出码 1。" % HYP_TABLE_COLS)
     return p
 
 
 def main(argv=None):
     args = build_arg_parser().parse_args(argv)
     wanted = args.hypothesis or SUPPORTED
+
+    if args.check_table:
+        return _run_check_table()
 
     if args.dry_run:
         return _dry_run(wanted)
