@@ -150,6 +150,18 @@ H068_SPREAD_WINDOW = 5          # 辅助口径（仅明细）：BAA10Y 5 日观�
 H068_SPREAD_WIDEN_BP = 25.0     # 辅助口径（仅明细）：走阔 > 25bp（沿用 H-065，不改）
 H068_DIVISOR_BP = 100.0         # 利差 % → bp 换算
 
+# H-069（避险失效 —— 当日同跌）阈值（先验写死，OOS 禁调参）。
+# 照 `evolution/hypotheses.md` H-069 行（非盲登记 ⇒ 判定以「分段稳健」为准）。
+# 不成立判据（满足任一即不成立）：
+#   ① 全样本挤压期同跌率不显著高于非挤压期（单侧两比例 z 检验 p ≥ α）；
+#   ② 分段：前 / 后任一半段 p ≥ α（只在半段成立 ⇒ 不稳健）；
+#   ③ 挤压期样本 < 200 或任一半段 < 50 ⇒ insufficient（不硬凑结论）。
+H069_VIX_QUANTILE = 0.80        # 挤压期主口径：VIX 收盘 > 全样本 80 分位
+H069_VIX_JUMP_PCT = 0.20        # 挤压期主口径：VIX 单日跳升 > 20%
+H069_MIN_SQUEEZE_DAYS = 200     # 挤压期最小样本（不足 ⇒ insufficient）
+H069_MIN_HALF_SQUEEZE_DAYS = 50 # 半段最小挤压样本（不足 ⇒ insufficient）
+H069_ALPHA = 0.05               # 单侧两比例 z 检验显著性（p < α ⇒ 显著更高）
+
 
 class DataMissingError(Exception):
     """数据文件缺失。消息必须含**路径**，供 dry-run / main 报「数据缺失（路径）」。"""
@@ -1009,6 +1021,155 @@ def verify_h068(df):
     }
 
 
+def verify_h069(df):
+    """H-069：流动性挤压期中股债**同日下跌**（`co_down`）条件概率显著高于非挤压期。
+
+    口径（照 `evolution/hypotheses.md` H-069 行，**不发明**）：
+      - 股端 QQQ 日收益、债端 TLT 日收益；`co_down(t)` = (QQQ 跌 ∧ TLT 跌)（二元）；
+      - 「挤压期」（沿用 H-068 主口径，**不含** QQQ/TLT 方向 ⇒ 不循环定义）=
+        VIX 收盘 > 全样本 80 分位 **或** VIX 单日跳升 > 20%；
+      - 🔴 **非盲登记**：判据在已知 H-068 报数（挤压 25.71% vs 非挤压 20.02%）之后确定
+        ⇒ **全样本结果不构成独立验证** ⇒ 判定**以「分段稳健」为准**、结论强度降级为研究参考；
+      - 判据：**全样本**挤压期同跌率**显著高于**非挤压期（单侧两比例 z 检验 p < α）
+        **且** 按中位日期切前后两半段**都**显著（p < α）⇒ 成立；
+        挤压期样本 < `H069_MIN_SQUEEZE_DAYS` 或任一半段 < `H069_MIN_HALF_SQUEEZE_DAYS`
+        ⇒ `insufficient`（**不硬凑结论**）。
+
+    数据缺失（QQQ/TLT 或 VIX 缺失 / 缺列）⇒ `status="pending"` +
+    `reason="数据缺失（路径）：…"`，**不抛异常**。
+
+    🔴 只输出研究参考 —— **不写任何权重/仓位/规则**。
+    """
+    raw = config.RAW_DIR
+    prices_path = os.path.join(raw, "prices.csv")
+    vix_path = os.path.join(raw, "vix.csv")
+
+    def _pending(reason):
+        return {
+            "status": "pending",
+            "passed": None,
+            "reason": reason,
+            "note": ("数据缺失：H-069 需 QQQ/TLT（prices.csv）+ VIX（raw/vix.csv）。"
+                     "🔴 非盲登记 ⇒ 判定以「分段稳健」为准。"),
+        }
+
+    # 1) QQQ / TLT 收盘（长表 ↔ 宽表）。
+    if not os.path.exists(prices_path):
+        return _pending("数据缺失（路径）：%s" % prices_path)
+    prices = pd.read_csv(prices_path, parse_dates=["date"])
+    need = ("QQQ", "TLT")
+    miss = [s for s in need if s not in set(prices["symbol"])]
+    if miss:
+        return _pending("数据缺失（路径）：%s（无 symbol：%s）"
+                        % (prices_path, ",".join(miss)))
+    wide = (prices[prices["symbol"].isin(need)]
+            .pivot_table(index="date", columns="symbol", values="close")
+            .sort_index())
+
+    # 2) VIX（挤压期主口径必需）。
+    if not os.path.exists(vix_path):
+        return _pending("数据缺失（路径）：%s" % vix_path)
+    vix_df = pd.read_csv(vix_path, parse_dates=["date"])
+    if "close" not in vix_df.columns:
+        return _pending("数据缺失（路径）：%s（缺列 close）" % vix_path)
+    vix = vix_df.set_index("date")["close"].astype(float).sort_index()
+
+    # 3) 对齐样本：QQQ ∩ TLT ∩ VIX。
+    frame = pd.DataFrame({
+        "qqq": wide.get("QQQ"),
+        "tlt": wide.get("TLT"),
+        "vix": vix,
+    }).dropna()
+    if len(frame) < 2:
+        return {
+            "status": "insufficient", "passed": None,
+            "n_days": int(len(frame)),
+            "note": "样本不足：对齐后仅 %d 日 ⇒ 无法判定。" % len(frame),
+        }
+
+    qqq_ret = frame["qqq"].pct_change()
+    tlt_ret = frame["tlt"].pct_change()
+    co_down = (qqq_ret < 0) & (tlt_ret < 0)
+
+    # 4) 挤压期主口径（VIX 高分位 或 单日跳升）—— **不含** QQQ/TLT 方向。
+    vix_q = float(frame["vix"].quantile(H069_VIX_QUANTILE))
+    vix_jump = frame["vix"].pct_change()
+    squeeze = (((frame["vix"] > vix_q) | (vix_jump > H069_VIX_JUMP_PCT))
+               .fillna(False).astype(bool))
+
+    # 5) 全样本：挤压 / 非挤压同跌率 + 单侧两比例 z 检验（H1：挤压期更高）。
+    sq_idx = frame.index[squeeze]
+    non_idx = frame.index.difference(sq_idx)
+    n_sq, n_non = int(len(sq_idx)), int(len(non_idx))
+    x_sq = int(co_down.reindex(sq_idx).fillna(False).sum())
+    x_non = int(co_down.reindex(non_idx).fillna(False).sum())
+    r_sq = (float(x_sq) / n_sq) if n_sq else float("nan")
+    r_non = (float(x_non) / n_non) if n_non else float("nan")
+    full_z, full_p = _one_sided_two_prop_z(x_sq, n_sq, x_non, n_non)
+
+    # 6) 分段稳健：按样本中位日期切前后两半，两半各自做同样的 z 检验。
+    half = int(len(frame) // 2)
+    idx_first = frame.index[:half]
+    idx_second = frame.index[half:]
+    seg = []
+    for lbl, idx in (("first", idx_first), ("second", idx_second)):
+        s_i = idx.intersection(sq_idx)
+        n_i = idx.intersection(non_idx)
+        ns, nn = int(len(s_i)), int(len(n_i))
+        xs = int(co_down.reindex(s_i).fillna(False).sum())
+        xn = int(co_down.reindex(n_i).fillna(False).sum())
+        z_i, p_i = _one_sided_two_prop_z(xs, ns, xn, nn)
+        seg.append((lbl, ns, nn, xs, xn, z_i, p_i))
+    first_lbl, first_n_sq, _, _, _, first_z, first_p = seg[0]
+    second_lbl, second_n_sq, _, _, _, second_z, second_p = seg[1]
+
+    # 7) 判定：全样本 + 两半段都显著 ⇒ 成立；样本不足 ⇒ insufficient。
+    if (n_sq < H069_MIN_SQUEEZE_DAYS
+            or first_n_sq < H069_MIN_HALF_SQUEEZE_DAYS
+            or second_n_sq < H069_MIN_HALF_SQUEEZE_DAYS
+            or n_non <= 0 or full_p is None):
+        status, passed = "insufficient", None
+    else:
+        passed = bool(full_p < H069_ALPHA and first_p < H069_ALPHA
+                      and second_p < H069_ALPHA)
+        status = "ok"
+
+    window_start = str(frame.index[0].date())
+    window_end = str(frame.index[-1].date())
+    note = ("口径（H-069 登记稿，**非盲登记**，先验写死）：co_down(t) = (QQQ 跌 ∧ TLT 跌)"
+            "（二元）；挤压期沿用 H-068 主口径 = VIX > 全样本 %.0f 分位 或 VIX 单日跳升 > %.0f%%"
+            "（**不含** QQQ/TLT 方向 ⇒ 不循环定义）。判据：全样本挤压期同跌率**显著高于**"
+            "非挤压期（单侧两比例 z 检验 p < %.2f）**且分段稳健**（按中位日期切前后两半、"
+            "两半都 p < %.2f）⇒ 成立；挤压期样本 < %d 或任一半段 < %d ⇒ 样本不足。"
+            "实际样本窗口（QQQ∩TLT∩VIX）= %s → %s（%d 交易日）。🔴 非盲登记 ⇒ 全样本"
+            "结果不构成独立验证，结论强度降级为**研究参考**；只输出研究参考，不进权重。"
+            % (100.0 * H069_VIX_QUANTILE, 100.0 * H069_VIX_JUMP_PCT,
+               H069_ALPHA, H069_ALPHA, H069_MIN_SQUEEZE_DAYS,
+               H069_MIN_HALF_SQUEEZE_DAYS, window_start, window_end,
+               int(len(frame))))
+    return {
+        "status": status,
+        "passed": passed,
+        "note": note,
+        "window_start": window_start,
+        "window_end": window_end,
+        "n_days": int(len(frame)),
+        "squeeze_mask": squeeze,
+        "full_n_sq": n_sq,
+        "full_rate_sq": r_sq,
+        "full_rate_non": r_non,
+        "full_z": full_z,
+        "full_p": full_p,
+        "first_half_n_sq": first_n_sq,
+        "first_half_z": first_z,
+        "first_half_p": first_p,
+        "second_half_n_sq": second_n_sq,
+        "second_half_z": second_z,
+        "second_half_p": second_p,
+        "nonblind_registration": True,
+    }
+
+
 # 单独实现（custom）的假说：id -> (runner, desc, fields)
 CUSTOM = {
     "H-010": (verify_h010, "zone 由 fg_index 固定边界驱动且边界稳定（区间重叠率 ≤20%）",
@@ -1032,6 +1193,8 @@ CUSTOM = {
               "QQQ/TLT（prices.csv）+ DGS10 + BAA10Y + VIX（raw/）"),
     "H-068": (verify_h068, "挤压期中股债 5 日滚动相关性**显著高于**非挤压期（避险瞬时失效）",
               "QQQ/TLT（prices.csv）+ VIX（raw/vix.csv）［BAA10Y 可选，仅明细］"),
+    "H-069": (verify_h069, "挤压期中股债**同日下跌**（co_down）概率**显著高于**非挤压期（分段稳健）",
+              "QQQ/TLT（prices.csv）+ VIX（raw/vix.csv）"),
 }
 
 
@@ -1099,6 +1262,8 @@ HYPOTHESES = {
               "fields": CUSTOM["H-065"][2]},
     "H-068": {"kind": "custom", "desc": CUSTOM["H-068"][1],
               "fields": CUSTOM["H-068"][2]},
+    "H-069": {"kind": "custom", "desc": CUSTOM["H-069"][1],
+              "fields": CUSTOM["H-069"][2]},
     # ---------------------------------------------------------- 挂起（数据缺失）
     "H-027": {
         "kind": "pending",
