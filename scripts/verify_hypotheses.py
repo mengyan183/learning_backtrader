@@ -12,7 +12,8 @@
     覆盖：H-024 / H-025 / H-029 / H-032（WT-05）+ **H-037 / H-040**（WT-07）。
   - ``custom``：形态与触发率不同，单独实现。
     **H-010 / H-012**（极值依赖 / 切换点判据）+ H-013~H-015 / H-019~H-021
-    + **H-031**（fed 方向变化 × CRCL 后续收益 t 检验）。
+    + **H-031**（fed 方向变化 × CRCL 后续收益 t 检验）
+    + **H-065**（股债 60 日滚动相关 × 双口径「流动性挤压期」，见下）。
   - ``pending``：**数据源未接入或样本不足** ⇒ 走「等待数据」分支，dry-run 报
     「数据缺失（路径）」，不硬凑结论。
     覆盖：H-006 / H-008 / H-009 / H-011 / H-016 / H-017 / H-018 / H-022 / H-023
@@ -28,6 +29,10 @@ TVL / 稳定币使用效率数据源**未接入** ⇒ H-030/H-034 等待数据�
 ⚠️ H-031（fed × CRCL）：**Mac 端 `features.csv` 已有 `fed` 列**，本机旧数据缺列。
 实现为 ``custom``：有 `fed` 列 ⇒ 真算并做 t 检验给 `adopted`/`falsified`；
 无 `fed` 列 ⇒ 返回 `pending`，原因写「数据缺失（路径）」+ 指出缺的是 fed 列。
+⚠️ H-065（股债滚动相关 × 挤压期）：需 `prices.csv`（QQQ/TLT）+ `fred_DGS10.csv` +
+`fred_BAA10Y.csv` + `raw/vix.csv` 四路序列。任一缺失 ⇒ 返回 `pending`，
+原因写「数据缺失（路径）」；阈值全部**先验写死**为模块常量（OOS 禁调参）；
+**只输出研究参考，不进权重**。
 
 **口径声明（必须先读）**
 
@@ -106,6 +111,21 @@ H031_HORIZONS = (4, 8, 16)      # 检验方法指定的前瞻窗口（交易日�
 H031_ALPHA = 0.05               # 显著性水平：p ≤0.05 才认为有显著影响
 H031_MIN_EVENTS = 5             # 方向变化事件日的最小样本
 H031_MIN_BASE = 20              # 基线（全样本前瞻收益）的最小样本
+
+# H-065（避险资产失效 —— 股债相关性转正）阈值（先验写死，OOS 禁调参）。
+# 照 evolution/hypotheses.md 的 H-065 行与 docs/notes/2026-10-16-假说登记草案 §1。
+# 不成立判据（满足任一即不成立）：
+#   ① 全样本 corr>0 占比 < 20%；
+#   ② 「低利率波动桶」corr>0 占比不高于全样本占比（正相关完全由利率解释）；
+#   ③ 挤压期内 corr>0 且 QQQ 下跌的日子里，股债同跌天数 ≤ 5。
+H065_ROLL_WINDOW = 60           # 60 日滚动 Pearson 相关窗口（交易日）
+H065_POS_RATIO_FLOOR = 0.20     # 全样本 corr>0 占比下限（<20% ⇒ 不成立）
+H065_SPREAD_WINDOW = 5          # 信用利差走阔观察窗（交易日）
+H065_SPREAD_WIDEN_BP = 25.0     # BAA10Y 5 日走阔阈值（bp；%量纲 ×100）
+H065_VIX_QUANTILE = 0.80        # VIX 高分位阈值（全样本 80 分位）
+H065_VIX_JUMP_PCT = 0.20        # VIX 单日跳升阈值（>20%）
+H065_COFALL_DAYS_MIN = 5        # 挤压期内股债同跌天数下限（≤5 ⇒ 不成立）
+H065_DIVISOR_BP = 100.0         # 利差 % → bp 换算
 
 
 class DataMissingError(Exception):
@@ -592,6 +612,197 @@ def verify_h031(df):
     }
 
 
+def _read_fred_series(path, sid):
+    """读 FRED 版式 CSV（observation_date,<SID>）为按日期升序的 Series。
+
+    ⚠️ FRED 列名是 observation_date 而非 date，不能用 `_read_csv`。
+    缺文件 / 缺列 ⇒ 抛 DataMissingError（带**路径**与缺列名，供 reason 指回）。
+    """
+    if not os.path.exists(path):
+        raise DataMissingError(path)
+    df = pd.read_csv(path, parse_dates=["observation_date"])
+    if "observation_date" not in df.columns or sid not in df.columns:
+        raise DataMissingError("%s（缺列 %s）" % (path, sid))
+    s = df.set_index("observation_date")[sid].astype(float)
+    return s[~s.index.duplicated(keep="last")].sort_index()
+
+
+def verify_h065(df):
+    """H-065：流动性挤压期中股债 60 日滚动相关性转正（避险失效）且非利率单独解释。
+
+    口径（照 `evolution/hypotheses.md` H-065 行，**不发明**）：
+      - 股端 QQQ 日收益、债端 TLT 日收益、控制量 DGS10 日变动；
+      - `corr(t)` = QQQ 与 TLT 日收益的 **60 日滚动 Pearson 相关**；
+      - 「挤压期」**双口径（先验写死）**：
+          · 主口径（跨资产）= QQQ 与 TLT **同日下跌** 且 BAA10Y **5 日走阔 >25bp**；
+          · 辅助口径（VIX）= VIX 收盘 > 全样本 80 分位 **或** VIX 单日跳升 >20%。
+        🔴 两口径**都算**，**结论以主口径为准**。
+      - 不成立判据（任一）：① 全样本 corr>0 占比 <20%；
+        ②「低利率波动桶」corr>0 占比不高于全样本占比；③ 挤压期内 corr>0 且
+        QQQ 下跌的日子里，股债同跌天数 ≤5。
+
+    判定口径：`passed = 主口径下三条不成立判据**都未触发**`。
+    （辅助口径仅作口径敏感性对照，不参与最终判定。）
+
+    数据缺失（任一源文件/列缺失）⇒ `status="pending"` + `reason="数据缺失（路径）：…"`，
+    **不抛异常、不硬凑结论**。样本窗口取 TLT ∩ BAA10Y ∩ DGS10 ∩ QQQ 的实际对齐区间，
+    写入 `note`（不硬写登记草案的 2016-09-26）。
+
+    🔴 只输出研究参考 —— **不写任何权重/仓位/规则**。
+    """
+    raw = config.RAW_DIR
+    prices_path = os.path.join(raw, "prices.csv")
+    dgs10_path = os.path.join(raw, "fred_DGS10.csv")
+    baa10y_path = os.path.join(raw, "fred_BAA10Y.csv")
+    vix_path = os.path.join(raw, "vix.csv")
+
+    def _pending(reason):
+        return {
+            "status": "pending",
+            "passed": None,
+            "reason": reason,
+            "note": ("数据缺失：H-065 需 QQQ/TLT（prices.csv）+ DGS10 + BAA10Y + "
+                     "VIX 四路序列，缺失时挂起不硬凑结论（数据依赖见 MT-26/MT-28）。"),
+        }
+
+    # 1) QQQ / TLT 收盘（长表 ↔ 宽表）。
+    if not os.path.exists(prices_path):
+        return _pending("数据缺失（路径）：%s" % prices_path)
+    prices = pd.read_csv(prices_path, parse_dates=["date"])
+    need = ("QQQ", "TLT")
+    miss = [s for s in need if s not in set(prices["symbol"])]
+    if miss:
+        return _pending("数据缺失（路径）：%s（无 symbol：%s）"
+                        % (prices_path, ",".join(miss)))
+    wide = (prices[prices["symbol"].isin(need)]
+            .pivot_table(index="date", columns="symbol", values="close")
+            .sort_index())
+
+    # 2) FRED 序列（DGS10 / BAA10Y）与 VIX；缺文件/缺列 ⇒ pending。
+    try:
+        dgs10 = _read_fred_series(dgs10_path, "DGS10")
+        baa10y = _read_fred_series(baa10y_path, "BAA10Y")
+    except DataMissingError as exc:
+        return _pending("数据缺失（路径）：%s" % exc.path)
+    if not os.path.exists(vix_path):
+        return _pending("数据缺失（路径）：%s" % vix_path)
+    vix = pd.read_csv(vix_path, parse_dates=["date"])
+    if "close" not in vix.columns:
+        return _pending("数据缺失（路径）：%s（缺列 close）" % vix_path)
+    vix = vix.set_index("date")["close"].astype(float).sort_index()
+
+    # 3) 对齐样本：QQQ ∩ TLT ∩ DGS10 ∩ BAA10Y（VIX 用于辅助口径，单独对齐）。
+    frame = pd.DataFrame({
+        "qqq": wide.get("QQQ"),
+        "tlt": wide.get("TLT"),
+        "dgs10": dgs10,
+        "baa10y": baa10y,
+    }).dropna()
+    if len(frame) < H065_ROLL_WINDOW + 1:
+        return {
+            "status": "insufficient", "passed": None,
+            "n_days": int(len(frame)),
+            "note": ("样本不足：对齐后仅 %d 日（需 >%d 日算 60 日滚动相关）⇒ 无法判定。"
+                     % (len(frame), H065_ROLL_WINDOW)),
+        }
+
+    qqq_ret = frame["qqq"].pct_change()
+    tlt_ret = frame["tlt"].pct_change()
+    corr = qqq_ret.rolling(H065_ROLL_WINDOW).corr(tlt_ret)
+    valid = corr.dropna()
+
+    # 4) 全样本 corr>0 占比 + 逐年。
+    pos = valid > 0
+    corr_pos_ratio = float(pos.mean()) if len(valid) else float("nan")
+    by_year = {int(y): float(v.mean())
+               for y, v in (valid > 0).groupby(valid.index.year)}
+
+    # 5) 利率波动分桶（|DGS10 日变动|）：按中位数把**全部 corr 有效日**分高/低两桶，
+    #    再算「低利率波动桶」内的 corr>0 占比（与全样本占比同口径比较）。
+    dgs_change = frame["dgs10"].diff().abs().reindex(valid.index)
+    low_rate_ratio = float("nan")
+    rate_split = None
+    bucket_valid = dgs_change.dropna()
+    if len(bucket_valid) and bucket_valid.max() > bucket_valid.min():
+        rate_split = float(bucket_valid.median())
+        low_days = bucket_valid.index[bucket_valid <= rate_split]
+        low_rate_ratio = float((valid.reindex(low_days) > 0).mean())
+
+    # 6) 主口径「挤压期」：QQQ 与 TLT 同日下跌 且 BAA10Y 5 日走阔 >25bp。
+    co_down = (qqq_ret < 0) & (tlt_ret < 0)
+    widen_bp = (frame["baa10y"] - frame["baa10y"].shift(H065_SPREAD_WINDOW)) \
+        * H065_DIVISOR_BP
+    primary_mask = (co_down & (widen_bp > H065_SPREAD_WIDEN_BP)).fillna(False)
+    primary_squeeze_days = int(primary_mask.sum())
+
+    # 7) 辅助口径「挤压期」：VIX 收盘 > 全样本 80 分位 或 VIX 单日跳升 >20%。
+    vix_q = float(vix.quantile(H065_VIX_QUANTILE)) if len(vix) else float("nan")
+    vix_jump = vix.pct_change()
+    aux_raw = ((vix > vix_q) | (vix_jump > H065_VIX_JUMP_PCT)).fillna(False)
+    aux_mask = aux_raw.reindex(frame.index).fillna(False).astype(bool)
+    aux_squeeze_days = int(aux_mask.sum())
+
+    # 8) 挤压期内：corr>0 占比 + corr>0 且 QQQ 下跌日里的股债同跌天数。
+    qqq_down = (qqq_ret < 0)
+
+    def _squeeze_stats(mask):
+        sq = valid.index.intersection(frame.index[mask])
+        n = int(len(sq))
+        if not n:
+            return None, n, 0
+        p = float((valid.reindex(sq) > 0).mean())
+        sel = sq[(valid.reindex(sq) > 0) & qqq_down.reindex(sq).fillna(False)]
+        cofall = int(co_down.reindex(sel).sum())
+        return p, n, cofall
+
+    prim_ratio, prim_days, prim_cofall = _squeeze_stats(primary_mask)
+    aux_ratio, aux_days, aux_cofall = _squeeze_stats(aux_mask)
+
+    # 9) 三条不成立判据（以主口径为准）。
+    c1 = not (corr_pos_ratio == corr_pos_ratio) or corr_pos_ratio < H065_POS_RATIO_FLOOR
+    c2 = (low_rate_ratio == low_rate_ratio
+          and low_rate_ratio <= corr_pos_ratio)
+    c3 = prim_cofall <= H065_COFALL_DAYS_MIN
+    primary_passed = not (c1 or c2 or c3)
+
+    window_start = str(frame.index[0].date())
+    window_end = str(frame.index[-1].date())
+    note = ("口径（H-065 登记稿，先验写死）：corr(t) = QQQ 与 TLT 日收益 %d 日滚动 "
+            "Pearson 相关；主口径挤压期 = QQQ 与 TLT 同日下跌 且 BAA10Y %d 日走阔 "
+            ">%.0fbp；辅助口径 = VIX > 全样本 %.0f 分位 或 VIX 单日跳升 >%.0f%%。"
+            "两口径都算，**结论以主口径为准**。实际样本窗口（TLT∩BAA10Y∩DGS10∩QQQ）"
+            "= %s → %s（%d 交易日）。只输出研究参考，不进权重。"
+            % (H065_ROLL_WINDOW, H065_SPREAD_WINDOW, H065_SPREAD_WIDEN_BP,
+               100.0 * H065_VIX_QUANTILE, 100.0 * H065_VIX_JUMP_PCT,
+               window_start, window_end, int(len(frame))))
+    return {
+        "status": "ok",
+        "passed": bool(primary_passed),
+        "note": note,
+        "window_start": window_start,
+        "window_end": window_end,
+        "n_days": int(len(frame)),
+        "corr": corr,
+        "corr_pos_ratio": corr_pos_ratio,
+        "corr_pos_ratio_by_year": by_year,
+        "rate_bucket_split": rate_split,
+        "low_rate_bucket_pos_ratio": low_rate_ratio,
+        "primary_squeeze_mask": primary_mask,
+        "primary_squeeze_days": primary_squeeze_days,
+        "primary_corr_pos_ratio": prim_ratio,
+        "primary_cofall_days": prim_cofall,
+        "primary_passed": bool(primary_passed),
+        "aux_vix_mask": aux_mask,
+        "aux_vix_days": aux_squeeze_days,
+        "aux_corr_pos_ratio": aux_ratio,
+        "aux_cofall_days": aux_cofall,
+        "falsified_by": [label for label, hit in
+                         (("①全样本corr>0占比<20%", c1),
+                          ("②低利率波动桶未更高", c2),
+                          ("③挤压期股债同跌≤5", c3)) if hit],
+    }
+
+
 # 单独实现（custom）的假说：id -> (runner, desc, fields)
 CUSTOM = {
     "H-010": (verify_h010, "zone 由 fg_index 固定边界驱动且边界稳定（区间重叠率 ≤20%）",
@@ -611,6 +822,8 @@ CUSTOM = {
               "zone + fg_index"),
     "H-031": (verify_h031, "fed 方向变化前后 CRCL 后续 4/8/16 日收益差异（t 检验）",
               "features.fed + CRCL 价格（prices.csv）"),
+    "H-065": (verify_h065, "挤压期中股债 60 日滚动相关性转正（避险失效）且非利率单独解释",
+              "QQQ/TLT（prices.csv）+ DGS10 + BAA10Y + VIX（raw/）"),
 }
 
 
@@ -674,6 +887,8 @@ HYPOTHESES = {
               "fields": CUSTOM["H-021"][2]},
     "H-031": {"kind": "custom", "desc": CUSTOM["H-031"][1],
               "fields": CUSTOM["H-031"][2]},
+    "H-065": {"kind": "custom", "desc": CUSTOM["H-065"][1],
+              "fields": CUSTOM["H-065"][2]},
     # ---------------------------------------------------------- 挂起（数据缺失）
     "H-027": {
         "kind": "pending",
