@@ -66,7 +66,8 @@ def main():
     # 2) 调用编排脚本完成全流程
     ingest = os.path.join(REPO, "scripts", "fg_sync_ingest.py")
     py = os.path.join(REPO, ".venv", "bin", "python")
-    cmd = [py, ingest, SYNC_IN_DIR, "--repo", REPO, "--commit", args.commit]
+    cmd = [py, ingest, SYNC_IN_DIR, "--repo", REPO, "--commit", args.commit,
+           "--only", os.path.basename(dst)]
     if args.quick:
         cmd.append("--quick")
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=2400)

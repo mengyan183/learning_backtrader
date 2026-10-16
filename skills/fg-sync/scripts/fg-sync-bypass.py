@@ -71,8 +71,12 @@ def pkg_hash(pkg, total):
 
 def ingest_package(pkg, total, chat_id):
     """收齐后调用 fg_sync_tool.py 还原入库并回传。幂等：同内容只入库一次。"""
-    # 已入库标记：内容 hash 一致则跳过（重复发送整包不会重复入库）
-    marker = os.path.join(IN_DIR, f"{pkg}.done")
+    # 已入库标记：内容 hash 一致则跳过（重复发送整包不会重复入库）。
+    # ⚠️ 文件名用完整包名（sync_ 前缀）——与 fg-sync-watcher.py 共用
+    #    `sync_<包>.done`，否则双路径各写各的标记 ⇒ 同一包被处理两次
+    #    （2026-10-16 修复：此前 bypass 用 `{pkg}.done` 无前缀，watcher 用
+    #    `sync_{pkg}.done`，双通道互不知晓 ⇒ 重复处理/重复回传）。
+    marker = os.path.join(IN_DIR, f"sync_{pkg}.done")
     cur_hash = pkg_hash(pkg, total)
     if os.path.exists(marker) and open(marker).read().strip() == cur_hash:
         return  # 完全相同的包已入库过，静默跳过

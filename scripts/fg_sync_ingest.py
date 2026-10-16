@@ -197,17 +197,31 @@ def main():
                     help="增量测试：只跑与本次入库文件相关的测试文件（<10s）")
     ap.add_argument("--full-repo", action="store_true",
                     help="一次性完整同步授权：跳过目录白名单（仍拒绝 Data/、密钥、.git 等危险路径）")
+    ap.add_argument("--only", default=None,
+                    help="只处理 src 目录下指定的单个文件名（隔离目录残留分片，避免阻塞；"
+                         "fg_sync_tool -f 模式必传 sync_in.md）")
     args = ap.parse_args()
 
     sys.path.insert(0, os.path.join(args.repo, "scripts"))
     from restore_from_base64 import extract_marked, _decode  # 复用既有解析
 
     raw = ""
-    for fn in sorted(os.listdir(args.src)):
-        if fn.endswith((".txt", ".md")):
-            with open(os.path.join(args.src, fn), encoding="utf-8",
-                      errors="ignore") as fh:
-                raw += fh.read()
+    if args.only:
+        # --only 模式：只读指定文件（fg_sync_tool -f 传 sync_in.md），
+        # 目录里其他包残留分片不再阻塞本包（2026-10-16：ak 残留曾阻塞 al 入库）。
+        fp = os.path.join(args.src, args.only)
+        if os.path.isfile(fp):
+            with open(fp, encoding="utf-8", errors="ignore") as fh:
+                raw = fh.read()
+        else:
+            print("❌ --only 指定的文件不存在：%s" % fp)
+            return 2
+    else:
+        for fn in sorted(os.listdir(args.src)):
+            if fn.endswith((".txt", ".md")):
+                with open(os.path.join(args.src, fn), encoding="utf-8",
+                          errors="ignore") as fh:
+                    raw += fh.read()
 
     groups, problems = extract_marked(raw)
     if not groups:
