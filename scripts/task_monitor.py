@@ -65,7 +65,7 @@ TASKS = [
 TASK_LOG = {
     "com.xingguo.fg-auto-update":     "logs/auto-update.out.log",
     "com.xingguo.fg-daily":           "/tmp/fg_daily.log",
-    "com.xingguo.fg-kb-update":       "/tmp/fg_kb_update.log",
+    "com.xingguo.fg-kb-update":       "logs/fg_kb_update.log",
     "com.xingguo.fg-shoutu-refresh":  "logs/shoutu-refresh.out.log",
     "com.fg.shoutu-daily":            "logs/shoutu_daily.log",
     "com.fg.shoutu-history":          "logs/shoutu_history_daily.out.log",

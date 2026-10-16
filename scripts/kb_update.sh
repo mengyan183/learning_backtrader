@@ -1,7 +1,7 @@
 #!/bin/bash
 # 知识库自动更新：增量抓取 9 个频道最近视频字幕 → 入库 ChromaDB
 # 由 launchd 每周触发（com.xingguo.fg-kb-update）
-LOG="/tmp/fg_kb_update.log"
+LOG="/Users/xingguo/learning_backtrader/logs/fg_kb_update.log"  # logs/ 持久（gitignore，重启不清）
 REPO="/Users/xingguo/learning_backtrader"
 PY="$REPO/.venv/bin/yt-dlp"
 PROXY="http://127.0.0.1:7890"
