@@ -98,6 +98,19 @@ def _git(repo, *args, input=None):
                           capture_output=True, text=True, timeout=60)
 
 
+def _head_short(repo):
+    """当前 HEAD 的短 sha（供成功回执标注「这批到底落在哪个提交」）。
+
+    取不到时返回空串 —— 回执可读性属于「锦上添花」，不得因为它反向
+    影响入库判定（2026-10-19 MT-40 同源诉求：成功也必须可观测）。
+    """
+    try:
+        r = _git(repo, "rev-parse", "--short", "HEAD")
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
 # pack_many.py --patch 的 diff 包前缀（故意不命中白名单，需本文件显式 apply）
 PATCH_PREFIX = "__patch__/"
 
@@ -508,14 +521,22 @@ def main():
         if r.returncode != 0:
             print("⚠️ commit 失败（可能无变更可提交）：" + r.stderr.strip())
         else:
+            sha = _head_short(args.repo)
             ok, err = _push_with_retry(args.repo)
             if ok:
-                print("已推送 origin/main")
+                # 🔴 结论行必须带 ✅ 与提交号：`fg_sync_tool.py --brief` 只回传
+                # ✅/❌/⛔/⚠️ 开头的行，裸的「已推送 origin/main」会被过滤掉 ⇒
+                # 对端只看到「增量 pytest 通过」，不知道入库是否真的落地、落在哪个提交
+                # （1019o/1019p 被反复追问「到底入库没有」的根因之一；2026-10-19）。
+                print("✅ 已推送 origin/main（提交 %s，%d 个文件：%s）"
+                      % (sha or "?", len(add_all),
+                         ", ".join(add_all[:6]) + (" …" if len(add_all) > 6 else "")))
             else:
                 # 不改判定：提交已在本地，_catch_up_push 下次同步会补推（自愈）。
                 # 但必须写明"未推送" —— 否则对端 git 上拉不到、却收到成功回执，
                 # 只能像 1019j 那样靠人工发现。
-                print("⚠️ push 失败（已提交，未推送，下次同步会自动补推）：" + err)
+                print("⚠️ push 失败（已提交 %s，未推送，下次同步会自动补推）：%s"
+                      % (sha or "?", err))
 
     # 测试
     py = os.path.join(args.repo, ".venv", "bin", "python")

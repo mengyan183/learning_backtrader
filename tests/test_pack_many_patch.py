@@ -266,3 +266,40 @@ def test_patch_new_file_uses_dev_null(tmp_path, repo_file):
                            % (rel, rel))
     assert "\n--- /dev/null\n+++ b/%s\n" % rel in diff
     assert "+新文件第一行" in diff
+
+
+# ------------------- 6) `+N/-M` 统计 + 「删除行」告警（2026-10-19，护栏）
+
+def test_patch_prints_add_del_counts(monkeypatch, capsys, repo_file):
+    """护栏①：`--patch` 必须逐文件打印 `+N/-M`（打包前可核对本地是否旧于 origin）。
+
+    纯追加时**不得**出现删除告警 —— 否则变成狼来了，真告警会被忽略。
+    """
+    rel = repo_file("dist/_tmp_packmany_counts.txt", "a\nb\nc\n")
+    monkeypatch.setattr(pm, "_base_text", lambda r, ref: "a\nb\n")  # 基准缺最后一行
+
+    payload, reasons = pm._patch_payload([rel], "origin/main")
+    assert reasons == []
+    out = capsys.readouterr().out
+    assert "[patch] %s" % rel in out
+    assert "+1/-0" in out
+    assert "有删除行" not in out
+
+
+def test_patch_warns_on_deleted_lines(monkeypatch, capsys, repo_file):
+    """护栏②：diff 出现删除行 ⇒ 告警「本地可能旧于 origin」。
+
+    `sync_1019q` 就是这样把 Mac 回写的 MT-39 ✅ **静默**冲回「待执行」
+    （整文件包连 patch 失败那种响声都没有）⇒ 打包端必须能在本地先看到删除行。
+    """
+    rel = repo_file("dist/_tmp_packmany_del.txt", "keep\n")
+    monkeypatch.setattr(pm, "_base_text", lambda r, ref: "keep\nremoved-line\n")
+
+    payload, reasons = pm._patch_payload([rel], "origin/main")
+    assert reasons == []
+    assert "-removed-line" in payload.decode("utf-8")
+    out = capsys.readouterr().out
+    assert "[patch] %s" % rel in out
+    assert "+0/-1" in out
+    assert "有删除行" in out
+    assert "本地可能旧于 origin" in out

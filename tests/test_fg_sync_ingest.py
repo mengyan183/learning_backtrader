@@ -323,3 +323,36 @@ def test_catch_up_push_is_noop_when_in_sync(tmp_path):
     work, _ = _git_init_with_origin(tmp_path)
     assert _catch_up_push(str(work)) is None
     assert _pending_commits(str(work)) == (0, "")
+
+
+# --------------------- 成功回执：结论行必须带 ✅ 与提交号（2026-10-19）
+
+def test_head_short_returns_short_sha(tmp_path):
+    """`_head_short` 返回 HEAD 的短 sha（回执靠它说明「这批落在哪个提交」）。"""
+    from fg_sync_ingest import _head_short
+
+    work, _ = _git_init_with_origin(tmp_path)
+    sha = _head_short(str(work))
+    assert len(sha) >= 7
+    assert all(c in "0123456789abcdef" for c in sha)
+
+
+def test_head_short_is_empty_and_silent_on_broken_repo(tmp_path):
+    """非 git 目录 ⇒ 返回空串、**不抛异常**（回执可读性不得反向影响入库判定）。"""
+    from fg_sync_ingest import _head_short
+
+    assert _head_short(str(tmp_path / "not-a-repo")) == ""
+
+
+def test_brief_filter_would_keep_success_receipt_line():
+    """契约锁：`fg_sync_tool.py --brief` 只回传 ✅/❌/⛔/⚠️/「认出的包」开头的行。
+
+    ⇒ 入库成功结论行**必须带 ✅**，否则「已推送 origin/main」这类裸行会被过滤掉，
+      对端口只能看到「增量 pytest 通过」，无法确认入库是否落地（1019o/1019p 追问根因）。
+    """
+    keep = ("✅", "❌", "⛔", "⚠️", "认出的包")
+    new_line = "✅ 已推送 origin/main（提交 abc1234，2 个文件：docs/mac-tasks.md）"
+    old_line = "已推送 origin/main"
+    assert new_line.startswith(keep)          # 新写法会被保留 ✓
+    assert not old_line.startswith(keep)      # 旧写法会被过滤 ✗（本次修复点）
+    assert "提交" in new_line and "个文件" in new_line
