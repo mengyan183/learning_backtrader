@@ -26,6 +26,7 @@ REPO = "/Users/xingguo/learning_backtrader"
 FG_RE = re.compile(r"###FG:([^:#\n]+):(\d+)/(\d+)###([\s\S]*?)###FG:end###")
 # 分片不齐且最早分片已滞留 ≥10 分钟 → 回一次「还缺第 X 片」提示（每包仅一次，不刷屏）
 INCOMPLETE_NOTIFY_SEC = 600
+CHAT_ID = "oc_a9306b326943821490184d073dae9a65"
 
 
 def _load_bypass():
@@ -35,6 +36,43 @@ def _load_bypass():
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
+
+
+def _git(repo, *args):
+    """在 repo 下跑一条 git 命令，失败一律返回空串（回执不应因 git 抖动而中断）。"""
+    try:
+        r = subprocess.run(["git"] + list(args), cwd=repo,
+                           capture_output=True, text=True, timeout=30)
+        return r.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def _success_receipt(pkg, repo, rc, out):
+    """构造 success 分支的回执文本（MT-40，2026-10-19）。
+
+    为什么必须有：`sync_1019o` / `sync_1019p` 由本兜底路径入库成功 ✗，
+    却**不发任何回执** ✗ ⇒ 对端只能人工来问「是不是没收到」✗。
+    失败分支早有 ⛔ 回执 ✓，成功分支同样必须可观测 ✓（同 `21ddbab` 的纪律：
+    成功与失败都不能静默 ✗）。回执带**每文件 blob hash** ⇒ 对端可与包内
+    `index` 行自行核对，不必再来问 ✓。
+    """
+    if rc != 0:
+        # "可能无变更可提交" = 同内容早已入库 ⇒ 无新提交，说明清楚即可
+        return (f"✅ {pkg} 内容已在库（rc={rc}，无新提交）\n"
+                f"{out[:300]}")
+    sha = _git(repo, "rev-parse", "--short", "HEAD")
+    subject = _git(repo, "log", "-1", "--format=%s")
+    files = [f for f in _git(repo, "show", "--name-only", "--format=", "HEAD").split("\n")
+             if f.strip()]
+    lines = [f"✅ {pkg} 已入库并推送", f"提交 {sha}　{subject}",
+             f"落地 {len(files)} 个文件："]
+    for f in files[:20]:
+        lines.append("· %s　%s" % (f, _git(repo, "hash-object", f)[:12]))
+    if len(files) > 20:
+        lines.append("… 其余 %d 个略（git show --stat %s）" % (len(files) - 20, sha))
+    lines.append("（以上 blob hash 可与包内 index 行逐条核对）")
+    return "\n".join(lines)
 
 
 def scan_packages():
@@ -105,7 +143,7 @@ def main():
                             f"⚠️ {pkg} 分片不齐：已收 {d['recv']}/{total} 片，"
                             f"还缺第 {miss} 片，请补发（最早分片已滞留超 "
                             f"{INCOMPLETE_NOTIFY_SEC // 60} 分钟）",
-                            "oc_a9306b326943821490184d073dae9a65",
+                            CHAT_ID,
                         )
             continue  # 未收齐，静默等待（仅超时补一次缺片提示）
         # 延迟兜底：分片刚落盘（最近分片 mtime < 60s）说明 bypass 主通道正在/即将
@@ -184,10 +222,13 @@ def main():
             if os.path.exists(sync_file):
                 os.remove(sync_file)
             handled += 1
+            # MT-40：成功也必须可观测 ⇒ 与失败分支对称发回执。
+            # send_feishu 内部已做重试 + 最终失败落 send-fail.log ⇒ 此处不再吞错。
+            bypass.send_feishu(_success_receipt(pkg, REPO, rc, out), CHAT_ID)
         else:
             bypass.send_feishu(
                 f"⛔ {pkg} 入库失败（rc={rc}），分片已保留待排查：\n{out}",
-                "oc_a9306b326943821490184d073dae9a65",
+                CHAT_ID,
             )
     return 0
 
