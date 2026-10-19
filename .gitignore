@@ -92,6 +92,15 @@ Data/*token*
 .env
 config/secrets.*
 ~/.okx_credentials.json
+# ⚠️ 2026-10-19 补（同类漏的第 3 次）：`Data/fred_key` 此前一直**裸奔** ——
+#   它是未跟踪文件，却**不被任何规则命中**（名字里没有 "token"，
+#   上面几条通配一条都匹配不到），一次 `git add -A` 就会把 FRED 密钥推上去。
+#   与 `Data/stablecoin_key`（2026-10-10 WT-12 R-4 实测）是**完全同一类**的漏。
+#   ⇒ 显式列一条（文档锚点）+ `Data/*key` 通配（以 key 结尾的凭据全覆盖），
+#     并把 `Data/fred_key` 加进 tests/data/test_shoutu_record.py 的守卫参数表 ——
+#     否则规则再多也没人守（该测试只守它参数表里列出的路径）。
+Data/fred_key
+Data/*key
 
 # ---- 仅本机需要：Windows 侧工具链（D 组裁决 2026-10-09）----
 # 这些只服务**发送侧**：驱动本机浏览器发送 / 打包 / 发送前校验 / 本地 git 钩子。

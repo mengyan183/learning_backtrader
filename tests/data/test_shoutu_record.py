@@ -157,6 +157,10 @@ def test_load_token_empty_file_raises(tmp_path, monkeypatch):
 @pytest.mark.parametrize("rel,label", [
     (config.SHOUTU_TOKEN_PATH, "守猪待兔 token"),
     (os.path.join(config.ROOT, "Data", "stablecoin_key"), "B-10 稳定币 key"),
+    # 2026-10-19 补：`Data/fred_key` 曾经**裸奔** —— 名字里没有 "token"
+    # ⇒ 旧通配一条都不命中，而它又**不在这张参数表里** ⇒ 漏了也没有任何测试报警。
+    # 与 stablecoin_key 是同一类漏的第 3 次，故纳入守卫。
+    (os.path.join(config.ROOT, "Data", "fred_key"), "FRED key"),
 ])
 def test_secret_paths_are_gitignored(rel, label):
     """**守卫**：密钥文件必须落在 .gitignore 覆盖范围内，否则会入库。
