@@ -1506,6 +1506,45 @@ def check_hypotheses_table(path=None):
     return errors, warnings
 
 
+#: 任务表（`| WT-xx |` / `| MT-xx |`）—— 2026-10-19 起同样做结构自检。
+TASK_TABLES = ("docs/mac-tasks.md", "docs/windows-tasks.md")
+
+
+def check_task_tables(paths=None):
+    """任务表结构自检：每条 `WT-` / `MT-` 行的**格数必须与表头一致** ✓。
+
+    动机：MT-35 自己踩了 `|累计盈亏|` ✗（未转义的绝对值竖线 ⇒ 5 格变 6 格 ✗），
+    而 `--check-table` 当时只管 `hypotheses.md` ✗。
+
+    注意：**不能**用「朴素切分 vs 转义感知切分」的差值判定 ✗ —— 正确转义的 `\\|`
+    也会让两者不等 ✓（试过，会全员误报 ✗）。真正的判据只能是「与表头格数比对」✓。
+
+    :returns: 错误列表（空 ⇒ 通过）。
+    """
+    errors = []
+    split = re.compile(r"(?<!\\)\|")
+    for rel in (paths or TASK_TABLES):
+        path = os.path.join(_REPO_ROOT, rel)
+        if not os.path.exists(path):
+            continue
+        ncol = None
+        with open(path, encoding="utf-8") as fh:
+            for lineno, ln in enumerate(fh, 1):
+                if not ln.lstrip().startswith("|"):
+                    continue
+                cells = split.split(ln.strip().strip("|"))
+                if ncol is None:
+                    ncol = len(cells)          # 首个表格行 = 表头
+                    continue
+                if set("".join(cells)) <= set("-: "):
+                    continue                   # 分隔行
+                if re.match(r"^\s*(W|M)T-\d+\s*$", cells[0]):
+                    if len(cells) != ncol:
+                        errors.append("%s %s 格数 = %d（表头 %d）✗ ⇒ 疑似**未转义的 `|`**（行 %d）"
+                                      % (rel, cells[0].strip(), len(cells), ncol, lineno))
+    return errors
+
+
 def _run_check_table(path=None):
     """`--check-table` 入口：打印自检结果，返回退出码（0 通过 / 1 有错）。"""
     errors, warnings = check_hypotheses_table(path)
@@ -1519,6 +1558,15 @@ def _run_check_table(path=None):
         return 1
     print("  ✅ ① 列数 == %d ② 状态 ∈ 固定枚举 ③ PENDING 交叉一致"
           % HYP_TABLE_COLS)
+
+    task_errors = check_task_tables()
+    print("任务表自检：%s" % ", ".join(TASK_TABLES))
+    for e in task_errors:
+        print("  ❌ %s" % e)
+    if task_errors:
+        print("\n❌ 自检未通过：任务表 %d 个错误" % len(task_errors))
+        return 1
+    print("  ✅ ④ 任务表无未转义的 `|`（列不串格）")
     print("\n✅ 自检通过（%d 个警告）" % len(warnings))
     return 0
 

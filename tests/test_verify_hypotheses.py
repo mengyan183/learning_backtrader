@@ -720,6 +720,33 @@ def test_check_table_cli_returns_one_on_broken_table(tmp_path, monkeypatch, caps
     path = _write_table(tmp_path, [
         "| H-905 | 2026-10-16 | 假设 | 取 |x|=1 | 数据 | open | 备注 |\n"])
     monkeypatch.setattr(vh, "HYP_TABLE_PATH", path)
+    monkeypatch.setattr(vh, "TASK_TABLES", ())
     rc = vh.main(["--check-table"])
     assert rc == 1
     assert "自检未通过" in capsys.readouterr().out
+
+
+# ------------------------------------ 任务表结构自检（2026-10-19，MT-35 踩坑后补）
+def test_check_task_tables_passes_on_real_tables():
+    """真实 `mac-tasks.md` / `windows-tasks.md` 必须无未转义 `|`。"""
+    assert vh.check_task_tables() == []
+
+
+def test_check_task_tables_flags_bare_pipe(tmp_path, monkeypatch):
+    """`|累计盈亏|` 这类绝对值竖线未转义 ⇒ 格数会串格，必须报错。"""
+    hdr = "| 编号 | 任务 | 背景 | 要求 | 结果 |\n|---|---|---|---|---|\n"
+    p = tmp_path / "mac-tasks.md"
+    monkeypatch.setattr(vh, "_REPO_ROOT", str(tmp_path))
+    monkeypatch.setattr(vh, "TASK_TABLES", ("mac-tasks.md",))
+
+    p.write_text(hdr + "| MT-99 | 标题 | 背景 | 要求 | 待执行 |\n", encoding="utf-8")
+    assert vh.check_task_tables() == []
+
+    p.write_text(hdr + "| MT-99 | 标题 | 取 |盈亏|=1 | 要求 | 待执行 |\n",
+                 encoding="utf-8")
+    assert any("MT-99" in e for e in vh.check_task_tables())
+
+    # 正确转义 ⇒ 通过（这条是回归：曾用「朴素 vs 转义」差值判定，导致全员误报 ✗）
+    p.write_text(hdr + "| MT-99 | 标题 | 取 \\|盈亏\\|=1 | 要求 | 待执行 |\n",
+                 encoding="utf-8")
+    assert vh.check_task_tables() == []
