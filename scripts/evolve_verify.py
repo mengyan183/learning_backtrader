@@ -13,6 +13,7 @@
 import csv
 import datetime as dt
 import os
+import re
 import sys
 
 import numpy as np
@@ -23,6 +24,12 @@ RAW = os.path.join(BASE, "Data", "raw")
 DATA = os.path.join(BASE, "Data")
 HYP = os.path.join(BASE, "evolution", "hypotheses.md")
 MEM_DIR = os.path.join(BASE, "evolution", "memory")
+
+#: `hypotheses.md` 的列数（`| id | 日期 | 假设 | 判据 | 数据 | 状态 | 备注 |`）。
+HYP_COLS = 7
+#: **转义感知**切分 —— 备注里含 `\|`（绝对值竖线）时，朴素 `split("|")` 会让
+#: 状态/备注索引错位 ⇒ 把状态写进备注列 ✗（2026-10-19 实测）。
+_SPLIT = re.compile(r"(?<!\\)\|")
 
 LEVER_ETF = ["YINN", "GDXU", "CRCG", "CONL", "AXTX"]
 
@@ -118,7 +125,7 @@ def check_h003():
                        for s, m in rows)
     return {
         "id": "H-003", "status": "falsified" if falsified else "adopted",
-        "evidence": "区间 %s~%s：BTC 日收益|均值|=%.4f；杠杆产品 %s；最大=%.4f" % (
+        "evidence": "区间 %s~%s：BTC 日收益\\|均值\\|=%.4f；杠杆产品 %s；最大=%.4f" % (
             start, end, btc_mean, detail, max_l),
         "note": "口径：信号第5列未恢复，整区间近似；%s" % (
             "杠杆波动 > BTC → 未被证伪" if not falsified else "杠杆波动不高于 BTC → 证伪"),
@@ -192,8 +199,33 @@ CHECKS = [check_h002, check_h003, check_h004, check_h005,
           check_h006, check_h007, check_h008, check_h009]
 
 
+def _row_cells(ln):
+    """按转义感知切分一行的单元格（去首尾空段）。"""
+    return [c.strip() for c in _SPLIT.split(ln.rstrip("\n").strip().strip("|"))]
+
+
+def current_status():
+    """读表里各假说的**当前状态**（跳过已归档/已判伪，避免日报传播过时信息 ✗）。"""
+    out = {}
+    if not os.path.exists(HYP):
+        return out
+    with open(HYP, encoding="utf-8") as f:
+        for ln in f:
+            m = re.match(r"^\| (H-\d+) \|", ln)
+            if not m:
+                continue
+            cells = _row_cells(ln)
+            if len(cells) == HYP_COLS:
+                out[m.group(1)] = re.split(r"[（(]", cells[5], 1)[0].strip()
+    return out
+
+
 def update_hypotheses(results):
-    """把结果写回 hypotheses.md：状态列 + 备注追加（按 | 分段定位，行首 id 匹配）。"""
+    """把结果写回 hypotheses.md：状态列 + 备注（**按日期覆盖**当日条目）。
+
+    ⚠️ 必须用 `_SPLIT`（转义感知）✗ —— 朴素 `split("|")` 在备注含 `\\|` 时索引错位 ✗。
+    ⚠️ 备注**按日期覆盖** ✗ —— 旧实现「写过就锁死」⇒ 日报永远是第一次的数字 ✗。
+    """
     with open(HYP, encoding="utf-8") as f:
         lines = f.readlines()
     today = dt.date.today().isoformat()
@@ -203,16 +235,21 @@ def update_hypotheses(results):
         for i, ln in enumerate(lines):
             if not ln.startswith("| %s |" % hid):
                 continue
-            parts = ln.split("|")
-            if len(parts) < 9:
-                print("  [warn] %s 行结构异常：%r" % (hid, ln)); break
-            parts[6] = " %s " % r["status"]
+            cells = _row_cells(ln)
+            if len(cells) != HYP_COLS:
+                print("  [warn] %s 行结构异常（%d 列，应 %d），跳过"
+                      % (hid, len(cells), HYP_COLS))
+                break
+            cells[5] = r["status"]
             note = "%s 验证：%s" % (today, r["evidence"])
             if r["note"]:
                 note += "；" + r["note"]
-            if "验证：" not in parts[7]:
-                parts[7] = parts[7].rstrip() + "；" + note
-            lines[i] = "|".join(parts)
+            # 防御：证据里的**未转义** `|`（如 `|均值|`）会切坏表格 ✗ ⇒ 写前统一转义 ✓
+            note = re.sub(r"(?<!\\)\|", r"\\|", note)
+            kept = [s.strip() for s in cells[6].split("<br>")
+                    if s.strip() and not s.strip().startswith(today + " 验证：")]
+            cells[6] = "<br>".join(kept + [note])
+            lines[i] = "| " + " | ".join(cells) + " |\n"
             hit = True
             break
         if not hit:
@@ -220,6 +257,22 @@ def update_hypotheses(results):
     with open(HYP, "w", encoding="utf-8") as f:
         f.writelines(lines)
     print("[hypotheses.md] 状态已更新")
+
+
+def check_table_structure():
+    """写完自检：每行列数必须 == `HYP_COLS`（否则说明写坏了表格 ✗）。"""
+    bad = []
+    with open(HYP, encoding="utf-8") as f:
+        for ln in f:
+            m = re.match(r"^\| (H-\d+) \|", ln)
+            if m and len(_row_cells(ln)) != HYP_COLS:
+                bad.append("%s(%d 列)" % (m.group(1), len(_row_cells(ln))))
+    if bad:
+        print("❌ [自检] 假说表结构异常：%s" % ", ".join(bad))
+        print("   请跑 `py -3.10 scripts/verify_hypotheses.py --check-table` 定位")
+        return 1
+    print("[自检] 假说表 %d 列 ✓" % HYP_COLS)
+    return 0
 
 
 def append_memory(results):
@@ -236,12 +289,21 @@ def append_memory(results):
 
 
 def main():
-    results = [c() for c in CHECKS]
+    done = current_status()
+    results = []
+    for c in CHECKS:
+        r = c()
+        # 已归档/已判伪的**不再出现在日报** ✗ —— 否则会持续传播过时的「未恢复」理由 ✗
+        if done.get(r["id"]) in ("falsified", "archived"):
+            print("[%s] 跳过（当前状态 %s，不再自动复检）" % (r["id"], done[r["id"]]))
+            continue
+        results.append(r)
     for r in results:
         print("[%s] %s：%s" % (r["id"], r["status"], r["evidence"]))
     update_hypotheses(results)
     append_memory(results)
+    return check_table_structure()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
