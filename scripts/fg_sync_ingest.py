@@ -104,15 +104,46 @@ PATCH_PREFIX = "__patch__/"
 def _split_patch_payload(payload):
     """解析 pack_many --patch 的 payload → [(rel, [diff块行])]。
 
-    payload 结构（每文件一块，difflib.unified_diff 文本）：
+    两种格式都支持（MT-38 起 Windows 改产标准 git 风格）：
+
+    ① **标准 git patch**（`a/` `b/` 前缀，各文件独立成段）：
+        diff --git a/scripts/x.py b/scripts/x.py
+        index <old>..<new> <mode>
+        --- a/scripts/x.py
+        +++ b/scripts/x.py
+        @@ -l,c +l,c @@
+        ...
+       按 `diff --git` 分段，rel 取 `b/` 侧（删除文件时回落 `a/` 侧）。
+
+    ② **旧格式**（MT-20，difflib.unified_diff + 外层分隔头）：
         --- docs/xxx.md ---
         --- docs/xxx.md@origin/main
         +++ docs/xxx.md
-        @@ -l,c +l,c @@
-        ...
-    分隔头 `--- <rel> ---` 开始新文件块；无 `@@` hunk 的空块跳过。
+        @@ ...
+       分隔头 `--- <rel> ---` 开始新文件块。
+
+    两种都只保留含 `@@` hunk 的块。
     """
     lines = payload.splitlines()
+
+    if any(ln.startswith("diff --git ") for ln in lines):
+        blocks, cur_rel, cur = [], None, []
+        for ln in lines:
+            m = re.match(r"^diff --git a/(.+) b/(.+)$", ln)
+            if m:
+                if cur_rel is not None:
+                    blocks.append((cur_rel, cur))
+                a_side, b_side = m.group(1).strip(), m.group(2).strip()
+                cur_rel = a_side if b_side == "/dev/null" else b_side
+                cur = [ln]
+                continue
+            if cur_rel is not None:
+                cur.append(ln)
+        if cur_rel is not None:
+            blocks.append((cur_rel, cur))
+        return [(rel, blk) for rel, blk in blocks
+                if any(ln.startswith("@@") for ln in blk)]
+
     blocks = []
     cur_rel, cur = None, []
     for ln in lines:
@@ -131,25 +162,29 @@ def _split_patch_payload(payload):
 
 
 def _to_git_patch(rel, blk):
-    """把 pack_many 的 unified diff 块转成 git apply 可解析的 patch（MT-20）。
+    """把 diff 块规整成 `git apply` 可解析的 patch（MT-20 / MT-38）。
 
-    difflib 的 fromfile/tofile 头（`--- rel@ref` / `+++ rel`）重写为
-    `--- a/rel` / `+++ b/rel`（git 风格，路径无 a/b 前缀也可定位），
-    `@@` hunk 与 +/-/context 行原样保留。
+    两种输入都归一到同一输出：
+    - **旧格式**（difflib）：`--- rel@ref` / `+++ rel` → 重写为 git 风格；
+    - **新格式**（MT-38 后 Windows 产的标准 git patch）：块首已是
+      `diff --git a/rel b/rel`、`--- a/rel`、`+++ b/rel`。
 
-    MT-38：块内若带 `index <old>..<new> <mode>` 行，统一重排到 `diff --git`
-    之后、`---` 之前 —— git 只认该位置的 index 行，放错位置 `--3way` 就
-    拿不到基准 blob、退化成普通 apply。
+    统一做法：丢弃输入里原有的 `diff --git` / `--- ` / `+++ ` 行（避免
+    `a/` `b/` 前缀被叠成 `a/a/`），按 rel 重建头部，并把 `index` 行
+    重排到 `diff --git` 之后、`---` 之前 —— git 只认该位置，放错则
+    `--3way` 拿不到基准 blob、退化成普通 apply。
     """
-    head, body, index_lines = [], [], []
+    body, index_lines = [], []
     for ln in blk:
+        if ln.startswith("diff --git "):
+            continue
         if ln.startswith("--- ") or ln.startswith("+++ "):
             continue
         if _INDEX_RE.match(ln):
             index_lines.append(ln)
             continue
         body.append(ln)
-    head.append("diff --git a/%s b/%s" % (rel, rel))
+    head = ["diff --git a/%s b/%s" % (rel, rel)]
     head.extend(index_lines)
     head.extend(["--- a/%s" % rel, "+++ b/%s" % rel])
     return "\n".join(head + body) + "\n"
@@ -191,7 +226,17 @@ def _restore_paths(repo, rels):
 
 
 def _patch_targets(payload):
-    """提取 diff 包涉及的全部目标文件（用于冲突检查）。"""
+    """提取 diff 包涉及的全部目标文件（用于冲突检查）。
+
+    新格式优先按 `diff --git a/<rel> b/<rel>` 取（`b/` 为 `/dev/null`
+    即删除场景，回落 `a/` 侧）；无 `diff --git` 时回落旧格式外层分隔头。
+    """
+    gits = set()
+    for m in re.finditer(r"^diff --git a/(.+) b/(.+)$", payload, re.M):
+        a_side, b_side = m.group(1).strip(), m.group(2).strip()
+        gits.add(a_side if b_side == "/dev/null" else b_side)
+    if gits:
+        return gits
     return {m.group(1).strip()
             for m in re.finditer(r"^--- (.+) ---$", payload, re.M)}
 
