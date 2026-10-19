@@ -165,7 +165,33 @@ def test_patch_uses_base_and_is_far_smaller(monkeypatch, tmp_path, repo_file):
     diff = files[pm.PATCH_PREFIX + "patchpkg.diff"].decode("utf-8")
     assert "+新加的一行" in diff
     assert "@@" in diff
-    assert diff.startswith("--- %s ---" % rel_changed)
+    # MT-38：改成 git 风格（`diff --git` + `--- a/` / `+++ b/`）⇒ 可被 `git apply` 识别 ✓
+    assert diff.startswith("diff --git a/%s b/%s\n" % (rel_changed, rel_changed))
+    assert "\n--- a/%s\n+++ b/%s\n" % (rel_changed, rel_changed) in diff
+
+
+def test_patch_has_index_line_for_real_repo_file(monkeypatch, tmp_path):
+    """能取到 blob SHA 时必须带 `index <old>..<new> 100644` 行 ✓
+    —— Mac 端据此走 `git apply --3way`（MT-38 ✓）。"""
+    rel = "AGENTS.md"
+    # 改一行再打 patch（先备份，避免污染工作区）
+    path = os.path.join(pm.REPO, rel)
+    original = open(path, "rb").read()
+    try:
+        open(path, "wb").write(
+            original + "\n<!-- packmany index 行测试 -->\n".encode("utf-8"))
+        payload, reasons = pm._patch_payload([rel], "origin/main")
+        assert reasons == []
+        diff = payload.decode("utf-8")
+        lines = diff.splitlines()
+        assert lines[0] == "diff --git a/%s b/%s" % (rel, rel)
+        assert lines[1].startswith("index ") and lines[1].endswith(" 100644")
+        assert ".." in lines[1]
+        # git 只认这个位置：index 必须在 diff --git 之后、--- 之前
+        assert lines[2] == "--- a/%s" % rel
+        assert lines[3] == "+++ b/%s" % rel
+    finally:
+        open(path, "wb").write(original)
 
 
 # ---------------------------------------------------------------- 3) 基准不存在 → 回落

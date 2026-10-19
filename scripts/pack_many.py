@@ -79,8 +79,43 @@ def _base_text(rel, base_ref):
     return out.stdout.decode("utf-8", "replace")
 
 
+def _git_blob_sha(ref, rel):
+    """取 `<ref>:<rel>` 的 blob SHA（7 位）；失败返回 None。"""
+    cmd = ["git", "-C", REPO]
+    proxy = os.environ.get("FG_PROXY", "")
+    if proxy:
+        cmd += ["-c", "http.proxy=%s" % proxy, "-c", "https.proxy=%s" % proxy]
+    cmd += ["rev-parse", "--short=7", "%s:%s" % (ref, rel)]
+    try:
+        out = subprocess.run(cmd, capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return out.stdout.decode("utf-8", "replace").strip() or None
+
+
+def _git_hash_blob(data):
+    """对内存内容算 blob SHA（7 位，**不写入**对象库）；失败返回 None。
+
+    shortcut: 不套 `core.autocrlf` 过滤 ⇒ 换行不一致时 new 侧 SHA 与 git 存的可能不同；
+    `--3way` 只用 **old**（preimage）✓，故不影响合并；若要严格一致，改成
+    `git hash-object -w --path=<rel> --stdin`。
+    """
+    try:
+        out = subprocess.run(["git", "-C", REPO, "hash-object", "--stdin"],
+                             input=data, capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    return out.stdout.decode("utf-8", "replace").strip()[:7] or None
+
+
 def _patch_payload(srcs, base_ref):
-    """生成统一 diff 文本。返回 (payload_bytes, 回落原因列表)。
+    """生成**git 风格**统一 diff。返回 (payload_bytes, 回落原因列表)。
+
+    MT-38（2026-10-19）：加 `diff --git` + `index <old>..<new> <mode>` 行 ✓ ——
+    有 `index` 行时 Mac 端才会走 `git apply --3way` ✓，基准漂移可自动三方合并 ✓；
+    取不到 blob SHA 时**不回落** ✓，只是退化成无 `index` 行（Mac 端走普通 apply ✓）。
 
     只要有**任一**回落条件成立 ⇒ 返回 (None, [原因...])，由调用方走整文件路径。
     """
@@ -96,12 +131,16 @@ def _patch_payload(srcs, base_ref):
             continue
         diff = "".join(difflib.unified_diff(
             base.splitlines(True), cur.splitlines(True),
-            fromfile="%s@%s" % (rel, base_ref), tofile=rel))
+            fromfile="a/" + rel, tofile="b/" + rel))
         if not diff:
             # 无差异：不回落，但也没东西可发 —— 视为空 diff（继续，允许所有文件都空）
             chunks.append("--- %s ---\n（与基准无差异）\n" % rel)
             continue
-        chunks.append("--- %s ---\n%s" % (rel, diff))
+        header = "diff --git a/%s b/%s\n" % (rel, rel)
+        old, new = _git_blob_sha(base_ref, rel), _git_hash_blob(cur.encode("utf-8"))
+        if old and new:
+            header += "index %s..%s 100644\n" % (old, new)
+        chunks.append(header + diff)
     if reasons:
         return None, reasons
     return "".join(chunks).encode("utf-8"), []
