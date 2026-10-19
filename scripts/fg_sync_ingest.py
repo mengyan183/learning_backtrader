@@ -34,6 +34,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -289,6 +290,54 @@ def _clean_processed(src, keep=None):
     print("🧹 已清理聚合文件与 .done 标记（分片原文保留，由 watcher/bypass 各清本包）")
 
 
+def _pending_commits(repo):
+    """本地领先 origin/main 的提交数。返回 (n, err)。"""
+    r = _git(repo, "rev-list", "--count", "origin/main..HEAD")
+    if r.returncode != 0:
+        return 0, (r.stderr or r.stdout or "").strip()
+    try:
+        return int(r.stdout.strip() or 0), ""
+    except ValueError:
+        return 0, "无法解析 rev-list 输出：%r" % r.stdout.strip()
+
+
+def _push_with_retry(repo, attempts=3, base_delay=2.0):
+    """`git push origin main`，失败则退避重试。返回 (ok, err)。
+
+    2026-10-19（sync_1019j 实测）：网络中断时 push 失败**只打印一行 ⚠️**，
+    提交便卡在本地、远端看不到，而回执照发 ⇒ 对端以为压根没处理。
+    这里加重试；仍失败也**不改退出码**（入库本身已成功），交给
+    `_catch_up_push` 在下次同步时自愈。
+    """
+    err = ""
+    for i in range(attempts):
+        r = _git(repo, "push", "-q", "origin", "main")
+        if r.returncode == 0:
+            return True, ""
+        err = (r.stderr or r.stdout or "").strip()
+        if i < attempts - 1:
+            time.sleep(base_delay * (i + 1))
+    return False, err
+
+
+def _catch_up_push(repo):
+    """补推积压提交：上一次 push 失败留下的提交，在被发现之前无人管。
+
+    只在确实领先远端时才联网 ⇒ 正常路径零额外开销。
+    """
+    n, err = _pending_commits(repo)
+    if err:
+        print("⚠️ 无法判断待推送提交数（%s），跳过补推。" % err)
+        return
+    if not n:
+        return
+    ok, e = _push_with_retry(repo)
+    if ok:
+        print("🔼 已补推 %d 个积压提交到 origin/main" % n)
+    else:
+        print("⚠️ 补推失败（%d 个提交仍未推送）：%s" % (n, e))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("src", help="放着 base64 分片文本（.txt/.md）的目录")
@@ -302,6 +351,11 @@ def main():
                     help="只处理 src 目录下指定的单个文件名（隔离目录残留分片，避免阻塞；"
                          "fg_sync_tool -f 模式必传 sync_in.md）")
     args = ap.parse_args()
+
+    # 补推：上次 push 若因网络中断失败，提交会积压在本地（sync_1019j 实测：
+    # 入库成功、commit 成功，但 push 静默失败 ⇒ 对端在 git 上拉不到新提交，
+    # 而回执照发 ⇒ 对端以为压根没处理）。每次同步先尝试补推，让它自愈。
+    _catch_up_push(args.repo)
 
     sys.path.insert(0, os.path.join(args.repo, "scripts"))
     from restore_from_base64 import extract_marked, _decode  # 复用既有解析
@@ -454,11 +508,14 @@ def main():
         if r.returncode != 0:
             print("⚠️ commit 失败（可能无变更可提交）：" + r.stderr.strip())
         else:
-            r = _git(args.repo, "push", "-q", "origin", "main")
-            if r.returncode != 0:
-                print("⚠️ push 失败：" + r.stderr.strip())
-            else:
+            ok, err = _push_with_retry(args.repo)
+            if ok:
                 print("已推送 origin/main")
+            else:
+                # 不改判定：提交已在本地，_catch_up_push 下次同步会补推（自愈）。
+                # 但必须写明"未推送" —— 否则对端 git 上拉不到、却收到成功回执，
+                # 只能像 1019j 那样靠人工发现。
+                print("⚠️ push 失败（已提交，未推送，下次同步会自动补推）：" + err)
 
     # 测试
     py = os.path.join(args.repo, ".venv", "bin", "python")

@@ -11,7 +11,7 @@
 - 未收齐 → 静默（不回传，避免 855 条刷屏）
 - 无分片但命中「同步待办/任务清单/有什么任务/待办」→ 直接跑 push_todo.py 回传待办快照（免 LLM）
 """
-import json, os, re, sys, subprocess, urllib.request
+import hashlib, json, os, re, subprocess, sys, time, urllib.request
 
 HOME = os.path.expanduser("~")
 IN_DIR = os.path.join(HOME, ".openclaw", "tmp", "fg-sync-in")
@@ -26,36 +26,89 @@ def load_cfg():
         return json.load(f)
 
 
-def send_feishu(text, chat_id):
-    """以 bot 身份向指定 chat 发普通文本消息（复用 appId/appSecret）。"""
+def _log_send_failure(text, chat_id, err):
+    """回执最终发不出去时落盘留痕。
+
+    2026-10-19（sync_1019j 实测）：`send_feishu` 的返回值此前**没有被任何调用方检查**，
+    网络中断时回执彻底静默 —— 入库成功、提交成功，但群里毫无动静，
+    对端只能人工来问"是不是没收到"。
+    """
+    try:
+        os.makedirs(IN_DIR, exist_ok=True)
+        with open(os.path.join(IN_DIR, "send-fail.log"), "a", encoding="utf-8") as fh:
+            fh.write("[%s] chat=%s err=%s\n%s\n\n"
+                     % (time.strftime("%Y-%m-%d %H:%M:%S"), chat_id, err, text))
+    except OSError:
+        pass
+
+
+def send_feishu(text, chat_id, attempts=3):
+    """以 bot 身份向指定 chat 发普通文本消息（复用 appId/appSecret）。
+
+    返回 `"ok"` = 发送成功（保持既有语义 ✓）；否则返回错误原因字符串。
+
+    2026-10-19 加固（sync_1019j）：网络中断时此处会失败，而调用方**没有检查返回值**
+    ⇒ 回执静默丢失。现在：失败退避重试；请求带 `uuid` 幂等键，使
+    「实际已发出、只是响应超时」的重试不会变成两条消息（1019e 曾重复发送过 ✗）；
+    最终仍失败则落盘 `send-fail.log`，绝不无声吞掉。
+    """
     cfg = load_cfg()
     f = cfg["channels"]["feishu"]
     base = "https://open.feishu.cn/open-apis"
-    req = urllib.request.Request(
-        f"{base}/auth/v3/tenant_access_token/internal",
-        data=json.dumps({"app_id": f["appId"], "app_secret": f["appSecret"]}).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=15) as r:
-        tok = json.loads(r.read())
-    if tok.get("code") != 0:
-        return f"token err: {tok.get('msg')}"
-    token = tok["tenant_access_token"]
-    body = json.dumps(
-        {"receive_id": chat_id, "msg_type": "text",
-         "content": json.dumps({"text": text})}
-    ).encode()
-    req2 = urllib.request.Request(
-        f"{base}/im/v1/messages?receive_id_type=chat_id",
-        data=body, method="POST",
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-    )
-    try:
-        with urllib.request.urlopen(req2, timeout=15) as r:
-            resp = json.loads(r.read())
-            return "ok" if resp.get("code") == 0 else resp.get("msg", "send fail")
-    except urllib.error.HTTPError as e:
-        return f"HTTP {e.code} {e.read().decode()[:200]}"
+    # 幂等键：同 chat + 同内容 ⇒ 1 小时内重复提交只发一条（飞书按 uuid 去重）
+    uuid = hashlib.sha1(("%s\n%s" % (chat_id, text)).encode("utf-8")).hexdigest()[:40]
+    err = "send fail"
+    for i in range(attempts):
+        try:
+            req = urllib.request.Request(
+                f"{base}/auth/v3/tenant_access_token/internal",
+                data=json.dumps({"app_id": f["appId"],
+                                 "app_secret": f["appSecret"]}).encode(),
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as r:
+                tok = json.loads(r.read())
+            if tok.get("code") != 0:
+                err = "token err: %s" % tok.get("msg")
+            else:
+                body = json.dumps(
+                    {"receive_id": chat_id, "msg_type": "text",
+                     "content": json.dumps({"text": text}), "uuid": uuid}
+                ).encode()
+                req2 = urllib.request.Request(
+                    f"{base}/im/v1/messages?receive_id_type=chat_id",
+                    data=body, method="POST",
+                    headers={"Authorization": "Bearer %s" % tok["tenant_access_token"],
+                             "Content-Type": "application/json"},
+                )
+                with urllib.request.urlopen(req2, timeout=15) as r:
+                    resp = json.loads(r.read())
+                if resp.get("code") == 0:
+                    return "ok"
+                err = resp.get("msg", "send fail")
+        except urllib.error.HTTPError as e:
+            try:
+                err = "HTTP %d %s" % (e.code, e.read().decode()[:200])
+            except Exception:
+                err = "HTTP %d" % e.code
+        except Exception as e:                      # 超时/断网也重试，不直接抛
+            err = "%s: %s" % (type(e).__name__, e)
+        if i < attempts - 1:
+            time.sleep(2 * (i + 1))
+    _log_send_failure(text, chat_id, err)
+    return err
+
+
+def send_feishu_checked(label, text, chat_id):
+    """发回执并检查结果；失败只告警、不抛（不能因发不出消息就中断入库流程）。
+
+    2026-10-19：此前调用处**完全不看返回值** ⇒ 网络中断时回执静默丢失（1019j 实测：
+    入库成功、提交成功，群里却毫无动静）。
+    """
+    res = send_feishu(text, chat_id)
+    if res != "ok":
+        print("⚠️ %s 回执发送失败：%s（原文已落盘 send-fail.log）" % (label, res))
+    return res
 
 
 def pkg_hash(pkg, total):
@@ -131,9 +184,11 @@ def ingest_package(pkg, total, chat_id):
                 os.unlink(sync_file)
             except OSError:
                 pass
-        send_feishu(f"✅ {pkg} 已收齐 {total} 片，开始入库…\n{out}", chat_id)
+        send_feishu_checked(
+            pkg + " 成功", f"✅ {pkg} 已收齐 {total} 片，开始入库…\n{out}", chat_id)
     else:
-        send_feishu(f"⛔ {pkg} 入库失败（rc={rc}），分片已保留待排查：\n{out}", chat_id)
+        send_feishu_checked(
+            pkg + " 失败", f"⛔ {pkg} 入库失败（rc={rc}），分片已保留待排查：\n{out}", chat_id)
 
 
 def run_todo_snapshot(chat_id):
@@ -147,9 +202,9 @@ def run_todo_snapshot(chat_id):
         out = (r.stdout + r.stderr).strip()
         if not out:
             out = "push_todo.py 无输出（检查 docs/ 是否可读）"
-        send_feishu(out, chat_id)
+        send_feishu_checked("待办快照", out, chat_id)
     except subprocess.TimeoutExpired:
-        send_feishu("⏳ 待办快照生成超时", chat_id)
+        send_feishu_checked("待办快照超时", "⏳ 待办快照生成超时", chat_id)
 
 
 def main():
@@ -193,7 +248,8 @@ def main():
         if recv >= total:
             ingest_package(pkg, total, chat_id)
         elif recv > 0 and recv % 100 == 0:
-            send_feishu(f"📥 {pkg} 已收 {recv}/{total} 片", chat_id)
+            send_feishu_checked(pkg + " 进度",
+                                f"📥 {pkg} 已收 {recv}/{total} 片", chat_id)
 
 
 if __name__ == "__main__":

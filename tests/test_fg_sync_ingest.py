@@ -59,7 +59,8 @@ def test_safe_extract_accepts_flat_files(tmp_path):
 
 import subprocess
 
-from fg_sync_ingest import (_has_hunks, _has_index_line, _patch_targets,
+from fg_sync_ingest import (_catch_up_push, _has_hunks, _has_index_line,
+                            _patch_targets, _pending_commits,
                             _split_patch_payload, _to_git_patch)
 
 _INDEX = "index 1a2b3c4d..5e6f7a8b 100644"
@@ -265,3 +266,60 @@ def test_unrecognized_diff_format_is_not_treated_as_no_change():
     genuinely_empty = "--- docs/x.md ---\n（与基准无差异）\n"
     assert _split_patch_payload(genuinely_empty) == []
     assert not _has_hunks(genuinely_empty)   # ⇒ 安全跳过
+
+
+# ===== push 静默失败加固（sync_1019j：提交卡在本地、对端在 git 上拉不到）=====
+
+
+def _git_init_with_origin(tmp_path):
+    """建「工作仓库 + bare origin」（本地路径，不联网），返回 (work, origin)。"""
+    origin = tmp_path / "origin.git"
+    work = tmp_path / "work"
+    subprocess.run(["git", "init", "--bare", "-q", str(origin)], check=True)
+    subprocess.run(["git", "init", "-q", "-b", "main", str(work)], check=True)
+    for k, v in (("user.email", "t@example.com"), ("user.name", "t")):
+        subprocess.run(["git", "-C", str(work), "config", k, v], check=True)
+    subprocess.run(["git", "-C", str(work), "remote", "add", "origin",
+                    str(origin)], check=True)
+    (work / "a.txt").write_text("1\n")
+    subprocess.run(["git", "-C", str(work), "add", "a.txt"], check=True)
+    subprocess.run(["git", "-C", str(work), "commit", "-q", "-m", "init"], check=True)
+    subprocess.run(["git", "-C", str(work), "push", "-q", "origin", "main"],
+                   check=True)
+    return work, origin
+
+
+def test_pending_commits_counts_unpushed(tmp_path):
+    """本地领先远端的提交数：已追平为 0，多一个提交为 1。"""
+    work, _ = _git_init_with_origin(tmp_path)
+    assert _pending_commits(str(work)) == (0, "")
+
+    (work / "b.txt").write_text("2\n")
+    subprocess.run(["git", "-C", str(work), "add", "b.txt"], check=True)
+    subprocess.run(["git", "-C", str(work), "commit", "-q", "-m", "second"],
+                   check=True)
+    assert _pending_commits(str(work)) == (1, "")
+
+
+def test_catch_up_push_pushes_backlog(tmp_path):
+    """push 曾失败留下的积压提交，应能被 `_catch_up_push` 补推上去（1019j 场景）。"""
+    work, origin = _git_init_with_origin(tmp_path)
+    (work / "b.txt").write_text("2\n")
+    subprocess.run(["git", "-C", str(work), "add", "b.txt"], check=True)
+    subprocess.run(["git", "-C", str(work), "commit", "-q", "-m", "second"],
+                   check=True)
+    assert _pending_commits(str(work))[0] == 1     # 提交只在本地，远端看不到
+
+    _catch_up_push(str(work))                      # 补推
+
+    assert _pending_commits(str(work)) == (0, "")  # 已追平
+    r = subprocess.run(["git", "-C", str(origin), "log", "--oneline", "main"],
+                       capture_output=True, text=True)
+    assert "second" in r.stdout                    # 远端确实收到了那个提交
+
+
+def test_catch_up_push_is_noop_when_in_sync(tmp_path):
+    """已追平时补推是空操作：不联网、不报错、不改状态。"""
+    work, _ = _git_init_with_origin(tmp_path)
+    assert _catch_up_push(str(work)) is None
+    assert _pending_commits(str(work)) == (0, "")
