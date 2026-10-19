@@ -136,14 +136,58 @@ def _to_git_patch(rel, blk):
     difflib 的 fromfile/tofile 头（`--- rel@ref` / `+++ rel`）重写为
     `--- a/rel` / `+++ b/rel`（git 风格，路径无 a/b 前缀也可定位），
     `@@` hunk 与 +/-/context 行原样保留。
+
+    MT-38：块内若带 `index <old>..<new> <mode>` 行，统一重排到 `diff --git`
+    之后、`---` 之前 —— git 只认该位置的 index 行，放错位置 `--3way` 就
+    拿不到基准 blob、退化成普通 apply。
     """
-    out = ["diff --git a/%s b/%s" % (rel, rel),
-           "--- a/%s" % rel, "+++ b/%s" % rel]
+    head, body, index_lines = [], [], []
     for ln in blk:
         if ln.startswith("--- ") or ln.startswith("+++ "):
             continue
-        out.append(ln)
-    return "\n".join(out) + "\n"
+        if _INDEX_RE.match(ln):
+            index_lines.append(ln)
+            continue
+        body.append(ln)
+    head.append("diff --git a/%s b/%s" % (rel, rel))
+    head.extend(index_lines)
+    head.extend(["--- a/%s" % rel, "+++ b/%s" % rel])
+    return "\n".join(head + body) + "\n"
+
+
+_INDEX_RE = re.compile(r"^index [0-9a-f]{4,}\.\.[0-9a-f]{4,}(?: \d+)?$", re.M)
+
+
+def _has_index_line(patch_text):
+    """patch 是否带 `index <old>..<new> <mode>` 行（MT-38）。
+
+    有 index 行时 git 才拿得到基准 blob ⇒ `git apply --3way` 可做三方合并
+    （patch 基于旧基准、目标又被别的提交推进时仍能合上）；
+    没有 index 行时 --3way 与普通 apply 等价（仍直接失败）。
+    """
+    return bool(_INDEX_RE.search(patch_text))
+
+
+def _restore_paths(repo, rels):
+    """把 patch 目标文件恢复到 HEAD（MT-38，仅 apply 失败后调用）。
+
+    调用前提：这些路径已通过冲突检查（apply 前无本地未提交修改），
+    因此恢复到 HEAD 不会丢失任何用户改动。
+    `git apply --3way` 冲突时会把冲突标记写进工作区并登记 index，
+    必须清理，否则下一次同步的冲突检查会被自己留下的脏状态挡住。
+    """
+    for rel in rels:
+        if _git(repo, "cat-file", "-e", "HEAD:%s" % rel).returncode == 0:
+            _git(repo, "checkout", "HEAD", "--", rel)
+        else:
+            # 新增文件（HEAD 中不存在）：移出 index 并删掉刚被 patch 写入的副本
+            _git(repo, "reset", "-q", "--", rel)
+            p = os.path.join(repo, rel)
+            if os.path.isfile(p):
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
 
 
 def _patch_targets(payload):
@@ -299,15 +343,26 @@ def main():
                 continue
             for rel, blk in blocks:
                 patch_text = _to_git_patch(rel, blk)
-                r = _git(args.repo, "apply", "--whitespace=nowarn", "-",
-                         input=patch_text)
+                # MT-38：带 index 行时用 --3way（基准漂移也能三方合并）；
+                # 无 index 行时 --3way 与普通 apply 等价（仍直接失败）。
+                use_3way = _has_index_line(patch_text)
+                apply_args = ["apply", "--whitespace=nowarn"]
+                if use_3way:
+                    apply_args.append("--3way")
+                r = _git(args.repo, *apply_args, "-", input=patch_text)
                 if r.returncode != 0:
                     print("⛔ patch 应用失败（%s → %s），分片已保留待排查："
                           % (pkg + ".diff", rel))
                     print(r.stderr.strip())
+                    # --3way 冲突会把冲突标记写进工作区并登记 index ⇒ 恢复目标文件，
+                    # 让工作区保持干净（失败一律交人工，不自动重试）。
+                    _restore_paths(args.repo, applied + [rel])
+                    if use_3way:
+                        print("↩️ 已恢复本次 patch 触及的文件到 HEAD（避免冲突标记残留）")
                     return 2
                 applied.append(rel)
-                print("📦 应用 patch：%s → %s" % (pkg + ".diff", rel))
+                print("📦 应用 patch：%s → %s%s"
+                      % (pkg + ".diff", rel, "（--3way）" if use_3way else ""))
         if applied:
             print("应用 patch %d 个文件：%s" % (len(applied), ", ".join(applied[:8]) +
                   (" …" if len(applied) > 8 else "")))
