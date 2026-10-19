@@ -59,7 +59,7 @@ def test_safe_extract_accepts_flat_files(tmp_path):
 
 import subprocess
 
-from fg_sync_ingest import (_has_index_line, _patch_targets,
+from fg_sync_ingest import (_has_hunks, _has_index_line, _patch_targets,
                             _split_patch_payload, _to_git_patch)
 
 _INDEX = "index 1a2b3c4d..5e6f7a8b 100644"
@@ -250,3 +250,18 @@ def test_git_style_payload_applies_end_to_end(tmp_path):
     assert _has_index_line(txt)
     assert g("apply", "--3way", "--whitespace=nowarn", "-", input=txt).returncode == 0
     assert target.read_text() == "ctx\nOLD\ntail\n"
+
+
+def test_unrecognized_diff_format_is_not_treated_as_no_change():
+    """含 hunk 却解析不出块 ⇒ 必须能被识别为「格式不认识」而非「无变更」放过。
+
+    背景：`sync_1019h` 用了 Mac 不认识的 diff 格式 ⇒ 解析出 0 块 ⇒ 只打了
+    `⚠️ 无可应用变更` ⇒ 被判成功、`.done` 被写 ⇒ **整包静默丢失** ✗。
+    """
+    weird = "@@ -1,2 +1,2 @@\n ctx\n-old\n+new\n"
+    assert _split_patch_payload(weird) == []
+    assert _has_hunks(weird)          # ⇒ 调用点据此报 ⛔ 并 return 2
+
+    genuinely_empty = "--- docs/x.md ---\n（与基准无差异）\n"
+    assert _split_patch_payload(genuinely_empty) == []
+    assert not _has_hunks(genuinely_empty)   # ⇒ 安全跳过

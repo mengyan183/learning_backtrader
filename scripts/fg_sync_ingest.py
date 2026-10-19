@@ -161,6 +161,18 @@ def _split_patch_payload(payload):
     return [(rel, blk) for rel, blk in blocks if any(ln.startswith("@@") for ln in blk)]
 
 
+def _has_hunks(payload):
+    """payload 是否含 hunk 行（`@@`）。
+
+    用来区分两种「解析出 0 个文件块」：
+    - **无** `@@` ⇒ 真的与基准无差异 ⇒ 无害，跳过即可；
+    - **有** `@@` 却解析不出块 ⇒ **diff 格式不认识**（如 Windows 某次改了
+      `--patch` 产出格式而 Mac 侧解析器没跟上，`sync_1019h` 实测踩过）
+      ⇒ 必须报错交人工，**不得静默当成「无变更」放过**。
+    """
+    return "@@" in payload
+
+
 def _to_git_patch(rel, blk):
     """把 diff 块规整成 `git apply` 可解析的 patch（MT-20 / MT-38）。
 
@@ -384,7 +396,15 @@ def main():
                 payload = fh.read()
             blocks = _split_patch_payload(payload)
             if not blocks:
-                print("⚠️ %s：无可应用变更（与基准无差异或空 diff）" % pd)
+                if _has_hunks(payload):
+                    # 含 hunk 却解析不出块 ⇒ diff 格式不认识（≠ 真无差异）
+                    # ⇒ 必须报错并保留分片，不得静默放过（sync_1019h 曾因此假成功 ✗）
+                    print("⛔ %s：含 hunk 但解析不出任何文件块（diff 格式不认识），"
+                          "分片已保留待排查。" % pd)
+                    print("   请核对 pack_many.py --patch 的产出格式是否已变更，"
+                          "并同步更新 _split_patch_payload。")
+                    return 2
+                print("⚠️ %s：无可应用变更（与基准无差异）" % pd)
                 continue
             for rel, blk in blocks:
                 patch_text = _to_git_patch(rel, blk)
