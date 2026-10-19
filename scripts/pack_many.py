@@ -184,6 +184,15 @@ def _patch_payload(srcs, base_ref):
         old, new = _git_blob_sha(base_ref, rel), _git_hash_blob(cur.encode("utf-8"))
         if old and new:
             header += "index %s..%s 100644\n" % (old, new)
+        # 🔴 删除行告警（2026-10-19）：本项目 Windows 侧**只追加** ✓ ⇒ 出现删除行通常意味着
+        # **本地旧于 origin** ✗（`sync_1019q` 就是这样把 Mac 回写的 ✅ 冲回「待执行」✗）。
+        dels = sum(1 for l in diff.splitlines()
+                   if l.startswith("-") and not l.startswith("---"))
+        adds = sum(1 for l in diff.splitlines()
+                   if l.startswith("+") and not l.startswith("+++"))
+        print("[patch] %s  +%d/-%d%s"
+              % (rel, adds, dels,
+                 "  ⚠️ 有删除行 ⇒ 本地可能旧于 origin ✗（任务表请先刷新 ✓）" if dels else ""))
         chunks.append(header + diff)
     if reasons:
         return None, reasons
