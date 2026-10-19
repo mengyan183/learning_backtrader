@@ -119,6 +119,7 @@ def test_3way_merges_when_base_drifted(tmp_path):
     g("init", "-q")
     g("config", "user.email", "t@example.com")
     g("config", "user.name", "t")
+    g("config", "core.autocrlf", "false")   # 跨平台：Windows 默认 true 会改 blob
     target = repo / "a.txt"
     target.write_text("l1\nl2\nl3\n")
     g("add", "a.txt")
@@ -223,6 +224,7 @@ def test_git_style_payload_applies_end_to_end(tmp_path):
     g("init", "-q")
     g("config", "user.email", "t@example.com")
     g("config", "user.name", "t")
+    g("config", "core.autocrlf", "false")   # 跨平台：Windows 默认 true 会改 blob
     target = repo / "scripts" / "x.py"
     target.parent.mkdir()
     target.write_text("ctx\nold\ntail\n")
