@@ -288,7 +288,34 @@ def append_memory(results):
     print("[memory] 已追加 %s" % path)
 
 
+def _data_is_stale(max_days=3):
+    """`Data/features.csv` 末行距今 > `max_days` ⇒ 数据过期 ⇒ **必须拒写** ✗。
+
+    动机（2026-10-19 实测 ✗）：Mac 误跑本脚本 ⇒ 用 **2026-09-18 的旧 Data** 回写
+    `hypotheses.md` ✗（状态与备注全错 ✗），事后手工回滚 ✓。
+    周末/假期最多差 3 天 ✓ ⇒ 超过即视为「本机不是当日数据」✗。
+
+    :returns: ``(stale, 说明)``
+    """
+    path = os.path.join(DATA, "features.csv")
+    if not os.path.exists(path):
+        return True, "features.csv 不存在（%s）" % path
+    try:
+        last = str(pd.read_csv(path)["date"].iloc[-1])[:10]
+        gap = (dt.date.today() - dt.date.fromisoformat(last)).days
+    except (KeyError, IndexError, ValueError) as exc:
+        return True, "features.csv 读不出末行日期（%s）" % exc
+    return gap > max_days, "features.csv 末行 %s（距今 %d 天）" % (last, gap)
+
+
 def main():
+    stale, why = _data_is_stale()
+    if stale:
+        print("❌ 数据过期，**拒绝回写** ✗：%s" % why)
+        print("   用旧 Data 回写会把假说状态写错 ✗（2026-10-19 已发生过一次 ✗）")
+        print("   ⇒ 请在有当日 `Data/features.csv` 的机器上跑 ✓")
+        return 2
+
     done = current_status()
     results = []
     for c in CHECKS:

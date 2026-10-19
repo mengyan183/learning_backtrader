@@ -39,6 +39,7 @@ def _run(monkeypatch, out_dir, argv):
     """以给定 argv 调用 main()，输出目录重定向到 out_dir；返回 (rc, stdout)。"""
     import contextlib
     monkeypatch.setattr(pm, "OUT_DIR", str(out_dir))
+    monkeypatch.setattr(pm, "_fetch_origin", lambda: None)  # 测试不跑真 fetch ✓
     monkeypatch.setattr(sys, "argv", ["pack_many.py"] + argv)
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):

@@ -79,6 +79,25 @@ def _base_text(rel, base_ref):
     return out.stdout.decode("utf-8", "replace")
 
 
+def _fetch_origin():
+    """`--patch` 前先 `git fetch origin` ✓（失败不致命 ✓，只打印）。
+
+    ⚠️ 这只能让基准尽量新 ✓，**不能**防「上一包还在途、origin 尚未推进」✗
+    —— 那种漂移只能靠**串行发送**（`docs/dual-end-workflow.md` 教训 **8b** ✓）。
+    """
+    cmd = ["git", "-C", REPO]
+    proxy = os.environ.get("FG_PROXY", "")
+    if proxy:
+        cmd += ["-c", "http.proxy=%s" % proxy, "-c", "https.proxy=%s" % proxy]
+    cmd += ["fetch", "origin"]
+    try:
+        r = subprocess.run(cmd, capture_output=True, timeout=180)
+        ok = r.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        ok = False
+    print("[patch] fetch origin：%s" % ("ok ✓" if ok else "失败（沿用旧 ref ✗）"))
+
+
 def _in_base(rel, base_ref):
     """`<rel>` 是否存在于 `<base_ref>` 的树里（用 `ls-tree` ✓ 不拉 blob ✓）。"""
     cmd = ["git", "-C", REPO]
@@ -205,6 +224,7 @@ def main():
     fallback_reasons = []
 
     if args.patch:
+        _fetch_origin()
         payload, reasons = _patch_payload(srcs, args.base_ref)
         if payload is not None:
             # 整文件 tar 字节数（用于「diff 是否更小」的比较）
