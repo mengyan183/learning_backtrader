@@ -49,6 +49,23 @@ def _f(x, default=0.0):
         return default
 
 
+def _sum_unrealized(pos_rows):
+    """未实现盈亏 = Σ `qty × (price − cost)` ✓。
+
+    ⚠️ **不**取 `accinfo_query` 的 `unrealized_pl` ✗：该字段在部分 FutuOpenD 版本
+    **不存在** ✗ ⇒ `r.get(..., 0)` 会**静默写 0.0** ✗ —— 2026-10-19 实测
+    `accounts.csv` 10-16 快照 `unrealized_pnl=0.0` ✗，而持仓（AXTX/YINN/GDXU/…）
+    全在浮亏 ✓ ⇒ 假说分析（H-004 / H-072）据此得出的结论全不可信 ✗。
+    改由**持仓行自算** ✓：可验证 ✓、不依赖 API 字段名 ✓。
+    """
+    total = 0.0
+    for r in pos_rows:
+        qty, price, cost = _f(r[4]), _f(r[5]), _f(r[6])
+        if qty and cost:
+            total += qty * (price - cost)
+    return round(total, 2)
+
+
 def load_existing():
     """读取现有快照；文件缺失时返回空 DataFrame（带表头）。"""
     a = pd.read_csv(config.ACCOUNTS_PATH) if os.path.exists(config.ACCOUNTS_PATH) \
@@ -128,12 +145,10 @@ def sync_futu(accounts, positions, date):
         net = _f(r.get("total_assets", 0))
         cash = _f(r.get("cash", 0))
         mv = _f(r.get("market_val", 0))
-        unrealized = _f(r.get("unrealized_pl", 0))
         note = "富途动态同步"
         if "net_cash_power" in info.columns:
             note += f"；净购买力={r.get('net_cash_power')}"
-        accounts.loc[len(accounts)] = [date, "stock", round(net, 2), round(mv, 2),
-                                       round(cash, 2), round(unrealized, 2), "", "USD", note]
+        # ⚠️ 账户行**延后到持仓之后**写 —— 未实现盈亏要由持仓自算 ✓（见 `_sum_unrealized`）
     else:
         print(f"[futu] accinfo 返回异常: {info}")
         return accounts, positions
@@ -143,6 +158,7 @@ def sync_futu(accounts, positions, date):
     if ret != futu.RET_OK:
         print(f"[futu] position_list_query 失败: {poss}")
         return accounts, positions
+    pos_rows = []
     if hasattr(poss, "iterrows"):
         for _, pos in poss.iterrows():
             code = str(pos.get("code", "") or "").replace("US.", "", 1)
@@ -153,9 +169,13 @@ def sync_futu(accounts, positions, date):
             price = _f(pos.get("nominal_price", 0))
             notional = _f(pos.get("market_val", 0)) or round(qty * price, 2)
             name = str(pos.get("stock_name", "") or "") or code
-            positions.loc[len(positions)] = [date, "stock", code, name, qty, round(price, 4),
-                                             round(cost, 4), round(notional, 2), round(notional, 2),
-                                             "", "system", "USD"]
+            row = [date, "stock", code, name, qty, round(price, 4), round(cost, 4),
+                   round(notional, 2), round(notional, 2), "", "system", "USD"]
+            pos_rows.append(row)
+            positions.loc[len(positions)] = row
+    # 账户行延后写：未实现盈亏由持仓自算 ✓（不取可能缺失的 `unrealized_pl` ✗）
+    accounts.loc[len(accounts)] = [date, "stock", round(net, 2), round(mv, 2),
+                                   round(cash, 2), _sum_unrealized(pos_rows), "", "USD", note]
     ctx.close()
     return accounts, positions
 

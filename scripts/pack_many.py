@@ -79,6 +79,20 @@ def _base_text(rel, base_ref):
     return out.stdout.decode("utf-8", "replace")
 
 
+def _in_base(rel, base_ref):
+    """`<rel>` 是否存在于 `<base_ref>` 的树里（用 `ls-tree` ✓ 不拉 blob ✓）。"""
+    cmd = ["git", "-C", REPO]
+    proxy = os.environ.get("FG_PROXY", "")
+    if proxy:
+        cmd += ["-c", "http.proxy=%s" % proxy, "-c", "https.proxy=%s" % proxy]
+    cmd += ["ls-tree", "--name-only", base_ref, "--", rel]
+    try:
+        out = subprocess.run(cmd, capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return True          # 查不了 ⇒ 保守当作「存在」✓（走回落，不冒险 ✗）
+    return bool(out.stdout.strip())
+
+
 def _git_blob_sha(ref, rel):
     """取 `<ref>:<rel>` 的 blob SHA（7 位）；失败返回 None。"""
     cmd = ["git", "-C", REPO]
@@ -125,6 +139,17 @@ def _patch_payload(srcs, base_ref):
         cur = open(os.path.join(REPO, rel.replace("/", os.sep)),
                    encoding="utf-8", errors="replace").read()
         base = _base_text(rel, base_ref)
+        if base is None and not _in_base(rel, base_ref):
+            # **新文件**（基准里没有）⇒ 生成 git 的「新增文件」diff ✓
+            # 不回落 ✗：新文件本来就无基准 ✓，回落会让整包退化成整文件（片数暴涨 ✗）
+            diff = "".join(difflib.unified_diff(
+                [], cur.splitlines(True), fromfile="/dev/null", tofile="b/" + rel))
+            header = "diff --git a/%s b/%s\nnew file mode 100644\n" % (rel, rel)
+            new = _git_hash_blob(cur.encode("utf-8"))
+            if new:
+                header += "index 0000000..%s\n" % new
+            chunks.append(header + diff)
+            continue
         if base is None:
             reasons.append("%s：拿不到基准（%s 不存在 / 非 git 仓库 / 无代理）"
                            % (rel, base_ref))
