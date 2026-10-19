@@ -24,6 +24,8 @@ HOME = os.path.expanduser("~")
 IN_DIR = os.path.join(HOME, ".openclaw", "tmp", "fg-sync-in")
 REPO = "/Users/xingguo/learning_backtrader"
 FG_RE = re.compile(r"###FG:([^:#\n]+):(\d+)/(\d+)###([\s\S]*?)###FG:end###")
+# 分片不齐且最早分片已滞留 ≥10 分钟 → 回一次「还缺第 X 片」提示（每包仅一次，不刷屏）
+INCOMPLETE_NOTIFY_SEC = 600
 
 
 def _load_bypass():
@@ -61,7 +63,10 @@ def scan_packages():
             if total:
                 break
         d["total"] = total
-        d["recv"] = len([s for s in d["recv"] if s <= (total or 1 << 30)])
+        d["seqs"] = sorted(s for s in d["recv"] if s <= (total or 1 << 30))
+        d["recv"] = len(d["seqs"])
+        d["missing"] = ([i for i in range(1, total + 1) if i not in set(d["seqs"])]
+                        if total else [])
     return pkgs
 
 
@@ -77,7 +82,32 @@ def main():
     for pkg, d in pkgs.items():
         total = d["total"]
         if not total or d["recv"] < total:
-            continue  # 未收齐，静默等待
+            # 未收齐：超时一次性提示（每包只提示一次，不刷屏）——2026-10-19
+            if total and d["seqs"]:
+                oldest = min(
+                    (os.path.getmtime(os.path.join(IN_DIR, f"sync_{pkg}_{i}.md"))
+                     for i in d["seqs"]
+                     if os.path.exists(os.path.join(IN_DIR, f"sync_{pkg}_{i}.md"))),
+                    default=None,
+                )
+                flag = os.path.join(IN_DIR, f"sync_{pkg}.notified")
+                if oldest is not None and time.time() - oldest >= INCOMPLETE_NOTIFY_SEC:
+                    # 原子抢占：O_EXCL 创建成功者才发提示 ⇒ launchd 与手工调用并发时只发一次
+                    try:
+                        fd = os.open(flag, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                    except FileExistsError:
+                        pass  # 另一路径已提示过，静默
+                    else:
+                        with os.fdopen(fd, "w", encoding="utf-8") as f:
+                            f.write(time.strftime("%Y-%m-%d %H:%M:%S"))
+                        miss = "、".join(str(x) for x in d["missing"])
+                        bypass.send_feishu(
+                            f"⚠️ {pkg} 分片不齐：已收 {d['recv']}/{total} 片，"
+                            f"还缺第 {miss} 片，请补发（最早分片已滞留超 "
+                            f"{INCOMPLETE_NOTIFY_SEC // 60} 分钟）",
+                            "oc_a9306b326943821490184d073dae9a65",
+                        )
+            continue  # 未收齐，静默等待（仅超时补一次缺片提示）
         # 延迟兜底：分片刚落盘（最近分片 mtime < 60s）说明 bypass 主通道正在/即将
         # 处理（bypass 落盘后立即 ingest_package），本 tick 跳过，避免双路径并发跑
         # 同一 fg_sync_tool.py 导致 git 竞争/冲突误判与重复回传（2026-10-15）。
@@ -141,6 +171,12 @@ def main():
         if success:
             with open(marker, "w", encoding="utf-8") as f:
                 f.write(cur)
+            nflag = os.path.join(IN_DIR, f"sync_{pkg}.notified")
+            if os.path.exists(nflag):
+                try:
+                    os.remove(nflag)
+                except OSError:
+                    pass
             for i in range(1, total + 1):
                 fp = os.path.join(IN_DIR, f"sync_{pkg}_{i}.md")
                 if os.path.exists(fp):
