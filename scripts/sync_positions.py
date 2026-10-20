@@ -6,6 +6,11 @@
            绝不触碰 Data/accounts.csv 与 Data/positions.csv。
   live   : 从富途(FutuOpenD)与 OKX(REST)动态拉取，**追加当日快照行**（保留历史行）。
 
+日期口径（MT-47，2026-10-20 起）：
+  写入的 `date` = **最近已收盘的美东交易日**（16:00 ET 为收盘线）✓，与
+  `features.csv` 的 `date` 同为美东口径 ✓。旧版写的是 Mac 本地日期 ✗ ⇒ 两表会
+  差一天 ✗。切换点在 `note` 列标注 ✓。
+
 依赖：
   富途 : 本机已运行 FutuOpenD（默认 127.0.0.1:11111）+ 已开通 API 交易权限。
    OKX : ~/.okx_credentials.json（chmod 600，绝不入库）：
@@ -22,6 +27,7 @@ import datetime as dt
 import json
 import os
 import sys
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -35,9 +41,61 @@ POSITIONS_HEADER = ["date", "account", "symbol", "name", "qty", "price",
 
 OKX_CRED_PATH = os.path.expanduser("~/.okx_credentials.json")
 
+# ------------------------------------------------- 日期口径 = 美东交易日（MT-47）
+# `features.csv` 的 `date` 是**美东交易日** ✓（实测只有周一~周五 ✓），而旧版
+# `today()` 用 `dt.date.today()` = **Mac 本地日期** ✗ ⇒ 北京时间上午跑，会把「还没
+# 收盘的今天」写进快照 ✗ ⇒ `accounts.csv` / `positions.csv` 比 `features.csv`
+# **领先一天** ✗。实测（2026-10-20）：`accounts.csv` 里存在 **10-10 / 10-11 /
+# 10-17 / 10-18 四个周末日期** ✗，进一步证明旧口径不是交易日 ✓。凡按 `date` 关联
+# 两表的假说（H-072 / H-076 / H-077 / H-006 / H-008 / H-009）都带**系统性一天偏移** ✗。
+TZ_ET = ZoneInfo("America/New_York")
+MARKET_CLOSE_HOUR_ET = 16           # 美股常规收盘 16:00 ET
+DATE_BASIS_SWITCH = "2026-10-20"    # 该日（含）起写入的快照用美东交易日口径
+DATE_BASIS_NOTE = "日期口径=美东交易日"
 
-def today():
-    return dt.date.today().isoformat()
+
+def _prev_business_day(d):
+    """上一个工作日：仅跳过周末。
+
+    ⚠️ 美股**节假日未**处理（不引入 exchange_calendars 依赖）—— 节假日的边界情形
+    见 `docs/mac-tasks.md` MT-47 备注 ✓。
+    """
+    d = d - dt.timedelta(days=1)
+    while d.weekday() >= 5:         # 5=Sat, 6=Sun
+        d -= dt.timedelta(days=1)
+    return d
+
+
+def trading_date(now_et=None):
+    """返回**最近已收盘**的美东交易日（ISO 字符串）。
+
+    规则（MT-47）：
+    - 美东 >= 16:00 ⇒ 当日（当日为周末则回退）；
+    - 美东 < 16:00 ⇒ **上一个**工作日 ⇒ 绝不写到「还没收盘的今天」✗。
+
+    实测对照（2026-10-21）：
+    - 北京 04:30 = 美东 10-20 16:30 ⇒ `2026-10-20` ✓
+    - 北京 20:00 = 美东 10-21 08:00（未收盘）⇒ 仍 `2026-10-20` ✓
+
+    `now_et` 可注入（测试用），须为 tz-aware 的美东时间。
+    """
+    if now_et is None:
+        now_et = dt.datetime.now(TZ_ET)
+    d = now_et.date()
+    if now_et.hour < MARKET_CLOSE_HOUR_ET or d.weekday() >= 5:
+        d = _prev_business_day(d)
+    return d.isoformat()
+
+
+def _tag_date_basis(note, date):
+    """在 `note` 标注日期口径（MT-47）—— 便于将来区分切换点前后的行 ✓。
+
+    历史行 = Mac 本地日期（note 无标注，且运行时数据不入库 ✓）；
+    切换日及之后 = 美东交易日（note 带标注 ✓）。
+    """
+    if date >= DATE_BASIS_SWITCH:
+        return f"{note}；{DATE_BASIS_NOTE}"
+    return note
 
 
 def _f(x, default=0.0):
@@ -175,7 +233,8 @@ def sync_futu(accounts, positions, date):
             positions.loc[len(positions)] = row
     # 账户行延后写：未实现盈亏由持仓自算 ✓（不取可能缺失的 `unrealized_pl` ✗）
     accounts.loc[len(accounts)] = [date, "stock", round(net, 2), round(mv, 2),
-                                   round(cash, 2), _sum_unrealized(pos_rows), "", "USD", note]
+                                   round(cash, 2), _sum_unrealized(pos_rows), "",
+                                   "USD", _tag_date_basis(note, date)]
     ctx.close()
     return accounts, positions
 
@@ -252,7 +311,7 @@ def sync_okx(accounts, positions, date):
     total_eq = _f(data.get("totalEq", 0))
     cash = _f(data.get("cash", 0))
     accounts.loc[len(accounts)] = [date, "crypto", round(total_eq, 2), "", round(cash, 2),
-                                   "", "", "USDT", "OKX 动态同步"]
+                                   "", "", "USDT", _tag_date_basis("OKX 动态同步", date)]
 
     try:
         poss = _okx_request(creds, "/api/v5/account/positions")
@@ -287,6 +346,8 @@ def main():
 
     if args.check:
         a, p = load_existing()
+        print(f"当前日期口径（MT-47）：最近已收盘美东交易日 = {trading_date()}"
+              f"（收盘线 {MARKET_CLOSE_HOUR_ET}:00 ET）")
         print("当前快照状态：")
         if a.empty:
             print("  accounts.csv 为空或不存在")
@@ -310,13 +371,15 @@ def main():
         print(f"[sync] 未知 FG_SYNC_MODE={mode!r}，取 static 行为（安全默认）。")
         return
 
-    print(f"[sync] FG_SYNC_MODE=live：动态同步 {today()}")
+    date = trading_date()   # MT-47：只算一次，避免跨午夜 / 跨收盘线时前后不一致
+    print(f"[sync] FG_SYNC_MODE=live：动态同步 {date}"
+          f"（美东交易日口径，{MARKET_CLOSE_HOUR_ET}:00 ET 为收盘线）")
     accounts, positions = load_existing()
     # 当日覆盖写：同一交易日已有快照行时先剔除，避免重复追加导致下游重复计入
-    accounts = accounts[accounts["date"] != today()].reset_index(drop=True)
-    positions = positions[positions["date"] != today()].reset_index(drop=True)
-    accounts, positions = sync_futu(accounts, positions, today())
-    accounts, positions = sync_okx(accounts, positions, today())
+    accounts = accounts[accounts["date"] != date].reset_index(drop=True)
+    positions = positions[positions["date"] != date].reset_index(drop=True)
+    accounts, positions = sync_futu(accounts, positions, date)
+    accounts, positions = sync_okx(accounts, positions, date)
     write_snapshot(accounts, positions)
     print(f"[sync] 已写入：accounts {len(accounts)} 行 / positions {len(positions)} 行"
           f"（含当日新增）")
