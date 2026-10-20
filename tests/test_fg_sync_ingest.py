@@ -358,3 +358,79 @@ def test_brief_filter_would_keep_success_receipt_line():
     assert new_line.startswith(keep)          # 新写法会被保留 ✓
     assert not old_line.startswith(keep)      # 旧写法会被过滤 ✗（本次修复点）
     assert "提交" in new_line and "个文件" in new_line
+
+
+def test_to_git_patch_keeps_dev_null_for_new_file():
+    """新建文件：`--- /dev/null` 必须**原样保留**（MT-44）。
+
+    原实现把 `---` **无条件**重写成 `a/<rel>` ✗ ⇒ git 认为要改一个已存在的
+    文件 ✗ ⇒ `git apply` 直接失败 ✗（`sync_1020a` 的新增测试文件实测踩坑 ✗）。
+    另：`new file mode` 必须落在 `index` **之前**（git 规范顺序）。
+    """
+    blk = [
+        "diff --git a/tests/dashboard/test_new.py b/tests/dashboard/test_new.py",
+        "new file mode 100644",
+        "index 0000000..069e783",
+        "--- /dev/null",
+        "+++ b/tests/dashboard/test_new.py",
+        "@@ -0,0 +1,2 @@",
+        "+a",
+        "+b",
+    ]
+    lines = _to_git_patch("tests/dashboard/test_new.py", blk).splitlines()
+    assert "--- /dev/null" in lines                       # 保留侧 ✓
+    assert "+++ b/tests/dashboard/test_new.py" in lines
+    assert "new file mode 100644" in lines
+    assert lines.index("new file mode 100644") < lines.index(
+        "index 0000000..069e783")                         # meta 在 index 前 ✓
+
+
+def test_to_git_patch_keeps_dev_null_for_deleted_file():
+    """删除文件：`+++ /dev/null` 必须原样保留（MT-44，与新增对称）。"""
+    blk = [
+        "diff --git a/old/x.py b/old/x.py",
+        "deleted file mode 100644",
+        "index 069e783..0000000",
+        "--- a/old/x.py",
+        "+++ /dev/null",
+        "@@ -1,2 +0,0 @@",
+        "-a",
+        "-b",
+    ]
+    lines = _to_git_patch("old/x.py", blk).splitlines()
+    assert "+++ /dev/null" in lines
+    assert "--- a/old/x.py" in lines
+    assert "deleted file mode 100644" in lines
+
+
+def test_new_file_patch_applies_end_to_end(tmp_path):
+    """真跑 `git apply --3way`：新建文件必须能落地（`sync_1020a` 的故障场景）。"""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def g(*args, **kw):
+        return subprocess.run(["git", "-C", str(repo), *args],
+                              capture_output=True, text=True, **kw)
+
+    g("init", "-q")
+    g("config", "user.email", "t@example.com")
+    g("config", "user.name", "t")
+    g("config", "core.autocrlf", "false")
+    (repo / "seed.txt").write_text("x\n")
+    g("add", "seed.txt")
+    g("commit", "-q", "-m", "base")
+
+    blk = [
+        "diff --git a/tests/dashboard/test_new.py b/tests/dashboard/test_new.py",
+        "new file mode 100644",
+        "index 0000000..069e783",
+        "--- /dev/null",
+        "+++ b/tests/dashboard/test_new.py",
+        "@@ -0,0 +1,2 @@",
+        "+a",
+        "+b",
+    ]
+    patch_text = _to_git_patch("tests/dashboard/test_new.py", blk)
+    r = g("apply", "--whitespace=nowarn", "--3way", "-", input=patch_text)
+    assert r.returncode == 0, r.stderr
+    assert (repo / "tests" / "dashboard" / "test_new.py").read_text() == "a\nb\n"

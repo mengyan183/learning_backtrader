@@ -199,24 +199,49 @@ def _to_git_patch(rel, blk):
     `a/` `b/` 前缀被叠成 `a/a/`），按 rel 重建头部，并把 `index` 行
     重排到 `diff --git` 之后、`---` 之前 —— git 只认该位置，放错则
     `--3way` 拿不到基准 blob、退化成普通 apply。
+
+    🔴 **新增 / 删除文件**（2026-10-20 MT-44 修，`sync_1020a` 实测踩坑）：
+    新建文件的块是 `new file mode 100644` + `--- /dev/null`；删除文件是
+    `deleted file mode` + `+++ /dev/null`。原实现把 `---` / `+++` **无条件**
+    重写成 `a/<rel>` / `b/<rel>` ✗ ⇒ 新建文件被当成「修改一个已存在的文件」
+    ✗ ⇒ `git apply` 必失败 ✗（本包的新增测试文件正是这种 ✗）。
+    现改为**记住 /dev/null 侧并原样保留** ✓，同时把 `*mode` 等元信息行
+    放到 `index` **之前** ✓ —— git 规范顺序是
+    `diff --git` → `new/deleted/old/new mode` → `index` → `---`/`+++` ✓。
     """
-    body, index_lines = [], []
+    body, index_lines, meta_lines = [], [], []
+    a_null = b_null = False
     for ln in blk:
         if ln.startswith("diff --git "):
             continue
-        if ln.startswith("--- ") or ln.startswith("+++ "):
+        if ln.startswith("--- "):
+            a_null = ln[4:].strip() == "/dev/null"
+            continue
+        if ln.startswith("+++ "):
+            b_null = ln[4:].strip() == "/dev/null"
             continue
         if _INDEX_RE.match(ln):
             index_lines.append(ln)
             continue
+        if _META_RE.match(ln):
+            meta_lines.append(ln)
+            continue
         body.append(ln)
     head = ["diff --git a/%s b/%s" % (rel, rel)]
+    head.extend(meta_lines)
     head.extend(index_lines)
-    head.extend(["--- a/%s" % rel, "+++ b/%s" % rel])
+    head.extend(["--- %s" % ("/dev/null" if a_null else "a/%s" % rel),
+                 "+++ %s" % ("/dev/null" if b_null else "b/%s" % rel)])
     return "\n".join(head + body) + "\n"
 
 
 _INDEX_RE = re.compile(r"^index [0-9a-f]{4,}\.\.[0-9a-f]{4,}(?: \d+)?$", re.M)
+
+# `---`/`+++` 之前、`diff --git` 之后的元信息行（新增/删除/改名/复制）。
+# 必须与 index 行一样从 body 里摘出来、按 git 规范顺序重排（MT-44）。
+_META_RE = re.compile(
+    r"^(?:new file mode|deleted file mode|old mode|new mode|"
+    r"similarity index|rename from|rename to|copy from|copy to)\b")
 
 
 def _has_index_line(patch_text):
