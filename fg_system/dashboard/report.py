@@ -39,7 +39,9 @@ def _holdings_block(features, shoutu=None, prices=None):
            "守猪待兔 = 官方原始系数（-100~100，官方三档：恐慌≤-60 / 中性 / 贪婪≥60）。"
            "覆盖分三态：<b>系统覆盖</b>（系统信号指令）/ <b>守猪待兔覆盖</b>"
            "（守猪待兔系数）/ 其余<b>不在跟踪范围</b>。"
-           "CRCG/CONL 底层数据不足时系统列回退市场指数。"
+           "🔴 <b>底层数据不足时系统列会回退市场指数，并在标签后缀标注来源</b>"
+           "（2026-10-20 起；此前回退后与个股分格式相同、无法分辨 ✗）—— "
+           "需底层历史 ≥ 窗口 756 + 60 交易日，否则回退。"
            "持仓来自实盘快照，只读；浮盈亏按红涨绿跌着色。</p>"]
     try:
         pos = pd.read_csv(config.POSITIONS_PATH)
@@ -131,9 +133,17 @@ def _holdings_block(features, shoutu=None, prices=None):
             sys_txt = "系统 %.0f %s" % (_sv, ZONE_NAMES[_zz])
             sys_bg = ZONE_COLORS[_zz]
         else:
-            # 底层数据不足（CRCG/CONL）→ 回退系统市场级指数
-            sys_txt = "系统 %.0f %s" % (fg, zone)
-            sys_bg = ZONE_COLORS[zi]
+            # 🔴 **必须标注来源**（2026-10-20 修）：回退后的文案与个股分**格式完全一样**
+            # ⇒ 用户无法分辨这是这只票的系统分还是大盘分 ✗（`advise` 列早已标
+            # 「（市场回退）」✓，系统列却没标 ✗ ⇒ 两列口径不一致 ✓）。
+            # 另：`fg` 可能为 None（features 全 NaN）⇒ `%.0f` 会 TypeError ✗；
+            # 此时 `zi` 也**未赋值** ✗ ⇒ 不能引用 ✗（原代码会 UnboundLocalError ✗）。
+            if fg is None:
+                sys_txt = "系统 —"
+                sys_bg = ZONE_COLORS[2]      # 中性色占位
+            else:
+                sys_txt = "系统 %.0f %s（大盘）" % (fg, zone)
+                sys_bg = ZONE_COLORS[zi]
         # 该标的的守猪待兔系数（-100~100 + 档位色）。
         # 档位线 = 标的个性化买卖线（config.shoutu_lines），
         # 按杠杆/风险分层：恐慌 ≤ buy_line / 中性 (buy_line, sell_line) / 贪婪 ≥ sell_line。
@@ -206,7 +216,8 @@ def _holdings_block(features, shoutu=None, prices=None):
                 sv_txt = ("%.0f %s" % (_sv, ZONE_NAMES[int(np.clip(
                     np.searchsorted([20, 40, 60, 80], _sv, side="right"), 0, 4))])
                           if _sv is not None
-                          else ("%.0f %s（市场回退）" % (fg, zone)))
+                          else ("—" if fg is None
+                                else "%.0f %s（市场回退）" % (fg, zone)))
                 advise = "系统指数 %s · 目标仓位 %s" % (sv_txt, target_txt)
         elif in_sh:
             cov_cls, cov_txt = "tag-shoutu", "🐰 守猪待兔覆盖"
