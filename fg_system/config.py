@@ -54,8 +54,20 @@ BREADTH_SYMBOLS = ["SPY", "QQQ", "RSP", "IWM"]
 RESEARCH_SYMBOLS = ["GLD", "GDX", "GDXJ", "GDXU", "SLV",
                     "FXI", "MCHI", "KWEB", "CQQQ", "ASHR", "YINN",
                     "AXTI", "AXTX", "CRCL", "CRCG", "TLT"]
+# ---------------------------------------------------------------- 底层补抓（2026-10-20 用户裁定）
+# 问题：`SIGNAL_UNDERLYING_MAP` 已把 CONL / NVDL / TSLL / FAS 登记为「可查」，
+# 但它们的**底层**（COIN / NVDA / TSLA / XLF）**不在** FETCH_SYMBOLS ⇒ 每日增量
+# 从不更新它们 ⇒ 这些标的的个股指数分数**永久陈旧**。实测（2026-10-20）：
+# COIN 停 2026-10-01（滞后 18 天）、NVDA / TSLA / XLF 停 2026-10-07（滞后 12 天）；
+# 同表其余 10 个可查标的的底层都在清单内、滞后 0 天。
+# 处置：把 4 个底层补进抓取清单。**纯数据侧** —— 不动 SYMBOLS / UNDERLYING_MAP /
+# 因子输入 / 仓位计算，也不把 OBSERVE_SYMBOLS 的标的读入策略（该池纪律不变）。
+# 先例：CRCL 同样并存于 OBSERVE_SYMBOLS 与 FETCH_SYMBOLS（见上方 #73 行）。
+# 注：COIN 另有一份落在 `crypto_prices.csv`（由 update_crypto_prices 每日抓）；
+#     此处并入 prices.csv，是为了让 `scripts/query_symbol_fg.py` 保持**单一数据源**。
+UNDERLYING_FETCH_SYMBOLS = ["COIN", "NVDA", "TSLA", "XLF"]
 FETCH_SYMBOLS = ["TQQQ", "SOXL", "UPRO", "QQQ", "SOXX", "SMH", "SPY", "RSP",
-                 "IWM"] + RESEARCH_SYMBOLS
+                 "IWM"] + RESEARCH_SYMBOLS + UNDERLYING_FETCH_SYMBOLS
 
 # ---------------------------------------------------------------- 观察池（扩池-数据侧，第 E 层）
 # **不参与生产**：不进 SYMBOLS / UNDERLYING_MAP / 因子输入 / 仓位计算。

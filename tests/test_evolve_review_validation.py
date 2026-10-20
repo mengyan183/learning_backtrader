@@ -43,7 +43,10 @@ def test_h042_044_revised_no_fragile_refs():
         assert re.search(r"第\s*\d+\s*列", line) is None, hid
         assert "threshold" not in line, hid
         assert "R1.7 修订" in line, hid
-        assert "| open |" in line, hid  # 修订后保持 open（待验证）
+        # H-043 / H-044 已由 MT-35 实跑判定 falsified（hypotheses.md 已回写）；
+        # 本断言只约束「仍待验证」的条目保持 open。
+        if hid == "H-042":
+            assert "| open |" in line, hid  # 修订后保持 open（待验证）
 
 
 def test_register_marks_pending_revise(monkeypatch, tmp_path):

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """H-REV-001 AI 复盘测试：降级路径 + 前缀守卫 + 交易字眼过滤（LLM 调用用坏 host 触发降级）。"""
 import sys
+from datetime import date
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -20,7 +21,8 @@ def test_review_degrades_when_no_records(tmp_path, monkeypatch):
 
 def test_review_degrades_on_llm_failure(tmp_path, monkeypatch):
     monkeypatch.setattr(human30, "DATA_PATH", str(tmp_path / "h.json"))
-    human30.record(70, 60, 65, 55, when="2026-10-10",
+    # 打卡日期必须落在 review(days=7) 的滚动窗口内 ⇒ 用当天，避免写死日期后随时间失效
+    human30.record(70, 60, 65, 55, when=date.today().isoformat(),
                    market={"fg_index": 54.9, "zone": 2})
     out = review(days=7, host="http://127.0.0.1:1")   # 模型不可达 → 确定性事实句 + 确定性建议
     assert out.startswith(PREFIX)
