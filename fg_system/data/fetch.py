@@ -428,10 +428,25 @@ def update_crypto_prices(path=None, sleep=1.0):
     before = {s: (len(old[old["symbol"] == s]) if not old.empty else 0) for s in symbols}
 
     frames = []
+    stale = []   # MT-46 连带修复：本轮「该有数据却抓到 0 行」的标的（此前静默容忍 ✗）
     for sym in symbols:
         start, _ = missing_ranges(old, sym)
         fromdate = start.strftime("%Y-%m-%d") if start is not None else "2010-01-01"
-        frames.append(fetch_crypto_symbol(sym, fromdate=fromdate))
+        try:
+            new = fetch_crypto_symbol(sym, fromdate=fromdate)
+        except Exception as e:
+            # 单标的异常不再静默 ✗：打印并继续（旧数据保留），不打断整批
+            print(f"  [crypto] {sym} 抓取异常：{type(e).__name__}: {e}")
+            new = pd.DataFrame()
+        # 空返回判定：fromdate 距今 >1 天仍 0 行 ⇒ 上游异常 ✗；
+        # fromdate = 今天（old 已最新）⇒ 空返回是「无新数据」的正常情况 ✓
+        if new.empty:
+            gap_days = (pd.Timestamp.today().normalize() - pd.Timestamp(fromdate)).days
+            if gap_days > 1:
+                print(f"  [crypto] ⚠️ {sym} 抓到 0 行（fromdate={fromdate}，距今 {gap_days} 天）"
+                      f" —— 上游可能限流/未发布，旧数据保留但可能滞后 ✗")
+                stale.append(sym)
+        frames.append(new)
         time.sleep(sleep)
 
     merged = merge_incremental(
@@ -439,6 +454,9 @@ def update_crypto_prices(path=None, sleep=1.0):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     merged.to_csv(path, index=False, encoding="utf-8")
     added = {s: len(merged[merged["symbol"] == s]) - before[s] for s in symbols}
+    if stale:
+        print(f"  [crypto] ⚠️ 本轮 {len(stale)}/{len(symbols)} 个标的无新增数据："
+              f"{', '.join(stale)} —— 请人工核查上游（Nasdaq 限流 / 周末 / 未发布）")
     return merged, added
 
 
