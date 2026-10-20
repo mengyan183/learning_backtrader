@@ -60,28 +60,44 @@ TASKS = [
     "com.fg.quarterly-walkforward",   # 季度首日 08:00 重标定
 ]
 
-# 任务 → 日志文件（plist StandardOutPath）。launchd 不暴露"最后运行时间"，
+# 任务 → 日志文件候选（plist StandardOutPath）。launchd 不暴露"最后运行时间"，
 # 以日志文件最后写入时间（mtime）作为最近一次运行的近似（2026-10-16 新增展示）。
+# ⚠️ 2026-10-20 修正：部分脚本把输出重定向到**自写日志**（如 logs/auto-update.log），
+#    而 plist 的 StandardOutPath（*.out.log）因此**永远 0 字节** ⇒ 单看 .out.log 会读到
+#    很久以前的旧时间（实测 fg-auto-update 停在 10-13、shoutu-history 停在 10-15，
+#    页面显示"最新执行时间差 3 天以上"，但任务实际每天在跑 ✗）。
+#    故每个任务给**候选列表**，取所有存在文件 mtime 的**最大值** ✓。
 TASK_LOG = {
-    "com.xingguo.fg-auto-update":     "logs/auto-update.out.log",
-    "com.xingguo.fg-daily":           "/tmp/fg_daily.log",
-    "com.xingguo.fg-kb-update":       "logs/fg_kb_update.log",
-    "com.xingguo.fg-shoutu-refresh":  "logs/shoutu-refresh.out.log",
-    "com.fg.shoutu-daily":            "logs/shoutu_daily.log",
-    "com.fg.shoutu-history":          "logs/shoutu_history_daily.out.log",
-    "com.fg.quarterly-walkforward":   "logs/walkforward_launchd.log",
+    "com.xingguo.fg-auto-update":     ["logs/auto-update.log",
+                                       "logs/auto-update.out.log"],
+    "com.xingguo.fg-daily":           ["/tmp/fg_daily.log"],
+    "com.xingguo.fg-kb-update":       ["logs/fg_kb_update.log",
+                                       "/tmp/fg_kb_update.out"],
+    "com.xingguo.fg-shoutu-refresh":  ["logs/shoutu-refresh.out.log"],
+    "com.fg.shoutu-daily":            ["logs/shoutu_daily.log"],
+    "com.fg.shoutu-history":          ["logs/shoutu_history_daily.log",
+                                       "logs/shoutu_history_daily.out.log"],
+    "com.fg.quarterly-walkforward":   ["logs/walkforward_launchd.log",
+                                       "logs/walkforward_launchd.out.log"],
 }
 
 
 def _task_last_run(label: str):
-    """读任务日志 mtime 作为最近运行时间近似；无日志返回 None。"""
-    rel = TASK_LOG.get(label)
-    if not rel:
-        return None
-    p = Path(rel) if rel.startswith("/") else REPO / rel
-    if not p.exists():
-        return None
-    return datetime.fromtimestamp(p.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+    """读任务日志 mtime 作为最近运行时间近似：候选文件里取**最新**的那个。
+
+    返回 (格式化时间, 命中文件路径)；无任何候选文件存在时返回 (None, None)。
+    """
+    best_mt, best_p = None, None
+    for rel in TASK_LOG.get(label) or []:
+        p = Path(rel) if rel.startswith("/") else REPO / rel
+        if not p.exists():
+            continue
+        mt = p.stat().st_mtime
+        if best_mt is None or mt > best_mt:
+            best_mt, best_p = mt, p
+    if best_mt is None:
+        return None, None
+    return datetime.fromtimestamp(best_mt).strftime("%Y-%m-%d %H:%M"), best_p
 
 
 def _last_date_csv(path: Path, col: str):
@@ -165,8 +181,10 @@ def collect_status(today=None):
     task_rows = []
     for t in TASKS:
         ok = t in registered
+        last_run, last_run_file = _task_last_run(t)
         task_rows.append({"label": t, "registered": ok, "ok": ok,
-                          "last_run": _task_last_run(t)})
+                          "last_run": last_run,
+                          "last_run_file": str(last_run_file) if last_run_file else None})
         if not ok:
             issues.append("定时任务未注册：%s" % t)
             keys.append("task:%s" % t)
