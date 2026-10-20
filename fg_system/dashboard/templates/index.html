@@ -555,12 +555,16 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
         : "⚠️ " + d.issues.length + " 项异常（见下，可点重试）";
       var html = "<table style='width:100%;font-size:12px;border-collapse:collapse'>" +
         "<tr style='color:#8b949e;text-align:left'>" +
-        "<th style='padding:4px'>数据/任务</th><th>最后日期</th><th>状态</th><th></th></tr>";
+        "<th style='padding:4px'>数据/任务</th><th>最后日期</th>" +
+        "<th title='滞后自然日数 / 容忍上限；滞后≤容差即判正常'>滞后/容差</th>" +
+        "<th>状态</th><th></th></tr>";
       for (var i = 0; i < d.data.length; i++) {
         var r = d.data[i];
         html += "<tr style='border-top:1px solid rgba(255,255,255,.06)'>" +
           "<td style='padding:4px'>" + r.name + "</td>" +
           "<td>" + (r.last || "—") + "</td>" +
+          "<td style='color:" + (r.ok ? "#8b949e" : "#f85149") + "'>" +
+            (r.lag == null ? "—" : r.lag + "/" + (r.tol == null ? "?" : r.tol)) + "</td>" +
           "<td>" + (r.ok
             ? "<span style='color:#3fb950'>正常</span>"
             : "<span style='color:#f85149'>停更 " + (r.lag == null ? "? " : r.lag + " 天") + "</span>") + "</td>" +
@@ -571,6 +575,7 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
         html += "<tr style='border-top:1px solid rgba(255,255,255,.06)'>" +
           "<td style='padding:4px'>" + t.label + "</td>" +
           "<td>" + (t.last_run || "—") + "</td>" +
+          "<td style='color:#8b949e'>—</td>" +
           "<td>" + (t.registered
             ? "<span style='color:#3fb950'>已注册</span>"
             : "<span style='color:#f85149'>未注册</span>") + "</td><td></td></tr>";
