@@ -124,3 +124,52 @@ def test_note_untouched_before_switch_date():
 def test_today_alias_removed():
     """旧名 `today()` 必须已移除 —— 保留它会让人误用本地日期 ✗。"""
     assert not hasattr(sp, "today"), "`today()` 应已改名为 `trading_date()`"
+
+
+# ===== MT-48（2026-10-20 P0）：失败仍写盘 + 缺字段静默写 0 =====
+def test_req_f_missing_records_error_and_returns_none():
+    """必需字段缺失 ⇒ 不默认 0、而是返回 None 并记录错误（main 据此中止写盘）。"""
+    sp._SYNC_ERRORS.clear()
+    assert sp._req_f(None, "total_assets", "futu") is None
+    assert sp._req_f("", "cash", "okx") is None
+    assert any("total_assets" in e for e in sp._SYNC_ERRORS)
+    assert any("cash" in e for e in sp._SYNC_ERRORS)
+
+
+def test_req_f_normal_value_returns_float():
+    """正常值仍转 float 返回（不污染错误列表）。"""
+    sp._SYNC_ERRORS.clear()
+    assert sp._req_f("123.45", "totalEq", "okx") == 123.45
+    assert sp._req_f(100, "cash", "futu") == 100.0
+    assert sp._SYNC_ERRORS == []
+
+
+def test_req_f_non_numeric_records_error():
+    """非数值字符串 ⇒ 记录错误并返回 None（不静默转 0）。"""
+    sp._SYNC_ERRORS.clear()
+    assert sp._req_f("N/A", "market_val", "futu") is None
+    assert sp._SYNC_ERRORS, "应记录 market_val 非数值错误"
+
+
+def test_futu_required_fields_no_longer_default_zero():
+    """回归保护：futu 的 total_assets/cash/market_val 不再用 `_f(x, 0.0)` 默认 0。
+
+    MT-48 根因：旧版 `_f(r.get("total_assets", 0))` 把缺失字段写成 0 ⇒
+    net_value=0、恒等式恒不成立。现在用 `_req_f`，缺失即中止。
+    """
+    import inspect
+    src = inspect.getsource(sp.sync_futu)
+    # 不应再出现 _f(r.get("total_assets", 0)) 这种默认 0 写法
+    assert '_f(r.get("total_assets", 0))' not in src
+    assert '_f(r.get("cash", 0))' not in src
+    assert '_f(r.get("market_val", 0))' not in src
+
+
+def test_main_uses_sys_exit():
+    """main() 必须返回 int 退出码（sys.exit(main()) 让失败 rc=1）。"""
+    import inspect
+    src = inspect.getsource(sp)
+    assert "sys.exit(main())" in src
+    # main 内部必须 return 1（硬错误/无新行/恒等式失败）和 return 0（成功）
+    assert "return 1" in inspect.getsource(sp.main)
+    assert "return 0" in inspect.getsource(sp.main)

@@ -40,13 +40,22 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 允许同步进仓库的顶层目录 / 根级文件（其余一律拒绝）
 ALLOWED_DIRS = {"fg_system", "scripts", "tests", "evolution", "docs"}
-ALLOWED_ROOT_FILES = {"README.md", "AGENTS.md", "pyproject.toml",
-                      "requirements.txt", "requirements-dev.txt", "Makefile",
+ALLOWED_ROOT_FILES = {"README.md", "AGENTS.md",
+                      "requirements.txt", "requirements-dev.txt",
                       ".gitignore", ".gitattributes"}
 # 任何情况下都拒绝的目录片段（按路径分段精确匹配，避免误伤 .gitignore/.gitattributes 等普通文件）
-DENY_DIR_SEGMENTS = {".git", ".venv", "__pycache__", "Data", "node_modules"}
-# 任何情况下都拒绝的文件后缀/片段
-DENY_FILE_FRAGMENTS = (".pyc", ".key", ".secret", ".token", ".env")
+# MT-49（2026-10-20 团队审查 P0-2）：新增 .github / .devcontainer
+# （CI 与容器配置 ⇒ 可被利用投毒，且不在任何合法入库路径上）
+DENY_DIR_SEGMENTS = {".git", ".venv", "__pycache__", "Data", "node_modules",
+                     ".github", ".devcontainer"}
+# MT-49：仅在仓库根出现才拒的目录名（data 小写防大小写绕过；不能进 DENY_DIR_SEGMENTS
+# 否则会误伤代码包内同名子目录，如 fg_system/data/fetch.py）
+DENY_ROOT_DIRS = {"data"}
+# 任何情况下都拒绝的文件后缀/片段（MT-49 新增 .pth = Python 启动时执行代码、.pem = 私钥）
+DENY_FILE_FRAGMENTS = (".pyc", ".key", ".secret", ".token", ".env", ".pth", ".pem")
+# MT-49：任意位置都拒的精确文件名（即使在白名单目录下）——
+# conftest.py 被 pytest 自动加载 ⇒ 等于 RCE；Makefile/pyproject.toml 能改 pytest 行为 ⇒ RCE
+DENY_EXACT_FILES = {"conftest.py", "Makefile", "pyproject.toml"}
 
 
 def _denied(rel):
@@ -57,7 +66,13 @@ def _denied(rel):
     segs = rel.split("/")
     if any(seg in DENY_DIR_SEGMENTS for seg in segs):
         return True
+    # MT-49：根目录是 data（小写）⇒ 拒（防 Data/ 大小写绕过；不进 DENY_DIR_SEGMENTS
+    # 以免误伤 fg_system/data/ 这类代码包内同名子目录）
+    if segs and segs[0] in DENY_ROOT_DIRS:
+        return True
     base = segs[-1]
+    if base in DENY_EXACT_FILES:   # MT-49：conftest.py / Makefile / pyproject.toml 任意位置都拒
+        return True
     return any(f in base for f in DENY_FILE_FRAGMENTS)
 
 
@@ -296,14 +311,24 @@ def _restore_paths(repo, rels):
     因此恢复到 HEAD 不会丢失任何用户改动。
     `git apply --3way` 冲突时会把冲突标记写进工作区并登记 index，
     必须清理，否则下一次同步的冲突检查会被自己留下的脏状态挡住。
+
+    MT-49 加固：对每个 rel 先过 _denied + realpath 前缀校验，危险路径
+    一律不碰（此前 `os.unlink(p)` 对未校验 rel 执行 ⇒ 配合必然失败的
+    `../../` 路径可删仓库外文件 ✗）。
     """
+    repo_root = os.path.realpath(repo)
     for rel in rels:
-        if _git(repo, "cat-file", "-e", "HEAD:%s" % rel).returncode == 0:
-            _git(repo, "checkout", "HEAD", "--", rel)
+        rel_safe = rel.replace("\\", "/")
+        if _denied(rel_safe):
+            continue  # MT-49：危险路径不碰
+        p = os.path.realpath(os.path.join(repo, rel_safe))
+        if not p.startswith(repo_root + os.sep):
+            continue  # MT-49：路径逃逸不碰
+        if _git(repo, "cat-file", "-e", "HEAD:%s" % rel_safe).returncode == 0:
+            _git(repo, "checkout", "HEAD", "--", rel_safe)
         else:
             # 新增文件（HEAD 中不存在）：移出 index 并删掉刚被 patch 写入的副本
-            _git(repo, "reset", "-q", "--", rel)
-            p = os.path.join(repo, rel)
+            _git(repo, "reset", "-q", "--", rel_safe)
             if os.path.isfile(p):
                 try:
                     os.unlink(p)
@@ -534,6 +559,23 @@ def main():
                 print("⚠️ %s：无可应用变更（与基准无差异）" % pd)
                 continue
             for rel, blk in blocks:
+                # MT-49（2026-10-20 P0，远程代码执行洞）：
+                # rel 由 `diff --git a/X b/Y` 解析而来，此前从未过 _allowed/_denied ⇒
+                # 任何路径（scripts/、tests/conftest.py、.venv/*.pth、pyproject.toml）
+                # 都能被 git apply 写入，紧接着 pytest 执行 ⇒ RCE ✗。
+                # 现在整包强制过白名单，任一不通过即整包中止 + 回滚已应用文件 + 保留分片。
+                if not _allowed(rel, full_repo=args.full_repo):
+                    print("⛔ patch 目标不在白名单内，整包中止（保留分片）：%s" % rel)
+                    print("   已应用的 %d 个文件将回滚到 HEAD。" % len(applied))
+                    _restore_paths(args.repo, applied)
+                    return 2
+                # MT-49：rename/copy 类 patch 的目标路径可偏离 rel（_META_RE 原样重排
+                # rename to / copy to 的值）⇒ 直接拒绝此类 patch，不做校验（最小攻击面）。
+                if any(ln.startswith(("rename from", "rename to",
+                                     "copy from", "copy to")) for ln in blk):
+                    print("⛔ 检测到 rename/copy 类 patch（写入路径可偏离 rel），整包中止：%s" % rel)
+                    _restore_paths(args.repo, applied)
+                    return 2
                 patch_text = _to_git_patch(rel, blk)
                 # MT-38：带 index 行时用 --3way（基准漂移也能三方合并）；
                 # 无 index 行时 --3way 与普通 apply 等价（仍直接失败）。

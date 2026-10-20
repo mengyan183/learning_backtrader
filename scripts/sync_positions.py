@@ -107,6 +107,24 @@ def _f(x, default=0.0):
         return default
 
 
+# MT-48（2026-10-20 P0）：硬错误收集 —— 必需字段缺失时不默认 0、而是记录并中止写盘。
+# 旧版 _f(x, default=0.0) 遍布金额/价格字段 ⇒ OKX /account/balance 无顶层 cash ⇒
+# cash 恒 0、net_value 恒等式不成立 ⇒ 静默假数据 ✗。
+_SYNC_ERRORS = []
+
+
+def _req_f(x, field, source):
+    """MT-48：必需字段转 float；缺失/空/非数值 ⇒ 记录错误并返回 None（不默认 0）。"""
+    if x is None or x == "":
+        _SYNC_ERRORS.append(f"{source}: 必需字段 {field} 缺失/空（不默认 0）")
+        return None
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        _SYNC_ERRORS.append(f"{source}: 必需字段 {field} 非数值（{x!r}，不默认 0）")
+        return None
+
+
 def _sum_unrealized(pos_rows):
     """未实现盈亏 = Σ `qty × (price − cost)` ✓。
 
@@ -200,9 +218,12 @@ def sync_futu(accounts, positions, date):
         return accounts, positions
     if hasattr(info, "iloc") and not info.empty:
         r = info.iloc[0]
-        net = _f(r.get("total_assets", 0))
-        cash = _f(r.get("cash", 0))
-        mv = _f(r.get("market_val", 0))
+        # MT-48：必需字段缺失 ⇒ 记录错误并 return（不默认 0，避免假数据）
+        net = _req_f(r.get("total_assets"), "total_assets", "futu")
+        cash = _req_f(r.get("cash"), "cash", "futu")
+        mv = _req_f(r.get("market_val"), "market_val", "futu")
+        if net is None or cash is None or mv is None:
+            return accounts, positions
         note = "富途动态同步"
         if "net_cash_power" in info.columns:
             note += f"；净购买力={r.get('net_cash_power')}"
@@ -308,8 +329,13 @@ def sync_okx(accounts, positions, date):
         print(f"[okx] get_balance 错误: code={bal.get('code')} msg={bal.get('msg')}")
         return accounts, positions
     data = (bal.get("data") or [{}])[0]
-    total_eq = _f(data.get("totalEq", 0))
-    cash = _f(data.get("cash", 0))
+    # MT-48：totalEq 必需（缺失 ⇒ 记录错误并 return）；cash 顶层字段 OKX 确实没有
+    # ⇒ 写 NaN（不默认 0，避免 cash 恒 0 导致净值恒等式假成立）
+    total_eq = _req_f(data.get("totalEq"), "totalEq", "okx")
+    if total_eq is None:
+        return accounts, positions
+    cash_raw = data.get("cash")
+    cash = _f(cash_raw, None) if cash_raw not in (None, "") else float("nan")
     accounts.loc[len(accounts)] = [date, "crypto", round(total_eq, 2), "", round(cash, 2),
                                    "", "", "USDT", _tag_date_basis("OKX 动态同步", date)]
 
@@ -378,12 +404,44 @@ def main():
     # 当日覆盖写：同一交易日已有快照行时先剔除，避免重复追加导致下游重复计入
     accounts = accounts[accounts["date"] != date].reset_index(drop=True)
     positions = positions[positions["date"] != date].reset_index(drop=True)
+    a_before = len(accounts)
+    p_before = len(positions)
     accounts, positions = sync_futu(accounts, positions, date)
     accounts, positions = sync_okx(accounts, positions, date)
+    new_a = len(accounts) - a_before
+    new_p = len(positions) - p_before
+
+    # MT-48 ①：硬错误（必需字段缺失）⇒ 中止写盘（不默认 0）
+    if _SYNC_ERRORS:
+        print("⛔ 以下数据源硬错误，当日写入已中止（不写盘，避免静默假数据）：")
+        for e in _SYNC_ERRORS:
+            print("   - " + e)
+        return 1
+    # MT-48 ①：至少一源成功且有新增账户行才写盘；两源全失败 ⇒ 当日旧行已剔除
+    # 却仍写盘 ⇒ 当日快照被删掉且 rc=0（静默丢金融数据 ✗）
+    if new_a == 0:
+        print("⛔ 两个数据源都未产出账户行（当日旧行已剔除），不写盘以避免静默丢数据。")
+        return 1
+    # MT-48 ④：写盘前断言 net_value = securities_mv + cash 且 net > 0
+    for i in range(a_before, len(accounts)):
+        r = accounts.iloc[i]
+        net = _f(r["net_value"])
+        mv = r["securities_mv"]
+        cash = r["cash"]
+        if net <= 0:
+            print(f"⛔ net_value={net} <= 0 可疑（account={r['account']}），中止写盘。")
+            return 1
+        # OKX 行 securities_mv 为空（NaN）⇒ 跳过恒等式校验
+        if pd.notna(mv) and abs(net - (_f(mv) + _f(cash))) > 1.0:
+            print(f"⛔ 恒等式不成立：net={net} != mv({_f(mv)})+cash({_f(cash)})"
+                  f"（account={r['account']}），中止写盘。")
+            return 1
+
     write_snapshot(accounts, positions)
-    print(f"[sync] 已写入：accounts {len(accounts)} 行 / positions {len(positions)} 行"
-          f"（含当日新增）")
+    print(f"[sync] 已写入：accounts {len(accounts)} 行（新增 {new_a}）"
+          f"/ positions {len(positions)} 行（新增 {new_p}）")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -7,13 +7,13 @@ import sys
 import tarfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
-from fg_sync_ingest import _allowed, _safe_extract
+from fg_sync_ingest import _allowed, _denied, _safe_extract
 
 
 def test_whitelist_accepts_code_dirs():
     for p in ["fg_system/factors/symbol.py", "scripts/fetch_news.py",
               "tests/test_index.py", "evolution/hypotheses.md",
-              "docs/roadmap.md", "AGENTS.md", "pyproject.toml"]:
+              "docs/roadmap.md", "AGENTS.md", "requirements.txt"]:
         assert _allowed(p), p
 
 
@@ -23,6 +23,35 @@ def test_whitelist_rejects_data_git_and_secrets():
               "scripts/foo.key", "scripts/.env", "docs/secret.token",
               "../evil.sh", "/etc/passwd", "a/../../b"]:
         assert not _allowed(p), p
+
+
+# ===== MT-49（2026-10-20 P0 patch 路径 RCE 洞）=====
+def test_mt49_patch_paths_must_pass_whitelist():
+    """任务书要求：以下路径在 patch 包里出现必须被拒。"""
+    for p in [
+        "Data/features.csv",          # Data/
+        "data/features.csv",          # data/ 小写（防大小写绕过）
+        "Data\\raw\\prices.csv",      # Data\x 反斜杠（_denied 内部转 /）
+        "tests/conftest.py",          # conftest.py 被 pytest 自动加载
+        ".venv/lib/x.pth",            # .venv/*.pth 启动时执行
+        "pyproject.toml",             # 能改 pytest 行为
+        "Makefile",                   # 能改 pytest 行为
+        ".github/workflows/ci.yml",   # CI 配置投毒
+        ".devcontainer/devcontainer.json",
+        "scripts/foo.pem",            # 私钥
+        "fg_system/x.pth",            # 即使在白名单目录下 .pth 也拒
+    ]:
+        assert not _allowed(p), "应被拒但通过：%s" % p
+
+
+def test_mt49_legit_patch_paths_still_allowed():
+    """合法 patch 目标仍要放行（回归保护）。"""
+    for p in ["scripts/fg_sync_ingest.py",
+              "tests/test_fg_sync_ingest.py",
+              "docs/mac-tasks.md",
+              "fg_system/data/fetch.py",
+              "evolution/hypotheses.md"]:
+        assert _allowed(p), "合法路径被误拒：%s" % p
 
 
 def test_safe_extract_rejects_traversal():
