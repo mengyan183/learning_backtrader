@@ -312,6 +312,53 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         "features":       ["-c", "from fg_system import pipeline; pipeline.run(write=True)"],
     }
 
+    @app.route("/api/symbol_fg")
+    def _symbol_fg_api():
+        """按标的查**系统贪恐系数**（个股级 0-100，高分=贪婪）。
+
+        复用 `scripts/query_symbol_fg.query()` ✓ —— 与看板「系统」列、CLI **同源** ✓，
+        **不在此处重写算法** ✗。
+
+        参数：`symbols=NVDA,GDXU`（逗号分隔，中文逗号也认 ✓，最多 12 个 ✓）
+        返回：`{"data_date": "...", "items": [{symbol, underlying, rows,
+                value, zone, source, error}]}`
+
+        🔴 `source` **三态必须透出** ✗（否则页面无法分辨 ✗）：
+          - `个股` ✓ —— 真正的个股分；
+          - `大盘回退` ✓ —— 已登记但底层历史 < 816 行 ✗，`error` 里写明行数；
+          - `null` ✗ —— **未登记** ⇒ `value` 也为 `null` ✗（**绝不给大盘分冒充** ✗）。
+        `data_date` 是市场级 `fg_index` 的数据日期 ✓ —— 页面必须显示它 ✗，
+        否则用户会把几周前的数字当成「现在」✗。
+        """
+        import importlib.util
+
+        from fg_system import config as _cfg
+
+        raw = (request.args.get("symbols") or "").replace("，", ",")
+        syms = [s.strip().upper() for s in raw.split(",") if s.strip()][:12]
+        if not syms:
+            # ⚠️ `_json_ok` 返回**字符串** ✗ ⇒ 必须显式给 `application/json` ✓，
+            # 否则前端 `r.json()` 拿不到对象 ✗（2026-10-20 实测踩到 ✓）
+            return Response(_json_ok({"error": "缺 symbols 参数（例：?symbols=NVDA,GDXU）",
+                                      "items": []}),
+                            status=400, mimetype="application/json")
+
+        path = os.path.join(_cfg.ROOT, "scripts", "query_symbol_fg.py")
+        spec = importlib.util.spec_from_file_location("query_symbol_fg", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        prices = None
+        p = os.path.join(_cfg.RAW_DIR, "prices.csv")
+        if os.path.exists(p):
+            import pandas as pd
+            prices = pd.read_csv(p, dtype={"symbol": str}, parse_dates=["date"])
+
+        items = [mod.query(s, prices=prices) for s in syms]
+        _fg, data_date = mod._market_fg()
+        return Response(_json_ok({"data_date": data_date, "items": items}),
+                        mimetype="application/json")
+
     @app.route("/api/tasks")
     def _tasks_api():
         """定时任务与数据新鲜度状态（复用 scripts/task_monitor.collect_status）。"""

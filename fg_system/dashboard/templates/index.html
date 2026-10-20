@@ -115,6 +115,26 @@
 </div>
 </div>
 
+<div class="sec-wrap" data-name="标的查询">
+<h2>按标的查系统贪恐系数</h2>
+<div class="sec">
+<p style="font-size:12px;color:#8b949e">
+输入代码（逗号分隔，如 <code>NVDA,GDXU,BTC-USDT</code>）⇒ 返回<b>个股级</b>系统贪恐系数（0-100，高分=贪婪）。
+🔴 <b>来源三态必须看清</b>：<b style="color:#3fb950">个股</b>（真·个股分）/
+<b style="color:#e5534b">大盘回退</b>（已登记但底层历史 &lt; 816 行 ⇒ 显示的是<b>大盘</b>分 ✗）/
+<b style="color:#8b949e">未登记</b>（不给分 ✗，需先在 <code>config.SIGNAL_UNDERLYING_MAP</code> 登记）。
+</p>
+<div style="margin:6px 0">
+  <input id="sfgInput" type="text" placeholder="NVDA,GDXU" value="NVDA,GDXU"
+         style="width:280px;padding:4px 8px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:4px">
+  <button id="sfgBtn" style="padding:4px 12px;cursor:pointer">查询</button>
+  <span id="sfgDate" style="margin-left:10px;font-size:12px;color:#8b949e"></span>
+</div>
+<div id="sfgTable"></div>
+<div id="sfgMsg" style="margin-top:6px;font-size:12px;color:#888"></div>
+</div>
+</div>
+
 <div class="sec-wrap" data-name="任务">
 <h2>定时任务执行情况</h2>
 <div class="sec">
@@ -543,7 +563,39 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
       return r.text().then(function (t) { taskMsg.textContent = "❌ " + t; });
     }).catch(function (e) { taskMsg.textContent = "❌ 请求失败：" + e; });
   }
-  function loadTasks() {
+  
+async function querySymbolFg() {
+  const raw = (document.getElementById('sfgInput').value || '').trim();
+  const box = document.getElementById('sfgTable');
+  const msg = document.getElementById('sfgMsg');
+  const dateEl = document.getElementById('sfgDate');
+  if (!raw) { msg.textContent = '请输入代码'; return; }
+  msg.textContent = '查询中…';
+  try {
+    const r = await fetch('/api/symbol_fg?symbols=' + encodeURIComponent(raw));
+    const j = await r.json();
+    if (j.error) { msg.textContent = j.error; box.innerHTML = ''; return; }
+    dateEl.textContent = j.data_date ? ('数据截至 ' + j.data_date) : '（无市场级数据）';
+    const color = s => s === '个股' ? '#3fb950'
+                    : (s === '大盘回退' ? '#e5534b' : '#8b949e');
+    const rows = (j.items || []).map(it => {
+      const val = (it.value === null || it.value === undefined)
+                  ? '—' : Number(it.value).toFixed(1);
+      const src = it.source || '未登记';
+      return '<tr><td>' + it.symbol + '</td><td>' + (it.underlying || '—') +
+             '</td><td>' + (it.rows || 0) + '</td><td><b>' + val + '</b></td>' +
+             '<td>' + (it.zone || '—') + '</td>' +
+             '<td style="color:' + color(it.source) + '">' + src + '</td>' +
+             '<td style="font-size:11px;color:#8b949e">' + (it.error || '') + '</td></tr>';
+    }).join('');
+    box.innerHTML = '<table class="card"><tr><th>标的</th><th>底层</th><th>行数</th>' +
+      '<th>分数</th><th>档位</th><th>来源</th><th>说明</th></tr>' + rows + '</table>';
+    msg.textContent = '';
+  } catch (e) { msg.textContent = '查询失败：' + e; }
+}
+document.getElementById('sfgBtn').addEventListener('click', querySymbolFg);
+
+function loadTasks() {
     var sum = document.getElementById("taskSummary");
     var box = document.getElementById("taskTable");
     if (!sum || !box) { return; }
