@@ -56,6 +56,52 @@ DEFAULT_BASE_REF = "origin/main"
 PATCH_PREFIX = "__patch__/"
 
 
+#: 🔴 **拒绝外发的目录段**（项目纪律：「`Data/**` 与凭据一律不外发」✗）。
+#: 动机（2026-10-20 团队审查 P0）：`pack_many x Data/accounts.csv` 或
+#: `pack_many x C:/Users/me/.okx_credentials.json` 原来**都会被打包发往飞书** ✗ ——
+#: `_safe_extract` 只在接收端拒绝绝对路径 ✓，拦不住**已发出**的数据 ✗。
+DENY_DIR_SEGMENTS = ("Data", ".git", ".venv", "__pycache__", "logs", "node_modules")
+
+#: 🔴 文件名里出现这些片段 ⇒ 视为凭据/密钥 ✗
+DENY_FILE_FRAGMENTS = ("credential", "credentials", ".pem", ".p12", "id_rsa",
+                       "id_ed25519", "token", "secret", ".env", "fred_key")
+
+#: 🔴 精确拒绝的文件名（小写比对）
+DENY_FILE_NAMES = (".okx_credentials.json", "fred_key", "feishu_token",
+                   "credentials.json")
+
+
+def _export_errors(srcs):
+    """校验待打包文件：**必须在仓库内** ✓、**不在拒绝表** ✓。返回错误列表。
+
+    :returns: 错误字符串列表（空 ⇒ 可打包）。调用方应 `sys.exit` 而非继续 ✓。
+    """
+    errors = []
+    root = os.path.realpath(REPO)
+    for rel in srcs:
+        real = os.path.realpath(os.path.join(root, rel.replace("/", os.sep)))
+        if real != root and not real.startswith(root + os.sep):
+            errors.append("%s：**不在仓库内** ✗（realpath=%s）⇒ 拒绝外发" % (rel, real))
+            continue
+        norm = rel.replace("\\", "/")
+        parts = [p for p in norm.split("/") if p]
+        # 🔴 **大小写不敏感**比对 ✗ —— Windows/macOS 文件系统大小写不敏感 ✓，
+        # `data/features.csv` 与 `Data/features.csv` 是**同一个文件** ✗
+        # （2026-10-20 实测：原实现漏掉小写变体 ✓）
+        deny_lower = {d.lower() for d in DENY_DIR_SEGMENTS}
+        bad_dir = [p for p in parts[:-1] if p.lower() in deny_lower]
+        if bad_dir:
+            errors.append("%s：命中**拒绝目录** `%s` ✗（`Data/**`、`.git`、`.venv` 一律不外发）"
+                          % (rel, bad_dir[0]))
+            continue
+        low = norm.lower()
+        hit = [f for f in DENY_FILE_FRAGMENTS if f in low]
+        if hit or (parts and parts[-1].lower() in DENY_FILE_NAMES):
+            errors.append("%s：疑似**凭据/密钥** ✗（命中 `%s`）⇒ 拒绝外发"
+                          % (rel, (hit or [parts[-1]])[0]))
+    return errors
+
+
 def _base_text(rel, base_ref):
     """读基准内容：git -C <REPO> show <base_ref>:<rel>（失败返回 None）。
 
@@ -226,6 +272,14 @@ def main():
     for rel in srcs:
         if not os.path.isfile(os.path.join(REPO, rel.replace("/", os.sep))):
             sys.exit("❌ 找不到：%s" % rel)
+
+    # 🔴 **外发安全闸门**（2026-10-20 团队审查 P0）：仓库边界 + 数据/凭据拒绝表 ✗
+    export_errors = _export_errors(srcs)
+    if export_errors:
+        for e in export_errors:
+            print("  ❌ %s" % e)
+        sys.exit("❌ 拒绝打包：以上文件**不得外发** ✗"
+                 "（项目纪律：`Data/**` 与凭据一律不外发 ✓）")
 
     os.makedirs(OUT_DIR, exist_ok=True)
 

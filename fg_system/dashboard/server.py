@@ -343,21 +343,30 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
                                       "items": []}),
                             status=400, mimetype="application/json")
 
-        path = os.path.join(_cfg.ROOT, "scripts", "query_symbol_fg.py")
-        spec = importlib.util.spec_from_file_location("query_symbol_fg", path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        # 🔴 整段包 try ✗ —— 原来异常会返回 Flask 默认 **500 HTML** ✗，
+        # 前端 `r.json()` 直接抛错 ✓（与 400 分支的 `application/json` 自相矛盾 ✗）
+        try:
+            path = os.path.join(_cfg.ROOT, "scripts", "query_symbol_fg.py")
+            spec = importlib.util.spec_from_file_location("query_symbol_fg", path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
 
-        prices = None
-        p = os.path.join(_cfg.RAW_DIR, "prices.csv")
-        if os.path.exists(p):
-            import pandas as pd
-            prices = pd.read_csv(p, dtype={"symbol": str}, parse_dates=["date"])
+            prices = None
+            p = os.path.join(_cfg.RAW_DIR, "prices.csv")
+            if os.path.exists(p):
+                import pandas as pd
+                prices = pd.read_csv(p, dtype={"symbol": str},
+                                     parse_dates=["date"])
 
-        items = [mod.query(s, prices=prices) for s in syms]
-        _fg, data_date = mod._market_fg()
-        return Response(_json_ok({"data_date": data_date, "items": items}),
-                        mimetype="application/json")
+            items = [mod.query(s, prices=prices) for s in syms]
+            _fg, data_date = mod._market_fg()
+            return Response(_json_ok({"data_date": data_date, "items": items}),
+                            mimetype="application/json")
+        except Exception as exc:      # noqa: BLE001 —— 任何异常都必须回 JSON ✓
+            return Response(
+                _json_ok({"error": "查询失败：%s: %s"
+                                   % (type(exc).__name__, exc), "items": []}),
+                status=500, mimetype="application/json")
 
     @app.route("/api/tasks")
     def _tasks_api():

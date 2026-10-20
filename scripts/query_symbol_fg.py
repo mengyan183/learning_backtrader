@@ -64,11 +64,15 @@ def _market_fg():
 def query(symbol, prices=None):
     """单个标的的结果字典 ✓（`source` 明确标 个股 / 大盘回退 ✗）。"""
     out = {"symbol": symbol, "underlying": None, "rows": 0,
-           "value": None, "zone": None, "date": None,
+           "value": None, "zone": None, "date": None, "stale": False,
            "source": None, "error": None}
 
-    und = (config.SIGNAL_UNDERLYING_MAP.get(symbol)
-           or config.CRYPTO_UNDERLYING.get(symbol))
+    # 🔴 与 `underlying_close()` 共用**同一归一**（`BTC-USDT` → `BTC`）✗ ——
+    # 否则 `und=None` 却仍能算出分 ✗ ⇒ 同一行「既有分数又报未登记」✓
+    # （2026-10-20 团队审查 P1 实测 ✓）。
+    lookup = "BTC" if symbol == "BTC-USDT" else symbol
+    und = (config.SIGNAL_UNDERLYING_MAP.get(lookup)
+           or config.CRYPTO_UNDERLYING.get(lookup))
     out["underlying"] = und
 
     try:
@@ -90,6 +94,10 @@ def query(symbol, prices=None):
         out["zone"] = _zone(out["value"])
         out["date"] = str(s.index[-1])[:10]
         out["source"] = "个股"
+        # 🔴 **逐项滞后校验** ✗：底层数据可能停更（Mac 实测 `COIN` 停在 2026-10-01 ✗），
+        # 只看分数会把旧值当成「现在」✗ ⇒ 与市场级 `data_date` 比对并透出 `stale` ✓
+        _fg, mdate = _market_fg()
+        out["stale"] = bool(mdate and out["date"] and out["date"] < mdate)
         return out
 
     # 🔴 **未登记** ⇒ 连底层都没有 ⇒ **不给分数** ✗（给了就等于把大盘分冒充成个股分 ✗）
@@ -103,22 +111,35 @@ def query(symbol, prices=None):
         out["zone"] = _zone(fg)
         out["date"] = d
         out["source"] = "大盘回退"
+        out["stale"] = False      # 回退值就是市场级最新日 ⇒ 自身不滞后 ✓
         if not out["error"]:
-            out["error"] = ("底层历史 %d 行 < 下限 %d 行 ✗ ⇒ 已回退市场级 fg_index ✓"
-                            % (out["rows"], MIN_ROWS))
+            # 🔴 文案必须**按真实原因分支** ✗ —— 原来任何失败都写「N 行 < 816 行」✓，
+            # 行数够但因 NaN 失败时会给出**假原因** ✗（2026-10-20 审查 P1）
+            if out["rows"] < MIN_ROWS:
+                out["error"] = ("底层历史 %d 行 < 下限 %d 行 ✗ ⇒ 已回退市场级 fg_index ✓"
+                                % (out["rows"], MIN_ROWS))
+            else:
+                out["error"] = ("底层历史 %d 行（≥ 下限 %d）✗ 但算不出分数 "
+                                "⇒ 疑似全 NaN / 窗口不足 ⇒ 已回退市场级 fg_index ✓"
+                                % (out["rows"], MIN_ROWS))
     elif not out["error"]:
         out["error"] = "既算不出个股分，也没有市场级 fg_index 可回退 ✗"
     return out
 
 
 def _print(results):
-    print("%-10s %-10s %-8s %-7s %-10s %s"
-          % ("标的", "底层", "行数", "分数", "档位", "来源"))
+    print("%-10s %-10s %-7s %-7s %-9s %-11s %s"
+          % ("标的", "底层", "行数", "分数", "档位", "来源", "数据日期"))
     for r in results:
         val = "—" if r["value"] is None else "%.1f" % r["value"]
-        print("%-10s %-10s %-8d %-7s %-10s %s"
+        # 🔴 CLI 也必须显示**逐项数据日期 + 滞后标记** ✗ —— 原来只有 JSON/页面有 ✓，
+        # 命令行看到的分数可能是几周前的 ✗（2026-10-20 审查 P1）
+        dtxt = r["date"] or "—"
+        if r.get("stale"):
+            dtxt += " ⚠️滞后"
+        print("%-10s %-10s %-7d %-7s %-9s %-11s %s"
               % (r["symbol"], r["underlying"] or "未登记", r["rows"],
-                 val, r["zone"] or "—", r["source"] or "—"))
+                 val, r["zone"] or "—", r["source"] or "—", dtxt))
         if r["error"]:
             print("           ⚠️ %s" % r["error"])
     print("\n口径：三因子 mom60/mom20/vol20（756 日滚动分位，权重禁止优化）✓；"

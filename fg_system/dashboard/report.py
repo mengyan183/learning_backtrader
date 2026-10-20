@@ -23,6 +23,12 @@ from fg_system.dashboard import pwa
 ZONE_COLORS = ["#8b0000", "#d9534f", "#f0ad4e", "#5cb85c", "#006400"]
 ZONE_NAMES = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"]
 
+#: 🔴 个股分的**最大允许滞后天数**（2026-10-20 团队审查 P0 ✗）：
+#: 底层日线可能停更（Mac 实测 `COIN` 停在 2026-10-01 ✗），此时「个股分」比
+#: 「大盘回退」**更误导** ✗ ⇒ 超过该天数即视为算不出、走回退并标注 ✓。
+#: 5 天可覆盖「周末 + 长假」的合理滞后 ✓，又不至于放过真正的停更 ✗。
+STALE_MAX_DAYS = 5
+
 
 def _holdings_block(features, shoutu=None, prices=None):
     """持仓标的看板：我的持仓 × 市场贪恐环境 × 系统覆盖与指令（只读快照）。
@@ -78,6 +84,16 @@ def _holdings_block(features, shoutu=None, prices=None):
                     sig = "减仓"
     env_cell = ("%s %s" % (("%.0f" % fg), zone)) if fg is not None else "—"
 
+    # 🔴 **个股分新鲜度基准**（2026-10-20 团队审查 P0）：底层数据可能停更 ✗
+    # （Mac 实测 `COIN` 停在 2026-10-01 ✗），此时「个股分」比「大盘回退」**更误导** ✗
+    # ⇒ 超过 STALE_MAX_DAYS 天即视为算不出，走回退并标注 ✓。
+    try:
+        _fresh = (pd.to_datetime(features["date"].iloc[-1])
+                  if "date" in getattr(features, "columns", ()) and len(features)
+                  else None)
+    except (ValueError, TypeError, IndexError):
+        _fresh = None
+
     # 守猪待兔标的级系数：shoutu 宽表最新日（-100~100 → 0~100 系统口径）
     shoutu_last = shoutu.iloc[-1] if (shoutu is not None
                                       and not shoutu.empty) else None
@@ -124,7 +140,11 @@ def _holdings_block(features, shoutu=None, prices=None):
                 from fg_system.factors import symbol as _sym
                 _sidx = _sym.symbol_fg_index(sym, prices=prices)
                 if _sidx is not None and not _sidx.dropna().empty:
-                    _sv = float(_sidx.dropna().iloc[-1])
+                    _s = _sidx.dropna()
+                    # 🔴 逐项滞后校验 ✗：底层停更时**不给个股分** ✓（见上方 `_fresh` 注释）
+                    _last = pd.Timestamp(_s.index[-1])
+                    if _fresh is None or (_fresh - _last).days <= STALE_MAX_DAYS:
+                        _sv = float(_s.iloc[-1])
             except Exception:
                 _sv = None
         if _sv is not None:
