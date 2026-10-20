@@ -582,14 +582,21 @@ async function querySymbolFg() {
       const val = (it.value === null || it.value === undefined)
                   ? '—' : Number(it.value).toFixed(1);
       const src = it.source || '未登记';
+      // 🔴 逐项数据日期 + 滞后标红（2026-10-20 Mac 实测：CONL 的 COIN 只到 10-01 ✗，
+      //    只显示分数会让旧数字被当成「现在」✗）
+      const stale = (it.date && j.data_date && it.date < j.data_date);
+      const dTxt = it.date ? (it.date + (stale ? ' ⚠️滞后' : '')) : '—';
+      const dSty = stale ? 'color:#e5534b;font-weight:bold' : '';
       return '<tr><td>' + it.symbol + '</td><td>' + (it.underlying || '—') +
              '</td><td>' + (it.rows || 0) + '</td><td><b>' + val + '</b></td>' +
              '<td>' + (it.zone || '—') + '</td>' +
              '<td style="color:' + color(it.source) + '">' + src + '</td>' +
+             '<td style="' + dSty + '">' + dTxt + '</td>' +
              '<td style="font-size:11px;color:#8b949e">' + (it.error || '') + '</td></tr>';
     }).join('');
     box.innerHTML = '<table class="card"><tr><th>标的</th><th>底层</th><th>行数</th>' +
-      '<th>分数</th><th>档位</th><th>来源</th><th>说明</th></tr>' + rows + '</table>';
+      '<th>分数</th><th>档位</th><th>来源</th><th>数据日期</th><th>说明</th></tr>' +
+      rows + '</table>';
     msg.textContent = '';
   } catch (e) { msg.textContent = '查询失败：' + e; }
 }

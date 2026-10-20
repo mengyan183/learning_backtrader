@@ -66,3 +66,15 @@ def test_page_has_query_widget():
     assert 'id="sfgBtn"' in t            # 查询按钮
     assert "/api/symbol_fg" in t          # 调接口
     assert "大盘回退" in t                 # 来源三态说明（防止页面误导 ✗）
+    # 🔴 逐项数据日期 + 滞后标红（Mac 实测：CONL 的 COIN 只到 10-01 ✗）
+    assert "数据日期" in t
+    assert "滞后" in t
+    assert "it.date" in t                 # 真的用了接口透出的 date ✓
+
+
+def test_api_exposes_per_item_date(client):
+    """接口必须透出**每项** `date` 与 `data_date` ✓ —— 页面才有东西可标滞后 ✓。"""
+    j = client.get("/api/symbol_fg?symbols=AXTX,CONL").get_json()
+    assert j["data_date"] is not None
+    for it in j["items"]:
+        assert "date" in it               # 字段存在（值可为 None ✓）
