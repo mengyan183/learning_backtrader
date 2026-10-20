@@ -151,13 +151,24 @@ def _split_patch_payload(payload):
                 cur_rel = a_side if b_side == "/dev/null" else b_side
                 cur = [ln]
                 continue
+            # 旧格式块分隔头（pack_many 混格式时残留）：**终止当前块** ✗。
+            # 若不终止，它会被并进前一个块 ⇒ 该行以 `--- ` 开头 ✗ ⇒ 在
+            # `_to_git_patch` 里把已记住的 `--- /dev/null` 覆盖成普通路径 ✗
+            # ⇒ 新增文件的 patch 退化成「改一个已存在的文件」⇒ apply 必失败 ✗
+            # （`sync_1020c` 实测：报 `expected /dev/null on line 2` ✗）。
+            # 其后到下一个 `diff --git` 之间是一个无 hunk 的旧格式块 ✓，
+            # 会被下面的 filter 丢弃 ✓。
+            if re.match(r"^--- .+ ---$", ln):
+                if cur_rel is not None:
+                    blocks.append((cur_rel, cur))
+                cur_rel, cur = None, []
+                continue
             if cur_rel is not None:
                 cur.append(ln)
         if cur_rel is not None:
             blocks.append((cur_rel, cur))
         return [(rel, blk) for rel, blk in blocks
                 if any(ln.startswith("@@") for ln in blk)]
-
     blocks = []
     cur_rel, cur = None, []
     for ln in lines:
@@ -208,10 +219,34 @@ def _to_git_patch(rel, blk):
     现改为**记住 /dev/null 侧并原样保留** ✓，同时把 `*mode` 等元信息行
     放到 `index` **之前** ✓ —— git 规范顺序是
     `diff --git` → `new/deleted/old/new mode` → `index` → `---`/`+++` ✓。
+
+    🔴 **只在头区识别头行**（2026-10-20 MT-45 修，`sync_1020c` 实测踩坑）：
+    pack_many 混格式时，块**尾部**会残留旧格式的块分隔头
+    `--- <rel> ---` ✗。它同样以 `--- ` 开头 ✗ ⇒ 会把已记住的
+    `a_null = True`（`--- /dev/null`）**覆盖回 False** ✗ ⇒ 新增文件的
+    patch 又退化成「改已存在文件」✗ ⇒ `git apply` 报
+    `bad git-diff - expected /dev/null on line 2` ✗（症状与 MT-44 极像、
+    根因不同 ✗，容易误判成没修好 ✗）。
+    现改为：`---` / `+++` / `index` / `*mode` 只在**第一个 `@@` 之前**
+    的头区识别 ✓；hunk 之后只保留 patch 正文合法行
+    （`+` / `-` / ` ` / `\` / 空行 ✓），其余一律丢弃 ✓。
     """
     body, index_lines, meta_lines = [], [], []
     a_null = b_null = False
+    seen_hunk = False
     for ln in blk:
+        if ln.startswith("@@"):
+            seen_hunk = True
+            body.append(ln)
+            continue
+        if seen_hunk:
+            # 旧格式块分隔头**绝不能被当成删除行**收下（MT-45 防御 ✓）
+            if re.match(r"^--- .+ ---$", ln):
+                continue
+            # hunk 正文只可能是 `+`/`-`/` `/`\`/空行；其余是格式残渣，丢弃
+            if ln[:1] in ("+", "-", " ", "\\") or not ln.strip():
+                body.append(ln)
+            continue
         if ln.startswith("diff --git "):
             continue
         if ln.startswith("--- "):

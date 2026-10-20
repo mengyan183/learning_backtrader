@@ -434,3 +434,57 @@ def test_new_file_patch_applies_end_to_end(tmp_path):
     r = g("apply", "--whitespace=nowarn", "--3way", "-", input=patch_text)
     assert r.returncode == 0, r.stderr
     assert (repo / "tests" / "dashboard" / "test_new.py").read_text() == "a\nb\n"
+
+
+def test_split_payload_terminates_block_at_legacy_separator():
+    """混格式 payload：旧格式分隔头必须**终止**当前块（MT-45）。
+
+    pack_many 混格式时，git 风格块尾部会残留 `--- <rel> ---` + 「（与基准无差异）」。
+    若被并进前一个块，那行以 `--- ` 开头 ⇒ 会把 `--- /dev/null` 覆盖掉 ✗
+    ⇒ 新增文件的 patch 退化成「改已存在文件」⇒ apply 失败 ✗（`sync_1020c` 实测 ✗）。
+    """
+    payload = "\n".join([
+        "diff --git a/tests/new.py b/tests/new.py",
+        "new file mode 100644",
+        "index 0000000..cb7ec6e",
+        "--- /dev/null",
+        "+++ b/tests/new.py",
+        "@@ -0,0 +1,1 @@",
+        "+x",
+        "--- scripts/other.py ---",
+        "（与基准无差异）",
+        "diff --git a/docs/x.md b/docs/x.md",
+        "index 1111aaa..2222bbb 100644",
+        "--- a/docs/x.md",
+        "+++ b/docs/x.md",
+        "@@ -1,1 +1,1 @@",
+        "-a",
+        "+b",
+    ])
+    blocks = dict(_split_patch_payload(payload))
+    assert "scripts/other.py" not in blocks      # 无 hunk ⇒ 丢弃 ✓
+    blk = blocks["tests/new.py"]
+    assert "--- scripts/other.py ---" not in blk  # 未被并入前块 ✓
+    assert "（与基准无差异）" not in blk
+    out = _to_git_patch("tests/new.py", blk)
+    assert "--- /dev/null" in out.splitlines()    # /dev/null 未被覆盖 ✓
+
+
+def test_to_git_patch_ignores_legacy_separator_after_hunk():
+    """即使分隔头混进块尾，也不得当成删除行收下（MT-45 防御）。"""
+    blk = [
+        "diff --git a/tests/new.py b/tests/new.py",
+        "new file mode 100644",
+        "index 0000000..cb7ec6e",
+        "--- /dev/null",
+        "+++ b/tests/new.py",
+        "@@ -0,0 +1,1 @@",
+        "+x",
+        "--- scripts/other.py ---",
+        "（与基准无差异）",
+    ]
+    lines = _to_git_patch("tests/new.py", blk).splitlines()
+    assert "--- /dev/null" in lines
+    assert "--- scripts/other.py ---" not in lines
+    assert lines.index("new file mode 100644") < lines.index(
+        "index 0000000..cb7ec6e")
