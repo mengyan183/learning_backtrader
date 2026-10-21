@@ -461,6 +461,13 @@ SHOUTU_SYMBOLS = ["CONL", "YINN", "GDXU", "AXTX", "CRCG",
 # 为什么放在 config 而不是脚本里：`tests/test_shoutu_variants.py` 有守卫
 # 「脚本不得硬编码 `SHOUTU_SYMBOLS` 里的任何标的」（精确相等、扫描全部字符串常量）
 # ⇒ 映射只能来自 config（同 `RESEARCH_SYMBOLS` 的做法）。
+#: 🔴 **反向（做空）标的** ⇒ 其「自身情绪」与底层**方向相反** ✗
+#: （2026-10-21 修 P0-4c ✓）
+#: 例：`SQQQ` = 3x **做空** QQQ ✓ ⇒ 底层「贪婪」意味着 SQQQ **自身在跌** ✗
+#: ⇒ 若直接返回底层分，方向就是**反的** ✗（用户会以为 SQQQ 贪婪 ✓）。
+#: 翻转在 `factors/symbol.symbol_fg_index()` 内部完成 ✓（所有调用方一致 ✓）。
+SIGNAL_INVERSE = {"SQQQ"}
+
 SIGNAL_UNDERLYING_MAP = {
     "TQQQ": "QQQ", "SOXL": "SOXX", "UPRO": "SPY",   # 与生产 UNDERLYING_MAP 逐字一致
     "YINN": "FXI",                                  # 3× 富时中国 50

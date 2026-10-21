@@ -155,6 +155,15 @@
 </nav>
 
 <script>
+
+// 🔴 **HTML 转义** ✗（2026-10-21 修 P1 XSS ✓）：接口返回的 `it.symbol` /
+// `it.error` 等是**服务端字符串** ✗ ⇒ 直接拼 `innerHTML` 会被当 HTML 执行 ✗。
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;',
+             '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
 var INDEX = {{ index_json | default('null') }};
 var FACTORS = {{ factors_json | default('null') }};
 var POSITION = {{ position_json | default('null') }};
@@ -595,12 +604,12 @@ async function querySymbolFg() {
       const stale = (it.date && j.data_date && it.date < j.data_date);
       const dTxt = it.date ? (it.date + (stale ? ' ⚠️滞后' : '')) : '—';
       const dSty = stale ? 'color:#e5534b;font-weight:bold' : '';
-      return '<tr><td>' + it.symbol + '</td><td>' + (it.underlying || '—') +
-             '</td><td>' + (it.rows || 0) + '</td><td><b>' + val + '</b></td>' +
-             '<td>' + (it.zone || '—') + '</td>' +
-             '<td style="color:' + color(it.source) + '">' + src + '</td>' +
-             '<td style="' + dSty + '">' + dTxt + '</td>' +
-             '<td style="font-size:11px;color:#8b949e">' + (it.error || '') + '</td></tr>';
+      return '<tr><td>' + esc(it.symbol) + '</td><td>' + (esc(it.underlying) || '—') +
+             '</td><td>' + (esc(it.rows) || 0) + '</td><td><b>' + esc(val) + '</b></td>' +
+             '<td>' + (esc(it.zone) || '—') + '</td>' +
+             '<td style="color:' + color(it.source) + '">' + esc(src) + '</td>' +
+             '<td style="' + dSty + '">' + esc(dTxt) + '</td>' +
+             '<td style="font-size:11px;color:#8b949e">' + (esc(it.error) || '') + '</td></tr>';
     }).join('');
     box.innerHTML = '<table class="card"><tr><th>标的</th><th>底层</th><th>行数</th>' +
       '<th>分数</th><th>档位</th><th>来源</th><th>数据日期</th><th>说明</th></tr>' +

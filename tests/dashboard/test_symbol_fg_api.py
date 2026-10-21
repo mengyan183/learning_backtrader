@@ -78,3 +78,26 @@ def test_api_exposes_per_item_date(client):
     assert j["data_date"] is not None
     for it in j["items"]:
         assert "date" in it               # 字段存在（值可为 None ✓）
+
+# ------------------------------------- XSS（2026-10-21 修 P1 ✓）
+def test_page_escapes_server_strings():
+    """🔴 **服务端返回的字符串必须转义** ✗ —— 否则 `it.symbol` 拼进 `innerHTML`
+    会被当 HTML 执行 ✗（存储/反射型 XSS ✓）。
+
+    2026-10-20 团队审查报的 P1 ✓，2026-10-21 修 ✓。
+    """
+    import os
+    tpl = os.path.join(os.path.dirname(os.path.dirname(server.__file__)),
+                       "dashboard", "templates", "index.html")
+    t = open(tpl, encoding="utf-8").read()
+    # 必须有 esc() 定义
+    assert "function esc(s)" in t
+    # 不允许把 `it.xxx` 裸拼进 innerHTML ✗
+    import re
+    bare = re.findall(r"\+ *it\.\w+ *\+", t)
+    assert not bare, "仍有未转义的服务端字符串：%s" % bare
+    # 关键字段必须走 esc()
+    for f in ("symbol", "error"):
+        assert "esc(it.%s)" % f in t
+    # `<script>` 标签必须平衡（我 2026-10-21 曾把页面改成 2/3 ✗）
+    assert t.count("<script") == t.count("</script>")

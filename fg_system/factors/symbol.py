@@ -80,6 +80,12 @@ def symbol_fg_index(symbol, window=None, prices=None, crypto_close=None):
     out = (_SYMBOL_WEIGHTS["mom60"] * pct_score(mom60, window)
            + _SYMBOL_WEIGHTS["mom20"] * pct_score(mom20, window)
            + _SYMBOL_WEIGHTS["vol20"] * pct_score(vol20, window, reverse=True))
+    # 🔴 **反向标的必须翻转** ✗（2026-10-21 修 P0-4c ✓）：
+    # `SQQQ` = 3x 做空 QQQ ✓ ⇒ 底层的「贪婪」意味着 SQQQ **自身在跌** ✗
+    # ⇒ 不翻转就会把「底层贪婪」当成「SQQQ 贪婪」✗ —— **方向完全相反** ✗。
+    # 放在这里 ⇒ 看板 / CLI / API **所有调用方一次生效** ✓。
+    if symbol in getattr(config, "SIGNAL_INVERSE", ()):
+        out = 100.0 - out
     if out.dropna().empty:      # 窗口不足 → 全 NaN → 交由调用方回退市场
         return None
     return out

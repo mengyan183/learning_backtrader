@@ -94,3 +94,30 @@ def test_koru_is_registered():
     """`KORU` 必须已登记（Direxion 3x 韩国 ✓，底层 `EWY` ✓）。"""
     r = q.query("KORU", prices=None)
     assert r["underlying"] == "EWY"
+
+# ------------------------------------- 反向标的（2026-10-21 修 P0-4c ✓）
+def test_inverse_symbol_is_flipped(prices, market):
+    """🔴 **反向标的必须翻转** ✗：`SQQQ` = 3x 做空 QQQ ✓。
+
+    同一底层（QQQ ✓）下：`TQQQ` 与 `SQQQ` 的分数应**互为镜像** ✓
+    （`TQQQ + SQQQ == 100` ✓）。若不翻转 ⇒ 两者**相同** ✗ —— 方向全反 ✗。
+    """
+    from fg_system.factors import symbol as _sym
+    if "TQQQ" not in set(prices["symbol"]) or "SQQQ" not in set(prices["symbol"]):
+        pytest.skip("fixture 未含 TQQQ/SQQQ（精简数据 ✓）")
+    tq = _sym.symbol_fg_index("TQQQ", prices=prices)
+    sq = _sym.symbol_fg_index("SQQQ", prices=prices)
+    assert tq is not None and sq is not None
+    a, b = tq.dropna(), sq.dropna()
+    if a.empty or b.empty:
+        pytest.skip("测试数据不足")
+    # 逐日镜像（容差 1e-6）
+    joined = a.rename("t").to_frame().join(b.rename("s"), how="inner").dropna()
+    assert not joined.empty
+    assert ((joined["t"] + joined["s"]) - 100.0).abs().max() < 1e-6
+
+
+def test_inverse_config_lists_sqqq():
+    """`SIGNAL_INVERSE` 必须包含 `SQQQ` ✓（配置与逻辑分离 ✓，加新标的只改配置 ✓）。"""
+    from fg_system import config
+    assert "SQQQ" in config.SIGNAL_INVERSE
