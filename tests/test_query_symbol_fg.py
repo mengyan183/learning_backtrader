@@ -81,3 +81,16 @@ def test_cli_json_output(prices, market, tmp_path, monkeypatch, capsys):
 def test_cli_returns_one_when_any_symbol_unresolved(prices, market):
     """有标的分不出 ⇒ 退出码 1 ✓（便于脚本判断 ✗）。"""
     assert q.main(["NVDA"]) == 1
+
+def test_unregistered_suggests_close_match(prices, market):
+    """未登记时给**模糊建议** ✗ —— 2026-10-21 实测：用户输入 `KOORU`、本意 `KORU` ✓。"""
+    r = q.query("KOORU", prices=prices)
+    assert r["value"] is None
+    assert "是否想查" in (r["error"] or "")
+    assert "KORU" in r["error"]
+
+
+def test_koru_is_registered():
+    """`KORU` 必须已登记（Direxion 3x 韩国 ✓，底层 `EWY` ✓）。"""
+    r = q.query("KORU", prices=None)
+    assert r["underlying"] == "EWY"

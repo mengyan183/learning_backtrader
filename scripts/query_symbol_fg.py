@@ -85,8 +85,15 @@ def query(symbol, prices=None):
         out["rows"] = int(len(close))
 
     if und is None:
+        # 🔴 未登记时给**模糊建议** ✗ —— 用户常把代码打错（2026-10-21 实测：
+        # 输入 `KOORU` 而本意是 `KORU` ✓）⇒ 直接说「是否想查 XXX」✓ 比只报错有用 ✓
+        import difflib
+        known = sorted(set(config.SIGNAL_UNDERLYING_MAP)
+                       | set(config.CRYPTO_UNDERLYING))
+        near = difflib.get_close_matches(symbol, known, n=2, cutoff=0.6)
+        hint = ("；是否想查 %s ？" % " / ".join(near)) if near else ""
         out["error"] = ("未在 config.SIGNAL_UNDERLYING_MAP / CRYPTO_UNDERLYING 登记 ✗ "
-                        "⇒ 无法确定无杠杆底层（需先登记 ✓）")
+                        "⇒ 无法确定无杠杆底层（需先登记 ✓）" + hint)
     series = sym_mod.symbol_fg_index(symbol, prices=prices)
     if series is not None and not series.dropna().empty:
         s = series.dropna()

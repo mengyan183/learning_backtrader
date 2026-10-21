@@ -461,7 +461,10 @@ SHOUTU_SYMBOLS = ["CONL", "YINN", "GDXU", "AXTX", "CRCG",
 SIGNAL_UNDERLYING_MAP = {
     "TQQQ": "QQQ", "SOXL": "SOXX", "UPRO": "SPY",   # 与生产 UNDERLYING_MAP 逐字一致
     "YINN": "FXI",                                  # 3× 富时中国 50
-    "AXTX": "AXTI", "CRCG": "CRCL",                 # 第 12.20 条已记录
+    "AXTX": "AXTI",
+    "AXTX": "AXTI",
+    # KORU = Direxion Daily MSCI South Korea Bull 3X ✓，底层取 **EWY**（iShares MSCI South Korea ✓，同跟踪 MSCI Korea 25/50 ✓）
+    "KORU": "EWY", "CRCG": "CRCL",                 # 第 12.20 条已记录
     "CONL": "COIN",                                 # 同 CRYPTO_UNDERLYING["CONL"]
     "GDXU": "GDXU_UND",                             # **合成列**，见下
     # C-9 观察池扩池-策略侧（2026-10-08，白名单未动）：
