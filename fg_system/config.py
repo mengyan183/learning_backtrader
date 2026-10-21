@@ -65,7 +65,10 @@ RESEARCH_SYMBOLS = ["GLD", "GDX", "GDXJ", "GDXU", "SLV",
 # 先例：CRCL 同样并存于 OBSERVE_SYMBOLS 与 FETCH_SYMBOLS（见上方 #73 行）。
 # 注：COIN 另有一份落在 `crypto_prices.csv`（由 update_crypto_prices 每日抓）；
 #     此处并入 prices.csv，是为了让 `scripts/query_symbol_fg.py` 保持**单一数据源**。
-UNDERLYING_FETCH_SYMBOLS = ["COIN", "NVDA", "TSLA", "XLF"]
+# MT-52（2026-10-21）：KORU（Direxion 韩国 3×）底层 EWY（iShares MSCI South Korea），
+#     与 COIN/NVDA/TSLA/XLF 同类——已登记进 SIGNAL_UNDERLYING_MAP 但不在抓取清单 ⇒
+#     每日增量从不更新 ⇒ KORU 个股分永久陈旧。补入；纯数据侧，不动判据/阈值。
+UNDERLYING_FETCH_SYMBOLS = ["COIN", "NVDA", "TSLA", "XLF", "EWY"]
 FETCH_SYMBOLS = ["TQQQ", "SOXL", "UPRO", "QQQ", "SOXX", "SMH", "SPY", "RSP",
                  "IWM"] + RESEARCH_SYMBOLS + UNDERLYING_FETCH_SYMBOLS
 
