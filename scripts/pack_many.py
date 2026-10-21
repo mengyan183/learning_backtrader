@@ -29,6 +29,7 @@
     · diff 字节数 ≥ 整文件 tar 字节数（不值得）
 """
 import argparse
+import glob
 import difflib
 import io
 import os
@@ -309,6 +310,15 @@ def main():
                  "（项目纪律：`Data/**` 与凭据一律不外发 ✓）")
 
     os.makedirs(OUT_DIR, exist_ok=True)
+
+    # 🔴 **清理同名包的旧分片** ✗（2026-10-21 修团队审查 P1 ✓）：
+    # 原来只**写**不清理 ✗ ⇒ 包从 12 片缩到 8 片时 ✓，旧 `t009..t012` **残留** ✗
+    # ⇒ `send_pkg` 会把它们**一起发出去** ✗ ⇒ 对端收到**上一版内容** ✗（静默错版 ✗）。
+    _old = glob.glob(os.path.join(OUT_DIR, "%s-t*.txt" % pkg))
+    for _f in _old:
+        os.remove(_f)
+    if _old:
+        print("[pack] 清理同名包旧分片：%d 个 ✓" % len(_old))
 
     mode = "full"
     fallback_reasons = []

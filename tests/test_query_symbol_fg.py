@@ -121,3 +121,38 @@ def test_inverse_config_lists_sqqq():
     """`SIGNAL_INVERSE` 必须包含 `SQQQ` ✓（配置与逻辑分离 ✓，加新标的只改配置 ✓）。"""
     from fg_system import config
     assert "SQQQ" in config.SIGNAL_INVERSE
+
+# ------------------------------- GDXU 合成（2026-10-21 修团队审查 P1 ✓）
+def test_gdxu_blend_uses_inner_join():
+    """🔴 合成**必须 inner join** ✗ —— 缺一条腿的日期不得变成 NaN ✗。
+
+    原实现 `out + sub`（Series 相加 ✗）⇒ 索引取**并集** ✗ ⇒ 缺腿那天 NaN ✗
+    ⇒ `pct_change`/`rolling` 传播 ✗ ⇒ `dropna` **静默丢样本** ✗。
+    """
+    import pandas as pd
+    from fg_system.factors import symbol as _sym
+
+    dates = pd.bdate_range("2024-01-01", periods=80)
+    rows = []
+    for d in dates:
+        rows.append({"symbol": "GDX", "date": d, "close": 10.0})
+        rows.append({"symbol": "GDXJ", "date": d, "close": 20.0})
+    px = pd.DataFrame(rows)
+    # 删掉 GDXJ 的最后 3 天 ⇒ 那 3 天只有一条腿
+    drop = set(sorted(px["date"].unique())[-3:])
+    px = px[~((px["symbol"] == "GDXJ") & px["date"].isin(drop))]
+
+    out = _sym.underlying_close("GDXU", prices=px)
+    assert out is not None
+    assert not out.isna().any(), "合成结果不得含 NaN ✗"
+    assert len(out) == len(dates) - 3, "缺腿的日期应被**剔除**而非变 NaN ✗"
+
+
+def test_gdxu_blend_returns_none_when_leg_missing():
+    """缺**整条**腿 ⇒ 必须 `None` ✗（不给半边合成 ✗）。"""
+    import pandas as pd
+    from fg_system.factors import symbol as _sym
+
+    dates = pd.bdate_range("2024-01-01", periods=80)
+    px = pd.DataFrame([{"symbol": "GDX", "date": d, "close": 10.0} for d in dates])
+    assert _sym.underlying_close("GDXU", prices=px) is None

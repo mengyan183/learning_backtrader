@@ -55,12 +55,31 @@ def underlying_close(symbol, prices=None, crypto_close=None):
     if prices is None:
         prices = _read_prices()
     if und == config.GDXU_UNDERLYING_COLUMN:
-        out = None
+        # 🔴 **合成必须 inner join** ✗（2026-10-21 修团队审查 P1 ✓）：
+        # 原实现 `out + sub` 是 **Series 相加** ✗ ⇒ 索引取**并集** ✗
+        # ⇒ 只要某天只有一条腿有数据，那天就是 **NaN** ✗
+        # ⇒ 后续 `pct_change` / `rolling` 把 NaN 往后传 ✗
+        # ⇒ `dropna()` **静默丢样本** ✗（用户完全看不出少了多少天 ✗）。
+        legs = {}
         for s, w in config.GDXU_UNDERLYING_BLEND.items():
             sub = prices[prices["symbol"] == s].set_index("date")["close"]
-            sub = sub.astype(float) * float(w)
-            out = sub if out is None else out + sub
-        return out.sort_index() if out is not None else None
+            if sub.empty:
+                # 缺任一条腿 ⇒ 合成**无意义** ✗ ⇒ 明确返回 None ✗（不给半边 ✗）
+                return None
+            legs[s] = sub.astype(float) * float(w)
+        if not legs:
+            return None
+        frame = pd.DataFrame(legs)
+        total = len(frame)
+        frame = frame.dropna(how="any")     # 只留**两条腿都有**的日期 ✓
+        if frame.empty:
+            return None
+        dropped = total - len(frame)
+        if dropped:
+            # 🔴 **不能静默** ✗ —— 少了多少天必须让用户看见 ✓
+            print("[warn] GDXU 合成：%d/%d 天因腿缺失被剔除（腿 = %s）"
+                  % (dropped, total, " / ".join(sorted(legs))))
+        return frame.sum(axis=1).sort_index()
     sub = prices[prices["symbol"] == und].set_index("date")["close"]
     return sub.astype(float).sort_index() if not sub.empty else None
 
