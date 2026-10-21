@@ -60,7 +60,12 @@ PATCH_PREFIX = "__patch__/"
 #: 动机（2026-10-20 团队审查 P0）：`pack_many x Data/accounts.csv` 或
 #: `pack_many x C:/Users/me/.okx_credentials.json` 原来**都会被打包发往飞书** ✗ ——
 #: `_safe_extract` 只在接收端拒绝绝对路径 ✓，拦不住**已发出**的数据 ✗。
-DENY_DIR_SEGMENTS = ("Data", ".git", ".venv", "__pycache__", "logs", "node_modules")
+#: 🔴 只在**仓库根目录**出现才拒的目录名（2026-10-21 修 ✗）——
+#: 不能放进 `DENY_DIR_SEGMENTS` ✗：那样会误伤 `fg_system/data/`（**代码包内的同名子目录** ✓）。
+DENY_ROOT_DIRS = ("Data", "data", "logs")
+
+#: 任何位置都拒的目录段 ✓
+DENY_DIR_SEGMENTS = (".git", ".venv", "__pycache__", "node_modules")
 
 #: 🔴 文件名里出现这些片段 ⇒ 视为凭据/密钥 ✗
 DENY_FILE_FRAGMENTS = ("credential", "credentials", ".pem", ".p12", "id_rsa",
@@ -90,6 +95,10 @@ def _export_errors(srcs):
         # （2026-10-20 实测：原实现漏掉小写变体 ✓）
         deny_lower = {d.lower() for d in DENY_DIR_SEGMENTS}
         bad_dir = [p for p in parts[:-1] if p.lower() in deny_lower]
+        # 🔴 `Data` / `data` / `logs` 只在**根目录**才拒 ✗（否则误伤 `fg_system/data/` ✓）
+        if not bad_dir and len(parts) > 1 and parts[0].lower() in {
+                d.lower() for d in DENY_ROOT_DIRS}:
+            bad_dir = [parts[0]]
         if bad_dir:
             errors.append("%s：命中**拒绝目录** `%s` ✗（`Data/**`、`.git`、`.venv` 一律不外发）"
                           % (rel, bad_dir[0]))

@@ -1,0 +1,51 @@
+symbol,name,region,note
+QQQ,Invesco QQQ Trust,US,纳指100
+SPY,SPDR S&P 500 ETF,US,标普500
+IWM,iShares Russell 2000,US,小盘
+DIA,SPDR Dow Jones,US,道指
+XLF,Financial Select Sector,US,金融
+XLE,Energy Select Sector,US,能源
+XLK,Technology Select Sector,US,科技
+XLV,Health Care Select Sector,US,医疗
+XLI,Industrial Select Sector,US,工业
+XLP,Consumer Staples Select,US,必需消费
+XLU,Utilities Select Sector,US,公用事业
+XLB,Materials Select Sector,US,材料
+SMH,VanEck Semiconductor,US,半导体
+SOXX,iShares Semiconductor,US,半导体
+GDX,VanEck Gold Miners,US,金矿
+GDXJ,VanEck Junior Gold Miners,US,小市值金矿
+SLV,iShares Silver Trust,US,白银
+GLD,SPDR Gold Shares,US,黄金
+TLT,iShares 20+ Year Treasury,US,长债
+USO,United States Oil Fund,US,原油
+UNG,United States Natural Gas,US,天然气
+FXI,iShares China Large-Cap,CN,中国大盘
+KWEB,KraneShares CSI China Internet,CN,中国互联网
+MCHI,iShares MSCI China,CN,中国全市场
+ASHR,Xtrackers Harvest CSI 300,CN,沪深300
+CQQQ,Invesco China Technology,CN,中国科技
+EWY,iShares MSCI South Korea,KR,韩国
+EWJ,iShares MSCI Japan,JP,日本
+EWT,iShares MSCI Taiwan,TW,台湾
+EWH,iShares MSCI Hong Kong,HK,香港
+INDA,iShares MSCI India,IN,印度
+EWZ,iShares MSCI Brazil,BR,巴西
+EWW,iShares MSCI Mexico,MX,墨西哥
+EWG,iShares MSCI Germany,DE,德国
+EWU,iShares MSCI United Kingdom,UK,英国
+EWQ,iShares MSCI France,FR,法国
+EWL,iShares MSCI Switzerland,CH,瑞士
+EWC,iShares MSCI Canada,CA,加拿大
+EWA,iShares MSCI Australia,AU,澳大利亚
+EEM,iShares MSCI Emerging Markets,EM,新兴市场
+EFA,iShares MSCI EAFE,DM,发达市场
+VWO,Vanguard FTSE Emerging Markets,EM,新兴市场
+VGK,Vanguard FTSE Europe,EU,欧洲
+ILF,iShares Latin America 40,LATAM,拉美
+EPU,iShares MSCI Peru,PE,秘鲁
+TUR,iShares MSCI Turkey,TR,土耳其
+EZA,iShares MSCI South Africa,ZA,南非
+THD,iShares MSCI Thailand,TH,泰国
+EWS,iShares MSCI Singapore,SG,新加坡
+EWM,iShares MSCI Malaysia,MY,马来西亚

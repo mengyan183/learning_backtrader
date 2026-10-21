@@ -61,7 +61,7 @@ def _market_fg():
         return None, None
 
 
-def query(symbol, prices=None):
+def query(symbol, prices=None, auto=False):
     """单个标的的结果字典 ✓（`source` 明确标 个股 / 大盘回退 ✗）。"""
     out = {"symbol": symbol, "underlying": None, "rows": 0,
            "value": None, "zone": None, "date": None, "stale": False,
@@ -84,6 +84,11 @@ def query(symbol, prices=None):
     if close is not None:
         out["rows"] = int(len(close))
 
+    if und is None and auto:
+        und, meta = auto_resolve(symbol, prices=prices)
+        if und:
+            out["underlying"] = und
+            out["auto"] = meta
     if und is None:
         # 🔴 未登记时给**模糊建议** ✗ —— 用户常把代码打错（2026-10-21 实测：
         # 输入 `KOORU` 而本意是 `KORU` ✓）⇒ 直接说「是否想查 XXX」✓ 比只报错有用 ✓
@@ -134,6 +139,106 @@ def query(symbol, prices=None):
     return out
 
 
+
+# ---------------------------------------------------------------- 自动推断（方案 B）
+#: 自动推断结果的**缓存**（`Data/` 下 ✓ 不入库 ✓，可人工删掉重推 ✓）
+AUTO_CACHE = os.path.join(config.DATA_DIR, "underlying_map_auto.csv")
+
+#: 回归需要的最少重叠交易日 ✓（与 `underlying_infer.MIN_OVERLAP` 一致 ✓）
+MIN_OVERLAP = 60
+
+
+def _close_of(symbol, prices=None):
+    """从 `prices`（DataFrame）取该标的收盘价 Series ✓；没有 ⇒ None ✗。"""
+    if prices is None or prices.empty:
+        return None
+    d = prices[prices["symbol"] == symbol]
+    if d.empty:
+        return None
+    s = d.set_index(pd.to_datetime(d["date"]))["close"].astype(float).sort_index()
+    return s[~s.index.duplicated(keep="last")]
+
+
+def _fetch_close(symbol, limit=900):
+    """**现场抓**单标的日线 ✓（Nasdaq ✓）。失败 ⇒ None ✗（不抛 ✓，由调用方决定 ✓）。"""
+    try:
+        from fg_system.data import fetch as _f
+        df = _f.fetch_symbol(symbol, limit=limit)
+    except Exception as exc:                 # noqa: BLE001 —— 抓数失败不该让查询崩 ✗
+        print("  [warn] 抓取 %s 失败：%s" % (symbol, exc))
+        return None
+    if df is None or df.empty:
+        return None
+    s = df.set_index(pd.to_datetime(df["date"]))["close"].astype(float).sort_index()
+    return s[~s.index.duplicated(keep="last")]
+
+
+def _load_auto_cache():
+    """读自动推断缓存 ⇒ `{symbol: underlying}` ✓。"""
+    if not os.path.exists(AUTO_CACHE):
+        return {}
+    try:
+        d = pd.read_csv(AUTO_CACHE, dtype={"symbol": str, "underlying": str})
+    except (OSError, ValueError):
+        return {}
+    return {str(r["symbol"]).strip(): str(r["underlying"]).strip()
+            for _, r in d.iterrows()}
+
+
+def _save_auto_cache(symbol, hit):
+    """写缓存 ✓（**失败不影响查询** ✓）。"""
+    try:
+        row = pd.DataFrame([{"symbol": symbol, "underlying": hit["symbol"],
+                             "beta": hit["beta"], "r2": hit["r2"],
+                             "n": hit["n"],
+                             "direction": hit["direction"],
+                             "leverage": hit["leverage"]}])
+        old = pd.DataFrame()
+        if os.path.exists(AUTO_CACHE):
+            old = pd.read_csv(AUTO_CACHE, dtype={"symbol": str})
+            old = old[old["symbol"] != symbol]
+        pd.concat([old, row], ignore_index=True).to_csv(AUTO_CACHE, index=False)
+    except OSError as exc:
+        print("  [warn] 推断缓存写入失败：%s" % exc)
+
+
+def auto_resolve(symbol, prices=None, limit=900):
+    """**自动推断底层** ✓（方案 B ✓）。
+
+    流程：缓存 ⇒ 目标日线（本地优先 ✓，缺则现场抓 ✓）⇒ 候选池（**只读本地** ✗
+    —— 现场抓 48 个太慢 ✓，靠 `scripts/fetch_candidates.py` 预热 ✓）⇒ β 回归 ✓。
+
+    :returns: `(underlying | None, meta)` ✓
+    """
+    from fg_system.factors import underlying_infer as ui
+
+    cached = _load_auto_cache().get(symbol)
+    if cached:
+        return cached, {"from": "cache"}
+
+    tgt = _close_of(symbol, prices)
+    if tgt is None or len(tgt) < MIN_OVERLAP:
+        tgt = _fetch_close(symbol, limit)
+    if tgt is None or len(tgt) < MIN_OVERLAP:
+        return None, {"error": "目标标的日线不足 %d 日 ✗（无法回归 ✓）" % MIN_OVERLAP}
+
+    pool = {}
+    for cand in ui.load_candidates():
+        c = _close_of(cand, prices)
+        if c is not None and len(c) >= MIN_OVERLAP:
+            pool[cand] = c
+    if not pool:
+        return None, {"error": "候选池无本地数据 ✗ ⇒ 请先跑 "
+                               "`scripts/fetch_candidates.py` ✓"}
+
+    hit = ui.pick(tgt, pool)
+    if not hit:
+        return None, {"error": "候选池（%d 个）里没有匹配的底层 ✗（R²<0.90 ✓）"
+                               % len(pool)}
+    _save_auto_cache(symbol, hit)
+    return hit["symbol"], {"from": "infer", **hit}
+
+
 def _print(results):
     print("%-10s %-10s %-7s %-7s %-9s %-11s %s"
           % ("标的", "底层", "行数", "分数", "档位", "来源", "数据日期"))
@@ -157,6 +262,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="查询指定标的的系统贪恐系数（0-100）")
     ap.add_argument("symbols", nargs="+", help="标的代码，可多个（如 NVDA GDXU BTC-USDT）")
     ap.add_argument("--json", action="store_true", help="以 JSON 输出（便于程序消费）")
+    ap.add_argument("--auto", action="store_true",
+                    help="未登记/无底层数据时**自动推断**底层 ✓"
+                         "（β 回归 ✓；需先跑 scripts/fetch_candidates.py 预热候选池 ✓）")
     args = ap.parse_args(argv)
 
     prices = None
@@ -166,7 +274,8 @@ def main(argv=None):
     else:
         print("⚠️ 缺 %s ⇒ 个股分全部无法计算 ✗（只能回退大盘）" % path)
 
-    results = [query(s.upper(), prices=prices) for s in args.symbols]
+    results = [query(s.upper(), prices=prices, auto=args.auto)
+               for s in args.symbols]
     if args.json:
         print(json.dumps(results, ensure_ascii=False, indent=2))
     else:
