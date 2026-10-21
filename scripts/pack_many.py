@@ -298,8 +298,16 @@ def main():
 
     # 校验文件存在（两种模式都要，保持原有报错行为）
     for rel in srcs:
-        if not os.path.isfile(os.path.join(REPO, rel.replace("/", os.sep))):
+        full = os.path.join(REPO, rel.replace("/", os.sep))
+        if not os.path.isfile(full):
             sys.exit("❌ 找不到：%s" % rel)
+        # 🔴 **0 字节文件必须拒绝** ✗（2026-10-21 实测）：我的脚本 bug 曾把
+        # `docs/windows-tasks.md` 写成 **0 字节** ✗，`pack_many` 只报「整文件回落」
+        # 并生成了 **164 字节的空包** ✗ —— 若发出去，对端会把整张表**清空** ✗。
+        if os.path.getsize(full) == 0:
+            sys.exit("❌ %s **文件为 0 字节** ✗ ⇒ 拒绝打包"
+                     "（很可能是脚本把它清空了，先 `git show origin/main:%s` 恢复）"
+                     % (rel, rel))
 
     # 🔴 **外发安全闸门**（2026-10-20 团队审查 P0）：仓库边界 + 数据/凭据拒绝表 ✗
     export_errors = _export_errors(srcs)

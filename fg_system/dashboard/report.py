@@ -145,8 +145,14 @@ def _holdings_block(features, shoutu=None, prices=None):
                     _last = pd.Timestamp(_s.index[-1])
                     if _fresh is None or (_fresh - _last).days <= STALE_MAX_DAYS:
                         _sv = float(_s.iloc[-1])
-            except Exception:
+            except Exception as _exc:      # noqa: BLE001
+                # 🔴 **不得伪装成「底层数据不足」** ✗（2026-10-21 修）：
+                # 原来 `except Exception: _sv = None` ✗ ⇒ 程序错误（KeyError/TypeError…）
+                # 与「数据不够」**走同一条路** ✗ ⇒ 页面显示「（大盘）」✓，
+                # 用户以为是数据问题 ✓，实际是**代码崩了** ✗。
                 _sv = None
+                _sv_err = "%s: %s" % (type(_exc).__name__, _exc)
+                print("[warn] 个股分计算异常（非数据不足）：%s" % _sv_err)
         if _sv is not None:
             _zz = int(np.clip(np.searchsorted([20, 40, 60, 80], _sv,
                                               side="right"), 0, 4))
