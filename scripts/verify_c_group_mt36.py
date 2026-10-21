@@ -196,6 +196,10 @@ def h060(feats):
 
 
 # ============================================================ H-061 / H-062
+# MT-50：观察窗截止日硬编码（与 observation_window 文案一致）
+H061_WINDOW_END = "2026-10-20"
+
+
 def h061_h062(feats, latest_date):
     zone_by_date = {r["date"]: r["zone"] for r in feats}
     core_by_date = {r["date"]: r["core_position"] for r in feats}
@@ -215,12 +219,35 @@ def h061_h062(feats, latest_date):
                            and (fnum(r["core_position"]) or 9) <= 0.225), None)
     latest_core = core_by_date.get(latest_date)
 
+    # MT-50：边界判定——latest_date >= 截止日 ⇒ 观察窗已走完（不是 >）。
+    # 旧版硬编码「观察窗未走完」文案，导致截止日当天（latest == deadline）
+    # 也误报未走完。这里只改 reason_not_judged 文案，不改判据、不下结论。
+    h061_window_closed = (latest_date is not None
+                           and latest_date >= H061_WINDOW_END)
+    if h061_window_closed:
+        h061_reason = (f"观察窗已走完（latest={latest_date} ≥ 截止={H061_WINDOW_END}）"
+                       f"，且不成立条件未触发；只报数不下结论。")
+    else:
+        h061_reason = (f"features.csv 最新仅到 {latest_date}（< 截止 {H061_WINDOW_END}）"
+                       f"⇒ 观察窗未走完，且不成立条件未触发。")
+
+    h062_deadline_reached = (latest_date is not None
+                             and latest_date >= H062_DEADLINE)
+    if h062_deadline_reached:
+        h062_reason = (f"截止日已到（latest={latest_date} ≥ deadline={H062_DEADLINE}）"
+                       f"⇒ 可判；只报数不下结论。")
+    else:
+        h062_reason = (f"截止日 {H062_DEADLINE} 未到（features.csv 最新 {latest_date} < deadline）"
+                       f"⇒ 不可判。")
+
     return {
         "H-061": {
             "verdict": "observation_pending",
             "numbers": {
                 "observation_window": "2026-10-15~2026-10-20（判据原文）",
                 "data_latest_date": latest_date,
+                "window_end": H061_WINDOW_END,
+                "window_closed": h061_window_closed,
                 "observed_days": brief([r["date"] for r in obs]),
                 "zone_1_0_days": brief(z1_obs),
                 "zone_1_0_consecutive_days": len(z1_obs),
@@ -229,8 +256,7 @@ def h061_h062(feats, latest_date):
                 "falsify_condition": "10-16 或 10-17 收盘后 zone ≥2.0",
                 "falsify_triggered": bool(fail_dates),
                 "falsify_dates": brief(fail_dates) if fail_dates else "无",
-                "reason_not_judged": f"features.csv 最新仅到 {latest_date}（10-17/10-18 为周末无交易日数据）"
-                                     "⇒ 观察窗未走完，且不成立条件未触发。",
+                "reason_not_judged": h061_reason,
             },
             "why": "只报观察窗内 zone=1.0 天数与不成立条件是否触发，不下采信结论。",
         },
@@ -245,8 +271,8 @@ def h061_h062(feats, latest_date):
                 "latest_core_position": latest_core,
                 "still_above_0.225": bool(latest_core and fnum(latest_core) > 0.225),
                 "deadline": H062_DEADLINE,
-                "reason_not_judged": f"截止日 {H062_DEADLINE} 未到（features.csv 最新 {latest_date}）"
-                                     "⇒ 不可判。",
+                "deadline_reached": h062_deadline_reached,
+                "reason_not_judged": h062_reason,
             },
             "why": "只报是否已回落（首次 ≤0.225 的日期）与截止日状态，不下采信结论。",
         },
