@@ -349,14 +349,26 @@ def sync_okx(accounts, positions, date):
         return accounts, positions
     for pos in poss.get("data") or []:
         inst = pos.get("instId", "")
-        qty = _f(pos.get("pos", 0))
-        if qty == 0:
+        inst_type = pos.get("instType", "") or ""
+        qty_raw = _f(pos.get("pos", 0))
+        if qty_raw == 0:
             continue
         cost = _f(pos.get("avgPx", 0))
         price = _f(pos.get("markPx", 0))
+        # MT-53：SWAP 的 pos 单位是「张」，ctVal 是每张对应币数（BTC-USDT-SWAP=0.01）
+        # ⇒ qty 列必须写币数（= 张数 × ctVal），否则 notional 差 ctVal 倍。
+        ct_val = _f(pos.get("ctVal", 0))
+        contracts_note = ""
+        if inst_type.upper() == "SWAP" and ct_val > 0:
+            qty = qty_raw * ct_val
+            contracts_note = "（%g张×ctVal=%g=%g币）" % (qty_raw, ct_val, qty)
+        else:
+            qty = qty_raw
         notional = _f(pos.get("notionalUsd", 0)) or round(qty * price, 2)
-        name = {"BTC-USDT": "BTC现货杠杆(借USDT买入)", "BTC-USDT-SWAP": "BTC永续"}.get(inst, inst)
-        positions.loc[len(positions)] = [date, "crypto", inst, name, qty, round(price, 4),
+        name = {"BTC-USDT": "BTC现货杠杆(借USDT买入)",
+                "BTC-USDT-SWAP": "BTC永续"}.get(inst, inst) + contracts_note
+        positions.loc[len(positions)] = [date, "crypto", inst, name, round(qty, 8),
+                                         round(price, 4),
                                          round(cost, 4), round(notional, 2), round(notional, 2),
                                          "", "system", "USDT"]
     return accounts, positions
