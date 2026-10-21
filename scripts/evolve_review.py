@@ -219,10 +219,96 @@ def next_hyp_id():
     return f"H-{max((int(i) for i in ids), default=0) + 1:03d}"
 
 
+# ── MT-51：登记前归一化查重 ──────────────────────────────────────────
+# 历史问题：H-079~H-083 五条全是重复登记（与 H-070/H-061/H-074/H-063 同义），
+# 旧查重只做 a[:50] 子串匹配，措辞不同即漏过。这里改成 token Jaccard。
+
+_NORMALIZE_STRIP = re.compile(
+    r"[，。；：、（）()【】\[\]「」『』\"'`~!@#$%^&*_\-+=<>?/\\|0-9.\s]+"
+)
+# 无意义停用词（中英文），归一化后剔除
+_STOPWORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+    "and", "or", "of", "to", "in", "on", "at", "for", "with", "by", "from",
+    "when", "if", "then", "than", "that", "this", "these", "those", "it",
+    "its", "as", "we", "you", "they", "he", "she", "will", "would", "can",
+    "could", "should", "may", "might", "do", "does", "did", "have", "has",
+    "had", "not", "no", "but", "so", "such", "also", "into", "over", "under",
+    "该", "的", "了", "在", "是", "和", "与", "及", "或", "若", "则", "不", "为",
+    "于", "后", "前", "中", "内", "外", "上", "下", "时", "后", "前", "并", "且",
+    "也", "都", "就", "只", "被", "把", "让", "向", "从", "到", "将", "此", "其",
+    "呈", "为", "即", "均", "全", "个", "项", "条", "次", "日", "天", "年", "月",
+}
+# 列名/「第 N 列」等引用归一化时直接删掉（不同措辞指同一列）
+_COL_REF_RE = re.compile(
+    r"features\.csv|positions?\.csv|accounts?\.csv|raw/[a-z_]+\.csv|"
+    r"第\s*[0-9、,，\s]+\s*列|"
+    r"`?[a-z_]{3,}`?",
+    re.IGNORECASE,
+)
+
+
+def _norm_tokens(*texts):
+    """把判据文本归一化为 token set：去列名引用/数字/标点/停用词。
+
+    英文用完整词（≥3 字母），中文用单字集合（避免 2-gram 太碎导致 overlap 失真）。
+    """
+    blob = " ".join(str(t) for t in texts if t)
+    # 先删列名引用
+    blob = _COL_REF_RE.sub(" ", blob)
+    tokens = set()
+    for t in re.findall(r"[a-z][a-z_]{2,}", blob.lower()):
+        if t not in _STOPWORDS and len(t) >= 3:
+            tokens.add(t)
+    # 中文单字（剔除停用词单字）
+    for ch in re.findall(r"[一-鿿]", blob):
+        if ch not in _STOPWORDS:
+            tokens.add(ch)
+    return tokens
+
+
+def _load_existing_hypotheses():
+    """读 hypotheses.md 所有已有假说的 (id, assumption_tokens)。含 falsified/archived。"""
+    if not os.path.exists(HYP):
+        return []
+    out = []
+    for line in open(HYP, encoding="utf-8"):
+        m = re.match(r"\|\s*(H-\d+)\s*\|[^|]*\|([^|]*)\|([^|]*)\|([^|]*)\|", line)
+        if not m:
+            continue
+        hid, a, t, f = m.group(1), m.group(2), m.group(3), m.group(4)
+        out.append((hid, _norm_tokens(a, t, f)))
+    return out
+
+
+def _is_duplicate(cand_tokens, existing):
+    """overlap coefficient ≥ 0.25 判重。
+
+    中文 2-gram 较碎，用 Jaccard 会低估相似度；改用 overlap = inter/min(|a|,|b|)
+    更适合「新假说引用了已有假说核心关键词」的场景。
+    返回 (hid, sim) 或 None。
+    """
+    if not cand_tokens:
+        return None
+    best = None
+    for hid, ex_tokens in existing:
+        if not ex_tokens:
+            continue
+        inter = len(cand_tokens & ex_tokens)
+        denom = min(len(cand_tokens), len(ex_tokens))
+        if denom == 0:
+            continue
+        sim = inter / denom
+        if sim >= 0.25 and (best is None or sim > best[1]):
+            best = (hid, sim)
+    return best
+
+
 def register_hypotheses(cands, via):
     today = date.today().isoformat()
     added = []
     existing = open(HYP).read() if os.path.exists(HYP) else ""
+    existing_hyps = _load_existing_hypotheses()  # MT-51：归一化查重
     for c in cands or []:
         if not isinstance(c, dict):
             continue
@@ -238,6 +324,12 @@ def register_hypotheses(cands, via):
             continue
         if a[:50] in existing:
             print(f"[evolve_review] 已登记过，跳过：{a[:40]}")
+            continue
+        # MT-51：归一化查重（措辞不同但同义 ⇒ 不登记）
+        dup = _is_duplicate(_norm_tokens(a, t, f), existing_hyps)
+        if dup:
+            hid_existing, sim = dup
+            print(f"[evolve_review] 判重跳过（与 {hid_existing} Jaccard={sim:.2f}）：{a[:40]}")
             continue
         # R1.7 列名校验质量门：脆弱/虚构列引用 → pending-revise（不登记为 open）
         reason = validate_column_refs(a, t, f)
