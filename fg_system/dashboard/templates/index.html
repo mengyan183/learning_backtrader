@@ -150,7 +150,8 @@
 <button class="tab-btn" data-tab="1">持仓</button>
 <button class="tab-btn" data-tab="2">系统</button>
 <button class="tab-btn" data-tab="3">Human 3.0</button>
-<button class="tab-btn" data-tab="4">任务</button>
+<button class="tab-btn" data-tab="4">标的查询</button>
+<button class="tab-btn" data-tab="5">任务</button>
 </nav>
 
 <script>
@@ -167,8 +168,11 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
     // MT-1021b 修复：按 data-name 匹配，不按索引——模板里可能有无对应 tab 的
     // sec-wrap（如「标的查询」），按索引会错位（点任务 tab 显示标的查询）。
     var targetName = tabs[n].textContent.trim();
+    // 🔴 「市场」tab 没有同名区块 ✗ ⇒ 按概览处理：显示**全部**区块 ✓
+    // （2026-10-21：原来按 data-name 匹配后点「市场」会**白屏** ✗）
+    var showAll = (targetName === "市场");
     for (var i = 0; i < wraps.length; i++) {
-      var on = (wraps[i].dataset.name === targetName);
+      var on = showAll || (wraps[i].dataset.name === targetName);
       wraps[i].className = "sec-wrap" + (on ? " on" : "");
     }
     for (var j = 0; j < tabs.length; j++) {
