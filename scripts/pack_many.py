@@ -122,7 +122,12 @@ def _base_text(rel, base_ref):
         return None
     if out.returncode != 0:
         return None
-    return out.stdout.decode("utf-8", "replace")
+    # 🔴 **统一为 LF**（2026-10-21 实测）✗：`git show` 返回的是**原始 CRLF** ✓，
+    # 而调用方读工作区文件用的是 `open(..., encoding="utf-8")` ✓ —— Python 的
+    # **通用换行**会把它转成 LF ✗ ⇒ 两侧换行不同 ⇒ `difflib` 认为**每一行都变了** ✗
+    # （实测 `feishu_send.py` 只加 ~60 行，diff 却是 `+368/-305` = 整文件 ✗）。
+    # ⇒ 在源头规范化 ✓，让所有 CRLF 文件都能正常增量 ✓。
+    return out.stdout.decode("utf-8", "replace").replace("\r\n", "\n")
 
 
 def _fetch_origin():

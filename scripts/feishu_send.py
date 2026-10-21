@@ -40,6 +40,61 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fg_system import config                     # noqa: E402
 
 TEXT_DIR = os.path.join(config.ROOT, "dist", "feishu", "text")
+
+
+# ---------------------------------------------------- 已发台账（WT-46 / WT-48）
+def _pkg_of(name):
+    """从分片文件名取包名：`sync_1019s-t003.txt` → `sync_1019s` ✓。"""
+    m = re.match(r"^(.+?)-t\d+\.txt$", name or "")
+    return m.group(1) if m else ""
+
+
+def _ledger_path(pkg):
+    return os.path.join(TEXT_DIR, "%s.sent" % pkg)
+
+
+def _ledger_add(name, index, total):
+    """**发送成功即落台账** ✓ —— 与 stdout 无关。
+
+    动机（2026-10-19，WT-46）：本机 hook 会在 5s 截断 stdout ✗ ⇒ 只能从日志数
+    「已发」行 ✗ ⇒ 数不到就误判「缺片」✗ ⇒ 盲补（当晚 5 次 ✗）。
+    台账落盘 ⇒ 补发前 `--sent-status` 一查即可 ✓，不再靠猜 ✗。
+    """
+    pkg = _pkg_of(name)
+    if not pkg:
+        return
+    try:
+        with open(_ledger_path(pkg), "a", encoding="utf-8") as fh:
+            fh.write("%d/%d\t%s\t%s\n"
+                     % (index, total, name,
+                        time.strftime("%Y-%m-%dT%H:%M:%S")))
+    except OSError as exc:          # 台账失败**不得**影响发送 ✓
+        print("  [warn] 台账写入失败：%s" % exc)
+
+
+def sent_status(pkg):
+    """打印某包已发/缺片（补发前必查 ✓）。返回缺片序号列表。"""
+    path = _ledger_path(pkg)
+    done = {}
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            for ln in fh:
+                parts = ln.rstrip("\n").split("\t")
+                if len(parts) >= 2 and "/" in parts[0]:
+                    idx, tot = parts[0].split("/", 1)
+                    try:
+                        done[int(idx)] = int(tot)
+                    except ValueError:
+                        continue
+    if not done:
+        print("%s：台账**无记录** ✗ ⇒ 一片都未确认发出"
+              "（不要盲目补发 ✓，先看发送日志）" % pkg)
+        return list(range(1, 1000))
+    total = max(done.values())
+    missing = [i for i in range(1, total + 1) if i not in done]
+    print("%s：已发 **%d/%d** 片；缺片 %s"
+          % (pkg, len(done), total, missing if missing else "**无** ✓"))
+    return missing
 FEISHU_URL = "https://www.feishu.cn/messenger/"
 TEXTBOX_RE = re.compile(r"(@e\d+)\s+textbox")
 BUTTON_RE = re.compile(r"(@e\d+)\s+button\s+\"([^\"]*)\"")
@@ -163,7 +218,14 @@ def main():
     ap.add_argument("--pkg", default="", metavar="PKG",
                     help="只发指定包的分片（`bootstrap-*` 引导脚本始终保留）。"
                          "例：`--pkg minimal`。默认发全部")
+    ap.add_argument("--sent-status", default="", metavar="PKG",
+                    help="只查该包的**已发台账**（已发/缺片），不碰浏览器。"
+                         "补发前先跑这个 ✓（台账 = 每片成功即落盘 ✓，不受 stdout 截断影响）")
     args = ap.parse_args()
+
+    if args.sent_status:
+        sent_status(args.sent_status)
+        return 0
 
     chunks = sorted(_chunks(), key=lambda kv: _sort_key(kv[0]))
     chunks = filter_chunks(chunks, args.pkg or None)
@@ -277,6 +339,7 @@ def main():
                     "   已发 %d 条；用 --start %d 续发。"
                     % (i, name, sent, i))
             sent += 1
+            _ledger_add(name, i, len(chunks))   # 台账先落盘 ✓ 再打印（stdout 可能被截断 ✗）
             print("  [%3d/%3d] %s  已发" % (i, len(chunks), name))
             time.sleep(args.pause)
 
