@@ -122,12 +122,10 @@ def _base_text(rel, base_ref):
         return None
     if out.returncode != 0:
         return None
-    # 🔴 **统一为 LF**（2026-10-21 实测）✗：`git show` 返回的是**原始 CRLF** ✓，
-    # 而调用方读工作区文件用的是 `open(..., encoding="utf-8")` ✓ —— Python 的
-    # **通用换行**会把它转成 LF ✗ ⇒ 两侧换行不同 ⇒ `difflib` 认为**每一行都变了** ✗
-    # （实测 `feishu_send.py` 只加 ~60 行，diff 却是 `+368/-305` = 整文件 ✗）。
-    # ⇒ 在源头规范化 ✓，让所有 CRLF 文件都能正常增量 ✓。
-    return out.stdout.decode("utf-8", "replace").replace("\r\n", "\n")
+    # ⚠️ **保留原始行尾** ✓ —— 由 `_patch_payload` 按基准行尾统一两侧 ✓。
+    # （2026-10-21 教训 ✗：这里无条件转 LF ✗ ⇒ 对 **CRLF 文件**生成的 diff
+    #  上下文是 LF ✗ ⇒ Mac 侧 `git apply` **失败** ✗。要统一就**两侧一起**统一 ✓。）
+    return out.stdout.decode("utf-8", "replace")
 
 
 def _fetch_origin():
@@ -224,8 +222,19 @@ def _patch_payload(srcs, base_ref):
             reasons.append("%s：拿不到基准（%s 不存在 / 非 git 仓库 / 无代理）"
                            % (rel, base_ref))
             continue
+        # 🔴 **按基准文件的行尾统一两侧** ✓（2026-10-21）：
+        # `cur` 是 `open(..., encoding="utf-8")` 读的 ⇒ Python 通用换行 ⇒ **恒为 LF** ✗；
+        # 若基准是 CRLF ✗ ⇒ 不统一就会「每行都算改动」✗（`+368/-305` ✗）；
+        # 若强行把基准转 LF ✗ ⇒ diff 上下文是 LF ✗ ⇒ 在 CRLF 文件上 apply 失败 ✗。
+        # ⇒ 以**基准**为准：基准 CRLF ⇒ 把 cur 也转 CRLF ✓；基准 LF ⇒ 把 base 转 LF ✓。
+        if "\r\n" in base:
+            base_txt = base
+            cur_txt = cur.replace("\r\n", "\n").replace("\n", "\r\n")
+        else:
+            base_txt = base.replace("\r\n", "\n")
+            cur_txt = cur
         diff = "".join(difflib.unified_diff(
-            base.splitlines(True), cur.splitlines(True),
+            base_txt.splitlines(True), cur_txt.splitlines(True),
             fromfile="a/" + rel, tofile="b/" + rel))
         if not diff:
             # 无差异：不回落，但也没东西可发 —— 视为空 diff（继续，允许所有文件都空）

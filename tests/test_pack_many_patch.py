@@ -303,3 +303,41 @@ def test_patch_warns_on_deleted_lines(monkeypatch, capsys, repo_file):
     assert "+0/-1" in out
     assert "有删除行" in out
     assert "本地可能旧于 origin" in out
+
+# ------------------------------------------------ 5) CRLF 文件（2026-10-21 修）
+def test_patch_crlf_file_diff_is_small_and_crlf(tmp_path, monkeypatch):
+    """基准是 **CRLF** ⇒ diff 必须（a）**只含真实改动** ✓、（b）上下文是 **CRLF** ✓。
+
+    2026-10-21 实测 ✗：`scripts/feishu_send.py` 只加 63 行，却出现两种错法 ——
+    ① 两侧行尾不同 ⇒ `+368/-305`（整文件 ✗）；
+    ② 强行把基准转 LF ⇒ diff 上下文是 LF ✗ ⇒ Mac 侧 `git apply` **失败** ✗
+       （实际报「patch 应用失败 → scripts/feishu_send.py」✗）。
+    ⇒ 正解：**以基准行尾为准**统一两侧 ✓。
+    """
+    rel = "scripts/_tmp_crlf_probe.py"
+    d = tmp_path / "scripts"
+    d.mkdir()
+    # 工作区文件：LF（等价于 `open(..., encoding="utf-8")` 通用换行的结果 ✓）
+    (d / "_tmp_crlf_probe.py").write_bytes(b"line1\nline2\nline2b\nline3\n")
+
+    monkeypatch.setattr(pm, "REPO", str(tmp_path))
+    monkeypatch.setattr(pm, "_base_text",
+                        lambda r, ref: "line1\r\nline2\r\nline3\r\n")   # 基准：CRLF
+    monkeypatch.setattr(pm, "_in_base", lambda r, ref: True)
+    monkeypatch.setattr(pm, "_git_blob_sha", lambda ref, r: "aaaaaaa")
+    monkeypatch.setattr(pm, "_git_hash_blob", lambda data: "bbbbbbb")
+
+    payload, reasons = pm._patch_payload([rel], "origin/main")
+    assert reasons == []
+    diff = payload.decode("utf-8")
+    adds = sum(1 for l in diff.splitlines()
+               if l.startswith("+") and not l.startswith("+++"))
+    dels = sum(1 for l in diff.splitlines()
+               if l.startswith("-") and not l.startswith("---"))
+    # 只插了 1 行 ⇒ +1/-0 ✓（若两侧行尾不一致会是 +4/-3 = 整文件 ✗）
+    assert adds + dels <= 2, "diff 应只含真实改动，实际 +%d/-%d" % (adds, dels)
+    assert adds >= 1
+    # 上下文必须带 CRLF ✓（否则在 CRLF 文件上 apply 失败 ✗）
+    assert "\r\n" in diff
+
+
