@@ -25,6 +25,26 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SYNC_IN_DIR = os.path.expanduser("~/.openclaw/tmp/fg-sync-in")
 
 
+def _brief_filter(out, err):
+    """精简回传：只保留结论行（✅/❌/⛔/⚠️/认出的包），丢弃过程细节；
+    但 ⛔/❌ 错误行后续跟的明细（"- xxx" 列表 / "处理方式" 提示）必须保留，
+    否则 Windows 侧只看到「冲突文件：」而看不到具体文件（MT-1021a 实踩）。
+    """
+    lines = (out + err).splitlines()
+    key = []
+    in_err_block = False
+    for ln in lines:
+        s = ln.strip()
+        if s.startswith(("✅", "❌", "⛔", "⚠️", "认出的包")):
+            key.append(s)
+            in_err_block = s.startswith(("⛔", "❌"))
+        elif in_err_block and (s.startswith("- ") or s.startswith("处理") or s.startswith("→") or s == ""):
+            key.append(s)
+        else:
+            in_err_block = False
+    return "\n".join(key) or (out + err)[-500:]
+
+
 def _read_input(args):
     """返回分片原文：优先 -f 文件，其次 argv 文本，最后 stdin。"""
     if args.file:
@@ -73,10 +93,7 @@ def main():
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=2400)
     out, err = r.stdout, r.stderr
     if args.brief:
-        # 精简回传：只保留结论行（✅/❌/⛔/⚠️ 开头），丢弃过程细节
-        lines = (out + err).splitlines()
-        key = [ln.strip() for ln in lines if ln.strip().startswith(("✅", "❌", "⛔", "⚠️", "认出的包"))]
-        out = "\n".join(key) or out[-500:]
+        out = _brief_filter(out, err)
         err = ""
     sys.stdout.write(out)
     sys.stderr.write(err)
