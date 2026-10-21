@@ -247,6 +247,10 @@ def _patch_payload(srcs, base_ref):
             fromfile="a/" + rel, tofile="b/" + rel))
         if not diff:
             # 无差异：不回落，但也没东西可发 —— 视为空 diff（继续，允许所有文件都空）
+            # 🔴 **必须打印** ✗（2026-10-21 实测）：原来只往 payload 塞标记 ✗
+            # ⇒ 我传了 7 个文件、实际进包 6 个 ✗，**双方都以为发了** ✗。
+            print("[patch] %s  ⚠️ **与基准无差异，已跳过** ✗"
+                  "（确认它本该有改动？）" % rel)
             chunks.append("--- %s ---\n（与基准无差异）\n" % rel)
             continue
         header = "diff --git a/%s b/%s\n" % (rel, rel)

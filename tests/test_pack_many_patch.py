@@ -340,4 +340,18 @@ def test_patch_crlf_file_diff_is_small_and_crlf(tmp_path, monkeypatch):
     # 上下文必须带 CRLF ✓（否则在 CRLF 文件上 apply 失败 ✗）
     assert "\r\n" in diff
 
+# --------------------------------- 6) 无差异文件必须告警（2026-10-21 ✗）
+def test_patch_warns_on_unchanged_file(monkeypatch, tmp_path, repo_file, capsys):
+    """🔴 文件**与基准无差异**时必须**打印告警** ✗ —— 否则会静默漏发 ✗。
 
+    2026-10-21 实测 ✗：`sync_1021k` 我传了 7 个文件，`docs/mac-tasks.md` 因刷新后
+    忘了加回改动 ⇒ 无差异 ⇒ **只往 payload 塞标记、不打印** ✗ ⇒ 我以为发了 ✓
+    ⇒ 实际只进包 6 个 ✗ ⇒ Mac 收不到 `MT-53` ✗。
+    """
+    rel = repo_file("dist/_tmp_packmany_same.md", "same content\n")
+    monkeypatch.setattr(pm, "_base_text", lambda r, ref: "same content\n")
+    monkeypatch.setattr(pm, "_in_base", lambda r, ref: True)
+
+    pm._patch_payload([rel], "origin/main")
+    out = capsys.readouterr().out
+    assert "与基准无差异" in out and "已跳过" in out
