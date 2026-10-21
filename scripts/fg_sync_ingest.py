@@ -489,6 +489,7 @@ def main():
         return 2
 
     print("认出的包：%s" % ", ".join("%s(%d片)" % (k, len(v)) for k, v in groups.items()))
+    members = []
     with tempfile.TemporaryDirectory(prefix="fg-sync-") as tmp:
         for name, parts in groups.items():
             blob = _decode(parts)
@@ -499,7 +500,7 @@ def main():
             with open(tarpath, "wb") as fh:
                 fh.write(blob)
             with tarfile.open(tarpath, "r:xz") as tf:
-                members = _safe_extract(tf, tmp)
+                members.extend(_safe_extract(tf, tmp))
 
         # 分类：__patch__/ 前缀 = 统一 diff 包（MT-20，不命中白名单，单独 apply）
         patch_diffs = sorted(m for m in members if m.startswith(PATCH_PREFIX))
