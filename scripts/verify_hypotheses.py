@@ -1294,15 +1294,11 @@ PENDING = {
     "H-017": ('杠杆 ETF 组 vs BTC 组市值变动率比较（10-03↔10-07）', 'Data/positions.csv（本机仅 2026-09-22 一日快照）'),
     "H-022": ('5 只杠杆 ETF vs BTC-USDT 浮亏率比较（10-07/10-08）', 'Data/positions.csv（本机仅 2026-09-22 一日快照）'),
     "H-023": ('半凯利仓位 vs 规则仓位 walk-forward 净值回测', '胜率/盈亏比估计（样本 <60 日，置信度不足）'),
-    "H-026": ('GDXU 占比 >20% vs ≤20% 的组合日收益绝对值均值', 'Data/positions.csv（本机仅 1 日快照，无 GDXU 占比时序）'),
-    "H-027": ('AXTX 浮亏率与组合整体浮亏率的背离', 'AXTX 浮亏列不存在（MT-34 / MT-35 实测 ✗）'),
     "H-040": ('AXTX 浮亏占组合浮亏的比重', 'AXTX 浮亏列不存在（MT-34 / MT-35 实测 ✗）'),
     "H-028": ('现金>0 且累计盈亏<0 的频率', 'Data/accounts.csv（本机仅 1 日快照）'),
     "H-030": ('量价-资金背离（价格/成交上涨而 TVL 未跟随）分组对比', 'DeFi TVL 数据源未接入（B 类待数据）'),
     "H-034": ('稳定币使用效率 = 链上月交易量/流通量 的领先性 IC', '稳定币链上交易量数据源未接入（B 类待数据）'),
-    "H-036": ('GDXU 占比 >20% 日收益绝对值均值 vs 之前', 'Data/positions.csv（本机仅 1 日快照，无 GDXU 占比时序）'),
     "H-038": ('zone 2.0 期间累计盈亏变化', 'Data/accounts.csv（本机仅 1 日快照）'),
-    "H-039": ('杠杆标的占比 >60% 期间组合日收益绝对值均值', 'Data/positions.csv（本机仅 1 日快照，无占比时序）'),
     "H-041": ('position_multiplier 降档前后 fg_index 振幅', 'position_multiplier 列不存在（虚构列）'),
 }
 for _hid, (_desc, _dep) in PENDING.items():
