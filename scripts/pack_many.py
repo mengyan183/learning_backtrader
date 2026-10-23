@@ -288,6 +288,8 @@ def main():
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("pkg")
     ap.add_argument("srcs", nargs="+")
+    ap.add_argument("--no-check", action="store_true",
+                    help="跳过「表格强制校验」✗（应急用 ✓，默认**必跑** ✗）")
     ap.add_argument("--patch", action="store_true",
                     help="增量模式：只发统一 diff")
     ap.add_argument("--base-ref", default=DEFAULT_BASE_REF,
@@ -310,6 +312,29 @@ def main():
                      % (rel, rel))
 
     # 🔴 **外发安全闸门**（2026-10-20 团队审查 P0）：仓库边界 + 数据/凭据拒绝表 ✗
+    # 🔴 **表格强制校验闸门** ✗（2026-10-23）：裸 `|` 串格已犯 **7 次** ✗
+    # （WT-62/66/67/73/76/78 / MT-51/58 / H-082/085 ✓）—— 每次都是人工写备注漏转义 ✓，
+    # 靠 `--check-table` **事后**抓 ✗，而打包前常忘了跑 ✗ ⇒ 「发出去 → 对端自检失败 → 重发」✗。
+    # ⇒ 只要包里有 `docs/*.md` 或 `evolution/*.md` ✓，就**强制**校验 ✗，不通过即中止 ✗。
+    if not getattr(args, "no_check", False):
+        tables = [s for s in srcs
+                  if s.startswith(("docs/", "evolution/")) and s.endswith(".md")]
+        if tables:
+            import subprocess as _sp
+            _chk = os.path.join(REPO, "scripts", "verify_hypotheses.py")
+            if os.path.exists(_chk):
+                print("[check] 包内含表格文件 %d 个 ⇒ 强制校验 ✗" % len(tables))
+                _r = _sp.run([sys.executable, _chk, "--check-table"],
+                             capture_output=True, timeout=180,
+                             env=dict(os.environ, PYTHONIOENCODING="utf-8"))
+                _out = (_r.stdout or b"").decode("utf-8", "replace")
+                if _r.returncode != 0:
+                    for _ln in _out.splitlines():
+                        if "❌" in _ln:
+                            print("  " + _ln.strip())
+                    sys.exit("❌ 表格校验未通过 ✗ ⇒ 拒绝打包"
+                             "（裸 `|` 会串格 ✓；修好后重试，应急可加 --no-check ✗）")
+                print("[check] ✅ 通过 ✓")
     export_errors = _export_errors(srcs)
     if export_errors:
         for e in export_errors:
