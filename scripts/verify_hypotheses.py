@@ -1172,6 +1172,19 @@ def verify_h069(df):
 
 
 # 单独实现（custom）的假说：id -> (runner, desc, fields)
+def _mk_terminal(state, reason):
+    """已决假说 runner 工厂：返回登记表中的既定结论，不重跑判定。
+
+    这些假说由 evolve_review 侧完成验证并落档 evolution/hypotheses.md
+    （falsified / archived / pending-revise），verify 侧只做注册展示，
+    避免两套口径重复执行产生冲突。
+    """
+    def _r(_df):
+        return {"passed": None, "status": state, "reason": reason,
+                "note": "结论来自 evolution/hypotheses.md 登记（evolve_review 侧验证），本脚本不重跑判定"}
+    return _r
+
+
 CUSTOM = {
     "H-010": (verify_h010, "zone 由 fg_index 固定边界驱动且边界稳定（区间重叠率 ≤20%）",
               "fg_index + zone"),
@@ -1196,6 +1209,21 @@ CUSTOM = {
               "QQQ/TLT（prices.csv）+ VIX（raw/vix.csv）［BAA10Y 可选，仅明细］"),
     "H-069": (verify_h069, "挤压期中股债**同日下跌**（co_down）概率**显著高于**非挤压期（分段稳健）",
               "QQQ/TLT（prices.csv）+ VIX（raw/vix.csv）"),
+    # ---- WT-07 已决假说（由 evolve_review 验证落档，verify 侧只注册展示）----
+    # 2026-10-23 补齐注册：此前仅存在于 evolution/hypotheses.md，SUPPORTED/--help/dry-run
+    # 未覆盖 ⇒ 测试 test_supported_contains_all_open_hypotheses 等失败。
+    "H-016": (_mk_terminal("falsified", "evolve_review 判 falsified（2026-10-08 B-4 口径修订；零触发期间累计盈亏已扩大）"),
+              "零触发期间股票账户累计盈亏窄幅波动", "portfolio_features.csv trend_blocked_*"),
+    "H-018": (_mk_terminal("falsified", "evolve_review 判 falsified；2026-10-21 MT-57 数据源切至 accounts.csv 快照"),
+              "fg_index 回落领先持仓浮亏扩大（1~3 日滞后相关）", "features.csv fg_index + accounts.csv"),
+    "H-026": (_mk_terminal("archived", "evolve_review 归档；MT-60 derived 口径重跑 pending-revise（无 ≤20% 对照组）"),
+              "GDXU 占比>20% 时组合波动显著增加", "positions.csv 占比 + features.csv 日收益"),
+    "H-035": (_mk_terminal("falsified", "evolve_review 判 falsified；MT-60 重跑 n=4 vs n=7 样本小可复检"),
+              "core_position=3.0 时 extreme 触发率显著高于 2.0", "features.csv core_position + extreme 标记"),
+    "H-036": (_mk_terminal("archived", "evolve_review 归档；MT-60 derived 口径重跑 pending-revise（10-06 前仅 1 点）"),
+              "GDXU 占比>20% 期间组合日收益绝对值均值更高", "positions.csv 占比 + features.csv 日收益"),
+    "H-039": (_mk_terminal("archived", "evolve_review 归档；MT-60 derived 口径重跑 pending-revise（无 ≤60% 对照组）"),
+              "杠杆占比>60% 时组合波动率显著更高", "positions.csv 占比 + features.csv 日收益"),
 }
 
 
@@ -1265,6 +1293,18 @@ HYPOTHESES = {
               "fields": CUSTOM["H-068"][2]},
     "H-069": {"kind": "custom", "desc": CUSTOM["H-069"][1],
               "fields": CUSTOM["H-069"][2]},
+    "H-016": {"kind": "custom", "desc": CUSTOM["H-016"][1],
+              "fields": CUSTOM["H-016"][2]},
+    "H-018": {"kind": "custom", "desc": CUSTOM["H-018"][1],
+              "fields": CUSTOM["H-018"][2]},
+    "H-026": {"kind": "custom", "desc": CUSTOM["H-026"][1],
+              "fields": CUSTOM["H-026"][2]},
+    "H-035": {"kind": "custom", "desc": CUSTOM["H-035"][1],
+              "fields": CUSTOM["H-035"][2]},
+    "H-036": {"kind": "custom", "desc": CUSTOM["H-036"][1],
+              "fields": CUSTOM["H-036"][2]},
+    "H-039": {"kind": "custom", "desc": CUSTOM["H-039"][1],
+              "fields": CUSTOM["H-039"][2]},
     # ---------------------------------------------------------- 挂起（数据缺失）
     "H-027": {
         "kind": "pending",

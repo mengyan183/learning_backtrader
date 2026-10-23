@@ -213,8 +213,9 @@ def test_chunk_numbering_sorts_lexicographically(tmp_path):
     names = [n for n, _s, k in written if k.startswith("消息分片")]
     assert len(names) > 99, "分片数不够多，测不出这个问题"
     assert sorted(names) == names, "字典序与数字序不一致：%s" % names[:5]
-    # 补位后必须仍是 3 位（100 个以上）
-    assert names[0].endswith("t001.txt"), names[0]
+    # 补位位数 = 分片总数的位数（≥100 时 3 位；≥1000 时 4 位，如 1010 片 → t0001）
+    width = len(str(len(names)))
+    assert names[0].endswith(("t%s.txt" % str(1).zfill(width))), names[0]
 
 
 def test_all_three_forms_identical(tmp_path):
