@@ -126,3 +126,6 @@ Data/human30.json
 
 # ---- CWD 坑防护（2026-10-12 WT 发现）：scripts/ 下误跑产生的数据副本 ----
 scripts/Data/
+
+# MT-62 富途成交流水（账户隐私，只在本地落盘，不进 git/sync）
+Data/trade_log_futu.csv
