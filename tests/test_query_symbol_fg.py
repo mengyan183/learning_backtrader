@@ -156,3 +156,31 @@ def test_gdxu_blend_returns_none_when_leg_missing():
     dates = pd.bdate_range("2024-01-01", periods=80)
     px = pd.DataFrame([{"symbol": "GDX", "date": d, "close": 10.0} for d in dates])
     assert _sym.underlying_close("GDXU", prices=px) is None
+
+# ------------------------- 守猪待兔（shoutu）分数（2026-10-23 ✓）
+def test_shoutu_included_in_result(prices):
+    """查询结果必须**同时**含贪恐与守猪待兔 ✓（两个并列系统 ✓）。
+
+    口径：shoutu 原始 `value` ∈ −100~100 ✓ ⇒ 映射 `(x+100)/2` 到 0~100 ✓
+    （`loader.shoutu_to_system_scale` ✓，与 `ZONE_EDGES=[20,40,60,80]` 精确重合 ✓）。
+    """
+    r = q.query("TQQQ", prices=prices)
+    assert "shoutu" in r and "shoutu_date" in r
+    if r["shoutu"] is not None:
+        assert 0.0 <= r["shoutu"] <= 100.0
+        assert r["shoutu_raw"] is not None
+        # 映射关系必须严格成立 ✗
+        assert abs(r["shoutu"] - (r["shoutu_raw"] + 100.0) / 2.0) < 0.11
+
+
+def test_shoutu_scale_matches_zone_edges():
+    """`(x+100)/2` 必须与 `ZONE_EDGES` 的 20/40/60/80 精确对应 ✗。"""
+    for raw, expect in ((-60.0, 20.0), (60.0, 80.0), (0.0, 50.0), (100.0, 100.0)):
+        assert abs((raw + 100.0) / 2.0 - expect) < 1e-9
+
+
+def test_shoutu_uncovered_symbol_has_error(prices):
+    """未覆盖标的 ⇒ 不给分 ✗ 且**说明原因** ✓（不得静默 `—` ✗）。"""
+    r = q.query("NVDA", prices=prices)
+    assert r["shoutu"] is None
+    assert "守猪待兔" in (r.get("shoutu_error") or "")

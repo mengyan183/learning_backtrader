@@ -101,3 +101,14 @@ def test_page_escapes_server_strings():
         assert "esc(it.%s)" % f in t
     # `<script>` 标签必须平衡（我 2026-10-21 曾把页面改成 2/3 ✗）
     assert t.count("<script") == t.count("</script>")
+
+
+def test_page_shows_shoutu_column():
+    """页面必须显示「守猪待兔」列 ✓（用户 2026-10-23 明确要求 ✓）。"""
+    import os
+    tpl = os.path.join(os.path.dirname(os.path.dirname(server.__file__)),
+                       "dashboard", "templates", "index.html")
+    t = open(tpl, encoding="utf-8").read()
+    assert "守猪待兔" in t
+    assert "it.shoutu" in t
+    assert t.count("<script") == t.count("</script>")

@@ -45,6 +45,50 @@ def _zone(v):
     return ZONE_NAMES[int(np.clip(np.searchsorted(ZONE_EDGES, v, side="right"), 0, 4))]
 
 
+
+# ---------------------------------------------------------------- 守猪待兔（shoutu）
+#: 守猪待兔信号的最大有效滞后天数 ✓（`config.SHOUTU_SIGNAL_MAX_LAG_DAYS` ✓）
+SHOUTU_MAX_LAG = int(getattr(config, "SHOUTU_SIGNAL_MAX_LAG_DAYS", 3))
+
+
+def _shoutu_of(symbol, records=None):
+    """取该标的**最新**守猪待兔系数 ✓。
+
+    :returns: `{"raw": -100~100, "value": 0~100, "zone": str, "date": str,
+               "stale": bool}` ✓；未覆盖 / 无数据 ⇒ `None` ✗
+    """
+    try:
+        from fg_system.data import loader as _ld
+        d = records if records is not None else _ld.load_shoutu_records()
+    except (OSError, ValueError, ImportError):
+        return None
+    if d is None or getattr(d, "empty", True) or "symbol" not in d.columns:
+        return None
+    sub = d[d["symbol"].astype(str).str.upper() == symbol]
+    if sub.empty:
+        return None
+    sub = sub.sort_values("date")
+    last = sub.iloc[-1]
+    try:
+        raw = float(last["value"])
+    except (TypeError, ValueError):
+        return None
+    # 🔴 映射 **(x+100)/2** ✓ —— 与 `loader.shoutu_to_system_scale` 同口径 ✓
+    val = round((raw + 100.0) / 2.0, 1)
+    dstr = str(last["date"])[:10]
+    _fg, mdate = _market_fg()
+    stale = bool(mdate and dstr and dstr < mdate)
+    try:
+        from datetime import date as _d
+        lag = (_d.fromisoformat(mdate) - _d.fromisoformat(dstr)).days if mdate else 0
+        if lag > SHOUTU_MAX_LAG:
+            stale = True
+    except (ValueError, TypeError):
+        pass
+    return {"raw": raw, "value": val, "zone": _zone(val),
+            "date": dstr, "stale": stale}
+
+
 def _market_fg():
     """市场级 `fg_index` 最新值（回退用）✓；读不到 ⇒ None。"""
     path = os.path.join(config.DATA_DIR, "features.csv")
@@ -65,7 +109,10 @@ def query(symbol, prices=None, auto=False):
     """单个标的的结果字典 ✓（`source` 明确标 个股 / 大盘回退 ✗）。"""
     out = {"symbol": symbol, "underlying": None, "rows": 0,
            "value": None, "zone": None, "date": None, "stale": False,
-           "source": None, "error": None}
+           "source": None, "error": None,
+           # 守猪待兔（与贪恐**并列**的第二系统 ✓，−100~100 ⇒ 0~100 ✓）
+           "shoutu": None, "shoutu_raw": None, "shoutu_zone": None,
+           "shoutu_date": None, "shoutu_stale": False}
 
     # 🔴 与 `underlying_close()` 共用**同一归一**（`BTC-USDT` → `BTC`）✗ ——
     # 否则 `und=None` 却仍能算出分 ✗ ⇒ 同一行「既有分数又报未登记」✓
@@ -74,6 +121,17 @@ def query(symbol, prices=None, auto=False):
     und = (config.SIGNAL_UNDERLYING_MAP.get(lookup)
            or config.CRYPTO_UNDERLYING.get(lookup))
     out["underlying"] = und
+
+    # 守猪待兔系数 ✓ —— **独立于贪恐** ✓（未登记贪恐也照样有 ✓）
+    _sh = _shoutu_of(symbol)
+    if _sh:
+        out["shoutu"] = _sh["value"]
+        out["shoutu_raw"] = _sh["raw"]
+        out["shoutu_zone"] = _sh["zone"]
+        out["shoutu_date"] = _sh["date"]
+        out["shoutu_stale"] = _sh["stale"]
+    elif symbol not in set(getattr(config, "SHOUTU_SYMBOLS", ())):
+        out["shoutu_error"] = "该标的不在守猪待兔覆盖范围 ✗（config.SHOUTU_SYMBOLS ✓）"
 
     try:
         close = sym_mod.underlying_close(symbol, prices=prices)
@@ -240,8 +298,9 @@ def auto_resolve(symbol, prices=None, limit=900):
 
 
 def _print(results):
-    print("%-10s %-10s %-7s %-7s %-9s %-11s %s"
-          % ("标的", "底层", "行数", "分数", "档位", "来源", "数据日期"))
+    print("%-10s %-10s %-7s %-7s %-9s %-11s %-12s %-9s %s"
+          % ("标的", "底层", "行数", "分数", "档位", "来源", "数据日期",
+             "守猪待兔", "守猪日期"))
     for r in results:
         val = "—" if r["value"] is None else "%.1f" % r["value"]
         # 🔴 CLI 也必须显示**逐项数据日期 + 滞后标记** ✗ —— 原来只有 JSON/页面有 ✓，
@@ -249,9 +308,14 @@ def _print(results):
         dtxt = r["date"] or "—"
         if r.get("stale"):
             dtxt += " ⚠️滞后"
-        print("%-10s %-10s %-7d %-7s %-9s %-11s %s"
+        sh = ("—" if r.get("shoutu") is None
+              else "%.1f %s" % (r["shoutu"], r.get("shoutu_zone") or ""))
+        shd = r.get("shoutu_date") or "—"
+        if r.get("shoutu_stale"):
+            shd += " ⚠️"
+        print("%-10s %-10s %-7d %-7s %-9s %-11s %-12s %-9s %s"
               % (r["symbol"], r["underlying"] or "未登记", r["rows"],
-                 val, r["zone"] or "—", r["source"] or "—", dtxt))
+                 val, r["zone"] or "—", r["source"] or "—", dtxt, sh, shd))
         if r["error"]:
             print("           ⚠️ %s" % r["error"])
     print("\n口径：三因子 mom60/mom20/vol20（756 日滚动分位，权重禁止优化）✓；"

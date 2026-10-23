@@ -603,16 +603,21 @@ async function querySymbolFg() {
       //    只显示分数会让旧数字被当成「现在」✗）
       const stale = (it.date && j.data_date && it.date < j.data_date);
       const dTxt = it.date ? (it.date + (stale ? ' ⚠️滞后' : '')) : '—';
+      // 🔴 守猪待兔（与贪恐**并列**的第二系统 ✓，−100~100 ⇒ 0~100 ✓）
+      const shTxt = it.shoutu == null ? '—'
+        : (it.shoutu.toFixed(1) + ' ' + (it.shoutu_zone || '')
+           + (it.shoutu_stale ? ' ⚠️' : ''));
       const dSty = stale ? 'color:#e5534b;font-weight:bold' : '';
       return '<tr><td>' + esc(it.symbol) + '</td><td>' + (esc(it.underlying) || '—') +
              '</td><td>' + (esc(it.rows) || 0) + '</td><td><b>' + esc(val) + '</b></td>' +
              '<td>' + (esc(it.zone) || '—') + '</td>' +
              '<td style="color:' + color(it.source) + '">' + esc(src) + '</td>' +
              '<td style="' + dSty + '">' + esc(dTxt) + '</td>' +
+             '<td>' + esc(shTxt) + '</td>' +
              '<td style="font-size:11px;color:#8b949e">' + (esc(it.error) || '') + '</td></tr>';
     }).join('');
     box.innerHTML = '<table class="card"><tr><th>标的</th><th>底层</th><th>行数</th>' +
-      '<th>分数</th><th>档位</th><th>来源</th><th>数据日期</th><th>说明</th></tr>' +
+      '<th>分数</th><th>档位</th><th>来源</th><th>数据日期</th><th>守猪待兔</th><th>说明</th></tr>' +
       rows + '</table>';
     msg.textContent = '';
   } catch (e) { msg.textContent = '查询失败：' + e; }
