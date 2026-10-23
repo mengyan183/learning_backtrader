@@ -26,5 +26,4 @@ date,symbol,action,quantity,price,reason
 2026-06-24,GDXU,buy,15.0,80.00,manual
 2026-06-25,YINN,buy,50.0,20.00,manual
 2026-10-01,BTC,sell,0.0299,,reconstructed
-2026-10-01,AXTX,sell,147.0,35.85,reconstructed
 2026-10-01,BTC-USDT,buy,0.029976,83429.7,reconstructed
