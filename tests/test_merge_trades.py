@@ -56,24 +56,76 @@ def test_empty_inputs():
     assert out.empty and list(out.columns) == mt.COLUMNS
 
 
-def test_corp_action_exempt_listed():
-    """AXTX 2026-09 合股（用户证实 ✓）必须在公司行动豁免表里 ✓。"""
-    assert "2026-10-01|AXTX|sell" in mt.CORP_ACTION_EXEMPT
+def _splits_df(rows):
+    return pd.DataFrame(rows, columns=["symbol", "date", "ratio",
+                                       "source", "verified"])
+
+
+def test_classify_verified1_split_exempt():
+    """MT-65：verified=1 邻近 split ⇒ 自动豁免（人工已核实公司行动 ✓）。"""
+    splits = _splits_df([
+        {"symbol": "AXTX", "date": "2026-10-01", "ratio": 0.24615,
+         "source": "manual", "verified": 1},
+    ])
+    exempt, advisory, pending = mt.classify_miss(
+        ["2026-10-01|AXTX|sell"], splits)
+    assert "2026-10-01|AXTX|sell" in exempt
+    assert advisory == [] and pending == []
+
+
+def test_classify_verified0_only_advisory_not_exempt():
+    """MT-65②：yfinance 未核实(verified=0) ⇒ **只提示**，不静默豁免 ✗、也不当漏单 ✗。"""
+    splits = _splits_df([
+        {"symbol": "SOXL", "date": "2026-10-01", "ratio": 0.5,
+         "source": "yfinance", "verified": 0},
+    ])
+    exempt, advisory, pending = mt.classify_miss(
+        ["2026-10-01|SOXL|sell"], splits)
+    assert advisory == ["2026-10-01|SOXL|sell"]
+    assert exempt == [] and pending == []
+
+
+def test_classify_unknown_is_pending():
+    """清单无匹配 ⇒ 真疑似漏单 ✗（进入待查，可告警 ✓）。"""
+    exempt, advisory, pending = mt.classify_miss(
+        ["2026-10-02|ZZZ|sell"], _splits_df([]))
+    assert pending == ["2026-10-02|ZZZ|sell"]
+    assert exempt == [] and advisory == []
+
+
+def test_classify_nearby_window():
+    """合股日 ±3 工作日内的 miss 也命中邻近 split ✓（不必同日 ✓）。"""
+    splits = _splits_df([
+        {"symbol": "TQQQ", "date": "2026-09-30", "ratio": 2.0,
+         "source": "manual", "verified": 1},
+    ])
+    exempt, _, _ = mt.classify_miss(["2026-10-01|TQQQ|sell"], splits)
+    assert "2026-10-01|TQQQ|sell" in exempt
 
 
 def test_audit_splits_exempt_vs_pending(monkeypatch, capsys, tmp_path):
-    """audit 把「已知公司行动」与「待查漏单」分开；待查非零 + --alert ⇒ 告警且退出码 1 ✓。"""
+    """audit 三类分流：verified=1 豁免 / verified=0 仅提示 / 未知待查告警；
+    待查非零 + --alert ⇒ 只对真漏单告警且退出码 1 ✓。"""
     import pandas as pd
     # 写临时三源到 tmp DATA_DIR
-    import os
     monkeypatch.setattr(mt.config, "DATA_DIR", str(tmp_path))
+    (tmp_path / "raw").mkdir()
+    # MT-65：公司行动清单（AXTX manual verified=1；SOXL yfinance verified=0 未核实）
+    pd.DataFrame([
+        {"symbol": "AXTX", "date": "2026-10-01", "ratio": 0.24615,
+         "source": "manual", "verified": 1},
+        {"symbol": "SOXL", "date": "2026-10-01", "ratio": 0.5,
+         "source": "yfinance", "verified": 0},
+    ]).to_csv(tmp_path / "raw" / "splits.csv", index=False)
     pd.DataFrame([{"date": "2026-10-01", "symbol": "AAA", "action": "buy",
                   "quantity": 1, "price": 5.0}]).to_csv(
         tmp_path / "trade_log.csv", index=False)
-    # 反推：一笔已豁免（AXTX 合股）+ 一笔未知待查（ZZZ sell）
+    # 反推：AXTX 已豁免 + SOXL 未核实仅提示 + ZZZ 未知待查
     pd.DataFrame([
         {"date": "2026-10-01", "symbol": "AXTX", "action": "sell",
          "quantity": 147, "price": None},
+        {"date": "2026-10-01", "symbol": "SOXL", "action": "sell",
+         "quantity": 10, "price": None},
         {"date": "2026-10-02", "symbol": "ZZZ", "action": "sell",
          "quantity": 3, "price": None},
     ]).to_csv(tmp_path / "trade_log_derived.csv", index=False)
@@ -85,8 +137,10 @@ def test_audit_splits_exempt_vs_pending(monkeypatch, capsys, tmp_path):
 
     rc = mt.main(["--audit", "--alert"])
     out = capsys.readouterr().out
-    assert "已豁免（公司行动" in out
+    assert "已豁免（verified=1" in out and "AXTX" in out
+    assert "未核实" in out and "SOXL" in out       # verified=0 仅提示 ✓
     assert "待查 1" in out
     assert "ZZZ|sell" in out
     assert rc == 1                 # 待查非零 ⇒ 退出码 1 ✗
-    assert sent and "ZZZ" in sent[0]   # 飞书告警已发 ✓
+    assert sent and "ZZZ" in sent[0]   # 飞书告警只发真漏单 ✓
+    assert "AXTX" not in sent[0] and "SOXL" not in sent[0]  # 公司行动不告警 ✓
