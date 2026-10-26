@@ -71,7 +71,8 @@ RESEARCH_SYMBOLS = ["GLD", "GDX", "GDXJ", "GDXU", "SLV",
 # MT-71（2026-10-26）：新登记 8 条实测底层中，SPY/TLT 已在清单；补 XLV/VGK/XLE/DIA/XLK/XLU
 #     （避免登记后每日增量不更新 ⇒ 个股分永久陈旧，MT-46 同类）；纯数据侧。
 UNDERLYING_FETCH_SYMBOLS = ["COIN", "NVDA", "TSLA", "XLF", "EWY",
-                            "XLV", "VGK", "XLE", "DIA", "XLK", "XLU"]
+                            "XLV", "VGK", "XLE", "DIA", "XLK", "XLU",
+                            "XBI", "ITB", "KRE"]
 FETCH_SYMBOLS = ["TQQQ", "SOXL", "UPRO", "QQQ", "SOXX", "SMH", "SPY", "RSP",
                  "IWM"] + RESEARCH_SYMBOLS + UNDERLYING_FETCH_SYMBOLS
 
@@ -497,6 +498,10 @@ SIGNAL_UNDERLYING_MAP = {
     "CURE": "XLV",   # β=2.962 R²=0.9931 三倍医疗
     "OILU": "XLE",   # β=3.026 R²=0.9778 三倍能源（板块 β 比原油 USO 更贴合）
     "EURL": "VGK",   # β=2.883 R²=0.9562 三倍欧洲
+    # MT-70 补验（2026-10-26，同 β∈[2.5,3.5] 且 R²≥0.95 实测口径 ✓）：
+    "LABU": "XBI",   # β=2.979 R²=0.9977 三倍生科（SPDR 生物科技）
+    "NAIL": "ITB",   # β=2.972 R²=0.9974 三倍地产（美国住宅建筑）
+    "DPST": "KRE",   # β=2.979 R²=0.9959 三倍小银行（区域银行）
 }
 # GDXU 的底层 = 指数 `MINERS` = **GDX + GDXJ 市值加权**（**不是** GDX 单只）。
 # 权重取自 investing.com 的 GDXU 持仓页（2026-09-28 查得：GDX 76.07%）⇒ 固定先验。
