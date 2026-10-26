@@ -129,3 +129,6 @@ scripts/Data/
 
 # MT-62 富途成交流水（账户隐私，只在本地落盘，不进 git/sync）
 Data/trade_log_futu.csv
+# MT-63 每日链重算的对账视图（运行态，每日刷新；merged 含 futu 隐私 ⇒ 均不进库）
+Data/trade_log_derived.csv
+Data/trade_log_merged.csv

@@ -44,6 +44,15 @@ SOURCES = (
 #: 仅用于对账 ✗，**不参与合并** ✗
 DERIVED = "trade_log_derived.csv"
 
+#: 已知「快照反推会出现、但**不是真实交易**」的公司行动（合股/拆股/派息 ✓）。
+#: 这些 key（`date|SYMBOL|action` ✓）从「反推有、合并无」待查里**豁免** ✗，
+#: 避免每日链把合股/派息误报成「券商流水漏单」✗。新增公司行动在此登记 ✓，
+#: 依据见 `evolution/hypotheses.md`「数据口径备注」✓。
+CORP_ACTION_EXEMPT = {
+    # 2026-09 AXTX 合股（09-22 快照 195 股 → 10-01 48 股，成本总额守恒 ✓）⇒ 非卖出 ✓
+    "2026-10-01|AXTX|sell",
+}
+
 COLUMNS = ["date", "symbol", "action", "quantity", "price", "source"]
 
 
@@ -120,6 +129,8 @@ def main(argv=None):
     ap.add_argument("--write", action="store_true",
                     help="写 Data/trade_log_merged.csv（**不覆盖**原始三表 ✓）")
     ap.add_argument("--audit", action="store_true", help="与反推结果对账 ✗")
+    ap.add_argument("--alert", action="store_true",
+                    help="待查（反推有、合并无且非公司行动）非零 ⇒ 推飞书并以退出码 1 结束 ✗")
     ap.add_argument("--json", action="store_true", help="JSON 输出")
     args = ap.parse_args(argv)
 
@@ -146,6 +157,7 @@ def main(argv=None):
     print("  🔴 futu 缺失 ⇒ 合并结果**不完整** ✗：%s"
           % ("是 ✗（券商流水没拉到 ✓）" if futu is None else "否 ✓"))
 
+    pending = []
     if args.audit:
         der = _load(DERIVED)
         print("\n=== 与反推（%s）对账 ✗ ===" % DERIVED)
@@ -155,13 +167,30 @@ def main(argv=None):
             d = _norm(der, "derived")
             k1 = set(out["date"] + "|" + out["symbol"] + "|" + out["action"])
             k2 = set(d["date"] + "|" + d["symbol"] + "|" + d["action"])
+            miss = k2 - k1
+            # 🔴 公司行动（合股/派息）已知误判 ⇒ 豁免 ✗；其余才是「疑似券商漏单」✗
+            exempt = sorted(miss & set(CORP_ACTION_EXEMPT))
+            pending = sorted(miss - set(CORP_ACTION_EXEMPT))
             print("  合并 %d 笔 ｜ 反推 %d 笔" % (len(out), len(d)))
             print("  🔴 合并有、反推无：%d 笔 ✓（正常 ✓ —— 同日买卖相抵 ✗）"
                   % len(k1 - k2))
-            print("  🟡 反推有、合并无：%d 笔 ✗（**该查** ✗ —— 券商流水漏了 ✓）"
-                  % len(k2 - k1))
-            for k in sorted(k2 - k1)[:20]:
-                print("     %s" % k)
+            print("  🟡 反推有、合并无：%d 笔（待查 %d / 已豁免公司行动 %d）"
+                  % (len(miss), len(pending), len(exempt)))
+            for k in exempt:
+                print("     ✓ 已豁免（公司行动，非交易）%s" % k)
+            for k in pending[:20]:
+                print("     ✗ %s" % k)
+
+    if args.alert and pending:
+        try:
+            from scripts.invest_research import push_feishu
+            push_feishu(
+                "⚠️ [成交对账 MT-63] 反推有、合并无 %d 笔 ✗（疑似券商流水漏单 ✗）：\n"
+                % len(pending) + "\n".join("  • " + k for k in pending[:20]))
+            print("\n🔔 已就 %d 笔待查向飞书告警 ✓" % len(pending))
+        except Exception as e:  # 告警失败不阻断合并写盘 ✗
+            print("  ⚠️ 飞书告警发送失败：%s" % e)
+        return 1
 
     if args.write:
         p = os.path.join(config.DATA_DIR, "trade_log_merged.csv")
