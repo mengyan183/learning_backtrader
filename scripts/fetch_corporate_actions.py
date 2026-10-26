@@ -54,9 +54,15 @@ def _session():
     return sess
 
 
-def _fetch_one(symbol, sess, retries=1):
-    """抓单个标的的 splits / dividends；限流退避重试；失败返回 (None, None) ✓。"""
+def _fetch_one(symbol, sess, retries=3):
+    """抓单个标的的 splits / dividends；限流指数退避重试；失败返回 (None, None) ✓。
+
+    MT-69 轻加固：偶发网络/抖动最多重试 3 次，退避按 5s→10s→20s 指数拉长；
+    注意 IP 整体被 Yahoo 429 限流时重试无效（仍跳过该标的 ✗），本加固只为
+    偶发抖动与「限流恢复后自动补全」服务，不替代备用源 ✓。
+    """
     import yfinance as yf
+    backoff = [5, 10, 20]
     for attempt in range(retries + 1):
         try:
             tk = yf.Ticker(symbol, session=sess)
@@ -78,7 +84,7 @@ def _fetch_one(symbol, sess, retries=1):
             return splits, divs
         except Exception as e:  # 限流/网络/解析 ✗
             if attempt < retries:
-                time.sleep(3 + attempt * 3)
+                time.sleep(backoff[min(attempt, len(backoff) - 1)])
                 continue
             if not _quiet:
                 print("  ⚠️ %s 抓取失败（跳过，保留原清单）：%s"
@@ -101,6 +107,8 @@ def main(argv=None):
     global _quiet
     ap = argparse.ArgumentParser(description="yfinance 公司行动清单（splits/dividends）")
     ap.add_argument("--quiet", action="store_true", help="只打印汇总")
+    ap.add_argument("--sleep", type=float, default=1.5,
+                    help="标的间间隔秒数（默认 1.5，温和限速降低 Yahoo 429 ✓）")
     args = ap.parse_args(argv)
     _quiet = args.quiet
 
@@ -121,7 +129,7 @@ def main(argv=None):
         ok += 1
         new_splits.extend(sp or [])
         new_divs.extend(dv or [])
-        time.sleep(1.5)  # 温和限速，降低 Yahoo 429 ✓
+        time.sleep(args.sleep)  # 温和限速，降低 Yahoo 429 ✓
 
     # ---- splits：保留 manual/verified=1，yfinance 行按 (symbol,date,ratio) 去重 ✓ ----
     if new_splits:
