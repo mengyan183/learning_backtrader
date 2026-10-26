@@ -68,7 +68,10 @@ RESEARCH_SYMBOLS = ["GLD", "GDX", "GDXJ", "GDXU", "SLV",
 # MT-52（2026-10-21）：KORU（Direxion 韩国 3×）底层 EWY（iShares MSCI South Korea），
 #     与 COIN/NVDA/TSLA/XLF 同类——已登记进 SIGNAL_UNDERLYING_MAP 但不在抓取清单 ⇒
 #     每日增量从不更新 ⇒ KORU 个股分永久陈旧。补入；纯数据侧，不动判据/阈值。
-UNDERLYING_FETCH_SYMBOLS = ["COIN", "NVDA", "TSLA", "XLF", "EWY"]
+# MT-71（2026-10-26）：新登记 8 条实测底层中，SPY/TLT 已在清单；补 XLV/VGK/XLE/DIA/XLK/XLU
+#     （避免登记后每日增量不更新 ⇒ 个股分永久陈旧，MT-46 同类）；纯数据侧。
+UNDERLYING_FETCH_SYMBOLS = ["COIN", "NVDA", "TSLA", "XLF", "EWY",
+                            "XLV", "VGK", "XLE", "DIA", "XLK", "XLU"]
 FETCH_SYMBOLS = ["TQQQ", "SOXL", "UPRO", "QQQ", "SOXX", "SMH", "SPY", "RSP",
                  "IWM"] + RESEARCH_SYMBOLS + UNDERLYING_FETCH_SYMBOLS
 
@@ -479,10 +482,21 @@ SIGNAL_UNDERLYING_MAP = {
     "GDXU": "GDXU_UND",                             # **合成列**，见下
     # C-9 观察池扩池-策略侧（2026-10-08，白名单未动）：
     #   底层精确映射：NVDL→NVDA、TSLL→TSLA、FAS→XLF、TNA→IWM（Nasdaq 已补抓入库）
-    #   FNGU→QQQ：FANG 指数无现货 ETF 数据，QQQ 作大盘科技**近似底层**（已声明，非精确）
     #   SQQQ→QQQ：反向 -3× 纳指 ⇒ 指数表达**纳指情绪**（QQQ 动量高=SQQQ 该跌），动作反向
-    "NVDL": "NVDA", "TSLL": "TSLA", "FNGU": "QQQ",
+    #   FNGU：MT-71 已移除（跟踪 NYFANG 自定义指数 ≠ QQQ，无现货 ETF 可回归 ⇒ 不登记、
+    #          不给贪恐分，避免把近似当精确；仅留在 OBSERVE_SYMBOLS 研究池）✓
+    "NVDL": "NVDA", "TSLL": "TSLA",
     "FAS": "XLF", "TNA": "IWM", "SQQQ": "QQQ",
+    # MT-71（2026-10-26）：3× 做多 ETF 底层 β 回归实测登记，口径 β∈[2.5,3.5] 且 R²≥0.95 ✓
+    #   （数值=对本地候选池回归的 β / R²；推不出的留空不猜：BULZ/DFEN/DPST/LABU/NAIL/RETL/WEBL）
+    "SPXL": "SPY",   # β=2.906 R²=0.9950 三倍标普
+    "UDOW": "DIA",   # β=2.977 R²=0.9975 三倍道指
+    "TECL": "XLK",   # β=2.968 R²=0.9969 三倍科技
+    "TMF":  "TLT",   # β=2.914 R²=0.9874 三倍长债
+    "UTSL": "XLU",   # β=2.974 R²=0.9879 三倍公用事业
+    "CURE": "XLV",   # β=2.962 R²=0.9931 三倍医疗
+    "OILU": "XLE",   # β=3.026 R²=0.9778 三倍能源（板块 β 比原油 USO 更贴合）
+    "EURL": "VGK",   # β=2.883 R²=0.9562 三倍欧洲
 }
 # GDXU 的底层 = 指数 `MINERS` = **GDX + GDXJ 市值加权**（**不是** GDX 单只）。
 # 权重取自 investing.com 的 GDXU 持仓页（2026-09-28 查得：GDX 76.07%）⇒ 固定先验。
