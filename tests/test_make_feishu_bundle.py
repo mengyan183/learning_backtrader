@@ -157,7 +157,10 @@ def test_keep_bundle_stays_small():
     断言一个会随数据漂移的具体字节数是**假守卫**；只守住「量级没变」。
     """
     blob = bundle._zip(bundle._spec(["keep"]))
-    assert len(blob) <= 40 * 1024, \
+    # 量级守卫（非精确容量）：shoutu_history / fng / etf_universe 逐日累积，
+    # xz 后会缓慢增长，断言固定字节是假守卫；只拦住「夹带整个 Data/raw」的失控
+    # （那种会到 MB 级）。256 KB 压缩后仍属「小文件包」量级。
+    assert len(blob) <= 256 * 1024, \
         "keep 包 %.1f KB，明显夹带了不该有的东西" % (len(blob) / 1024)
 
 
