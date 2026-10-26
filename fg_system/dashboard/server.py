@@ -368,6 +368,77 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
                                    % (type(exc).__name__, exc), "items": []}),
                 status=500, mimetype="application/json")
 
+    @app.route("/api/watchlist_3x")
+    def _watchlist_3x_api():
+        """MT-66：3× 做多 ETF 关注列表（纯本地 CSV，**不联网** ✓）。
+
+        每行：官网现价（universe）+ 系统贪恐个股分（query()）+ 守猪待兔分
+        （复用 `_shoutu_of()` ✓）。底层未登记 ⇒ 贪恐分 `null` ✗（不给大盘分冒充 ✓）。
+        """
+        import importlib.util
+
+        from fg_system import config as _cfg
+
+        try:
+            wl_path = os.path.join(_cfg.RAW_DIR, "watchlist_3x.csv")
+            if not os.path.exists(wl_path):
+                return Response(_json_ok(
+                    {"error": "关注清单缺失，请先跑 scripts/build_watchlist_3x.py",
+                     "items": []}), status=404, mimetype="application/json")
+
+            import pandas as pd
+            wl = pd.read_csv(wl_path, dtype={"symbol": str, "name": str,
+                                             "underlying": str})
+
+            # 市场级数据日期（与 /api/symbol_fg 同源 ✓）
+            qpath = os.path.join(_cfg.ROOT, "scripts", "query_symbol_fg.py")
+            spec = importlib.util.spec_from_file_location("query_symbol_fg", qpath)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+
+            prices = None
+            p = os.path.join(_cfg.RAW_DIR, "prices.csv")
+            if os.path.exists(p):
+                prices = pd.read_csv(p, dtype={"symbol": str},
+                                     parse_dates=["date"])
+
+            # universe 最新日（官网现价口径日期 ✓）
+            as_of = None
+            up = os.path.join(_cfg.RAW_DIR, "shoutu_etf_universe.csv")
+            if os.path.exists(up):
+                as_of = str(pd.read_csv(up, usecols=["date"])["date"].max())[:10]
+
+            items = []
+            for _, r in wl.iterrows():
+                sym = str(r["symbol"]).strip().upper()
+                q = mod.query(sym, prices=prices, auto=False)
+                items.append({
+                    "symbol": sym,
+                    "name": str(r["name"]),
+                    "underlying": q.get("underlying") or r.get("underlying"),
+                    "list_source": r.get("source"),
+                    "price": r.get("price"),
+                    "universe_fg": r.get("universe_fg"),
+                    "fg_value": q.get("value"),
+                    "fg_zone": q.get("zone"),
+                    "fg_source": q.get("source"),
+                    "fg_date": q.get("date"),
+                    "fg_stale": q.get("stale", False),
+                    "shoutu": q.get("shoutu"),
+                    "shoutu_zone": q.get("shoutu_zone"),
+                    "shoutu_date": q.get("shoutu_date"),
+                    "shoutu_stale": q.get("shoutu_stale", False),
+                })
+            _fg, data_date = mod._market_fg()
+            return Response(_json_ok({"as_of": as_of, "data_date": data_date,
+                                      "items": items}),
+                            mimetype="application/json")
+        except Exception as exc:      # noqa: BLE001
+            return Response(
+                _json_ok({"error": "关注列表失败：%s: %s"
+                                   % (type(exc).__name__, exc), "items": []}),
+                status=500, mimetype="application/json")
+
     @app.route("/api/tasks")
     def _tasks_api():
         """定时任务与数据新鲜度状态（复用 scripts/task_monitor.collect_status）。"""

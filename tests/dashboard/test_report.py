@@ -89,11 +89,17 @@ def test_html_uses_only_local_static_assets(tmp_path):
     import re
     html = _render(tmp_path)
     body = re.sub(r"https?://www\.w3\.org/[^\s\"'<>]*", "", html)
+    # MT-67：豁免**用户主动点击**的官方跳转 <a href>（不拉外部资源 ✓，
+    # 与 CDN/字体/脚本自动加载性质不同）；其余外部 http(s) 仍禁止 ✓
+    ALLOWED_LINK_HOSTS = ("fe.szdt.tech",)
+    body = re.sub(r'href="https?://fe\.szdt\.tech/[^"]*"', "", body)
     assert "http://" not in body, "存在外部 http 引用"
     assert "https://" not in body, "存在外部 https 引用"
     for m in re.finditer(r"""(?:src|href)=["']([^"']+)["']""", html):
         url = m.group(1)
         if url.startswith(("http://", "https://", "//")):
+            if any(host in url for host in ALLOWED_LINK_HOSTS):
+                continue  # 官方跳转白名单 ✓
             raise AssertionError("存在外部资源引用: %s" % url)
         if ("<script" in html[:m.start()][-30:] or "stylesheet" in html[:m.start()][-50:]):
             assert url.startswith("/static/"), "静态资源必须指向本地 /static/: %s" % url

@@ -135,6 +135,28 @@
 </div>
 </div>
 
+<div class="sec-wrap" data-name="关注列表">
+<h2>3× 做多 ETF 关注列表</h2>
+<div class="sec">
+<p style="font-size:12px;color:#8b949e">
+全部<b>美股 3× 做多</b>杠杆 ETF（官网 ETF 全资产页本地清单 ✓，纯本地读取不联网）。
+列：官网现价、<b>系统贪恐个股分</b>（0-100，高分=贪婪，未登记底层不给分 ✗）、<b>守猪待兔分</b>（0-100，第二系统 ✓）。
+未登记底层的标的只显示官网参考分（标注「官网」），不冒充系统个股分。
+</p>
+<p style="margin:6px 0">
+  <!-- MT-67 方案A：纯跳转，URL 不带激活码 ✗；激活码仅本机 API 使用，绝不进前端/git/日志 ✓ -->
+  <a href="https://fe.szdt.tech/invest/#/etf" target="_blank" rel="noopener noreferrer"
+     style="display:inline-block;padding:6px 14px;border:1px solid #30363d;border-radius:6px;color:#58a6ff;text-decoration:none">
+    打开守猪待兔官网 ETF 页（对照）
+  </a>
+  <span style="font-size:11px;color:#8b949e;margin-left:8px">激活码仅本机 API 使用，不随链接传出 ✓</span>
+</p>
+<div id="wlDate" style="font-size:12px;color:#8b949e;margin:4px 0"></div>
+<div id="wlTable"></div>
+<div id="wlMsg" style="margin-top:6px;font-size:12px;color:#888"></div>
+</div>
+</div>
+
 <div class="sec-wrap" data-name="任务">
 <h2>定时任务执行情况</h2>
 <div class="sec">
@@ -152,6 +174,7 @@
 <button class="tab-btn" data-tab="3">Human 3.0</button>
 <button class="tab-btn" data-tab="4">标的查询</button>
 <button class="tab-btn" data-tab="5">任务</button>
+<button class="tab-btn" data-tab="6">关注列表</button>
 </nav>
 
 <script>
@@ -675,7 +698,51 @@ function loadTasks() {
       sum.textContent = "状态加载失败（服务未重启？）";
     });
   }
+  // MT-66：3× 做多 ETF 关注列表（纯本地，不联网）
+  function loadWatchlist() {
+    var box = document.getElementById("wlTable");
+    var msg = document.getElementById("wlMsg");
+    var dateEl = document.getElementById("wlDate");
+    if (!box) { return; }
+    fetch("/api/watchlist_3x", { cache: "no-store" }).then(function (r) {
+      return r.json();
+    }).then(function (j) {
+      if (j.error) { msg.textContent = j.error; box.innerHTML = ""; return; }
+      var head = [];
+      if (j.as_of) { head.push("官网清单截至 " + j.as_of); }
+      if (j.data_date) { head.push("系统数据截至 " + j.data_date); }
+      dateEl.textContent = head.join(" ｜ ");
+      var color = function (s) {
+        return s === "个股" ? "#3fb950" : (s === "大盘回退" ? "#e5534b" : "#8b949e");
+      };
+      var rows = (j.items || []).map(function (it) {
+        var fg = (it.fg_value == null) ? "—" : Number(it.fg_value).toFixed(1);
+        var fgSrc = it.fg_source || "未登记";
+        var fgDate = it.fg_date ? (it.fg_date + (it.fg_stale ? " ⚠️" : "")) : "—";
+        // 未登记底层：只给官网参考分（明确标注，不冒充系统个股分）
+        var uni = (it.universe_fg == null) ? "—" : Number(it.universe_fg).toFixed(1);
+        var sh = (it.shoutu == null) ? "—"
+          : (Number(it.shoutu).toFixed(1) + " " + (it.shoutu_zone || "")
+             + (it.shoutu_stale ? " ⚠️" : ""));
+        var price = (it.price == null) ? "—" : Number(it.price).toFixed(2);
+        return "<tr><td><b>" + esc(it.symbol) + "</b></td><td>" + esc(it.name) +
+          "</td><td>" + (esc(it.underlying) || "未知") + "</td>" +
+          "<td>" + esc(price) + "</td>" +
+          "<td><b>" + esc(fg) + "</b></td>" +
+          "<td>" + (esc(it.fg_zone) || "—") + "</td>" +
+          "<td style='color:" + color(it.fg_source) + "'>" + esc(fgSrc) + "</td>" +
+          "<td style='font-size:11px'>" + esc(uni) + "</td>" +
+          "<td>" + esc(sh) + "</td>" +
+          "<td style='font-size:11px;color:#8b949e'>" + esc(fgDate) + "</td></tr>";
+      }).join("");
+      box.innerHTML = "<table class='card'><tr><th>标的</th><th>名称</th><th>底层</th>" +
+        "<th>官网现价</th><th>贪恐分</th><th>档位</th><th>来源</th>" +
+        "<th>官网参考</th><th>守猪待兔</th><th>系统日期</th></tr>" + rows + "</table>";
+      msg.textContent = "";
+    }).catch(function (e) { msg.textContent = "关注列表加载失败：" + e; });
+  }
   loadTasks();
+  loadWatchlist();
 })();
 </script>
 

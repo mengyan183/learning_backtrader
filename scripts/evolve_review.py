@@ -309,7 +309,17 @@ def register_hypotheses(cands, via):
     added = []
     existing = open(HYP).read() if os.path.exists(HYP) else ""
     existing_hyps = _load_existing_hypotheses()  # MT-51：归一化查重
+    # MT-68：每日登记上限（防 LLM 一天刷一堆候选积压；只限流，不改判据/阈值 ✓）
+    DAILY_REGISTER_CAP = 3
+    n_today = sum(
+        1 for ln in existing.splitlines()
+        if ln.startswith("| H-") and today in ln.split("|")[2]
+    )
     for c in cands or []:
+        if n_today >= DAILY_REGISTER_CAP:
+            print(f"[evolve_review] 今日登记已达上限 {DAILY_REGISTER_CAP} 条，"
+                  f"其余候选跳过（防积压 ✓）")
+            break
         if not isinstance(c, dict):
             continue
         a = str(c.get("assumption", "")).strip()
@@ -342,6 +352,7 @@ def register_hypotheses(cands, via):
                 fh.write(row + "\n")
             added.append(hid)
             existing += row
+            n_today += 1
             print(f"[evolve_review] 列名校验未过，登记为 pending-revise：{a[:40]} "
                   f"（{reason}）")
             continue
@@ -352,6 +363,7 @@ def register_hypotheses(cands, via):
             fh.write(row + "\n")
         added.append(hid)
         existing += row
+        n_today += 1
     return added
 
 
