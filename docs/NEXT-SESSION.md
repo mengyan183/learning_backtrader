@@ -1,20 +1,30 @@
 # 下次会话先读这个（进度快照）
 
-**更新**：2026-10-16 · **对应提交**：远端 main = `c750f0d`（MT-33：H-069 裁决 A 落地 + §C.3 教训⑧改写/⑨a⑨b）
+**更新**：2026-10-26 · **远端**：GitHub `https://github.com/mengyan183/learning_backtrader.git` main（已迁离 gitee）· **测试基线**：1910 passed / 1 skipped / 0 failed · 上一提交 `4b00a38`（MT-73/74/75）
 
 ---
 
 ## 一句话现状
 
 - **同步链路已全通** ✓：公司 Windows → 飞书「海外投资助手」机器人 → OpenClaw(Mac) `fg-sync` skill → 贪恐仓库（详见 `docs/dual-end-workflow.md`）
-- **gitee 为唯一主线** ✓：读走 `git fetch`（公司代理 `http://10.30.6.49:9090`），写走飞书分片，**不做 merge**（历史无关）✓
-- 🔴 **任务表已清空** ✓：`docs/windows-tasks.md` **WT-01~31 全部 ✅** ✓；`docs/mac-tasks.md` **MT-01~33 全部 ✅** ✓ ⇒ **无下发任务** ⚠️（⇒ 需**定新目标**，否则下个会话无活可干）
+- **GitHub 为唯一主线** ✓：读走 `git fetch`（公司代理 `http://10.30.6.49:9090`），写走飞书分片，**不做 merge**（历史无关）✓
+- **任务表 MT-01~75 全部 ✅** ✓；本轮 **方向 A（每日链新鲜度治理）已落地** ✓（见下「2026-10-26 A 治理」）⇒ **无下发任务** ⚠️（⇒ 需用户定新目标）
 - 🔴 **任务通道已固化（2026-10-16）**：**凡「需 Mac 执行」的事必须登记进 `docs/mac-tasks.md`** ✓（状态 `待执行` 即触发器 ✓，Mac 完成后回写 ✅）；**note 只是说明附件、不构成任务** ✗
-- **规划 v2.0**：**阶段 1 ✅**（A5/A3c/A3b/A3a/D1，2026-10-13 ✓）；**阶段 2 ✅**（敏感性四组 + 变体回测 V-H7/V-ATR/V-VOL/V-CORR/V-MA + B2/B3，2026-10-09~14 ✓）⇒ **下一阶段待定** ⏩（阶段 3 / A4 前置，**需与用户确认** ✗）
-- 🔴 **H-065 线已整体归档（2026-10-16）** ✗：H-065（60 日 corr ✗）/ H-068（5 日 corr ✗）/ H-069（当日股债同跌率 ✗）**三个指标全否** ⇒ 「挤压期避险失效」**不再派生新假说** ✗（再换指标即过拟合）
-- **Mac 侧待办（等待型）**：① B 类数据积累（H-001 观察点、B-3/B-5 快照、B-8/B-9）；② F-009/F-010 因子样本积累。C-5 季度自动重检已设 launchd（1/4/7/10 月 1 日 08:00）
+- 🔴 **H-065 线已整体归档（2026-10-16）** ✗：H-065/H-068/H-069 三指标全否 ⇒ 「挤压期避险失效」不再派生新假说 ✗（再换指标即过拟合）
+- **Mac 侧待办（等待型）**：① B 类数据积累（H-001 观察点、B-3/B-5 快照、B-8/B-9）；② F-009/F-010 因子样本积累；③ H-006/008/009 样本未达标（仅 ~20 日，需 60/40/T+10），硬编码 verifying 已标 pending，不硬判；C-5 季度自动重检已设 launchd（1/4/7/10 月 1 日 08:00）
 - ⚠️ **Windows 端环境**：默认 `python` = **3.14 且无 `backtrader`** ✗ ⇒ 跑测试**必须 `py -3.10`** ✓；**无公网** ⇒ 凡"需真实 `Data`"的任务登记 `docs/mac-tasks.md` ✓
-- ⚠️ **状态列仅供参考** ✗：本仓库多次出现"已完成但状态仍写待做"✗（WT-15~26 即如此）⇒ **开工前先 grep/跑测试确认代码现状** ✓
+- ⚠️ **状态列仅供参考** ✗：开工前先 grep/跑测试确认代码现状，勿把已完成当待办 ✓
+
+---
+
+## 🆕 2026-10-26 方向 A：每日链新鲜度治理（本轮落地）
+
+- **取证结论**：`task_monitor.collect_status()` 当前 all_ok，12 项数据全在容忍窗、9 个 launchd 任务全注册 ⇒ 任务页监控口径本身正确，用户截图里的陈旧是历史停更、现已恢复，**无需改前端/监控逻辑**（任务页 `index.html` 动态遍历 `d.data`，新增项自动渲染）。
+- **唯一现存真实停更 = FRED 三序列**：`fred_DFF`（factor_screen 生产用）/`fred_DGS10`（H-065 归因控制量）/`fred_T10Y2Y`（term 观察）此前**既不在每日链也不在监控** ⇒ 静默停更多日无人发现。
+- ✅ **修复**：① 手动补跑 `fetch_fred.py --series DFF,T10Y2Y,DGS10`（本地 key 走官方 API，补到最新工作日）；② `task_monitor.py` DATA_CHECKS 增三项（列名 `observation_date`，tol=5 自然日吸收周末/节假日/T+1）；③ `server.py` `_RETRY_MAP` 增三项 fred 页面重试映射；④ 已安装 `com.xingguo.fg-daily.plist` 在 kalshi_fed 后插入 fetch_fred 步骤并已 bootout+bootstrap 重载。
+- **研究候选不挂每日**：`BAA10Y`/`BAMLH0A0HYM2`/原油 `DCOILWTICO` 属按需研究（verify_hypotheses / crude_factor_check），非常态生产，不挂每日链、不纳入监控。
+- ✅ **plist 回流入库**：仓库 `scripts/` 新增/更新全部贪恐 launchd 副本（fg-daily 覆盖 + evolve-verify/evolve-weekly/fg-monitor/fg-realtime/fg-sync-watcher/kb-update/quarterly-walkforward/shoutu-daily/shoutu-history）；`fg-dashboard` 因含 Basic 密码只入库**脱敏模板**（`CHANGE_ME`，密码不进 git）。
+- 相关测试 118 passed（task_monitor + dashboard）；全量回归见提交说明。
 
 ---
 
@@ -76,13 +86,13 @@
 
 | 项 | 值 |
 |---|---|
-| 仓库 | Mac `/Users/xingguo/learning_backtrader`；Windows `D:\3-code\learning_backtrader`；**remote `gitee.com/xingbaoyin/learning_backtrader.git`**（读走公司代理 `http://10.30.6.49:9090`）|
-| push 网络 | **必须走 ClashX 代理 7890**（直连被 TUN 劫持/超时）；有效推送：`export GH_TOKEN=$(gh auth token)` + `git -c http.proxy=http://127.0.0.1:7890 -c credential.helper= -c credential.helper="!f(){ echo \"username=x-access-token\"; echo \"password=$GH_TOKEN\"; }; f" push origin main`（绕过 osxkeychain 卡死） |
+| 仓库 | Mac `/Users/xingguo/learning_backtrader`；Windows `D:\3-code\learning_backtrader`；**remote GitHub `https://github.com/mengyan183/learning_backtrader.git` main**（读走公司代理 `http://10.30.6.49:9090`）|
+| push 网络 | 走代理 `10.30.6.49:9090`；HTTP/2 报错用 `git -c http.version=HTTP/1.1 push origin main`；**推完 unset http/https_proxy**（飞书 API 直连必须先 unset 全部代理 http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY/ALL_PROXY/all_proxy）|
 | credential | 系统级 CommandLineTools gitconfig 有 `osxkeychain`（会卡死 push）；repo 级 `!gh auth git-credential`（不带 fill） |
 | 模型 | OpenClaw 主模型 `nvidia/deepseek-ai/deepseek-v4.1-flash`；fallback `[zai/glm-4.7-flash, litellm/hermes-agent, ollama/qwen2.5-coder:3b-64k]`（zai 有 429 史）；ollama 11434 |
 | 网关 | OpenClaw 18789；重启 gateway 用 `kill -9 <PID>`（`launchctl kickstart` 静默失效）；日志 `~/Library/Logs/openclaw/gateway.log` |
 | 飞书 | appId `cli_a93abe057178dbb4`（secret 在 `~/.openclaw/openclaw.json`）；chat_id `oc_a9306b326943821490184d073dae9a65`；API 基 `https://open.feishu.cn/open-apis` |
-| 测试 | `.venv/bin/python -m pytest tests/ -q`（**1711 passed** 基线，2026-10-16 ✓）；增量 `--quick` <10s |
+| 测试 | `.venv/bin/python -m pytest tests/ -q`（**1910 passed / 1 skipped / 0 failed** 基线，2026-10-26 ✓）；增量 `--quick` <10s |
 | 数据源 | 海外需代理 7890（家里 Mac）；公司电脑用公司代理 |
 
 ## 给下次会话的提醒

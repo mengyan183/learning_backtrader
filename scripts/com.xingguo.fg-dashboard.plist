@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 部署说明：FG_DASHBOARD_PASSWORD 为本地 Basic 认证凭据（user:pass），
+	     属私有信息不入库；部署时把下方 CHANGE_ME 替换为本地实际值，
+	     或改从环境变量/本地未入库文件注入后再 bootstrap。 -->
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>FG_DASHBOARD_PASSWORD</key>
+		<string>CHANGE_ME</string>
+		<key>FG_REFRESH_SYNC_MODE</key>
+		<string>live</string>
+	</dict>
+	<key>KeepAlive</key>
+	<true/>
+	<key>Label</key>
+	<string>com.xingguo.fg-dashboard</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>-lc</string>
+		<string>cd /Users/xingguo/learning_backtrader; export PYTHONPATH=.; .venv/bin/python scripts/serve_dashboard.py --host 0.0.0.0 --port 8000</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/tmp/fg_dashboard.log</string>
+	<key>StandardOutPath</key>
+	<string>/tmp/fg_dashboard.log</string>
+</dict>
+</plist>

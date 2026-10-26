@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.xingguo.fg-realtime</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/xingguo/learning_backtrader/.venv/bin/python</string>
+        <string>-u</string>
+        <string>/Users/xingguo/learning_backtrader/scripts/futu_realtime.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/xingguo/learning_backtrader</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/fg_realtime.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/fg_realtime.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>FG_REALTIME_OFF</key>
+        <string></string>
+    </dict>
+</dict>
+</plist>

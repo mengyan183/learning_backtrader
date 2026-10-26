@@ -308,6 +308,9 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         "shoutu_history": ["launchctl:kickstart gui/<uid>/com.fg.shoutu-history"],
         "news_sentiment": ["scripts/fetch_news.py"],
         "stablecoin_usage": ["scripts/fetch_stablecoin_usage.py", "--incremental"],
+        "fred_dff":   ["scripts/fetch_fred.py", "--series", "DFF,DGS10,T10Y2Y"],
+        "fred_dgs10": ["scripts/fetch_fred.py", "--series", "DFF,DGS10,T10Y2Y"],
+        "fred_t10y2y": ["scripts/fetch_fred.py", "--series", "DFF,DGS10,T10Y2Y"],
         "prices":         ["-c", "from fg_system.data import fetch; fetch.update_prices()"],
         "features":       ["-c", "from fg_system import pipeline; pipeline.run(write=True)"],
     }

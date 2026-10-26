@@ -47,6 +47,11 @@ DATA_CHECKS = [
     ("shoutu_history",  "Data/raw/shoutu_history.csv",    "date", 7),
     ("news_sentiment",  "Data/raw/news_sentiment.csv",    "date", 3),
     ("stablecoin_usage","Data/raw/stablecoin_usage.csv",  "date", 3),
+    # FRED 宏观利率（列名 observation_date；工作日发布，周末/节假日/T+1 滞后，容忍 5 自然日）。
+    # 2026-10-26 补：此前这三项既不在每日链也不在监控 ⇒ 静默停更多日无人发现。
+    ("fred_dff",        "Data/raw/fred_DFF.csv",          "observation_date", 5),
+    ("fred_dgs10",      "Data/raw/fred_DGS10.csv",        "observation_date", 5),
+    ("fred_t10y2y",    "Data/raw/fred_T10Y2Y.csv",      "observation_date", 5),
 ]
 
 # 贪恐系统定时任务（launchctl 注册检查）
