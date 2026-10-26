@@ -133,7 +133,11 @@ def test_decision_logic_falsify_on_rebound(patched):
 
 
 def test_decision_logic_rho_falsify_threshold(patched):
-    """判据 2：ρ(d市值, d净值) >= -0.3 ⇒ cond2 为真；市值持平时 ρ=0。"""
+    """判据 2（2026-10-26 修正）：ρ ≤ 0.3 ⇒ cond2 成立（证伪）；市值持平时 ρ=0。
+
+    原断言 `rho >= RHO_FALSIFY`（配 `RHO_FALSIFY=-0.3`）**编码的正是 bug 语义** ✗
+    —— 该式几乎恒真 ⇒ 假说永不能成立 ✗。现改为 `rho <= 0.3` ✓。
+    """
     n = h1.MIN_OBS
     _write_pos(patched, [("2026-01-%02d" % d, "AXTX", 100.0)
                          for d in range(1, n + 1)])
@@ -144,7 +148,7 @@ def test_decision_logic_rho_falsify_threshold(patched):
     dnv = [b - a for a, b in zip(nv, nv[1:])]
     rho = h1.pearson(dmv, dnv)
     assert rho == pytest.approx(0.0)              # 市值无变动 ⇒ ρ=0
-    assert rho >= h1.RHO_FALSIFY                  # 0 >= -0.3 ⇒ cond2 成立
+    assert rho <= h1.RHO_FALSIFY                  # 0 <= 0.3 ⇒ 相关性弱 ⇒ 证伪 ✓
 
 
 # ------------------------------------------------------------------ stdout utf-8
@@ -171,3 +175,45 @@ def test_update_hypotheses_writes_back_utf8(patched):
     assert "| adopted |" in text
     assert "| open |" not in text
     assert list((patched / "memory").glob("*.md")), "memory 日志未写出"
+
+
+# ---------------------------------------------------------------- 2026-10-26 回归
+def test_rho_falsify_sign_is_correct():
+    """🔴 判据 2 必须为「ρ ≤ 0.3 ⇒ 证伪」✓。
+
+    历史 bug：`RHO_FALSIFY = -0.3` + `rho >= RHO_FALSIFY` ⇒ 该式**几乎恒真** ✗
+    ⇒ H-001 永不能成立 ✗；且 ρ=0.844 的强正相关（本是**支持**证据）被判证伪 ✗。
+    """
+    assert h1.RHO_FALSIFY == 0.3
+    src = open(SCRIPT, encoding="utf-8").read()
+    assert "cond2 = rho <= RHO_FALSIFY" in src, "判据 2 方向被改回 ✗"
+    assert not (0.844 <= h1.RHO_FALSIFY)   # 强正相关 ⇒ **不**证伪 ✓
+    assert 0.0 <= h1.RHO_FALSIFY           # 无相关 ⇒ 证伪 ✓
+
+
+def test_strip_cashflow_removes_deposits():
+    """加仓不得被误读成「反弹」✗。"""
+    dates = ["d1", "d2", "d3"]
+    mv = [100.0, 200.0, 200.0]                    # d2 加仓 100
+    inv = {"d1": 100.0, "d2": 200.0, "d3": 200.0}
+    assert h1.strip_cashflow(mv, dates, inv) == [100.0, 100.0, 100.0]
+
+
+def test_strip_cashflow_without_cost_columns_degrades():
+    """没有 qty/cost ⇒ 退化为原样 ✓，不报错。"""
+    assert h1.strip_cashflow([1.0, 2.0], ["a", "b"], {}) == [1.0, 2.0]
+
+
+def test_update_hypotheses_can_revoke_falsified(patched, tmp_path):
+    """`falsified` 必须能改回 `verifying` ✓（原实现只认 `| open |` ✗）。"""
+    hyp = tmp_path / "hypotheses.md"
+    hyp.write_text(
+        "| ID | 日期 | 名称 | 方向 | 方法 | 状态 | 备注 |\n"
+        "|---|---|---|---|---|---|---|\n"
+        "| H-001 | 2026-10-01 | n | d | m | falsified | 备注 |\n",
+        encoding="utf-8")
+    (tmp_path / "memory").mkdir(exist_ok=True)      # update_hypotheses 会追加日志 ✓
+    h1.update_hypotheses("verifying", "撤销错误证伪")
+    text = hyp.read_text(encoding="utf-8")
+    assert "| verifying |" in text
+    assert "| falsified |" not in text
