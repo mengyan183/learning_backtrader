@@ -73,8 +73,12 @@ def _shoutu_of(symbol, records=None):
         raw = float(last["value"])
     except (TypeError, ValueError):
         return None
-    # 🔴 映射 **(x+100)/2** ✓ —— 与 `loader.shoutu_to_system_scale` 同口径 ✓
+    # 🔴 **原生口径**（2026-10-26 用户要求 ✓）：显示原始 `−100~100` ✗，**不换算** ✗
+    # 换算值（`(x+100)/2` ✓）仍保留在 `scaled` 里 ✓，供关注列表等按系统口径展示 ✓。
     val = round((raw + 100.0) / 2.0, 1)
+    # 原生档位 ✓（`docs/shoutu-zones.md` ✓：≤−60 极度恐惧 / (−60,60) 中性 / ≥60 极度贪婪 ✓）
+    zone_native = ("极度恐惧" if raw <= -60.0
+                   else "极度贪婪" if raw >= 60.0 else "中性")
     dstr = str(last["date"])[:10]
     _fg, mdate = _market_fg()
     stale = bool(mdate and dstr and dstr < mdate)
@@ -85,7 +89,8 @@ def _shoutu_of(symbol, records=None):
             stale = True
     except (ValueError, TypeError):
         pass
-    return {"raw": raw, "value": val, "zone": _zone(val),
+    return {"raw": raw, "value": val, "scaled": val,
+            "zone": zone_native, "zone_scaled": _zone(val),
             "date": dstr, "stale": stale}
 
 
@@ -125,7 +130,9 @@ def query(symbol, prices=None, auto=False):
     # 守猪待兔系数 ✓ —— **独立于贪恐** ✓（未登记贪恐也照样有 ✓）
     _sh = _shoutu_of(symbol)
     if _sh:
-        out["shoutu"] = _sh["value"]
+        # 🔴 **原始值** ✗（不换算 ✓）；换算值放 `shoutu_scaled` ✓
+        out["shoutu"] = _sh["raw"]
+        out["shoutu_scaled"] = _sh["scaled"]
         out["shoutu_raw"] = _sh["raw"]
         out["shoutu_zone"] = _sh["zone"]
         out["shoutu_date"] = _sh["date"]
@@ -300,7 +307,7 @@ def auto_resolve(symbol, prices=None, limit=900):
 def _print(results):
     print("%-10s %-10s %-7s %-7s %-9s %-11s %-12s %-9s %s"
           % ("标的", "底层", "行数", "分数", "档位", "来源", "数据日期",
-             "守猪待兔", "守猪日期"))
+             "守猪待兔(原始)", "守猪日期"))
     for r in results:
         val = "—" if r["value"] is None else "%.1f" % r["value"]
         # 🔴 CLI 也必须显示**逐项数据日期 + 滞后标记** ✗ —— 原来只有 JSON/页面有 ✓，

@@ -167,16 +167,36 @@ def test_shoutu_included_in_result(prices):
     r = q.query("TQQQ", prices=prices)
     assert "shoutu" in r and "shoutu_date" in r
     if r["shoutu"] is not None:
-        assert 0.0 <= r["shoutu"] <= 100.0
-        assert r["shoutu_raw"] is not None
-        # 映射关系必须严格成立 ✗
-        assert abs(r["shoutu"] - (r["shoutu_raw"] + 100.0) / 2.0) < 0.11
+        # 2026-10-26 起 shoutu = **原始 -100~100** ✗（不换算 ✓）
+        assert -100.0 <= r["shoutu"] <= 100.0
+        assert r["shoutu"] == r["shoutu_raw"]
+        # 换算值单独存在 shoutu_scaled ✓
+        if r.get("shoutu_scaled") is not None:
+            assert 0.0 <= r["shoutu_scaled"] <= 100.0
+            assert abs(r["shoutu_scaled"] - (r["shoutu"] + 100.0) / 2.0) < 0.11
 
 
-def test_shoutu_scale_matches_zone_edges():
-    """`(x+100)/2` 必须与 `ZONE_EDGES` 的 20/40/60/80 精确对应 ✗。"""
-    for raw, expect in ((-60.0, 20.0), (60.0, 80.0), (0.0, 50.0), (100.0, 100.0)):
-        assert abs((raw + 100.0) / 2.0 - expect) < 1e-9
+def test_shoutu_native_zone_thresholds():
+    """🔴 **原生档位**（2026-10-26 用户要求「不换算」✗）：`≤−60` 极度恐惧 /
+    `(−60, 60)` 中性 / `≥60` 极度贪婪（见 `docs/shoutu-zones.md` ✓）。
+    """
+    cases = ((-89.0, "极度恐惧"), (-60.0, "极度恐惧"), (-42.0, "中性"),
+             (0.0, "中性"), (38.0, "中性"), (60.0, "极度贪婪"))
+    for raw, expect in cases:
+        got = ("极度恐惧" if raw <= -60.0
+               else "极度贪婪" if raw >= 60.0 else "中性")
+        assert got == expect, "raw=%s 应为 %s" % (raw, expect)
+
+
+def test_shoutu_reports_raw_not_scaled(prices):
+    """🔴 结果里的 `shoutu` 必须是**原始 −100~100** ✗，不是换算后的 0~100 ✓。"""
+    r = q.query("TQQQ", prices=prices)
+    if r.get("shoutu") is None:
+        pytest.skip("本地无 shoutu 数据 ✓")
+    assert -100.0 <= r["shoutu"] <= 100.0
+    # 换算值另存 ✓
+    if r.get("shoutu_scaled") is not None:
+        assert 0.0 <= r["shoutu_scaled"] <= 100.0
 
 
 def test_shoutu_uncovered_symbol_has_error(prices):
