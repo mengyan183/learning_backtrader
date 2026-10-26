@@ -18,6 +18,8 @@
   `H-001/006/008/009`）⇒ 用本模块取数 ✓，**不要再读 `accounts.unrealized_pnl`** ✗。
 - `scripts/derive_unrealized.py` 是它的命令行入口 ✓（含与 `accounts.csv` 的**审计** ✓）。
 """
+import sys
+
 import pandas as pd
 
 #: 计算所需列 ✓（缺任一列 ⇒ 无法派生 ✗）
@@ -42,6 +44,20 @@ def unrealized(positions):
     price = pd.to_numeric(out["price"], errors="coerce")
     cost = pd.to_numeric(out["cost"], errors="coerce")
     out["unrealized"] = (qty * (price - cost)).round(2)
+    # 🔴 期权 **1 张 = 100 股** ✗ ⇒ 上面的公式对期权会**低估 100 倍** ✗，
+    # 而且**不会报错** ✗（2026-10-26 发现 `trade_log` 混了 17 笔期权 ✓）。
+    # ⇒ **跳过并告警** ✗（置 `NaN` ✓），**不猜乘数** ✗ ——
+    # 期权浮亏本就不该与股票混看 ✓，真要算再单独实现 ✓。
+    try:
+        from fg_system.data import asset_type
+        opt = asset_type.classify_series(out["symbol"]) == asset_type.OPTION
+        if bool(opt.any()):
+            out.loc[opt, "unrealized"] = float("nan")
+            print("[derived] 跳过 %d 行期权（1 张=100 股，"
+                  "qty×(price−cost) 会低估 100 倍 ✗）" % int(opt.sum()),
+                  file=sys.stderr)
+    except (ImportError, KeyError):
+        pass                      # 无 symbol 列或按路径加载时 ⇒ 退化为原样 ✓
     return out
 
 

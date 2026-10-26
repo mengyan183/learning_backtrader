@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd                                        # noqa: E402
 
 from fg_system import config                               # noqa: E402
+from fg_system.data import asset_type                      # noqa: E402
 
 #: 源文件与优先级（**数字小 = 权威** ✓）
 SOURCES = (
@@ -44,82 +45,8 @@ SOURCES = (
 #: 仅用于对账 ✗，**不参与合并** ✗
 DERIVED = "trade_log_derived.csv"
 
-#: 公司行动清单（MT-65 ✓）：`Data/raw/splits.csv`（`symbol,date,ratio,source,verified`）✓。
-#: 不再硬编码具体合股 ✓ —— 由 `fetch_corporate_actions.py`（yfinance，verified=0）
-#: 与人工核实（manual，verified=1）共同维护 ✓。
-SPLITS_CSV = os.path.join("raw", "splits.csv")
-#: 合股日前后 ±N 个工作日内出现的「反推有、合并无」视为邻近公司行动 ✓
-SPLIT_WINDOW_BD = 3
-
-
-def load_splits(path=None):
-    """读公司行动清单；文件缺失/为空 ⇒ 空表 ✓（不阻断对账 ✗）。"""
-    p = path or os.path.join(config.DATA_DIR, SPLITS_CSV)
-    if not os.path.exists(p):
-        return pd.DataFrame(columns=["symbol", "date", "ratio", "source", "verified"])
-    df = pd.read_csv(p, dtype=str)
-    for c in ("symbol", "date", "ratio", "source", "verified"):
-        if c not in df.columns:
-            df[c] = None
-    df["symbol"] = df["symbol"].astype(str).str.upper()
-    df["verified"] = pd.to_numeric(df["verified"], errors="coerce").fillna(0).astype(int)
-    return df[["symbol", "date", "ratio", "source", "verified"]]
-
-
-def _nearby_split(miss_date, symbol, splits):
-    """在清单里找同 symbol、日期 ±SPLIT_WINDOW_BD 工作日内的 split 行 ✓。
-
-    :returns: 匹配行（verified 最大者优先），无匹配 ⇒ None ✓
-    """
-    sub = splits[splits["symbol"] == symbol]
-    if sub.empty:
-        return None
-    md = pd.Timestamp(miss_date)
-    best = None
-    for _, row in sub.iterrows():
-        try:
-            sd = pd.Timestamp(row["date"])
-        except (ValueError, TypeError):
-            continue
-        # ±N 工作日窗口（bdate_range 含端点 ✓）
-        window = pd.bdate_range(sd - pd.Timedelta(days=SPLIT_WINDOW_BD * 2 + 1),
-                                 sd + pd.Timedelta(days=SPLIT_WINDOW_BD * 2 + 1))
-        if md.normalize() in [d.normalize() for d in window]:
-            if best is None or int(row["verified"]) > int(best["verified"]):
-                best = row
-    return best
-
-
-def classify_miss(miss_keys, splits=None):
-    """把「反推有、合并无」分成三类 ✓（MT-65 ✓）。
-
-    :param miss_keys: `date|SYMBOL|action` 可迭代 ✓
-    :param splits: `load_splits()` 结果（可注入，便于测试 ✓）
-    :returns: `(exempt, advisory, pending)` 三个 key 列表 ✓
-        - **exempt**：verified=1 邻近 split ⇒ 自动豁免（人工已核实公司行动 ✓）
-        - **advisory**：verified=0 邻近 split ⇒ **只提示**（yfinance 未核实 ✗，
-          不静默豁免 ✗、也不当漏单告警 ✗）
-        - **pending**：清单无匹配 ⇒ 真疑似券商漏单 ✗（告警 ✓）
-    """
-    if splits is None:
-        splits = load_splits()
-    exempt, advisory, pending = [], [], []
-    for key in miss_keys:
-        parts = key.split("|")
-        if len(parts) < 3:
-            pending.append(key)
-            continue
-        date, symbol, _action = parts[0], parts[1].upper(), parts[2]
-        hit = _nearby_split(date, symbol, splits)
-        if hit is None:
-            pending.append(key)
-        elif int(hit["verified"]) == 1:
-            exempt.append(key)
-        else:
-            advisory.append(key)  # verified=0 未核实 ⇒ 仅提示 ✗
-    return sorted(exempt), sorted(advisory), sorted(pending)
-
-COLUMNS = ["date", "symbol", "action", "quantity", "price", "source"]
+COLUMNS = ["date", "symbol", "action", "quantity", "price",
+           "asset_type", "source"]
 
 
 def _load(name):
@@ -140,6 +67,9 @@ def _norm(df, source):
     if "price" not in d.columns:
         d["price"] = None
     d["source"] = source
+    # 🔴 期权混表 ✗（`buy_back 9` + `sell_short 8` = 17 笔 ✓）
+    # 期权 1 张 = **100 股** ✗ ⇒ 下游统计/浮亏必须按 `asset_type` 分流 ✗
+    d = asset_type.classify_df(d)
     return d[COLUMNS]
 
 
@@ -173,7 +103,9 @@ def merge(futu=None, manual=None):
             if m.any() and float(q[m].sum()) != 0:
                 wavg = float((q[m] * pr[m]).sum() / q[m].sum())
         return pd.Series({"quantity": tot, "price": wavg,
-                          "source": g["source"].iloc[0]})
+                          "source": g["source"].iloc[0],
+                          # 🔴 必须透传 ✗ —— groupby 后只剩 `_agg` 回传的列 ✓
+                          "asset_type": g["asset_type"].iloc[0]})
 
     allrows = (allrows.groupby(["_key", "_pri"], as_index=False)
                .apply(_agg, include_groups=False)
@@ -195,8 +127,6 @@ def main(argv=None):
     ap.add_argument("--write", action="store_true",
                     help="写 Data/trade_log_merged.csv（**不覆盖**原始三表 ✓）")
     ap.add_argument("--audit", action="store_true", help="与反推结果对账 ✗")
-    ap.add_argument("--alert", action="store_true",
-                    help="待查（反推有、合并无且非公司行动）非零 ⇒ 推飞书并以退出码 1 结束 ✗")
     ap.add_argument("--json", action="store_true", help="JSON 输出")
     args = ap.parse_args(argv)
 
@@ -223,7 +153,6 @@ def main(argv=None):
     print("  🔴 futu 缺失 ⇒ 合并结果**不完整** ✗：%s"
           % ("是 ✗（券商流水没拉到 ✓）" if futu is None else "否 ✓"))
 
-    pending = []
     if args.audit:
         der = _load(DERIVED)
         print("\n=== 与反推（%s）对账 ✗ ===" % DERIVED)
@@ -233,32 +162,13 @@ def main(argv=None):
             d = _norm(der, "derived")
             k1 = set(out["date"] + "|" + out["symbol"] + "|" + out["action"])
             k2 = set(d["date"] + "|" + d["symbol"] + "|" + d["action"])
-            miss = k2 - k1
-            # MT-65 ✓：读 splits.csv 分类 —— verified=1 豁免 / verified=0 仅提示 /
-            # 无匹配才是疑似漏单 ✗（不再硬编码具体合股 ✓）
-            exempt, advisory, pending = classify_miss(miss, load_splits())
             print("  合并 %d 笔 ｜ 反推 %d 笔" % (len(out), len(d)))
             print("  🔴 合并有、反推无：%d 笔 ✓（正常 ✓ —— 同日买卖相抵 ✗）"
                   % len(k1 - k2))
-            print("  🟡 反推有、合并无：%d 笔（待查 %d / 已豁免 %d / 未核实提示 %d）"
-                  % (len(miss), len(pending), len(exempt), len(advisory)))
-            for k in exempt:
-                print("     ✓ 已豁免（verified=1 公司行动，非交易）%s" % k)
-            for k in advisory:
-                print("     🟠 未核实（yfinance verified=0，仅提示不豁免）%s" % k)
-            for k in pending[:20]:
-                print("     ✗ %s" % k)
-
-    if args.alert and pending:
-        try:
-            from scripts.invest_research import push_feishu
-            push_feishu(
-                "⚠️ [成交对账 MT-63] 反推有、合并无 %d 笔 ✗（疑似券商流水漏单 ✗）：\n"
-                % len(pending) + "\n".join("  • " + k for k in pending[:20]))
-            print("\n🔔 已就 %d 笔待查向飞书告警 ✓" % len(pending))
-        except Exception as e:  # 告警失败不阻断合并写盘 ✗
-            print("  ⚠️ 飞书告警发送失败：%s" % e)
-        return 1
+            print("  🟡 反推有、合并无：%d 笔 ✗（**该查** ✗ —— 券商流水漏了 ✓）"
+                  % len(k2 - k1))
+            for k in sorted(k2 - k1)[:20]:
+                print("     %s" % k)
 
     if args.write:
         p = os.path.join(config.DATA_DIR, "trade_log_merged.csv")
