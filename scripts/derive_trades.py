@@ -127,13 +127,69 @@ def audit(derived, logged, tol=1e-6):
     return unlogged.reset_index(drop=True), unmatched.reset_index(drop=True)
 
 
+def reconcile(derived=None):
+    """MT-72②：反推 vs **权威合并视图**(futu>manual，derived 不参与) 双向比对 ✓。
+
+    只打印差异清单（标的/日期/数量），**不写入、不自动补、不发告警** ✗。
+    - 反推有、合并无 ⇒ 经 `merge_trades.classify_miss` 分 exempt/advisory/pending
+      （verified=1 公司行动豁免 / verified=0 未核实提示 / 无匹配=疑似漏单待人工）✓
+    - 合并有、反推无 ⇒ 正常（快照盲区/同日买卖相抵）✓，仅计数不列全 ✓
+    """
+    import importlib.util
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    spec = importlib.util.spec_from_file_location(
+        "merge_trades", os.path.join(here, "scripts", "merge_trades.py"))
+    mt = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mt)
+
+    futu = _load("trade_log_futu.csv")
+    manual = _load("trade_log.csv")
+    merged = mt.merge(futu, manual)
+
+    dr = derived if derived is not None else pd.DataFrame(
+        columns=["date", "symbol", "action", "quantity", "price"])
+    mkey = set(merged["date"] + "|" + merged["symbol"].str.upper()
+               + "|" + merged["action"])
+    d = dr.copy()
+    d["key"] = (pd.to_datetime(d["date"]).dt.strftime("%Y-%m-%d") + "|"
+                + d["symbol"].str.upper() + "|" + d["action"])
+    der_keys = set(d["key"])
+    miss = sorted(der_keys - mkey)
+    extra = sorted(mkey - der_keys)
+    exempt, advisory, pending = mt.classify_miss(miss)
+
+    print("=== MT-72 reconcile：反推 vs 权威合并(futu>manual) ===")
+    print("  合并 %d 笔 ｜ 反推 %d 笔" % (len(merged), len(dr)))
+    print("  🟡 反推有、合并无：%d（豁免 %d / 未核实提示 %d / 待人工 %d）"
+          % (len(miss), len(exempt), len(advisory), len(pending)))
+    for k in exempt:
+        print("     ✓ 已豁免(verified=1 公司行动) %s" % k)
+    for k in advisory:
+        print("     🟠 未核实(verified=0 仅提示) %s" % k)
+    for k in pending:
+        row = d[d["key"] == k].iloc[0]
+        print("     ✗ 待人工确认 %s 数量=%s（不自动补 ✗）" % (k, row.get("quantity")))
+    print("  🔵 合并有、反推无：%d 笔（正常：快照盲区/同日相抵 ✓，不列全）" % len(extra))
+    return pending
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="从持仓快照反推成交流水（不依赖手工记录 ✓）")
     ap.add_argument("--audit", action="store_true", help="与 trade_log 对账 ✗")
+    ap.add_argument("--reconcile", action="store_true",
+                    help="MT-72②：与**权威合并视图**(futu>manual)双向比对，输出差异"
+                         "清单，只告警不写入 ✗")
     ap.add_argument("--write", action="store_true",
                     help="写 Data/trade_log_derived.csv（不覆盖 trade_log ✓）")
     ap.add_argument("--json", action="store_true", help="JSON 输出")
     args = ap.parse_args(argv)
+
+    # MT-72② reconcile 独立分支：只对权威合并视图出差异清单，不依赖快照非空 ✓
+    if args.reconcile:
+        pos = _load("positions.csv")
+        dr = derive(pos) if pos is not None and not pos.empty else None
+        reconcile(dr)
+        return 0
 
     pos = _load("positions.csv")
     if pos is None or pos.empty:
