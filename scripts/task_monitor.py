@@ -58,6 +58,8 @@ TASKS = [
     "com.fg.shoutu-daily",            # 每日 06:30 守猪待兔 API
     "com.fg.shoutu-history",          # 每日 06:35 守猪待兔历史（条件）
     "com.fg.quarterly-walkforward",   # 季度首日 08:00 重标定
+    "com.xingguo.fg-evolve-verify",   # 每日 06:10 假说验证（数据过期闸门 return2 不回写）
+    "com.xingguo.fg-evolve-weekly",   # 每周一 07:00 进化周报（默认不推飞书）
 ]
 
 # 任务 → 日志文件候选（plist StandardOutPath）。launchd 不暴露"最后运行时间"，
@@ -79,6 +81,8 @@ TASK_LOG = {
                                        "logs/shoutu_history_daily.out.log"],
     "com.fg.quarterly-walkforward":   ["logs/walkforward_launchd.log",
                                        "logs/walkforward_launchd.out.log"],
+    "com.xingguo.fg-evolve-verify":   ["logs/evolve_verify.log"],
+    "com.xingguo.fg-evolve-weekly":   ["logs/evolve_weekly.log"],
 }
 
 
