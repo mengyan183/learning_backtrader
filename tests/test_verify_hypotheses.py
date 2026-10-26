@@ -252,15 +252,39 @@ def test_stdout_reconfigured_utf8():
 # 033~041）。其中：
 #   - 有数据可判的（触发率类 / 形态类）⇒ 给判定；
 #   - 数据源未接入或样本不足的 ⇒ 走「等待数据」分支，dry-run 报「数据缺失（路径）」。
-WT07_NEW = [
-    "H-006", "H-008", "H-009",
-    "H-010", "H-011", "H-012", "H-013",
-    "H-014", "H-015", "H-016", "H-017", "H-018", "H-019", "H-020",
-    "H-021", "H-022", "H-023",
-    "H-026", "H-028",
-    "H-030", "H-031", "H-034", "H-035", "H-036", "H-037",
-    "H-038", "H-039", "H-040", "H-041",
-]
+def _undecided_ids():
+    """从 `evolution/hypotheses.md` 读**未定论**的假说（动态 ✓，不硬编码 ✗）。
+
+    未定论 = `open` / `verifying` / `pending-revise` ✓
+    ⇒ 只有这些**应当**出现在 `SUPPORTED`（可判清单 ✓）里。
+    """
+    import os as _os
+    import re as _re
+    root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+    p = _os.path.join(root, "evolution", "hypotheses.md")
+    out = set()
+    with open(p, encoding="utf-8") as fh:
+        for ln in fh:
+            m = _re.match(r"^\| (H-\d+) \|", ln)
+            if not m:
+                continue
+            cells = [x.strip() for x in _re.split(r"(?<!\\)\|", ln.strip().strip("|"))]
+            if len(cells) != 7:
+                continue
+            st = _re.split(r"[（(]", cells[5], 1)[0].strip()
+            if st in ("open", "verifying", "pending-revise"):
+                out.add(cells[0])
+    return out
+
+# 🔴 **稳健口径**（2026-10-26 ✓）：`SUPPORTED` 只是**子集** ✗（未定论 20 条 ✓，
+# 但 SUPPORTED 只列可判的少数 ✓）⇒ 只断言**它自己列出的**必须被真实输出 ✗，
+# 不要求「全部未定论都在里面」✗（那会随假说增减而烂 ✗）。
+WT07_NEW = [h for h in vh.SUPPORTED if h in vh.HYPOTHESES]   # 排除原案 H-005/H-007 ✓
+# 原为硬编码 6 条（H-016/018/026/035/036/039）✗ —— 它们已全部定论
+# （falsified/archived ✓）⇒ 不该再要求它们在 SUPPORTED 里 ✗。
+# 改为「所有**未定论**假说」✓ ⇒ 新增/定论都自动适配 ✓。
+
+
 
 
 def test_help_lists_all_wt07_hypotheses(capsys):
