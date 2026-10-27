@@ -799,6 +799,49 @@ def _buy_and_hold_block(features, prices):
     return "".join(html)
 
 
+# ------------------------------------------------------------ 表格滚动容器
+#: 受保护区：块内内容**不得**被表格包裹正则改写 ✗。
+#:
+#: 🔴 为什么需要（2026-10-27 两次事故）：
+#: 1. script 块里 JS **动态拼接**的 table 标记被包上滚动容器 ⇒
+#:    双引号撞破外层 JS 字符串 ⇒ SyntaxError ⇒ 整段脚本失效 ✗
+#:    （表现：图表/档位带不渲染、底部 tab 点不动 ✗）
+#: 2. HTML **注释**里的举例同样会被包 ⇒ 注释虽不执行，但会干扰
+#:    「标签配对」类断言 ✗（同一类坑踩了两次 ✗）
+#: ⇒ 统一抽出占位 ✓，只改真正的静态 HTML ✓，最后原样还原 ✓。
+_PROTECTED = (
+    r"<script\b[^>]*>.*?</script>",
+    r"<style\b[^>]*>.*?</style>",
+    r"<!--.*?-->",
+    r"<pre\b[^>]*>.*?</pre>",
+    r"<textarea\b[^>]*>.*?</textarea>",
+)
+_TABLE_CARD = r"""(<table class=['"]card['"]>.*?</table>)"""
+
+
+def _wrap_scroll(html):
+    """给**静态 HTML** 里的 `table class="card"` 套横向滚动容器 ✓。
+
+    受保护区（`_PROTECTED`）先抽成占位符 ✓ ⇒ 不参与包裹 ✗ ⇒ 末尾还原 ✓。
+
+    抽成独立函数是为了**可测** ✓ —— 原实现内联在 `render_html()` 里，
+    测试无法构造输入验证「保护区不被误包」✗。
+    """
+    stash = []
+
+    def _stash(m):
+        stash.append(m.group(0))
+        return "\x00PROT%d\x00" % (len(stash) - 1)
+
+    for pat in _PROTECTED:
+        html = re.sub(pat, _stash, html, flags=re.S | re.I)
+    html = re.sub(_TABLE_CARD, r'<div class="scroll">\1</div>', html,
+                  flags=re.S)
+    for i, s in enumerate(stash):
+        html = html.replace("\x00PROT%d\x00" % i, s)
+    return html
+
+
 # ------------------------------------------------------------------ 主入口
 def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None):
     """生成仪表盘 HTML **字符串**（**不落盘**）。
@@ -877,18 +920,7 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
     # <div class="scroll">，双引号会撞破外层 JS 字符串 ⇒ SyntaxError ⇒
     # 整段脚本失效（图表/档位带不渲染、tab 按钮点不动）。先抽出 script
     # 块占位，只对静态 HTML 包裹，再还原。
-    _stashed = []
-
-    def _stash_script(m):
-        _stashed.append(m.group(0))
-        return "\x00SCRIPT%d\x00" % (len(_stashed) - 1)
-
-    html = re.sub(r"<script\b[^>]*>.*?</script>", _stash_script, html,
-                  flags=re.S | re.I)
-    html = re.sub(r"""(<table class=['"]card['"]>.*?</table>)""",
-                  r'<div class="scroll">\1</div>', html, flags=re.S)
-    for _i, _s in enumerate(_stashed):
-        html = html.replace("\x00SCRIPT%d\x00" % _i, _s)
+    html = _wrap_scroll(html)
 
     # G-1（WT-12 审查）：`docs/system-boundary.md` §5 要求「警告存在时，
     # 简报/看板**顶部必须展示**，不得假装数据是最新的」。简报侧做到了
