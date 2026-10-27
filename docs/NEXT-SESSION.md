@@ -1,6 +1,6 @@
 # 下次会话先读这个（进度快照）
 
-**更新**：2026-10-26 · **远端**：GitHub `https://github.com/mengyan183/learning_backtrader.git` main（已迁离 gitee）· **测试基线**：1910 passed / 1 skipped / 0 failed · 上一提交 `4b00a38`（MT-73/74/75）
+**更新**：2026-10-27 · **远端**：GitHub `https://github.com/mengyan183/learning_backtrader.git` main（已迁离 gitee）· **测试基线**：1910 passed / 1 skipped / 0 failed（历史基线，本轮增量 380+15 passed）· 上一提交 `be29d57`（MT-76/77 C1 信用利差闭环）
 
 ---
 
@@ -8,7 +8,7 @@
 
 - **同步链路已全通** ✓：公司 Windows → 飞书「海外投资助手」机器人 → OpenClaw(Mac) `fg-sync` skill → 贪恐仓库（详见 `docs/dual-end-workflow.md`）
 - **GitHub 为唯一主线** ✓：读走 `git fetch`（公司代理 `http://10.30.6.49:9090`），写走飞书分片，**不做 merge**（历史无关）✓
-- **任务表 MT-01~75 全部 ✅** ✓；本轮 **方向 A（每日链新鲜度治理）已落地** ✓（见下「2026-10-26 A 治理」）⇒ **无下发任务** ⚠️（⇒ 需用户定新目标）
+- **任务表 MT-01~77 全部 ✅** ✓；MT-76（C1 BAA10Y 信用利差因子进评测池，只评测不进权重）已全链闭环 ✓（见下「2026-10-27 MT-76」）⇒ **当前无下发任务** ⚠️（⇒ 下一新目标待用户/Windows 拍板：候选 C2 ERP 估值锚 PE 源待补，或 C1 走 M2.2 回测裁判/人工审批）
 - 🔴 **任务通道已固化（2026-10-16）**：**凡「需 Mac 执行」的事必须登记进 `docs/mac-tasks.md`** ✓（状态 `待执行` 即触发器 ✓，Mac 完成后回写 ✅）；**note 只是说明附件、不构成任务** ✗
 - 🔴 **H-065 线已整体归档（2026-10-16）** ✗：H-065/H-068/H-069 三指标全否 ⇒ 「挤压期避险失效」不再派生新假说 ✗（再换指标即过拟合）
 - **Mac 侧待办（等待型）**：① B 类数据积累（H-001 观察点、B-3/B-5 快照、B-8/B-9）；② F-009/F-010 因子样本积累；③ H-006/008/009 样本未达标（仅 ~20 日，需 60/40/T+10），硬编码 verifying 已标 pending，不硬判；C-5 季度自动重检已设 launchd（1/4/7/10 月 1 日 08:00）
@@ -16,6 +16,13 @@
 - ⚠️ **状态列仅供参考** ✗：开工前先 grep/跑测试确认代码现状，勿把已完成当待办 ✓
 
 ---
+
+## 🆕 2026-10-27 MT-76：C1 BAA10Y 信用利差因子进评测池（闭环）
+
+- **分工**：① Mac 供数（带 available_date 的 `Data/raw/fred_baa10y_avail.csv`，T+5 自然日显式滞后防 lookahead）→ ② Windows 写因子 `fg_system/factors/credit_spread.py` → ③ Windows 必测 lookahead → ④ Mac 跑 IC/IR/分层单调性 → ⑤ 回写。
+- **落地**：②③ 由 Windows sync_1027b 交付（patch 因 docs 基准漂移 git apply 整包拒绝，已人工拆解）；`credit_spread.py`（level/zscore/score，`merge_asof(backward,on=available_date)` 禁 ffill）+ `tests/test_credit_spread.py`（11 passed lookahead）；④ 固化 `scripts/eval_baa10y.py`。
+- **④ 评测结果**（样本 2019-09-26→2026-10-26，z 非空 n=1779，756 warmup）：**H10 rank_ICIR=0.548（n1710，近窗0.517 无衰减，pearson 0.566）= 唯一过门槛 horizon**，verdict=通过、best_horizon=10；H5 0.473 / H20 0.459 / H40 0.411 未达 0.5；分层 mono H5/10/20=1.000、H40=0.900，top-bottom 随 horizon 单调。正交性：~putcall −0.076、~breadth −0.089（近零正交）；~vix −0.484、~fg_index −0.450（中等负相关非重复）；~fed +0.604（偏高留意）。
+- **口径**：只进评测池、**不进合成权重（走 M2.2）**；未回头调窗口/滞后凑数；待回测裁判/人工审批。已推送 `be29d57`，结论飞书回传协作群。
 
 ## 🆕 2026-10-26 方向 A：每日链新鲜度治理（本轮落地）
 
