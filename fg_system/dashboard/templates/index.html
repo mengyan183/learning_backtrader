@@ -4,7 +4,7 @@
 <title>{{ title }}</title>
 {{ pwa_head }}
 <script src="/static/echarts.min.js"></script>
-<link rel="stylesheet" href="/static/style.css?v=20261005b"></head><body>
+<link rel="stylesheet" href="/static/style.css?v=20261027a"></head><body>
 <!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
      而**运行时错误在手机上根本看不到** ✗（没有控制台）。
      ⇒ 本段**必须**是页面里**第一个** script 块 ✓ ——
@@ -242,15 +242,22 @@
 </div>
 </div>
 
+<!-- 2026-10-27：7 个平铺 tab 在窄屏挤爆 ✗ ⇒ 微信式「4 主 tab + 更多」✓
+     次级页面进「更多」面板 ✓，面板项按 data-name 与区块一一对应 ✓ -->
 <nav class="tabbar">
 <button class="tab-btn on" data-tab="0">市场</button>
 <button class="tab-btn" data-tab="1">持仓</button>
 <button class="tab-btn" data-tab="2">系统</button>
-<button class="tab-btn" data-tab="3">Human 3.0</button>
-<button class="tab-btn" data-tab="4">标的查询</button>
-<button class="tab-btn" data-tab="5">任务</button>
-<button class="tab-btn" data-tab="6">关注列表</button>
+<button class="tab-btn" data-tab="3" aria-haspopup="true" aria-expanded="false">更多</button>
 </nav>
+<div class="sheet" id="moreSheet" hidden>
+<div class="sheet-panel" role="menu">
+<button class="sheet-item" data-name="Human 3.0">Human 3.0</button>
+<button class="sheet-item" data-name="标的查询">标的查询</button>
+<button class="sheet-item" data-name="关注列表">关注列表</button>
+<button class="sheet-item" data-name="任务">任务</button>
+</div>
+</div>
 
 <script>
 
@@ -269,39 +276,75 @@ var EXTERNAL = {{ external_json | default('null') }};
 var HUMAN30 = {{ human30_json | default('null') }};
 function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a = arguments[i]; for (k in a) { if (a.hasOwnProperty(k)) { o[k] = a[k]; } } } return o; }
 (function () {
-  var tabs = document.querySelectorAll(".tab-btn");
+  var tabs = document.querySelectorAll(".tabbar .tab-btn");
   var wraps = document.querySelectorAll(".sec-wrap");
-  function show(n) {
-    // MT-1021b 修复：按 data-name 匹配，不按索引——模板里可能有无对应 tab 的
-    // sec-wrap（如「标的查询」），按索引会错位（点任务 tab 显示标的查询）。
-    var targetName = tabs[n].textContent.trim();
-    // 🔴 「市场」tab 没有同名区块 ✗ ⇒ 按概览处理：显示**全部**区块 ✓
-    // （2026-10-21：原来按 data-name 匹配后点「市场」会**白屏** ✗）
-    var showAll = (targetName === "市场");
+  var sheet = document.getElementById("moreSheet");
+  var moreIdx = tabs.length - 1;              // 最后一个是「更多」✓
+  // 只显示 data-name 匹配的区块 ✓。
+  // 🔴 2026-10-27：删掉旧 `showAll`（「市场」tab 显示**全部**区块 ✗）——
+  // 那是「市场」还没有同名区块时的兜底 ✗，现在区块存在 ✓，
+  // 兜底反而导致首页往下滑能看到**其它 tab 的内容** ✗。
+  function showByName(name) {
     for (var i = 0; i < wraps.length; i++) {
-      var on = showAll || (wraps[i].dataset.name === targetName);
-      wraps[i].className = "sec-wrap" + (on ? " on" : "");
-    }
-    for (var j = 0; j < tabs.length; j++) {
-      tabs[j].className = "tab-btn" + (j === n ? " on" : "");
+      wraps[i].className = "sec-wrap" +
+        (wraps[i].dataset.name === name ? " on" : "");
     }
     var charts = window.__charts || [];
     for (var c = 0; c < charts.length; c++) {
-      // 🔴 单张图 resize 失败**不得**中断 tab 切换 ✗（图被销毁后 resize 会抛错 ✗）
       try { charts[c].resize(); } catch (e) {}
     }
   }
+  function markTab(n) {
+    for (var j = 0; j < tabs.length; j++) {
+      tabs[j].className = "tab-btn" + (j === n ? " on" : "");
+    }
+    var more = tabs[moreIdx];
+    if (more && more.setAttribute) {
+      more.setAttribute("aria-expanded", sheet && !sheet.hidden ? "true" : "false");
+    }
+  }
+  function closeSheet() { if (sheet) { sheet.hidden = true; } }
   for (var k = 0; k < tabs.length; k++) {
     (function (idx) {
       tabs[k].addEventListener("click", function () {
         // 🔴 单个 tab 渲染异常**不得**让整个 tabbar 失效 ✗
-        // （2026-10-27：排查「底部 tab 无法点击」时加固 ✓）
-        try { show(idx); }
-        catch (e) {
+        try {
+          if (idx === moreIdx) {             // 「更多」⇒ 只弹面板，不动内容 ✓
+            if (sheet) { sheet.hidden = !sheet.hidden; markTab(moreIdx); }
+            return;
+          }
+          closeSheet();
+          markTab(idx);
+          showByName(tabs[idx].textContent.trim());
+        } catch (e) {
           if (window.console) { console.error("tab 切换失败", idx, e); }
         }
       });
     })(k);
+  }
+  var items = document.querySelectorAll("#moreSheet .sheet-item");
+  for (var m = 0; m < items.length; m++) {
+    (function (el) {
+      el.addEventListener("click", function () {
+        try {
+          showByName(el.dataset.name);
+          markTab(moreIdx);                  // 次级页仍高亮「更多」✓
+          closeSheet();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } catch (e) {
+          if (window.console) { console.error("面板切换失败", e); }
+        }
+      });
+    })(items[m]);
+  }
+  if (sheet) {
+    // 点遮罩空白处关闭 ✓
+    sheet.addEventListener("click", function (e) {
+      if (e.target === sheet) { closeSheet(); }
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { closeSheet(); }
+    });
   }
 
   window.__charts = [];
