@@ -99,8 +99,10 @@ def test_page_escapes_server_strings():
     # 关键字段必须走 esc()
     for f in ("symbol", "error"):
         assert "esc(it.%s)" % f in t
-    # `<script>` 标签必须平衡（我 2026-10-21 曾把页面改成 2/3 ✗）
-    assert t.count("<script") == t.count("</script>")
+    # `<script>` 标签必须平衡（我 2026-10-21 曾把页面改成 2/3 ✗）；
+    # 先剥 HTML 注释，注释里举例的字面 <script> 不计入配对 ✓
+    _t = re.sub(r"<!--.*?-->", "", t, flags=re.S)
+    assert _t.count("<script") == _t.count("</script>")
 
 
 def test_page_shows_shoutu_column():
@@ -111,4 +113,6 @@ def test_page_shows_shoutu_column():
     t = open(tpl, encoding="utf-8").read()
     assert "守猪待兔" in t
     assert "it.shoutu" in t
-    assert t.count("<script") == t.count("</script>")
+    import re as _re
+    _t = _re.sub(r"<!--.*?-->", "", t, flags=_re.S)
+    assert _t.count("<script") == _t.count("</script>")

@@ -102,4 +102,7 @@ def test_page_has_watchlist_tab_and_section():
     assert 'data-name="关注列表"' in t
     assert ">关注列表<" in t                    # 同名 tab 按钮 ✓
     assert "/api/watchlist_3x" in t             # 真的调接口 ✓
-    assert t.count("<script") == t.count("</script>")
+    # `<script>` 平衡：先剥 HTML 注释（注释里举例的字面 <script> 不计入配对）✓
+    import re as _re
+    _t = _re.sub(r"<!--.*?-->", "", t, flags=_re.S)
+    assert _t.count("<script") == _t.count("</script>")
