@@ -35,6 +35,17 @@
   /* 字体 */
   --font-num:"SF Mono",ui-monospace,Menlo,Consolas,"Roboto Mono",monospace;
 }
+/* 浏览器原生表面跟调色板 ✓ —— 选中色 / 光标 / 滚动条 / 焦点环。
+   这些默认值不属于任何设计系统，是「页面被做过」最廉价的信号 ✗ */
+::selection{background:color-mix(in srgb,var(--accent) 32%,transparent);color:var(--fg)}
+input,textarea,select{caret-color:var(--accent)}
+html{scrollbar-color:var(--surface-3) transparent;scrollbar-width:thin}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:6px;
+  border:2px solid var(--bg)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,
+[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 *{box-sizing:border-box}
 body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
   margin:0;padding:18px;
@@ -47,11 +58,9 @@ body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei"
 h1{font-size:21px;font-weight:800;margin:2px 0 4px;letter-spacing:.3px}
 .sub{color:var(--fg-muted);font-size:12px;margin:0 0 16px}
 /* 区块标题：轻量、克制（去掉整块卡片，页面更透气） */
-h2{font-size:13px;margin:24px 0 10px;padding:0 0 0 12px;position:relative;
+h2{font-size:13px;margin:24px 0 10px;
   color:var(--fg-muted);font-weight:700;letter-spacing:.4px;
   display:flex;align-items:center;gap:8px}
-h2::before{content:"";position:absolute;left:0;top:2px;bottom:2px;width:3px;
-  border-radius:2px;background:var(--accent)}
 .sec{background:linear-gradient(180deg,var(--surface) 0%,#0e1420 100%);
   border:1px solid var(--border);border-radius:var(--radius);
   padding:16px;margin:0 0 10px;box-shadow:var(--shadow-card)}
@@ -117,8 +126,7 @@ div.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 .h-mid{font-size:12px;color:var(--fg);margin-bottom:4px;font-family:var(--font-num)}
 .h-mid2{font-size:12px;color:var(--fg-muted);margin-bottom:10px}
 .h-cost{font-size:11px;color:var(--fg-muted);line-height:1.45;margin-bottom:8px;
-  padding:4px 8px 4px 9px;border-left:2px solid var(--border);
-  background:var(--surface-3);border-radius:0 6px 6px 0}
+  padding:4px 8px;background:var(--surface-3);border-radius:6px}
 .h-trend{font-size:11px;color:var(--fg-muted);margin-bottom:5px;
   font-family:var(--font-num);letter-spacing:.2px}
 .h-risk{font-size:11px;line-height:1.5;margin-bottom:8px}
@@ -186,21 +194,33 @@ svg.chart .frame{stroke:rgba(255,255,255,.1)}
 /* Tab 导航（参考 szdt.tech 底部导航） */
 .sec-wrap{display:none}
 .sec-wrap.on{display:block}
-.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;
-  background:rgba(10,14,22,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  border-top:1px solid var(--border);box-shadow:0 -8px 24px -12px rgba(0,0,0,.6)}
-.tab-btn{flex:1;padding:11px 0 13px;text-align:center;color:var(--fg-muted);font-size:13px;font-weight:600;
-  cursor:pointer;border:none;background:none;-webkit-tap-highlight-color:transparent;position:relative;
-  transition:color .15s ease}
-.tab-btn.on{color:var(--fg)}
-.tab-btn.on::after{content:"";display:block;width:26px;height:3px;border-radius:2px;
-  background:linear-gradient(90deg,var(--accent),#7ee787);margin:4px auto 0}
-body{padding-bottom:64px}
+/* 2026-10-27：7 个等宽 tab 在窄屏每个仅 ~53px ⇒ 4 字标签挤爆 ✗
+   ⇒ 改为「横向可滚动的等分药丸」：宽屏 flex:1 铺满 ✓，窄屏保持 min-width 可滑 ✓。
+   去掉 backdrop-filter 玻璃拟态（纯装饰 ✗），改实心表面 + 上投影 ✓。 */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;gap:2px;
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));
+  background:var(--surface);border-top:1px solid var(--border);
+  box-shadow:0 -6px 20px -14px rgba(0,0,0,.9);
+  overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tabbar::-webkit-scrollbar{display:none}
+.tab-btn{flex:1 0 auto;min-width:76px;padding:9px 12px 10px;text-align:center;
+  color:var(--fg-muted);font-size:13px;font-weight:600;letter-spacing:.2px;
+  cursor:pointer;border:none;background:none;border-radius:9px;
+  -webkit-tap-highlight-color:transparent;position:relative;scroll-snap-align:center;
+  transition:color .15s ease,background-color .15s ease}
+.tab-btn:hover{color:var(--fg);background:var(--surface-2)}
+.tab-btn.on{color:var(--fg);background:var(--surface-3)}
+.tab-btn.on::after{content:"";position:absolute;left:50%;bottom:3px;transform:translateX(-50%);
+  width:22px;height:2px;border-radius:2px;background:var(--accent)}
+/* 焦点环必须可见且跟调色板 ✓（键盘/读屏用户唯一的位置提示 ✗） */
+.tab-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+body{padding-bottom:72px}
 @media (max-width:780px){
   .h-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media (max-width:600px){
-  body{padding:12px;padding-bottom:64px}
+  body{padding:12px;padding-bottom:72px}
   h1{font-size:18px}
   .hero-num{font-size:44px}
   .stat-grid{grid-template-columns:repeat(2,1fr)}
