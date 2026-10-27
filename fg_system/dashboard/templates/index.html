@@ -5,6 +5,45 @@
 {{ pwa_head }}
 <script src="/static/echarts.min.js"></script>
 <link rel="stylesheet" href="/static/style.css?v=20261005b"></head><body>
+<!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
+     而**运行时错误在手机上根本看不到** ✗（没有控制台）。
+     ⇒ 本段**必须**是页面里**第一个** `<script>` ✓ ——
+       放在主脚本里没用 ✗：主脚本若有**语法错误**，它自己的
+       `window.onerror` 也注册不上 ✗，等于什么都没捕获 ✗。
+     ⇒ 捕获到就把错误**贴在页面顶部** ✓，截图即可定位 ✓。 -->
+<script>
+(function () {
+  function bar() {
+    var b = document.getElementById("__errbar");
+    if (!b) {
+      b = document.createElement("div");
+      b.id = "__errbar";
+      b.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;" +
+        "background:#7d1d1d;color:#fff;padding:8px 12px;font-size:12px;" +
+        "font-family:monospace;white-space:pre-wrap;max-height:45vh;overflow:auto";
+      (document.body || document.documentElement).appendChild(b);
+    }
+    return b;
+  }
+  function show(tag, msg) {
+    try { bar().textContent += "[" + tag + "] " + msg + "\n"; } catch (e) {}
+  }
+  // JS 运行时错误 + 语法错误（本段在主脚本之前 ⇒ 能捕获到主脚本的解析失败 ✓）
+  window.addEventListener("error", function (e) {
+    if (e && e.target && e.target.tagName &&
+        (e.target.tagName === "LINK" || e.target.tagName === "SCRIPT")) {
+      show("资源", (e.target.href || e.target.src) + " 加载失败");
+      return;
+    }
+    show("JS", (e && e.message ? e.message : String(e)) +
+      (e && e.filename ? " @ " + e.filename + ":" + e.lineno : ""));
+  }, true);
+  window.addEventListener("unhandledrejection", function (e) {
+    var r = e && e.reason;
+    show("Promise", (r && (r.message || r)) || String(r));
+  });
+})();
+</script>
 <div class="wrap">
 <h1>{{ title }}</h1>
 <p class="sub">{{ now }} · 有效指数 {{ valid_days }} 天 · {{ span }}</p>
