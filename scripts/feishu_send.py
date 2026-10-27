@@ -107,9 +107,15 @@ class Bsk:
         self.session = session
         self.quiet = quiet
 
-    def run(self, *args, check=True):
+    def run(self, *args, check=True, with_session=True):
+        """跑一条 `bsk` 子命令 ✓。
+
+        `with_session=False` ⇒ **不追加** `--session` ✗ ——
+        会话生命周期类命令（`session start/stop`）自己带位置参数，
+        再叠 `--session` 会非法 ✗。
+        """
         cmd = ["bsk"] + list(args)
-        if self.session:
+        if with_session and self.session:
             cmd += ["--session", self.session]
         proc = subprocess.run(cmd, capture_output=True, text=True,
                               encoding="utf-8", errors="replace")
@@ -118,18 +124,38 @@ class Bsk:
                                % (" ".join(args), (proc.stderr or proc.stdout).strip()))
         return proc.stdout or ""
 
+    def reap(self):
+        """清掉**所有残留会话** ✓（`bsk session stop --all` ✓）。
+
+        🔴 为什么必须有 ✗（2026-10-27 实测）：泄漏的会话会让
+        `bsk observe` **挂起不返回** ✗ —— 残留 10+ 个之后，每次发送都卡到
+        被外部中断 ✗，表现为「发送环节不稳」✗。每次发之前先收割 ✓。
+        """
+        self.run("session", "stop", "--all", check=False, with_session=False)
+
     def start(self, no_focus=True):
         args = ["session", "start"]
         if no_focus:
             args.append("--no-focus")
-        out = self.run(*args)
+        # 会话创建命令不叠加 `--session` ✗（此时还没有会话 ✓）
+        out = self.run(*args, with_session=False)
         self.session = out.strip().splitlines()[-1].strip()
         return self.session
 
     def stop(self):
+        """停掉本会话 ✓。
+
+        🔴 **曾经的 bug** ✗：这里调 `self.run("session", "stop", sid)`，
+        而 `run()` 会再追加 `--session sid` ✗ ⇒ 命令变成
+        `bsk session stop <sid> --session <sid>` ✗ ⇒ 非法 ⇒
+        `check=False` 把错误吞掉 ✗ ⇒ **会话永远停不掉** ✗ ⇒
+        每次发送泄漏一个会话 ✗ ⇒ 累积后 `observe` 全面挂起 ✗。
+        （2026-10-27 实测残留 10+ 会话后发送彻底不动 ✗）
+        """
         if self.session:
+            sid = self.session
             try:
-                self.run("session", "stop", self.session, check=False)
+                self.run("session", "stop", sid, check=False, with_session=False)
             finally:
                 self.session = None
 
@@ -256,6 +282,9 @@ def main():
 
     bsk = Bsk()
     try:
+        # 🔴 先清掉**所有残留会话** ✓ —— 泄漏的会话会让 `observe` 挂起 ✗
+        # （2026-10-27 实测：残留 10+ 后每次发送都卡死 ✗）
+        bsk.reap()
         sid = bsk.start(no_focus=True)
         print("bsk 会话：%s" % sid)
 

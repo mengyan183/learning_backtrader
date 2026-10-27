@@ -152,7 +152,10 @@
   <span style="font-size:11px;color:#8b949e;margin-left:8px">激活码仅本机 API 使用，不随链接传出 ✓</span>
 </p>
 <div id="wlDate" style="font-size:12px;color:#8b949e;margin:4px 0"></div>
-<div id="wlTable"></div>
+<!-- 🔴 必须套 `div.scroll` ✗（项目约定：`div.scroll{overflow-x:auto}` ✓）——
+     关注列表有 9 列 ✓，窄屏会横向溢出 ✗ ⇒ 页面整体出现横向滚动条 ✗
+     ⇒ 表现为「部分内容渲染异常」✗（2026-10-27 修） -->
+<div id="wlTable" class="scroll"></div>
 <div id="wlMsg" style="margin-top:6px;font-size:12px;color:#888"></div>
 </div>
 </div>
@@ -211,11 +214,21 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
       tabs[j].className = "tab-btn" + (j === n ? " on" : "");
     }
     var charts = window.__charts || [];
-    for (var c = 0; c < charts.length; c++) { charts[c].resize(); }
+    for (var c = 0; c < charts.length; c++) {
+      // 🔴 单张图 resize 失败**不得**中断 tab 切换 ✗（图被销毁后 resize 会抛错 ✗）
+      try { charts[c].resize(); } catch (e) {}
+    }
   }
   for (var k = 0; k < tabs.length; k++) {
     (function (idx) {
-      tabs[k].addEventListener("click", function () { show(idx); });
+      tabs[k].addEventListener("click", function () {
+        // 🔴 单个 tab 渲染异常**不得**让整个 tabbar 失效 ✗
+        // （2026-10-27：排查「底部 tab 无法点击」时加固 ✓）
+        try { show(idx); }
+        catch (e) {
+          if (window.console) { console.error("tab 切换失败", idx, e); }
+        }
+      });
     })(k);
   }
 
