@@ -1,11 +1,22 @@
 # -*- coding: utf-8 -*-
 """仪表盘生成测试（§12）。"""
 import os
+import re
 
 import pandas as pd
 import pytest
 
 from fg_system.dashboard import report
+
+
+def _strip_scripts(html):
+    """剥掉 <script>...</script>，只留静态 HTML。
+
+    动态 table 拼在 JS 字符串里，**不应**被 scroll 后处理包裹——否则
+    `<div class="scroll">` 的双引号会撞破外层 JS 字符串 ⇒ SyntaxError ⇒
+    整段脚本失效（图表不渲染、tab 点不动，2026-10-27 事故）。
+    """
+    return re.sub(r"<script\b[^>]*>.*?</script>", "", html, flags=re.S | re.I)
 
 
 def test_build_html_contains_all_blocks(tmp_path):
@@ -106,15 +117,19 @@ def test_html_uses_only_local_static_assets(tmp_path):
 
 
 def test_html_tables_are_horizontally_scrollable(tmp_path):
-    """**守卫**：每个表格都要套横向滚动容器 —— 否则宽表在窄屏上溢出、
-    把整页撑宽，用户得左右拖整页才能看全。
+    """**守卫**：静态表格都要套横向滚动容器 —— 否则宽表在窄屏上溢出、
+    把整页撑宽，用户得左右拖整页才能看全。script 内动态表格不参与此约束。
     """
     html = _render(tmp_path)
-    n_scroll = html.count('<div class="scroll">')
-    n_table = html.count("<table class=")
-    assert n_table > 0, "没有表格？测试数据变了"
-    assert n_scroll == n_table, "有表格没被滚动容器包住（%d 表 / %d 容器）" % (
+    static = _strip_scripts(html)
+    n_scroll = static.count('<div class="scroll">')
+    n_table = static.count("<table class=")
+    assert n_table > 0, "没有静态表格？测试数据变了"
+    assert n_scroll == n_table, "有静态表格没被滚动容器包住（%d 表 / %d 容器）" % (
         n_table, n_scroll)
+    # 动态 table（JS 字符串）绝不能被包进 <div class="scroll">，否则双引号撞破字符串
+    assert 'innerHTML = "<div class="scroll"' not in html, \
+        "JS 字符串里的动态表格被 scroll 后处理误包，会引发 SyntaxError"
 
 
 def test_html_has_mobile_breakpoint(tmp_path):
@@ -148,7 +163,8 @@ def test_all_tables_wrapped_with_price_data(tmp_path):
     pd.DataFrame(rows).to_csv(p, index=False)
 
     html = report.render_html(_feat(), prices_path=str(p))
-    n_table = html.count("<table class=")
+    static = _strip_scripts(html)
+    n_table = static.count("<table class=")
     assert n_table > 0
-    assert html.count('<div class="scroll">') == n_table
+    assert static.count('<div class="scroll">') == n_table
 

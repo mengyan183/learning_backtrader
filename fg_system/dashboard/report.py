@@ -872,8 +872,23 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
 
     # 每个表格套横向滚动容器：窄屏下宽表不撑破页面（手机端必需）。
     # 用后处理而不是改各个 _*_block：表格分散在 6 处，集中处理不会漏。
+    # 🔴 2026-10-27：正则不得侵入 <script> 块——JS 字符串里动态拼接的
+    # <table class='card'>（如关注列表 loadWatchlist）若被包上
+    # <div class="scroll">，双引号会撞破外层 JS 字符串 ⇒ SyntaxError ⇒
+    # 整段脚本失效（图表/档位带不渲染、tab 按钮点不动）。先抽出 script
+    # 块占位，只对静态 HTML 包裹，再还原。
+    _stashed = []
+
+    def _stash_script(m):
+        _stashed.append(m.group(0))
+        return "\x00SCRIPT%d\x00" % (len(_stashed) - 1)
+
+    html = re.sub(r"<script\b[^>]*>.*?</script>", _stash_script, html,
+                  flags=re.S | re.I)
     html = re.sub(r"""(<table class=['"]card['"]>.*?</table>)""",
                   r'<div class="scroll">\1</div>', html, flags=re.S)
+    for _i, _s in enumerate(_stashed):
+        html = html.replace("\x00SCRIPT%d\x00" % _i, _s)
 
     # G-1（WT-12 审查）：`docs/system-boundary.md` §5 要求「警告存在时，
     # 简报/看板**顶部必须展示**，不得假装数据是最新的」。简报侧做到了
