@@ -45,9 +45,9 @@ class TestRealFile:
     """真实供数文件（联网跑过 fetch_baa10y_avail.py 后存在）；缺失则跳过，不阻塞。"""
 
     def test_real_file_invariants(self):
-        p = os.path.join(REPO, "Data", "raw", "fred_baa10y.csv")
+        p = os.path.join(REPO, "Data", "raw", "fred_baa10y_avail.csv")
         if not os.path.isfile(p):
-            pytest.skip("fred_baa10y.csv 未下载（需先联网跑供数脚本）")
+            pytest.skip("fred_baa10y_avail.csv 未下载（需先联网跑供数脚本）")
         df = pd.read_csv(p)
         assert list(df.columns) == ["date", "value", "available_date"]
         d, a = pd.to_datetime(df.date), pd.to_datetime(df.available_date)

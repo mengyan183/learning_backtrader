@@ -2,11 +2,14 @@
 # -*- coding: utf-8 -*-
 """MT-76 供数：BAA10Y 信用利差 → 带 available_date 的评测用 CSV（防 lookahead）。
 
-产出 Data/raw/fred_baa10y.csv，三列：date,value,available_date
+产出 Data/raw/fred_baa10y_avail.csv，三列：date,value,available_date
   - date          : FRED 观测日（observation_date）
   - value         : BAA10Y（穆迪 Baa 公司债收益率 − 10Y 国债，单位 %，默认 revision）
   - available_date: 该观测值"实际可得"的保守日期，供因子层 merge_asof(direction="backward")
                     对齐；🔴 禁止直接用观测日（那会把尚未发布的值提前 = lookahead）。
+
+🔴 命名带 _avail 后缀：macOS APFS 大小写不敏感，若用 fred_baa10y.csv 会与 H-065
+主口径大写 fred_BAA10Y.csv 撞同一文件互相覆盖，故必须独立命名。
 
 available_date 口径（2026-10-27 实测校准）：
   FRED BAA10Y 为 Daily，实测工作日 T+1 发布、跨周末 3~4 自然日（如周五观测周二补发）。
@@ -36,7 +39,9 @@ API_URL = ("https://api.stlouisfed.org/fred/series/observations"
            "?series_id=BAA10Y&api_key=%s&file_type=json&observation_start=1776-07-04"
            "&sort_order=asc")
 GRAPH_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=BAA10Y"
-OUT = os.path.join(RAW, "fred_baa10y.csv")
+# 🔴 文件名带 _avail 后缀：macOS APFS 大小写不敏感，fred_baa10y.csv 会与 H-065
+# 主口径大写 fred_BAA10Y.csv 撞同一 inode 而互相覆盖，故必须独立命名。
+OUT = os.path.join(RAW, "fred_baa10y_avail.csv")
 
 
 def read_fred_key():
@@ -104,7 +109,7 @@ def main():
             f.write(f"{d},{v:.4f},{avail}\n")
 
     n = len(built)
-    print(f"✅ fred_baa10y.csv：{n} 个观测日（lag={args.lag_days} 自然日，"
+    print(f"✅ {os.path.basename(OUT)}：{n} 个观测日（lag={args.lag_days} 自然日，"
           f"{'api-key' if key else '免key'}）")
     print(f"   观测区间 {built[0][0]} → {built[-1][0]}，"
           f"最新 available_date {built[-1][2]}")
