@@ -595,10 +595,18 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             behind = int(cnt[1]) if len(cnt) > 1 else 0
             lines.append("分支 %s · 领先 %d · 落后 %d" % (branch, ahead, behind))
             if ahead:
-                raise RuntimeError(
-                    "本地分支 %s 有 %d 个未推送提交，`--ff-only` 无法合并 ⇒ "
-                    "先在 Mac 上 `git push`（或确认这些提交该丢弃后 `git reset --hard origin/main`），"
-                    "再点部署" % (branch, ahead))
+                # 领先但**内容完全一致**（只是提交元数据不同，例如入库后又被收平过）
+                # ⇒ 安全对齐 ✓（用 --mixed：只动 HEAD 与索引，工作区文件一个不碰 ✓）
+                if _git("diff", "--quiet", "origin/main", "HEAD").returncode == 0:
+                    _git("reset", "--mixed", "origin/main")
+                    lines.append("领先 %d 但内容一致 ⇒ 已对齐到 origin（工作区未动）" % ahead)
+                    ahead = 0
+                else:
+                    raise RuntimeError(
+                        "本地分支 %s 有 %d 个未推送提交且**含实际改动** ⇒ "
+                        "自动丢弃会丢代码 ✗。先在 Mac 上 `git push`，"
+                        "或确认这些改动不要了再 `git reset --hard origin/main`"
+                        % (branch, ahead))
             if behind:
                 _git("merge", "--ff-only", "origin/main")
             new = _git("rev-parse", "--short", "HEAD").stdout.strip()
