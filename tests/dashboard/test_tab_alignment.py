@@ -82,3 +82,36 @@ def test_query_section_is_reachable():
     reach = ({x.strip() for x in TAB_RE.findall(t)}
              | set(ITEM_RE.findall(t)))
     assert "标的查询" in reach
+
+
+# ---------------------------------------------------------------- 首页精简（2026-10-28）
+# 实测 390px 视口下「市场」段高 2475px、首屏只露 2 个 h2 ✗ ⇒ 用户判定「内容过多」✗。
+# 定方向：首页只回答「现在什么温度、我该做什么」✓ —— hero 一段足够 ✓。
+# 下面三条锁住「砍了区块但内容没丢」✓：删模板不删内容 ✗，只是换了位置 ✓。
+
+def _slice(t, name, next_name):
+    return t[t.index('data-name="%s"' % name):t.index('data-name="%s"' % next_name)]
+
+
+def test_market_tab_is_hero_only():
+    """首页只留 hero + 折叠图表 ✓ —— 六段连排是本次要修的病 ✗。"""
+    home = _slice(_html(), "市场", "分因子")
+    assert home.count("<h2>") == 1, "首页只能有一段 h2（市场温度）✗"
+    for gone in ("美联储环境", "四因子分解", "情绪子信号（E1）", "weightLab"):
+        assert gone not in home, "%s 必须离开首页 ✗" % gone
+    assert "<details" in home, "指数曲线必须默认折叠 ✗（否则仍占 280px 首屏）"
+
+
+def test_factor_page_keeps_every_block():
+    """被砍的三块必须整体落在「分因子」子页 ✓ —— 不许砍丢 ✗。"""
+    page = _slice(_html(), "分因子", "持仓")
+    for kept in ("美联储环境", "四因子分解", "情绪子信号（E1）"):
+        assert kept in page, "%s 必须落在分因子子页 ✗" % kept
+
+
+def test_weight_lab_is_gone():
+    """权重沙盘必须删净 ✓ —— 它能拖出一个和真实指数同色同档位的假数字 ✗。"""
+    t = _html()
+    assert 'id="weightLab"' not in t, "权重沙盘容器残留 ✗"
+    assert ".w-slider" not in t, "权重沙盘 JS 残留 ✗"
+

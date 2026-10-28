@@ -217,3 +217,17 @@ def test_all_tables_wrapped_with_price_data(tmp_path):
     assert n_table > 0
     assert static.count('<div class="scroll">') == n_table
 
+
+def test_echarts_is_lazy_loaded(tmp_path):
+    """**守卫**：echarts（1MB）不得随首屏加载 ✓。
+
+    它曾是 `<head>` 里的阻塞脚本 ⇒ 首屏那个 52px 的数字要等 1MB 解析完 ✗。
+    现在按需注入：首页 hero 是纯 HTML/CSS ✓，切页/展开折叠才拉 ✓。
+    """
+    html = _render(tmp_path)
+    assert '<script src="/static/echarts.min.js"' not in html, \
+        "echarts 又变成首屏阻塞脚本了 ✗"
+    assert "needEcharts" in html, "按需加载器缺失 ✗"
+    assert "/static/echarts.min.js" in html, "按需加载器必须指向本地静态资源 ✗"
+    assert "drawH30(30);\n" not in html, "Human 3.0 图表又变成加载即画了 ✗"
+

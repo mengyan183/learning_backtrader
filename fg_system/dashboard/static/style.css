@@ -242,6 +242,10 @@ svg.chart .frame{stroke:rgba(255,255,255,.1)}
 .f-card{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
   padding:10px 14px;box-shadow:var(--shadow-card);min-width:0}
 .f-chart,.echart,.echart-main{min-width:0;overflow:hidden}
+/* 2026-10-28：echarts 改成按需加载 ⇒ 首次展开/切页有一小段空窗 ✓
+   占位文案避免 280px 空盒子看起来像坏了 ✓（canvas 插入后 :empty 自动失效 ✓） */
+.echart-main:empty::after,.echart:empty::after{content:"图表加载中…";display:flex;
+  height:100%;align-items:center;justify-content:center;font-size:12px;color:var(--fg-muted)}
 .f-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 .f-name{font-size:12px;color:var(--fg-muted);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
 .f-val{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;font-family:var(--font-num)}
@@ -317,23 +321,17 @@ body{padding-bottom:72px}
   table.card th,table.card td{padding:6px 10px;font-size:12px}
 }
 
-/* 四因子权重调节预览 */
-.w-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.w-row label{width:86px;font-size:12px;color:var(--fg);flex-shrink:0}
-.w-slider{-webkit-appearance:none;appearance:none;flex:1;height:4px;border-radius:2px;
-  background:linear-gradient(90deg,#58a6ff,#d29922);outline:none;cursor:pointer}
-.w-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;
-  border-radius:50%;background:#58a6ff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)}
-.w-val{width:34px;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;
-  color:var(--fg);font-family:var(--font-num)}
-.w-result{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--surface-3);
-  border:1px solid var(--border);font-size:14px;color:var(--fg)}
-.w-result b{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:#58a6ff;
-  font-family:var(--font-num);margin:0 4px}
-.w-zone{font-size:14px;font-weight:800;padding:2px 10px;border-radius:16px;background:rgba(139,148,158,.2);
-  border:1px solid var(--border)}
-.w-note{display:block;margin-top:6px;font-size:12px;color:var(--fg-muted)}
-.w-hint{color:var(--fg-muted);font-size:12px}
+/* 折叠区块（2026-10-28 首页精简）：默认收起，summary 沿用 h2 的轻量标题语言 */
+details.fold{margin:24px 0 0}
+details.fold>summary{font-size:13px;color:var(--fg-muted);font-weight:700;
+  letter-spacing:.4px;cursor:pointer;list-style:none;padding:6px 0;
+  display:flex;align-items:center;gap:8px}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::before{content:"▸";font-size:11px;color:var(--fg-muted)}
+details.fold[open]>summary::before{content:"▾"}
+details.fold>summary:hover{color:var(--fg)}
+details.fold>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+details.fold[open]>summary{margin-bottom:10px}
 
 /* 美联储政策环境卡片 */
 .fed-card{background:var(--surface-3);border:1px solid var(--border);

@@ -3,8 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{{ title }}</title>
 {{ pwa_head }}
-<script src="/static/echarts.min.js"></script>
-<link rel="stylesheet" href="/static/style.css?v=20261028b"></head><body>
+<link rel="stylesheet" href="/static/style.css?v=20261028d"></head><body>
 <!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
      而**运行时错误在手机上根本看不到** ✗（没有控制台）。
      ⇒ 本段**必须**是页面里**第一个** script 块 ✓ ——
@@ -96,17 +95,23 @@
 <h1>{{ title }}</h1>
 <p class="sub">{{ now }} · 有效指数 {{ valid_days }} 天 · {{ span }}</p>
 
+<!-- 2026-10-28 首页精简：市场页只回答「现在什么温度、我该做什么」✓
+     分因子（美联储 / 四因子分解 / 情绪子信号）收进「更多 → 分因子」子页 ✓
+     指数曲线默认折叠 ✓ —— 首屏从 2475px 降到 hero 一段 ✓ -->
 <div class="sec-wrap on" data-name="市场">
 <h2>市场温度</h2>
 <div class="sec">{{ card }}</div>
+<details class="fold" id="chartIndexWrap">
+<summary>指数曲线与档位带</summary>
+<div class="sec"><div id="chartIndex" class="echart-main"></div></div>
+</details>
+</div>
+
+<div class="sec-wrap" data-name="分因子">
 <h2>美联储环境</h2>
 <div class="sec">{{ fed_card }}</div>
-<h2>指数曲线与档位带</h2>
-<div class="sec"><div id="chartIndex" class="echart-main"></div></div>
 <h2>四因子分解</h2>
 <div class="sec">{{ factors }}</div>
-<h2>四因子权重调节（预览）</h2>
-<div class="sec" id="weightLab"></div>
 <h2>情绪子信号（E1）</h2>
 <div class="sec">{{ sentiment }}</div>
 </div>
@@ -301,6 +306,7 @@
 </nav>
 <div class="sheet" id="moreSheet" hidden>
 <div class="sheet-panel" role="menu">
+<button class="sheet-item" data-name="分因子">分因子</button>
 <button class="sheet-item" data-name="Human 3.0">Human 3.0</button>
 <button class="sheet-item" data-name="标的查询">标的查询</button>
 <button class="sheet-item" data-name="关注列表">关注列表</button>
@@ -346,10 +352,9 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
       if (hit) { sitems[s].setAttribute("aria-current", "page"); }
       else { sitems[s].removeAttribute("aria-current"); }
     }
-    var charts = window.__charts || [];
-    for (var c = 0; c < charts.length; c++) {
-      try { charts[c].resize(); } catch (e) {}
-    }
+    // 2026-10-28：图表按需建 ✓ —— 切到哪一页才拉 echarts ✓
+    chartsForSection(name);
+    resizeCharts();
     syncAllFade();
   }
   function markTab(n) {
@@ -444,6 +449,40 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
     });
   }
 
+  // 2026-10-28：echarts（1MB）不再随首屏加载 ✓ —— 首页 hero 是纯 HTML/CSS ✓。
+  // 首次真正要画图时才注入脚本，注入后统一 flush 排队任务 ✓。
+  var __ecQ = [], __ecBusy = false;
+  function needEcharts(fn) {
+    if (window.echarts) {
+      try { fn(); } catch (e) { if (window.console) { console.error(e); } }
+      return;
+    }
+    __ecQ.push(fn);
+    if (__ecBusy) { return; }
+    __ecBusy = true;
+    var s = document.createElement("script");
+    s.src = "/static/echarts.min.js";
+    s.onload = function () {
+      var q = __ecQ; __ecQ = []; __ecBusy = false;
+      for (var i = 0; i < q.length; i++) {
+        try { q[i](); } catch (e) { if (window.console) { console.error(e); } }
+      }
+      resizeCharts();
+    };
+    // 图表脚本挂掉也不能让整页死 ✓ —— 清空队列，其余区块照常 ✓
+    s.onerror = function () { __ecQ = []; __ecBusy = false; };
+    document.head.appendChild(s);
+  }
+  var __built = {};
+  function chartOnce(key, build) {
+    if (__built[key]) { return; }
+    __built[key] = true;
+    needEcharts(build);
+  }
+  function resizeCharts() {
+    var cs = window.__charts || [];
+    for (var c = 0; c < cs.length; c++) { try { cs[c].resize(); } catch (e) {} }
+  }
   window.__charts = [];
   var SUB = "#8b949e", TEXT = "#e6edf3", BORDER = "rgba(255,255,255,.1)";
   var SPLIT = "rgba(255,255,255,.06)";
@@ -452,8 +491,10 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
   var ZONES = [[0,20,"#8b0000"],[20,40,"#d9534f"],[40,60,"#f0ad4e"],
                [60,80,"#5cb85c"],[80,100,"#006400"]];
 
-  if (document.getElementById("chartIndex")) {
-    var idx = echarts.init(document.getElementById("chartIndex"));
+  function buildIndexChart() {
+    var el = document.getElementById("chartIndex");
+    if (!el) { return; }
+    var idx = echarts.init(el);
     window.__charts.push(idx);
     idx.setOption({
       backgroundColor: "transparent",
@@ -484,6 +525,7 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
 
   var FKEYS = ["vix", "term", "price", "breadth", "fed"];
   var FCOLORS = ["#58a6ff", "#d29922", "#7ee787", "#f85149", "#bc8cff"];
+  function buildFactorCharts() {
   for (var fi = 0; fi < FKEYS.length; fi++) {
     (function (i) {
       var el = document.getElementById("chartF" + i);
@@ -507,8 +549,9 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
       });
     })(fi);
   }
+  }
 
-  if (document.getElementById("chartPos")) {
+  function buildPosChart() {
     var pos = echarts.init(document.getElementById("chartPos"));
     window.__charts.push(pos);
     pos.setOption({
@@ -538,6 +581,8 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
   var HCOLORS = ["#58a6ff", "#d29922", "#7ee787", "#bc8cff", "#f85149"];
   var h30 = null;
   function drawH30(n) {
+    // 脚本未就绪就排队，加载完再回到这里重画 ✓（7/30/90 按钮同样走这条路 ✓）
+    if (!window.echarts) { needEcharts(function () { drawH30(n); }); return; }
     var el = document.getElementById("chartHuman30");
     if (!el || !HUMAN30 || !HUMAN30.dates || !HUMAN30.dates.length) return;
     if (!h30) { h30 = echarts.init(el); window.__charts.push(h30); }
@@ -576,7 +621,7 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
       series: hseries
     });
   }
-  drawH30(30);
+  // 不再页面加载即画图 ✓ —— 只有真的切到 Human 3.0 才拉 echarts ✓
   (function () {
     var le = document.getElementById("h30Lifestyle");
     var me = document.getElementById("h30Metatype");
@@ -621,9 +666,11 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
     });
   }
 
-  if (document.getElementById("chartH30Radar") && HUMAN30 && HUMAN30.levels) {
+  function buildRadarChart() {
+    var rel = document.getElementById("chartH30Radar");
+    if (!rel || !HUMAN30 || !HUMAN30.levels) { return; }
     var hlv = HUMAN30.levels, hlw = HUMAN30.level_words || {};
-    var radar = echarts.init(document.getElementById("chartH30Radar"));
+    var radar = echarts.init(rel);
     window.__charts.push(radar);
     radar.setOption({
       backgroundColor: "transparent",
@@ -649,6 +696,16 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
         }]
       }]
     });
+  }
+
+  // 图表 ↔ 区块 的对应表 ✓ —— 只有切到该区块才初始化 ✓
+  function chartsForSection(name) {
+    if (name === "分因子") { chartOnce("factors", buildFactorCharts); }
+    else if (name === "系统") { chartOnce("pos", buildPosChart); }
+    else if (name === "Human 3.0") {
+      chartOnce("h30", function () { drawH30(30); });
+      chartOnce("radar", buildRadarChart);
+    }
   }
 
   var h30btn = document.getElementById("h30btn");
@@ -719,85 +776,15 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
     });
   }
 
-  if (document.getElementById("weightLab")) {
-    (function () {
-      var lab = document.getElementById("weightLab");
-      var FKEYS = ["vix", "term", "price", "breadth", "fed"];
-      var FNAMES = { vix: "VIX 波动率", term: "期限结构",
-                     price: "价格动量", breadth: "市场广度", fed: "美联储政策" };
-      var DEF_W = { vix: 0.30, term: 0.15, price: 0.25, breadth: 0.15, fed: 0.15 };
-      var ZONE_TXT = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"];
-      var last = {};
-      var any = false;
-      FKEYS.forEach(function (k) {
-        var arr = FACTORS[k];
-        last[k] = (arr && arr.length) ? arr[arr.length - 1][1] : null;
-        if (last[k] !== null) { any = true; }
-      });
-      if (!any) {
-        lab.innerHTML = "<p class='w-hint'>因子数据不足，暂无法预览。</p>";
-        return;
-      }
-      var rows = "";
-      FKEYS.forEach(function (k) {
-        rows += "<div class='w-row'><label>" + FNAMES[k] + "</label>" +
-          "<input type='range' min='0' max='100' step='5' value='" +
-          Math.round(DEF_W[k] * 100) + "' data-k='" + k + "' class='w-slider'>" +
-          "<span class='w-val' data-k='" + k + "'>" +
-          Math.round(DEF_W[k] * 100) + "</span></div>";
-      });
-      lab.innerHTML = rows +
-        "<div class='w-result'>预览指数 <b id='wIdx'>--</b> " +
-        "<span id='wZone' class='w-zone'>--</span>" +
-        "<span class='w-note'>（拖动滑块预览，仅前端计算，不落盘）</span></div>";
-      var idxEl = document.getElementById("wIdx");
-      var zoneEl = document.getElementById("wZone");
-      function zoneOf(v) {
-        var i = 0;
-        while (i < 4 && v >= [20, 40, 60, 80][i]) { i++; }
-        return i;
-      }
-      function calc() {
-        var sw = 0, sws = 0, sw_eff = 0;
-        FKEYS.forEach(function (k) {
-          var w = parseFloat(document.querySelector(
-            ".w-slider[data-k='" + k + "']").value) / 100;
-          sw += w;
-          var lv = last[k];
-          // NaN/undefined 视为数据缺口：跳过该因子，且不计入有效权重分母
-          // （修复：features 尾行 price 为空 → 后端序列化 NaN → 原逻辑 NaN!==null 判真
-          //   ⇒ sws += w*NaN ⇒ 预览指数 NaN）
-          if (lv !== null && lv !== undefined && !isNaN(lv)) {
-            sws += w * lv;
-            sw_eff += w;
-          }
-        });
-        if (sw_eff <= 0) {
-          idxEl.textContent = "--";
-          zoneEl.textContent = "数据不足";
-          zoneEl.style.color = "#888";
-          return;
-        }
-        var v = sws / sw_eff;
-        idxEl.textContent = v.toFixed(1);
-        var zi = zoneOf(v);
-        zoneEl.textContent = ZONE_TXT[zi];
-        zoneEl.style.color = ["#e5534b", "#d9534f", "#f0ad4e",
-                              "#5cb85c", "#3fb950"][zi];
-      }
-      var sliders = document.querySelectorAll(".w-slider");
-      for (var s = 0; s < sliders.length; s++) {
-        (function (sl) {
-          sl.addEventListener("input", function () {
-            var v = sl.value;
-            document.querySelector(".w-val[data-k='" +
-              sl.getAttribute("data-k") + "']").textContent = v;
-            calc();
-          });
-        })(sliders[s]);
-      }
-      calc();
-    })();
+  // 2026-10-28：删掉「四因子权重调节（预览）」✓ —— 它拖动就能造出一个和真实
+  // 指数同色同档位的数字，却只有 12px 灰字说明「不落盘」✗（critique P0-1）✓
+  // 折叠图表在 <details> 打开前是 0×0 ⇒ 展开后必须 resize 才会画出内容 ✓
+  var folds = document.querySelectorAll("details.fold");
+  for (var fo = 0; fo < folds.length; fo++) {
+    folds[fo].addEventListener("toggle", function () {
+      if (this.open) { chartOnce("index", buildIndexChart); }
+      resizeCharts();
+    });
   }
 
   if (typeof window.addEventListener === "function") {
