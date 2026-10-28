@@ -39,7 +39,12 @@ import time
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 允许同步进仓库的顶层目录 / 根级文件（其余一律拒绝）
-ALLOWED_DIRS = {"fg_system", "scripts", "tests", "evolution", "docs"}
+# 🔴 2026-10-28 新增 `skills`：`skills/fg-sync/scripts/*` 是 Mac 侧真正被 launchd/飞书插件
+# 执行的脚本（watcher / bypass），但它们**从没有过投递路径** ✗ —— Windows 不能 push，
+# 飞书又被本白名单拦住 ⇒ 改了永远到不了 Mac ✗（sync_1028k 整包中止即此）。
+# 与 `scripts/` 同级风险（都含可执行脚本）⇒ 纳入白名单，但仍受 `_denied()` 全部约束 ✓
+# （`Data/`、`.git/`、`conftest.py`、`*.pth` 等在 skills/ 下同样被拒 ✓）。
+ALLOWED_DIRS = {"fg_system", "scripts", "tests", "evolution", "docs", "skills"}
 ALLOWED_ROOT_FILES = {"README.md", "AGENTS.md",
                       "requirements.txt", "requirements-dev.txt",
                       ".gitignore", ".gitattributes"}

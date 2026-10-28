@@ -13,8 +13,20 @@ from fg_sync_ingest import _allowed, _denied, _safe_extract
 def test_whitelist_accepts_code_dirs():
     for p in ["fg_system/factors/symbol.py", "scripts/fetch_news.py",
               "tests/test_index.py", "evolution/hypotheses.md",
-              "docs/roadmap.md", "AGENTS.md", "requirements.txt"]:
+              "docs/roadmap.md", "AGENTS.md", "requirements.txt",
+              # 2026-10-28：skills/ 里的脚本由 launchd/飞书插件执行，必须可投递 ✓
+              "skills/fg-sync/scripts/fg-sync-bypass.py",
+              "skills/fg-sync/scripts/fg-sync-watcher.py",
+              "skills/fg-sync/SKILL.md"]:
         assert _allowed(p), p
+
+
+def test_skills_still_obeys_deny_rules():
+    """放宽 `skills/` **不等于**绕过强制拒绝集 ✓ —— 危险形态在 skills/ 下照样拒 ✗。"""
+    for p in ["skills/fg-sync/x.pth", "skills/fg-sync/scripts/conftest.py",
+              "skills/Data/x.csv", "skills/.venv/bin/python",
+              "skills/foo.pem", "skills/.env"]:
+        assert not _allowed(p), "skills/ 下应仍被拒：%s" % p
 
 
 def test_whitelist_rejects_data_git_and_secrets():
