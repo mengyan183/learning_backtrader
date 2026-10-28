@@ -35,6 +35,14 @@ _SHARD_RE = re.compile(r"^(?P<pkg>.+)_(?P<seq>\d+)\.md$")
 #: 半收滞留多久算「卡住」（秒）—— 与 watcher 的 INCOMPLETE_NOTIFY_SEC 同值
 STUCK_SEC = 600
 
+#: 插件层落盘目录「多久内算新」（秒）。
+#: 🔴 该目录**消费后不清理**（Mac 实测堆了 3939 个历史文件 ✗）⇒ 只能看新鲜度，
+#: 不能看「目录是否非空」✗（2026-10-28 我的第一版就因此误报 bypass_stuck）
+BYPASS_FRESH_SEC = 900
+
+#: 插件层堆积多少个以上给提示（只是卫生提示，不影响 verdict ✓）
+BACKLOG_WARN = 200
+
 
 def _stat(p):
     try:
@@ -97,15 +105,43 @@ def _last_ingest(now):
     return {"name": best[0], "age_min": _age_min(best[1], now)}
 
 
+def _bypass_stats(now):
+    """插件层落盘目录的统计。
+
+    🔴 2026-10-28 Mac 实测教训：该目录**消费后从不清理** ⇒ 已堆 3939 个历史文件 ✗。
+    所以「目录非空」**不能**当作「没被消费」的证据 ✗ ——
+    只有**近 15 分钟新落**的文件才说明「刚来过消息」✓。
+    """
+    names = _list_md(BYPASS_IN)
+    if not names:
+        return {"count": 0, "files": [], "newest_min": None,
+                "oldest_min": None, "fresh": 0}
+    mts = []
+    for n in names:
+        mt = _stat(os.path.join(BYPASS_IN, n))["mtime"]
+        if mt:
+            mts.append(mt)
+    newest = max(mts) if mts else None
+    oldest = min(mts) if mts else None
+    fresh = sum(1 for m in mts if now - m <= BYPASS_FRESH_SEC)
+    return {"count": len(names), "files": sorted(names)[:5],
+            "newest_min": _age_min(newest, now), "oldest_min": _age_min(oldest, now),
+            "fresh": fresh}
+
+
 def collect():
     """返回体检结果（纯读，不写任何文件，不联网）。"""
     now = time.time()
     oc_ok = os.path.isdir(OC)
     pkgs = _packages(now) if oc_ok else []
-    bypass_files = _list_md(BYPASS_IN) if oc_ok else []
+    byp = _bypass_stats(now) if oc_ok else {"count": 0, "files": [], "fresh": 0,
+                                           "newest_min": None, "oldest_min": None}
     send_fail = _stat(SEND_FAIL)
     gw = _stat(GW_LOG)
     last = _last_ingest(now)
+    last_min = None if last is None else last["age_min"]
+    # 近 15 分钟有没有成功入库（判断链路是否活着）
+    recent_done = last_min is not None and last_min <= BYPASS_FRESH_SEC // 60
 
     # ---- 判定（顺序即优先级：越靠前越严重）----
     verdict, hint = "idle", "链路空闲：没有滞留分片，也没有进行中的包"
@@ -113,10 +149,12 @@ def collect():
         verdict = "unknown"
         hint = ("本机没有 ~/.openclaw ⇒ 不是 Mac（Windows 侧正常现象）"
                 "或 OpenClaw 未安装 ✗")
-    elif bypass_files and not pkgs:
+    elif byp["fresh"] and not pkgs and not recent_done:
+        # 只有「**刚**来过消息 + 分片没产出 + 最近也没入库」才算真卡住 ✓
         verdict = "bypass_stuck"
-        hint = ("%d 个文件已落到插件层，但分片目录为空 ⇒ **bypass 没被调用** ✗"
-                "（worker 未消费，与 2026-10-28 事故同型）" % len(bypass_files))
+        hint = ("近 %d 分钟有 %d 个文件落到插件层，但分片目录为空、"
+                "且近 %d 分钟无入库 ⇒ **bypass 可能没被调用** ✗（worker 未消费）"
+                % (BYPASS_FRESH_SEC // 60, byp["fresh"], BYPASS_FRESH_SEC // 60))
     elif any(p["missing"] and (p["oldest_min"] or 0) >= STUCK_SEC / 60 for p in pkgs):
         bad = [p for p in pkgs if p["missing"]]
         verdict = "shards_waiting"
@@ -128,18 +166,27 @@ def collect():
         verdict = "receipt_failed"
         hint = ("入库可能已成功，但**回执发不出去**（send-fail.log %d 字节，%s 分钟前）"
                 % (send_fail["size"], _age_min(send_fail["mtime"], now)))
-    elif last is not None and (last["age_min"] or 999) <= 24 * 60:
-        verdict, hint = "ok", "最近一次入库在 %d 分钟前 ✓" % last["age_min"]
+    elif recent_done:
+        verdict, hint = "ok", "最近一次入库在 %d 分钟前 ✓" % last_min
+    elif last is not None and (last_min or 999) <= 24 * 60:
+        verdict, hint = "ok", "最近一次入库在 %d 分钟前 ✓" % last_min
     elif pkgs:
         verdict, hint = "ok", "有 %d 个包在收，未到滞留阈值" % len(pkgs)
+
+    # 堆积是**卫生问题**，不是链路故障 ⇒ 不参与 verdict，只做提示 ✓
+    warning = None
+    if byp["count"] >= BACKLOG_WARN:
+        warning = ("插件层已堆积 %d 个历史文件（最老 %s 天前）—— 不影响链路，"
+                   "但会让排查变慢，建议在 Mac 上清理"
+                   % (byp["count"], round((byp["oldest_min"] or 0) / 1440, 1)))
 
     return {
         "checked_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "verdict": verdict,
         "hint": hint,
+        "warning": warning,
         "packages": pkgs,
-        "bypass_in": {"count": len(bypass_files),
-                      "files": sorted(bypass_files)[:5]},
+        "bypass_in": byp,
         "last_ingest": last,
         "send_fail": {"exists": send_fail["exists"], "size": send_fail["size"],
                       "age_min": _age_min(send_fail["mtime"], now)},

@@ -35,13 +35,43 @@ def test_unknown_when_no_openclaw(tmp_path, monkeypatch):
     assert "OpenClaw" in r["hint"]
 
 
-def test_bypass_stuck_when_plugin_layer_has_files(tmp_path, monkeypatch):
-    """**核心守卫**：文件已到插件层、分片目录却空 ⇒ bypass 没被调用（本次事故形态）✓。"""
+def test_bypass_stuck_when_fresh_files_not_consumed(tmp_path, monkeypatch):
+    """**核心守卫**：**刚**落盘的文件 + 分片目录空 + 最近没入库 ⇒ bypass 没被调用 ✓。"""
     byp, shard = _fake(tmp_path, monkeypatch)
     (byp / "msg1.md").write_text("###FG:sync_x:1/2###aGk=###FG:end###", encoding="utf-8")
     r = sh.collect()
     assert r["verdict"] == "bypass_stuck", r["hint"]
     assert r["bypass_in"]["count"] == 1
+
+
+def test_historical_backlog_is_not_stuck(tmp_path, monkeypatch):
+    """**回归守卫**（2026-10-28 Mac 实测误报）：插件层**历史堆积** + 最近刚成功入库
+    ⇒ 链路是通的，**绝不能**判 bypass_stuck ✗。
+
+    Mac 上该目录消费后从不清理，堆了 3939 个历史文件；第一版判定只看「目录非空」
+    ⇒ 恒红 ✗。现在只看**近 15 分钟新落** + 「最近无入库」两个条件同时成立。
+    """
+    byp, shard = _fake(tmp_path, monkeypatch)
+    old = time.time() - 9 * 86400          # 9 天前的历史文件
+    for i in range(300):
+        p = byp / ("old_%d.md" % i)
+        p.write_text("x", encoding="utf-8")
+        os.utime(p, (old, old))
+    (shard / "sync_demo.done").write_text("abc", encoding="utf-8")   # 刚入库
+    r = sh.collect()
+    assert r["verdict"] == "ok", r["hint"]
+    assert r["bypass_in"]["fresh"] == 0
+    # 但堆积本身要给提示（卫生问题，不影响 verdict）✓
+    assert r["warning"] and "300" in r["warning"]
+
+
+def test_fresh_bypass_with_recent_ingest_is_not_stuck(tmp_path, monkeypatch):
+    """刚有消息落盘、但**刚刚也成功入库过** ⇒ 链路通，不判 stuck（Mac 本次的实际情况）✓。"""
+    byp, shard = _fake(tmp_path, monkeypatch)
+    (byp / "msg1.md").write_text("###FG:sync_x:1/2###aGk=###FG:end###", encoding="utf-8")
+    (shard / "sync_prev.done").write_text("abc", encoding="utf-8")
+    r = sh.collect()
+    assert r["verdict"] == "ok", r["hint"]
 
 
 def test_shards_waiting_lists_missing_numbers(tmp_path, monkeypatch):

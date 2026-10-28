@@ -4,7 +4,7 @@
 <title>{{ title }}</title>
 {{ pwa_head }}
 <script src="/static/echarts.min.js"></script>
-<link rel="stylesheet" href="/static/style.css?v=20261028a"></head><body>
+<link rel="stylesheet" href="/static/style.css?v=20261028b"></head><body>
 <!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
      而**运行时错误在手机上根本看不到** ✗（没有控制台）。
      ⇒ 本段**必须**是页面里**第一个** script 块 ✓ ——
@@ -272,11 +272,15 @@
     <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
   </div>
   <p id="syncHint" class="muted">—</p>
+  <p id="syncWarn" class="sync-warn" hidden></p>
   <div id="syncDetail" class="note"></div>
   <div id="deployMsg" class="msg"></div>
   <p class="msg-top">体检只读 Mac 本地四个观测点（插件落盘 / 分片 / .done / send-fail.log），
     <b>覆盖不到「消息连 OpenClaw 网关都没收到」</b> —— 那种情况四个点全空，与「今天没人发东西」无法区分 ✗。
     部署只跑固定命令（<code>git fetch</code> + <code>git merge --ff-only</code>），不接受任何参数。</p>
+  <p class="msg-top">插件层目录（<code>~/.openclaw/tmp/fg-sync-bypass-in/</code>）消费后<b>不会自动清理</b> ⇒
+    堆到几百个只是变慢，不是故障（黄色提示，不判红）。要清理就在 Mac 上把它整体挪走：
+    <code>mv ~/.openclaw/tmp/fg-sync-bypass-in ~/.openclaw/tmp/fg-sync-bypass-in.$(date +%m%d)</code></p>
 </div>
 </div>
 
@@ -1001,6 +1005,11 @@ function loadTasks() {
       badge.textContent = VERDICT_TEXT[d.verdict] || d.verdict;
       badge.className = "sync-badge v-" + (d.verdict || "unknown");
       hint.textContent = d.hint || "—";
+      var warn = document.getElementById("syncWarn");
+      if (warn) {
+        warn.hidden = !d.warning;
+        warn.textContent = d.warning ? ("⚠️ " + d.warning) : "";
+      }
       var rows = [];
       if (d.packages && d.packages.length) {
         for (var i = 0; i < d.packages.length; i++) {
@@ -1013,7 +1022,11 @@ function loadTasks() {
       if (d.last_ingest) {
         rows.push("最近入库：" + d.last_ingest.name + "（" + d.last_ingest.age_min + " 分钟前）");
       }
-      rows.push("插件层文件 " + d.bypass_in.count + " 个 · 回执失败日志 " +
+      rows.push("插件层 " + d.bypass_in.count + " 个（近 15 分钟新落 " +
+        (d.bypass_in.fresh || 0) + " 个 · 最老 " +
+        (d.bypass_in.oldest_min == null ? "—"
+          : Math.round(d.bypass_in.oldest_min / 1440) + " 天") +
+        "）· 回执失败日志 " +
         (d.send_fail.exists ? d.send_fail.size + " B" : "无"));
       det.textContent = rows.join("\n");
     }).catch(function (e) {
