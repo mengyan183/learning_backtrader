@@ -579,21 +579,33 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         lines = ["", "=== %s 部署开始 ===" % _dt.datetime.now().isoformat(timespec="seconds")]
         old = ""
         try:
-            old = _sp.run(["git", "rev-parse", "--short", "HEAD"], cwd=config.ROOT,
-                          capture_output=True, text=True, timeout=20).stdout.strip()
-            for cmd in (["git", "fetch", "origin", "main"],
-                        ["git", "merge", "--ff-only", "origin/main"]):
-                r = _sp.run(cmd, cwd=config.ROOT, capture_output=True,
-                            text=True, timeout=180)
-                lines.append("$ %s\n%s%s" % (" ".join(cmd), r.stdout, r.stderr))
-                if r.returncode != 0:
-                    raise RuntimeError("命令失败：%s" % " ".join(cmd))
-            new = _sp.run(["git", "rev-parse", "--short", "HEAD"], cwd=config.ROOT,
-                          capture_output=True, text=True, timeout=20).stdout.strip()
+            def _git(*args):
+                r = _sp.run(["git"] + list(args), cwd=config.ROOT,
+                            capture_output=True, text=True, timeout=180)
+                lines.append("$ git %s\n%s%s" % (" ".join(args), r.stdout, r.stderr))
+                return r
+
+            old = _git("rev-parse", "--short", "HEAD").stdout.strip()
+            branch = _git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+            _git("fetch", "origin", "main")
+            # 🔴 分叉守卫（2026-10-28）：本地有未推送提交时 `--ff-only` 必然失败 ✗，
+            # 而原始 git 报错对手机上的用户毫无意义 ✗ ⇒ 提前算清楚并给出可执行的结论 ✓
+            cnt = _git("rev-list", "--left-right", "--count", "HEAD...origin/main").stdout.split()
+            ahead = int(cnt[0]) if cnt else 0
+            behind = int(cnt[1]) if len(cnt) > 1 else 0
+            lines.append("分支 %s · 领先 %d · 落后 %d" % (branch, ahead, behind))
+            if ahead:
+                raise RuntimeError(
+                    "本地分支 %s 有 %d 个未推送提交，`--ff-only` 无法合并 ⇒ "
+                    "先在 Mac 上 `git push`（或确认这些提交该丢弃后 `git reset --hard origin/main`），"
+                    "再点部署" % (branch, ahead))
+            if behind:
+                _git("merge", "--ff-only", "origin/main")
+            new = _git("rev-parse", "--short", "HEAD").stdout.strip()
             lines.append("HEAD %s → %s%s" % (old, new, "" if old != new else "（无变化）"))
             ok, err = True, None
         except Exception as exc:
-            new, ok, err = old, False, "%s: %s" % (type(exc).__name__, exc)
+            new, ok, err = old, False, str(exc)
             lines.append("❌ " + err)
         finally:
             try:
@@ -604,22 +616,31 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             f.write("\n".join(lines) + "\n")
 
         # 代码变了才重启（Flask 不会自动重载 .py ⇒ 不重启等于没部署 ✗）。
-        # 必须**延迟 + 脱离**：kickstart -k 会杀掉当前进程，直接调会丢响应 ✗。
-        restarted = False
-        if ok and old != new and sys.platform == "darwin":
-            try:
-                _sp.Popen(
-                    ["/bin/sh", "-c",
-                     "sleep 2; launchctl kickstart -k gui/%d/com.xingguo.fg-dashboard"
-                     % os.getuid()],
-                    start_new_session=True,
-                    stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
-                restarted = True
-            except Exception:
-                restarted = False
+        restarted = ok and old != new and _schedule_restart()
         return _json_ok({"ok": ok, "old": old, "new": new, "error": err,
                          "restart_scheduled": restarted,
                          "log_tail": "\n".join(lines[-6:])})
+
+    @app.route("/api/restart", methods=["POST"])
+    def _restart():
+        """**只**重启看板服务（不碰 git）—— 改了 `.py` 但 HEAD 没变时用。
+
+        典型场景（2026-10-28）：Mac 入库时自己 commit 了 ⇒ HEAD 已是最新 ⇒
+        「一键部署」会报「无变更，未重启」✗，但新代码还没被 Flask 加载 ✗。
+        这里给一个纯粹的「重启」入口，免去进终端敲 launchctl ✓。
+        """
+        import json as _json
+        payload = request.get_json(force=True, silent=True) or {}
+        if str(payload.get("confirm") or "") != "restart":
+            return Response("需要二次确认：POST {\"confirm\": \"restart\"}",
+                            status=400, mimetype="text/plain; charset=utf-8")
+        if sys.platform != "darwin":
+            return Response("只有 macOS（launchd）支持重启，当前平台：%s" % sys.platform,
+                            status=501, mimetype="text/plain; charset=utf-8")
+        if not _schedule_restart():
+            return Response("重启调度失败（launchctl 不可用？）", status=500,
+                            mimetype="text/plain; charset=utf-8")
+        return _json_ok({"ok": True, "restart_scheduled": True})
 
     return app
 
@@ -644,6 +665,31 @@ def _market_snapshot():
 def _json_ok(obj):
     import json as _json
     return _json.dumps(obj, ensure_ascii=False, default=str)
+
+
+#: 看板服务的 launchd 标签（重启用）
+DASHBOARD_LABEL = "com.xingguo.fg-dashboard"
+
+
+def _schedule_restart(delay=2):
+    """调度看板服务重启，成功返回 True。
+
+    🔴 必须**延迟 + 脱离**：`launchctl kickstart -k` 会立刻杀掉当前进程 ✗，
+    在请求处理中直接调用会丢掉 HTTP 响应 ✗ ⇒ 起一个脱离的 sh，睡几秒再踢 ✓。
+    非 macOS 直接返回 False（Windows 开发机上无 launchd）。
+    """
+    import subprocess as _sp
+    if sys.platform != "darwin":
+        return False
+    try:
+        _sp.Popen(["/bin/sh", "-c",
+                   "sleep %d; launchctl kickstart -k gui/%d/%s"
+                   % (delay, os.getuid(), DASHBOARD_LABEL)],
+                  start_new_session=True,
+                  stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
+        return True
+    except Exception:
+        return False
 
 
 def make_server(host="0.0.0.0", port=8000, get_features=None, prices_path=None,

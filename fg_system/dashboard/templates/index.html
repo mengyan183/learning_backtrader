@@ -270,6 +270,7 @@
     <span id="syncVerdict" class="sync-badge">体检中…</span>
     <button id="syncBtn" class="btn-xs" type="button">刷新</button>
     <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
+    <button id="restartBtn" class="btn-xs" type="button">重启服务</button>
   </div>
   <p id="syncHint" class="muted">—</p>
   <p id="syncWarn" class="sync-warn" hidden></p>
@@ -277,7 +278,8 @@
   <div id="deployMsg" class="msg"></div>
   <p class="msg-top">体检只读 Mac 本地四个观测点（插件落盘 / 分片 / .done / send-fail.log），
     <b>覆盖不到「消息连 OpenClaw 网关都没收到」</b> —— 那种情况四个点全空，与「今天没人发东西」无法区分 ✗。
-    部署只跑固定命令（<code>git fetch</code> + <code>git merge --ff-only</code>），不接受任何参数。</p>
+    部署只跑固定命令（<code>git fetch</code> + <code>git merge --ff-only</code>），不接受任何参数。
+    「重启服务」只 <code>launchctl kickstart</code>，不碰 git —— 入库后新 <code>.py</code> 要重启才加载。</p>
   <p class="msg-top">插件层目录（<code>~/.openclaw/tmp/fg-sync-bypass-in/</code>）消费后<b>不会自动清理</b> ⇒
     堆到几百个只是变慢，不是故障（黄色提示，不判红）。要清理就在 Mac 上把它整体挪走：
     <code>mv ~/.openclaw/tmp/fg-sync-bypass-in ~/.openclaw/tmp/fg-sync-bypass-in.$(date +%m%d)</code></p>
@@ -1066,11 +1068,44 @@ function loadTasks() {
       btn.disabled = false;
     });
   }
+  // 只重启服务、不碰 git —— Mac 入库时自己 commit 了 ⇒ HEAD 已最新 ⇒
+  // 「一键部署」会报「无变更，未重启」✗，但新 .py 还没被 Flask 加载 ✗
+  function restartService() {
+    var msg = document.getElementById("deployMsg");
+    var btn = document.getElementById("restartBtn");
+    if (!msg || !btn) { return; }
+    if (!window.confirm("重启看板服务？\n（约 3 秒后断开重连，刷新页面即新版本；不涉及 git）")) {
+      return;
+    }
+    btn.disabled = true;
+    msg.textContent = "重启中…3 秒后刷新本页";
+    fetch("/api/restart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm: "restart" })
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        if (!r.ok) { throw new Error(t); }
+        return JSON.parse(t);
+      });
+    }).then(function () {
+      setTimeout(function () {
+        msg.textContent = "✅ 已重启，正在刷新…";
+        location.reload();
+      }, 3000);
+    }).catch(function (e) {
+      msg.textContent = "❌ " + e;
+      btn.disabled = false;
+    });
+  }
+
   (function () {
     var b = document.getElementById("syncBtn");
     var d = document.getElementById("deployBtn");
+    var r = document.getElementById("restartBtn");
     if (b) { b.addEventListener("click", loadSync); }
     if (d) { d.addEventListener("click", deployLatest); }
+    if (r) { r.addEventListener("click", restartService); }
   })();
   loadSync();
 
