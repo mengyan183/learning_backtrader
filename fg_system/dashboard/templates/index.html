@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{{ title }}</title>
 {{ pwa_head }}
-<link rel="stylesheet" href="/static/style.css?v=20261028d"></head><body>
+<link rel="stylesheet" href="/static/style.css?v=20261028g"></head><body>
 <!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
      而**运行时错误在手机上根本看不到** ✗（没有控制台）。
      ⇒ 本段**必须**是页面里**第一个** script 块 ✓ ——
@@ -273,10 +273,28 @@
 <div class="sec-wrap" data-name="同步">
 <h2>同步链路与部署</h2>
 <div class="sec">
-  <div class="sync-head">
+
+  <!-- 结论行：状态 + 一句话判断 + 检查时间（时间放右，是「按钮真的跑了」的凭据） -->
+  <div class="sync-verdict">
     <span id="syncVerdict" class="sync-badge">体检中…</span>
-    <button id="syncBtn" class="btn-xs" type="button" title="只重新拉取这张卡的数据，不重算整页">刷新体检</button>
+    <p id="syncHint" class="sync-hint">—</p>
+    <span id="syncAt" class="sync-at"></span>
+  </div>
+  <p id="syncWarn" class="sync-warn" hidden></p>
+
+  <!-- 事实：标签 + 值（两列，窄屏单列） -->
+  <div id="syncDetail" class="kv-list"></div>
+
+  <!-- 最近任务 -->
+  <div id="queueList" class="task-list"></div>
+
+  <div id="deployMsg" class="msg"></div>
+
+  <!-- 动作：先「看」，再「动」；危险动作单独一段 -->
+  <div class="sync-actions">
+    <button id="syncBtn" class="btn-sm" type="button" title="只重新拉取这张卡的数据，不重算整页">刷新体检</button>
     <button id="freshBtn" class="btn-xs" type="button">强制重算整页</button>
+    <span class="sync-sep" aria-hidden="true"></span>
     <button id="cleanBtn" class="btn-xs" type="button">清理堆积</button>
     <!-- 只在「运行副本与仓库不一致」时出现 ✓（正常时别占位） -->
     <!-- 队列定时器没装时才出现 ✓（装好后自动隐藏，不占位） -->
@@ -284,18 +302,20 @@
     <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
     <button id="restartBtn" class="btn-xs" type="button">重启服务</button>
   </div>
-  <p id="syncHint" class="muted">—</p>
-  <p id="syncWarn" class="sync-warn" hidden></p>
-  <div id="syncDetail" class="note"></div>
-  <div id="queueList" class="note"></div>
-  <div id="deployMsg" class="msg"></div>
-  <p class="msg-top">体检只读 Mac 本地四个观测点（插件落盘 / 分片 / .done / send-fail.log），
-    <b>覆盖不到「消息连 OpenClaw 网关都没收到」</b> —— 那种情况四个点全空，与「今天没人发东西」无法区分。
-    部署 = <code>fetch --all</code> + 挑落后最多的 <code>*/main</code> + <code>merge --ff-only</code>（无参数）；
-    重启服务 = 只让 launchd 重启仪表盘进程，不碰 git。</p>
-  <p class="msg-top">插件层目录消费后<b>不会自动清理</b>，堆到几百个只是变慢、不是故障。
-    点「清理堆积」= 在 Mac 上把 30 分钟前的历史文件挪进 <code>archive_MMDD/</code>（只挪不删 ✓）——
-    <b>不用手工敲命令</b>；需要 Mac 做的事一律走任务队列或这里的按钮 ✓。</p>
+
+  <details class="fold">
+    <summary>这些数字怎么来的</summary>
+    <div class="sync-help">
+      <p>体检只读 Mac 本地四个观测点（插件落盘 / 分片 / .done / send-fail.log），
+        <b>覆盖不到「消息连 OpenClaw 网关都没收到」</b> —— 那种情况四个点全空，
+        与「今天没人发东西」无法区分。</p>
+      <p>部署 = <code>fetch --all</code> + 挑落后最多的 <code>*/main</code> +
+        <code>merge --ff-only</code>（无参数）；重启服务 = 只让 launchd 重启仪表盘进程，不碰 git。</p>
+      <p>插件层目录消费后<b>不会自动清理</b>，堆到几百个只是变慢、不是故障。
+        点「清理堆积」= 在 Mac 上把 30 分钟前的历史文件挪进 <code>archive_MMDD/</code>（只挪不删）。
+        不用手工敲命令 —— 需要 Mac 做的事一律走任务队列或这里的按钮。</p>
+    </div>
+  </details>
 </div>
 </div>
 
@@ -1015,20 +1035,27 @@ function loadTasks() {
       var ab = document.getElementById("agentBtn");
       if (ab) { ab.hidden = !(d.agent && d.agent.loaded === false); }
       var it = d.items || [];
-      if (!it.length) { box.textContent = "最近任务：无"; return; }
-      var lines = ["最近任务："];
+      if (!it.length) {
+        box.innerHTML = "<p class='task-empty'>最近任务：无</p>";
+        return;
+      }
+      // 2026-10-28：原来是「✅ 动作 · 时间 · 0s」一行纯文本 ✗
+      // ⇒ 状态用文字药丸 + 结果单独一行 ✓（emoji 当图标不算图标系统 ✗）
+      var ST = { done: "完成", failed: "失败" };
+      var rows = ["<div class='task-head'>最近任务</div>"];
       for (var i = 0; i < Math.min(it.length, 5); i++) {
         var x = it[i];
-        var icon = x.status === "done" ? "✅" : (x.status === "failed" ? "❌" : "⏳");
-        var line = icon + " " + (x.action || "?") + " · " +
-          String(x.at || "").replace("T", " ").slice(5, 16);
-        if (x.duration_s != null) { line += " · " + x.duration_s + "s"; }
-        // 2026-10-28：成功也要显示 output ✓ —— 只给「✅ 0s」看不出它到底删了什么 ✗
-        if (x.output) { line += " · " + String(x.output).slice(0, 60); }
-        lines.push(line);
+        var meta = String(x.at || "").replace("T", " ").slice(5, 16);
+        if (x.duration_s != null) { meta += " · " + x.duration_s + "s"; }
+        rows.push("<div class='task-row s-" + (x.status || "pending") + "'>" +
+          "<span class='task-st'>" + (ST[x.status] || "排队中") + "</span>" +
+          "<span class='task-act'>" + esc(x.action || "?") + "</span>" +
+          "<span class='task-meta'>" + esc(meta) + "</span>" +
+          (x.output ? "<span class='task-out'>" + esc(String(x.output)) + "</span>" : "") +
+          "</div>");
       }
-      box.textContent = lines.join("\n");
-    }).catch(function () { box.textContent = "最近任务：读取失败"; });
+      box.innerHTML = rows.join("");
+    }).catch(function () { box.innerHTML = "<p class='task-empty'>最近任务：读取失败</p>"; });
   }
 
   function loadSync() {
@@ -1056,17 +1083,21 @@ function loadTasks() {
         warn.hidden = !d.warning;
         warn.textContent = d.warning ? ("⚠️ " + d.warning) : "";
       }
-      var rows = [];
+      // 2026-10-28：原来是一整块等宽文本 ✗ ⇒ 扫不出「哪一项不对」✗
+      // 现在按「标签 / 值」两列排 ✓，异常值单独上色 ✓
+      var kv = [];
+      function add(k, v, cls) { kv.push([k, v, cls || ""]); }
       if (d.packages && d.packages.length) {
         for (var i = 0; i < d.packages.length; i++) {
           var p = d.packages[i];
-          rows.push(p.pkg + "：" + p.have + "/" + p.total +
-            (p.missing.length ? " · 缺 " + p.missing.slice(0, 8).join(",") : " ✓") +
-            " · 滞留 " + (p.oldest_min == null ? "—" : p.oldest_min + " 分"));
+          add("分片 " + p.pkg,
+              p.have + "/" + p.total +
+              (p.missing.length ? " · 缺 " + p.missing.slice(0, 8).join(",") : " ✓"),
+              p.missing.length ? "bad" : "ok");
         }
       }
       if (d.last_ingest) {
-        rows.push("最近入库：" + d.last_ingest.name + "（" + d.last_ingest.age_min + " 分钟前）");
+        add("最近入库", d.last_ingest.name + " · " + d.last_ingest.age_min + " 分钟前", "ok");
       }
       // 堆积数字只在黄条里说一次 ✓ —— 有 warning 时明细不再重复同一组数字 ✗
       var byp = d.bypass_in || {};
@@ -1078,25 +1109,32 @@ function loadTasks() {
         if (min < 1440) { return Math.round(min / 60) + " 小时"; }
         return Math.round(min / 1440) + " 天";
       }
-      rows.push(d.warning
-        ? ("近 15 分钟新落 " + (byp.fresh || 0) + " 个 · 回执失败日志 " + failTxt)
-        : ("插件层 " + (byp.count || 0) + " 个（最老 " + ageTxt(byp.oldest_min) +
-           " · 近 15 分钟新落 " + (byp.fresh || 0) + " 个）· 回执失败日志 " + failTxt));
+      add("插件层", d.warning
+        ? "近 15 分钟新落 " + (byp.fresh || 0) + " 个"
+        : (byp.count || 0) + " 个 · 最老 " + ageTxt(byp.oldest_min) +
+          " · 近 15 分钟新落 " + (byp.fresh || 0) + " 个",
+        d.warning ? "warn" : "");
+      add("回执失败日志", failTxt, d.send_fail.exists ? "bad" : "ok");
       // 运行时副本：飞书插件可能调的是 ~/.openclaw/workspace 那份 ✗ ——
       // 那样改了仓库也「没生效」，且没有任何报错提示 ✗ ⇒ 这里显式说出来 ✓
       // 2026-10-28：按钮已删（一次性动作改走任务下发：dispatch_task.py --action sync_runtime）
       // 这里保留状态显示 ✓ —— 不一致时必须看得出来，否则「改了没生效」永远无声 ✗
       var rt = d.runtime_copy || {};
       if (rt.repo && rt.runtime) {
-        rows.push("运行副本（bypass）：" + (rt.same
-          ? "与仓库一致 ✓"
-          : "⚠️ 与仓库不一致 —— 仓库改动未生效，下发 sync_runtime 任务修复"));
+        add("运行副本（bypass）",
+            rt.same ? "与仓库一致 ✓" : "与仓库不一致 —— 改动未生效，下发 sync_runtime 任务修复",
+            rt.same ? "ok" : "bad");
       } else if (rt.repo && !rt.runtime) {
-        rows.push("运行副本（bypass）：不存在（插件直接用仓库版）");
+        add("运行副本（bypass）", "不存在（插件直接用仓库版）");
       }
+      det.innerHTML = kv.map(function (r) {
+        return "<div class='kv'><span class='kv-k'>" + esc(r[0]) + "</span>" +
+          "<span class='kv-v" + (r[2] ? " " + r[2] : "") + "'>" + esc(r[1]) +
+          "</span></div>";
+      }).join("");
       // 「检查于」是「按钮真的执行了」的唯一凭据 ✓（数据没变时数字完全一样 ✗）
-      rows.push("检查于 " + String(d.checked_at || "").slice(11, 19));
-      det.textContent = rows.join("\n");
+      var at = document.getElementById("syncAt");
+      if (at) { at.textContent = "检查于 " + String(d.checked_at || "").slice(11, 19); }
       done();
     }).catch(function (e) {
       badge.textContent = "❔ 体检失败";

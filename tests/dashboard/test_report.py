@@ -176,6 +176,19 @@ def test_sticky_header_and_style_floor():
     assert not bad, "注释符出现在行中间，会提前闭合注释并吞掉下一条规则：%r" % bad[:3]
 
 
+def test_sync_mobile_override_comes_after_base_rules():
+    """**守卫**：同步页的窄屏覆盖必须写在**基础规则之后** ✓。
+
+    CSS 同等特异性下**后写者赢** ✗ —— 2026-10-28 实测：把 `.kv-list` 的单列覆盖
+    放进文件前面那个 `@media (max-width:600px)` 块里，被后面的基础规则压掉 ✗
+    ⇒ 390px 下仍是 `156px 156px` 两列、`.task-row` 第三列被压成 0 ✗。
+    """
+    css = open(os.path.join(os.path.dirname(report.__file__),
+                            "static", "style.css"), encoding="utf-8").read()
+    assert css.rindex("@media (max-width:600px)") > css.index(".kv-list{"), \
+        "同步页的窄屏覆盖写在了基础规则之前 ⇒ 会被压掉 ✗"
+
+
 def test_hero_admits_stale_signal():
     """**守卫**：信号日超容差 ⇒ hero 必须自曝「非当前」✓。
 

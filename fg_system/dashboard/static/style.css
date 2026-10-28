@@ -415,8 +415,10 @@ table.t-compact tr+tr{border-top:1px solid rgba(255,255,255,.06)}
 .t-group{display:flex;align-items:center;gap:10px;margin:14px 0 6px;
   font-size:12px;font-weight:700;letter-spacing:.3px}
 .t-group:first-child{margin-top:0}
-/* 同步链路体检 + 一键部署（2026-10-28）—— 补上「消息卡在 OpenClaw 队列」这个盲区 */
-.sync-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+/* 同步链路体检 + 一键部署（2026-10-28）—— 补上「消息卡在 OpenClaw 队列」这个盲区
+   同日重排：结论 → 事实（标签/值）→ 最近任务 → 动作 → 说明折叠 ✓
+   原先是「6 个按钮挤一行 + 一整块等宽文本 + 3 段说明」✗ */
+.sync-verdict{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .sync-badge{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;
   background:var(--surface-3);color:var(--fg)}
 .sync-badge.v-ok{background:rgba(63,185,80,.16);color:var(--gain)}
@@ -424,7 +426,52 @@ table.t-compact tr+tr{border-top:1px solid rgba(255,255,255,.06)}
   background:rgba(240,173,78,.16);color:var(--warn)}
 .sync-badge.v-bypass_stuck{background:rgba(248,81,73,.16);color:var(--loss)}
 .sync-badge.v-idle,.sync-badge.v-unknown{background:var(--surface-3);color:var(--fg-muted)}
-#syncDetail{white-space:pre-wrap;font-family:var(--font-num);line-height:1.6}
+.sync-hint{margin:0;font-size:13px;line-height:1.5;color:var(--fg);flex:1 1 200px}
+/* 🔴 12px 文字不能用 --fg-sub（#5d6b82 在 #101623 上只有 3.4:1 ✗，低于 AA 4.5:1 ✗） */
+.sync-at{margin-left:auto;font-size:12px;color:var(--fg-muted);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+/* 事实：两列「标签 / 值」—— 原来一整块 pre-wrap 文本，扫不出哪项不对 */
+.kv-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px 20px;margin:14px 0 0}
+.kv{display:flex;flex-direction:column;gap:2px;min-width:0}
+.kv-k{font-size:12px;color:var(--fg-muted)}
+.kv-v{font-size:13px;color:var(--fg);font-variant-numeric:tabular-nums;
+  font-family:var(--font-num);word-break:break-word}
+.kv-v.ok{color:var(--gain)}
+.kv-v.bad{color:var(--loss)}
+.kv-v.warn{color:var(--warn)}
+.sync-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.sync-sep{width:1px;height:18px;background:var(--border)}
+/* 最近任务：一行一条，不套卡片（卡片套卡片是噪音） */
+.task-list{margin-top:18px}
+.task-head{font-size:12px;color:var(--fg-muted);font-weight:700;letter-spacing:.3px}
+.task-row{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;
+  align-items:baseline;padding:9px 0;border-top:1px solid var(--border)}
+.task-head + .task-row{border-top:0}
+.task-st{font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;
+  white-space:nowrap;background:var(--surface-3);color:var(--fg-muted)}
+.task-row.s-done .task-st{background:rgba(63,185,80,.16);color:var(--gain)}
+.task-row.s-failed .task-st{background:rgba(248,81,73,.16);color:var(--loss)}
+.task-act{font-size:13px;font-weight:600;font-family:var(--font-num);
+  color:var(--fg);word-break:break-all}
+.task-meta{font-size:12px;color:var(--fg-muted);font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+.task-out{grid-column:1/-1;font-size:12px;color:var(--fg-muted);
+  font-family:var(--font-num);word-break:break-all}
+.task-empty{margin:14px 0 0;font-size:12px;color:var(--fg-muted)}
+.sync-help p{margin:8px 0 0;font-size:12px;color:var(--fg-muted);line-height:1.65}
+.sync-help p:first-child{margin-top:10px}
+.sync-help code{font-family:var(--font-num);font-size:11px;color:var(--fg);
+  background:var(--surface-3);padding:1px 5px;border-radius:4px}
+/* 🔴 窄屏覆盖必须写在**基础规则之后** ✗ —— 放进前面那个 max-width:600px 块里
+   会被后面的基础规则按「同等特异性、后写者赢」压掉 ✗
+   （2026-10-28 实测：390px 下 .kv-list 仍是 156px 156px 两列、.task-row 第三列被压成 0 ✗） */
+@media (max-width:600px){
+  .kv-list{grid-template-columns:1fr;gap:8px}
+  .task-row{grid-template-columns:auto minmax(0,1fr);row-gap:2px}
+  .task-meta{grid-column:2;justify-self:start}
+}
 /* 堆积是卫生问题，不是故障 ⇒ 黄色一行，绝不染红（2026-10-28 Mac 实测：堆了 3939 个历史文件，
    第一版判定因此恒红 ✗） */
 .sync-warn{margin:6px 0 0;padding:6px 10px;border-radius:var(--radius-xs);font-size:12px;
