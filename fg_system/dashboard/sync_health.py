@@ -21,6 +21,7 @@ Windows 端只能看到「我发了」和「gitee 上有没有新提交」两头
 import hashlib
 import os
 import re
+import shutil
 import time
 
 HOME = os.path.expanduser("~")
@@ -154,6 +155,30 @@ def runtime_copy_status():
     a, b = _md5(REPO_BYPASS), _md5(RUNTIME_BYPASS)
     return {"repo": a is not None, "runtime": b is not None,
             "same": (a == b) if (a and b) else None}
+
+
+def sync_runtime_copy():
+    """把**仓库版** bypass 覆盖到运行时副本（先备份旧副本 ✓）。
+
+    🔴 2026-10-28 实测：Mac 上两者 md5 不一致 ⇒ 仓库改动不生效 ✗，
+    且无任何报错 ✗。与其让人进终端 `cp`，不如页面点一下 ✓。
+    安全边界：源是**仓库里已被 review 的文件** ✓，目标是固定路径 ✓，
+    不接受任何用户输入 ✓，覆盖前留 `.bak-<MMDD-HHMM>` ✓。
+    """
+    if not os.path.isfile(REPO_BYPASS):
+        return {"ok": False, "reason": "仓库版 bypass 不存在"}
+    if not os.path.isdir(os.path.dirname(RUNTIME_BYPASS)):
+        return {"ok": False, "reason": "运行时目录不存在（本机不是 Mac / 未装 OpenClaw）"}
+    backup = None
+    try:
+        if os.path.isfile(RUNTIME_BYPASS):
+            backup = RUNTIME_BYPASS + ".bak-" + time.strftime("%m%d-%H%M")
+            shutil.copy2(RUNTIME_BYPASS, backup)
+        shutil.copy2(REPO_BYPASS, RUNTIME_BYPASS)
+    except OSError as exc:
+        return {"ok": False, "reason": "拷贝失败：%s" % exc}
+    return {"ok": True, "backup": backup,
+            "same": _md5(REPO_BYPASS) == _md5(RUNTIME_BYPASS)}
 
 
 def collect():

@@ -115,6 +115,36 @@ def test_runtime_copy_detects_divergence(tmp_path, monkeypatch):
     assert st["runtime"] is False and st["same"] is None
 
 
+def test_sync_runtime_copy_overwrites_with_backup(tmp_path, monkeypatch):
+    """仓库版覆盖运行时副本：覆盖前必须留备份 ✓，覆盖后必须一致 ✓。"""
+    repo = tmp_path / "repo.py"
+    run_dir = tmp_path / "workspace"
+    run_dir.mkdir()
+    run = run_dir / "run.py"
+    repo.write_text("v2-新版", encoding="utf-8")
+    run.write_text("v1-旧版", encoding="utf-8")
+    monkeypatch.setattr(sh, "REPO_BYPASS", str(repo))
+    monkeypatch.setattr(sh, "RUNTIME_BYPASS", str(run))
+
+    r = sh.sync_runtime_copy()
+    assert r["ok"] is True, r
+    assert run.read_text(encoding="utf-8") == "v2-新版"
+    assert r["same"] is True
+    assert r["backup"] and os.path.isfile(r["backup"]), "覆盖前必须备份旧副本 ✗"
+    with open(r["backup"], encoding="utf-8") as f:
+        assert f.read() == "v1-旧版"
+
+
+def test_sync_runtime_copy_noop_without_runtime_dir(tmp_path, monkeypatch):
+    """运行时目录不存在（Windows / 未装 OpenClaw）⇒ 报原因，不抛 ✓。"""
+    repo = tmp_path / "repo.py"
+    repo.write_text("x", encoding="utf-8")
+    monkeypatch.setattr(sh, "REPO_BYPASS", str(repo))
+    monkeypatch.setattr(sh, "RUNTIME_BYPASS", str(tmp_path / "nope" / "run.py"))
+    r = sh.sync_runtime_copy()
+    assert r["ok"] is False and r["reason"]
+
+
 def test_archive_backlog_moves_only_old_files(tmp_path, monkeypatch):
     """清理只挪**够老**的文件，且**目录必须还在**（插件按固定路径写盘 ✗）。"""
     byp, shard = _fake(tmp_path, monkeypatch)
