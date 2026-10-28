@@ -23,6 +23,16 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 from run_task_queue import ACTIONS  # noqa: E402 —— 白名单单一来源 ✓
 
 
+def _pkg_of(tid):
+    """分片包名 ⇒ **只允许 [A-Za-z0-9_]** ✓。
+
+    🔴 Mac 端标记正则是 `###FG:([A-Za-z0-9_]+):(\\d+)/(\\d+)###` ✗ ——
+    `task-t-20261028-1935-clean_sync_partial` 带连字符 ⇒ **整包匹配不到** ✗
+    ⇒ 分片被静默忽略、任务永远不执行（`pack_one.py` 同款坑）✗。
+    """
+    return ("task-" + tid).replace("-", "_")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="下发一个 Mac 侧任务")
     ap.add_argument("--action", required=True, choices=sorted(ACTIONS))
@@ -56,7 +66,7 @@ def main(argv=None):
               % os.path.relpath(p, ROOT))
         return 0
 
-    pkg = "task-" + tid
+    pkg = _pkg_of(tid)
     r = subprocess.run(
         [sys.executable, os.path.join(ROOT, "scripts", "pack_many.py"), pkg,
          os.path.relpath(p, ROOT), "--patch", "--base-ref", "origin/main"],
