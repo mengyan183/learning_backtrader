@@ -268,7 +268,7 @@
 <div class="sec">
   <div class="sync-head">
     <span id="syncVerdict" class="sync-badge">体检中…</span>
-    <button id="syncBtn" class="btn-xs" type="button">刷新</button>
+    <button id="syncBtn" class="btn-xs" type="button" title="只重新拉取这张卡的数据，不重算整页">刷新体检</button>
     <button id="freshBtn" class="btn-xs" type="button">强制重算整页</button>
     <button id="cleanBtn" class="btn-xs" type="button">清理堆积</button>
     <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
@@ -1031,10 +1031,16 @@ function loadTasks() {
       // 堆积数字只在黄条里说一次 ✓ —— 有 warning 时明细不再重复同一组数字 ✗
       var byp = d.bypass_in || {};
       var failTxt = d.send_fail.exists ? d.send_fail.size + " B" : "无";
+      // 「最老 0 天」是废话 ✗ —— 不到 1 天要说分钟/小时（2026-10-28 清理后实测 5 个文件全是 0 天）
+      function ageTxt(min) {
+        if (min == null) { return "—"; }
+        if (min < 60) { return min + " 分钟"; }
+        if (min < 1440) { return Math.round(min / 60) + " 小时"; }
+        return Math.round(min / 1440) + " 天";
+      }
       rows.push(d.warning
         ? ("近 15 分钟新落 " + (byp.fresh || 0) + " 个 · 回执失败日志 " + failTxt)
-        : ("插件层 " + (byp.count || 0) + " 个（最老 " +
-           (byp.oldest_min == null ? "—" : Math.round(byp.oldest_min / 1440) + " 天") +
+        : ("插件层 " + (byp.count || 0) + " 个（最老 " + ageTxt(byp.oldest_min) +
            " · 近 15 分钟新落 " + (byp.fresh || 0) + " 个）· 回执失败日志 " + failTxt));
       det.textContent = rows.join("\n");
     }).catch(function (e) {

@@ -176,9 +176,14 @@ def collect():
     # 堆积是**卫生问题**，不是链路故障 ⇒ 不参与 verdict，只做提示 ✓
     warning = None
     if byp["count"] >= BACKLOG_WARN:
-        warning = ("插件层已堆积 %d 个历史文件（最老 %s 天前）—— 不影响链路，"
-                   "但会让排查变慢，建议在 Mac 上清理"
-                   % (byp["count"], round((byp["oldest_min"] or 0) / 1440, 1)))
+        # 时间单位自适应 ✓ —— 「最老 0.0 天前」是废话 ✗（清理后剩下的都是分钟级 ✓）
+        age = byp["oldest_min"] or 0
+        age_txt = ("%d 分钟前" % age if age < 60
+                   else "%.0f 小时前" % (age / 60) if age < 1440
+                   else "%.1f 天前" % (age / 1440))
+        warning = ("插件层已堆积 %d 个历史文件（最老 %s）—— 不影响链路，"
+                   "但会让排查变慢，可点「清理堆积」挪进 archive 子目录"
+                   % (byp["count"], age_txt))
 
     return {
         "checked_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
