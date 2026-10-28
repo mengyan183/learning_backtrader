@@ -18,6 +18,7 @@ Windows 端只能看到「我发了」和「gitee 上有没有新提交」两头
 与「今天没人发东西」**无法区分** ✗。要区分得看 `~/Library/Logs/openclaw/gateway.log`
 里有没有入站堆积，本模块只给出「网关日志是否可读 + 最后修改时间」作为线索 ✓。
 """
+import hashlib
 import os
 import re
 import time
@@ -28,6 +29,13 @@ BYPASS_IN = os.path.join(OC, "tmp", "fg-sync-bypass-in")
 SHARD_IN = os.path.join(OC, "tmp", "fg-sync-in")
 SEND_FAIL = os.path.join(SHARD_IN, "send-fail.log")
 GW_LOG = os.path.join(HOME, "Library", "Logs", "openclaw", "gateway.log")
+
+#: 运行时副本 vs 仓库版（2026-10-28）：飞书插件调的可能是 `~/.openclaw/workspace/` 下那份 ✗
+#: ⇒ 改了仓库却「没生效」时，这里能直接看出来 ✓
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO_BYPASS = os.path.join(REPO_ROOT, "skills", "fg-sync", "scripts", "fg-sync-bypass.py")
+RUNTIME_BYPASS = os.path.join(OC, "workspace", "skills", "fg-sync", "scripts",
+                              "fg-sync-bypass.py")
 
 #: 分片文件名约定：`sync_<包>_<序号>.md`（见 skills/fg-sync/scripts/fg-sync-watcher.py）
 _SHARD_RE = re.compile(r"^(?P<pkg>.+)_(?P<seq>\d+)\.md$")
@@ -129,6 +137,25 @@ def _bypass_stats(now):
             "fresh": fresh}
 
 
+def _md5(p):
+    try:
+        with open(p, "rb") as f:
+            return hashlib.md5(f.read()).hexdigest()
+    except OSError:
+        return None
+
+
+def runtime_copy_status():
+    """仓库版 vs 运行时副本（`~/.openclaw/workspace/skills/...`）是否同源。
+
+    🔴 2026-10-28：飞书插件调的可能是**副本** ✗ —— 那样改了仓库也「没生效」，
+    而且**没有任何报错**提示你 ✗ ⇒ 把这件事做成页面上一行 ✓。
+    """
+    a, b = _md5(REPO_BYPASS), _md5(RUNTIME_BYPASS)
+    return {"repo": a is not None, "runtime": b is not None,
+            "same": (a == b) if (a and b) else None}
+
+
 def collect():
     """返回体检结果（纯读，不写任何文件，不联网）。"""
     now = time.time()
@@ -195,6 +222,7 @@ def collect():
         "last_ingest": last,
         "send_fail": {"exists": send_fail["exists"], "size": send_fail["size"],
                       "age_min": _age_min(send_fail["mtime"], now)},
+        "runtime_copy": runtime_copy_status(),
         "gateway_log": {"exists": gw["exists"],
                         "age_min": _age_min(gw["mtime"], now)},
         "paths": {"bypass_in": BYPASS_IN, "shard_in": SHARD_IN,

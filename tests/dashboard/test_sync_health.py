@@ -96,6 +96,25 @@ def test_receipt_failed_when_send_fail_log_not_empty(tmp_path, monkeypatch):
     assert r["verdict"] == "receipt_failed", r["hint"]
 
 
+def test_runtime_copy_detects_divergence(tmp_path, monkeypatch):
+    """仓库版与运行时副本不一致必须报出来 ✓ —— 否则「改了没生效」永远无声 ✗。"""
+    repo = tmp_path / "repo.py"
+    run = tmp_path / "run.py"
+    repo.write_text("v2", encoding="utf-8")
+    run.write_text("v2", encoding="utf-8")
+    monkeypatch.setattr(sh, "REPO_BYPASS", str(repo))
+    monkeypatch.setattr(sh, "RUNTIME_BYPASS", str(run))
+    assert sh.runtime_copy_status()["same"] is True
+
+    run.write_text("v1-旧版", encoding="utf-8")     # 副本落后
+    st = sh.runtime_copy_status()
+    assert st["same"] is False, "副本落后必须判不一致 ✗"
+
+    monkeypatch.setattr(sh, "RUNTIME_BYPASS", str(tmp_path / "nope.py"))
+    st = sh.runtime_copy_status()
+    assert st["runtime"] is False and st["same"] is None
+
+
 def test_archive_backlog_moves_only_old_files(tmp_path, monkeypatch):
     """清理只挪**够老**的文件，且**目录必须还在**（插件按固定路径写盘 ✗）。"""
     byp, shard = _fake(tmp_path, monkeypatch)
