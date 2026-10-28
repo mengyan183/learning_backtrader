@@ -417,6 +417,18 @@ table.t-compact tr+tr{border-top:1px solid rgba(255,255,255,.06)}
 .t-group{display:flex;align-items:center;gap:10px;margin:14px 0 6px;
   font-size:12px;font-weight:700;letter-spacing:.3px}
 .t-group:first-child{margin-top:0}
+/* 同步链路体检 + 一键部署（2026-10-28）—— 补上「消息卡在 OpenClaw 队列」这个盲区 */
+.sync-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.sync-badge{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700;
+  background:var(--surface-3);color:var(--fg)}
+.sync-badge.v-ok{background:rgba(63,185,80,.16);color:var(--gain)}
+.sync-badge.v-shards_waiting,.sync-badge.v-receipt_failed{
+  background:rgba(240,173,78,.16);color:var(--warn)}
+.sync-badge.v-bypass_stuck{background:rgba(248,81,73,.16);color:var(--loss)}
+.sync-badge.v-idle,.sync-badge.v-unknown{background:var(--surface-3);color:var(--fg-muted)}
+#syncDetail{white-space:pre-wrap;font-family:var(--font-num);line-height:1.6}
+.btn-danger{border-color:rgba(248,81,73,.5);color:var(--loss)}
+.btn-danger:hover{background:rgba(248,81,73,.14);border-color:var(--loss)}
 
 /* 加载骨架 + 失败重试（⑤）—— 原来只有一行「加载中…」✗，
    看不出是慢还是死了 ✗；失败只留一句灰字，没有恢复入口 ✗ */

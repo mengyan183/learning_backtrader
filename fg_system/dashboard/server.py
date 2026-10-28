@@ -522,6 +522,105 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
                         "started": _dt.datetime.now().isoformat(timespec="seconds")}, f)
         return _json_ok({"ok": True, "target": target, "pid": proc.pid})
 
+    @app.route("/api/sync_health")
+    def _sync_health_api():
+        """同步链路体检（2026-10-28）：读 Mac 本地四个观测点，给出「卡在哪一段」的结论。
+
+        Windows 侧只能看到「已发」和「gitee 有无新提交」两头 ✗，
+        中间态（消息积压 / bypass 未跑 / 半收滞留 / 回执失败）只有 Mac 本地看得见 ✓。
+        """
+        from fg_system.dashboard import sync_health as _sh
+        try:
+            resp = Response(_json_ok(_sh.collect()), mimetype="application/json")
+            resp.headers["Cache-Control"] = "no-store"
+            return resp
+        except Exception as exc:
+            return Response("sync_health 失败：%s: %s" % (type(exc).__name__, exc),
+                            status=500, mimetype="text/plain; charset=utf-8")
+
+    @app.route("/api/deploy", methods=["POST"])
+    def _deploy():
+        """一键部署：`git fetch origin main` + `git merge --ff-only origin/main`，再重启看板。
+
+        🔴 安全（本服务默认**无鉴权**，只靠 Tailscale ⇒ 这是唯一会改代码的入口 ✗）：
+          ① 必须带 `{"confirm": "deploy"}` 二次确认（防误触；GET 不可触发）；
+          ② 只跑**固定命令**，不接受任何用户参数 ✗（无注入面）；
+          ③ `Data/deploy.lock` 互斥，同一时刻只允许一个部署；
+          ④ 日志 `logs/deploy.log`，返回 tail 便于手机上直接看结果 ✓。
+
+        ⚠️ 用 `merge --ff-only` 而不是 `git pull`：Mac 上 `evolution/lookahead-audit.*`
+           会被测试改写而变脏 ✗，`pull` 会因「工作区不干净」直接拒绝 ✗；
+           `merge` 只在**会被覆盖**的文件脏时才拒绝 ✓（2026-10-28 Windows 侧同型实测）。
+        """
+        import datetime as _dt
+        import json as _json
+        import subprocess as _sp
+        payload = request.get_json(force=True, silent=True) or {}
+        if str(payload.get("confirm") or "") != "deploy":
+            return Response("需要二次确认：POST {\"confirm\": \"deploy\"}",
+                            status=400, mimetype="text/plain; charset=utf-8")
+
+        lock_p = os.path.join(config.DATA_DIR, "deploy.lock")
+        if os.path.exists(lock_p):
+            try:
+                with open(lock_p, encoding="utf-8") as f:
+                    d = _json.load(f)
+                os.kill(int(d.get("pid", -1)), 0)
+                return Response("已有部署在跑（PID %s），请稍候" % d.get("pid"),
+                                status=409, mimetype="text/plain; charset=utf-8")
+            except (ProcessLookupError, ValueError, TypeError, OSError):
+                pass                      # 旧锁的进程已死 ⇒ 继续
+
+        log = os.path.join(config.ROOT, "logs", "deploy.log")
+        os.makedirs(os.path.dirname(log), exist_ok=True)
+        with open(lock_p, "w", encoding="utf-8") as f:
+            _json.dump({"pid": os.getpid(),
+                        "started": _dt.datetime.now().isoformat(timespec="seconds")}, f)
+        lines = ["", "=== %s 部署开始 ===" % _dt.datetime.now().isoformat(timespec="seconds")]
+        old = ""
+        try:
+            old = _sp.run(["git", "rev-parse", "--short", "HEAD"], cwd=config.ROOT,
+                          capture_output=True, text=True, timeout=20).stdout.strip()
+            for cmd in (["git", "fetch", "origin", "main"],
+                        ["git", "merge", "--ff-only", "origin/main"]):
+                r = _sp.run(cmd, cwd=config.ROOT, capture_output=True,
+                            text=True, timeout=180)
+                lines.append("$ %s\n%s%s" % (" ".join(cmd), r.stdout, r.stderr))
+                if r.returncode != 0:
+                    raise RuntimeError("命令失败：%s" % " ".join(cmd))
+            new = _sp.run(["git", "rev-parse", "--short", "HEAD"], cwd=config.ROOT,
+                          capture_output=True, text=True, timeout=20).stdout.strip()
+            lines.append("HEAD %s → %s%s" % (old, new, "" if old != new else "（无变化）"))
+            ok, err = True, None
+        except Exception as exc:
+            new, ok, err = old, False, "%s: %s" % (type(exc).__name__, exc)
+            lines.append("❌ " + err)
+        finally:
+            try:
+                os.remove(lock_p)
+            except OSError:
+                pass
+        with open(log, "a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+
+        # 代码变了才重启（Flask 不会自动重载 .py ⇒ 不重启等于没部署 ✗）。
+        # 必须**延迟 + 脱离**：kickstart -k 会杀掉当前进程，直接调会丢响应 ✗。
+        restarted = False
+        if ok and old != new and sys.platform == "darwin":
+            try:
+                _sp.Popen(
+                    ["/bin/sh", "-c",
+                     "sleep 2; launchctl kickstart -k gui/%d/com.xingguo.fg-dashboard"
+                     % os.getuid()],
+                    start_new_session=True,
+                    stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
+                restarted = True
+            except Exception:
+                restarted = False
+        return _json_ok({"ok": ok, "old": old, "new": new, "error": err,
+                         "restart_scheduled": restarted,
+                         "log_tail": "\n".join(lines[-6:])})
+
     return app
 
 

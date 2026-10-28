@@ -4,7 +4,7 @@
 <title>{{ title }}</title>
 {{ pwa_head }}
 <script src="/static/echarts.min.js"></script>
-<link rel="stylesheet" href="/static/style.css?v=20261027k"></head><body>
+<link rel="stylesheet" href="/static/style.css?v=20261028a"></head><body>
 <!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
      而**运行时错误在手机上根本看不到** ✗（没有控制台）。
      ⇒ 本段**必须**是页面里**第一个** script 块 ✓ ——
@@ -256,6 +256,27 @@
 <div id="taskTable" class="scroll"></div>
 <div id="taskMsg" class="msg"></div>
 <p class="msg-top">异常项可点击「重试」后台触发对应脚本（仅白名单），约 1-2 分钟后自动刷新本区块查看恢复。</p>
+</div>
+</div>
+
+<!-- 2026-10-28：同步链路体检 + 一键部署。
+     为什么需要：sync_1028a 发出 32 片、`--sent-status` 显示 32/32 已发，
+     但 Mac 侧 65 条消息全积压在 OpenClaw pending（worker 未认领）⇒ bypass 没落盘 ⇒ 无回执。
+     Windows 端只能看到「我发了」和「gitee 有无新提交」两头，中间态完全黑箱 ⇒ 这里补上 ✓ -->
+<div class="sec-wrap" data-name="任务">
+<h2>同步链路与部署</h2>
+<div class="sec">
+  <div class="sync-head">
+    <span id="syncVerdict" class="sync-badge">体检中…</span>
+    <button id="syncBtn" class="btn-xs" type="button">刷新</button>
+    <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
+  </div>
+  <p id="syncHint" class="muted">—</p>
+  <div id="syncDetail" class="note"></div>
+  <div id="deployMsg" class="msg"></div>
+  <p class="msg-top">体检只读 Mac 本地四个观测点（插件落盘 / 分片 / .done / send-fail.log），
+    <b>覆盖不到「消息连 OpenClaw 网关都没收到」</b> —— 那种情况四个点全空，与「今天没人发东西」无法区分 ✗。
+    部署只跑固定命令（<code>git fetch</code> + <code>git merge --ff-only</code>），不接受任何参数。</p>
 </div>
 </div>
 
@@ -961,6 +982,85 @@ function loadTasks() {
       failed(box, "关注列表加载失败：" + e, loadWatchlist);
     });
   }
+  // ---- 同步链路体检 + 一键部署（2026-10-28）----
+  // 为什么要看板做：Windows 只能看到「已发」和「gitee 有无新提交」两头 ✗，
+  // 中间态（消息积压 / bypass 未跑 / 半收滞留 / 回执失败）只有 Mac 本地看得见 ✓
+  var VERDICT_TEXT = {
+    ok: "✅ 正常", idle: "💤 空闲", unknown: "❔ 不可用",
+    shards_waiting: "⚠️ 分片不齐", bypass_stuck: "🔴 消息未消费",
+    receipt_failed: "⚠️ 回执发不出"
+  };
+  function loadSync() {
+    var badge = document.getElementById("syncVerdict");
+    var hint = document.getElementById("syncHint");
+    var det = document.getElementById("syncDetail");
+    if (!badge || !hint || !det) { return; }
+    fetch("/api/sync_health", { cache: "no-store" }).then(function (r) {
+      return r.json();
+    }).then(function (d) {
+      badge.textContent = VERDICT_TEXT[d.verdict] || d.verdict;
+      badge.className = "sync-badge v-" + (d.verdict || "unknown");
+      hint.textContent = d.hint || "—";
+      var rows = [];
+      if (d.packages && d.packages.length) {
+        for (var i = 0; i < d.packages.length; i++) {
+          var p = d.packages[i];
+          rows.push(p.pkg + "：" + p.have + "/" + p.total +
+            (p.missing.length ? " · 缺 " + p.missing.slice(0, 8).join(",") : " ✓") +
+            " · 滞留 " + (p.oldest_min == null ? "—" : p.oldest_min + " 分"));
+        }
+      }
+      if (d.last_ingest) {
+        rows.push("最近入库：" + d.last_ingest.name + "（" + d.last_ingest.age_min + " 分钟前）");
+      }
+      rows.push("插件层文件 " + d.bypass_in.count + " 个 · 回执失败日志 " +
+        (d.send_fail.exists ? d.send_fail.size + " B" : "无"));
+      det.textContent = rows.join("\n");
+    }).catch(function (e) {
+      badge.textContent = "❔ 体检失败";
+      badge.className = "sync-badge v-unknown";
+      hint.textContent = "接口不可达：" + e;
+    });
+  }
+
+  function deployLatest() {
+    var msg = document.getElementById("deployMsg");
+    var btn = document.getElementById("deployBtn");
+    if (!msg || !btn) { return; }
+    if (!window.confirm("从 gitee 拉取最新代码并重启看板服务？\n（只跑 git fetch + merge --ff-only，失败会保留原状）")) {
+      return;
+    }
+    btn.disabled = true;
+    msg.textContent = "部署中…（拉取 + 合并，通常 3-10 秒）";
+    fetch("/api/deploy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm: "deploy" })
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        if (!r.ok) { throw new Error(t); }
+        return JSON.parse(t);
+      });
+    }).then(function (d) {
+      msg.textContent = d.ok
+        ? ("✅ " + d.old + " → " + d.new +
+           (d.restart_scheduled ? "，2 秒后重启服务（刷新页面即新版本）" : "（无变更，未重启）"))
+        : ("❌ 部署失败：" + (d.error || "") + "\n" + (d.log_tail || ""));
+      loadSync();
+    }).catch(function (e) {
+      msg.textContent = "❌ " + e;
+    }).then(function () {
+      btn.disabled = false;
+    });
+  }
+  (function () {
+    var b = document.getElementById("syncBtn");
+    var d = document.getElementById("deployBtn");
+    if (b) { b.addEventListener("click", loadSync); }
+    if (d) { d.addEventListener("click", deployLatest); }
+  })();
+  loadSync();
+
   loadTasks();
   loadWatchlist();
 })();
