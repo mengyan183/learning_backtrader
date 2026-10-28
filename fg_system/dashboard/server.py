@@ -120,6 +120,25 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
                         "Cache-Control": "no-store",
                     })
 
+    # ---- 首页渲染缓存（2026-10-28）----
+    # 缓存 HTML 而不是 features：渲染本身也耗时，缓存结果才能让手机端秒开 ✓
+    import threading
+    import time
+    INDEX_TTL_SEC = 300
+    _cache = {"html": None, "ts": 0.0, "busy": False}
+    _cache_lock = threading.Lock()
+
+    def _refresh_cache():
+        try:
+            html = render_dashboard(get_features(), prices_path=prices_path)
+            with _cache_lock:
+                _cache["html"], _cache["ts"] = html, time.time()
+        except Exception:
+            pass          # 后台刷新失败 ⇒ 保留旧 HTML，下次请求再试
+        finally:
+            with _cache_lock:
+                _cache["busy"] = False
+
     @app.route("/manifest.json")
     def _manifest():
         resp = Response(pwa.manifest_json(), mimetype=MANIFEST_MIME)
@@ -250,13 +269,36 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             freshness.check_and_refresh()
         except Exception:
             pass      # 新鲜度检查失败绝不影响页面可用
+        # 🔴 2026-10-28：原来每次请求都 `pipeline.run()` 重算整页 ✗ ——
+        # 本机 2524 行 0.8s，Mac 全量数据实测「手机上刷新一次要等近 1 分钟」✗。
+        # 改成 stale-while-revalidate：有缓存立刻返回（最多旧 INDEX_TTL 秒），
+        # 过期由后台线程重算 ⇒ 用户只在服务刚启动那一次需要等 ✓。
+        # ⚠️ 数据本身是日频，5 分钟陈旧对结论无影响；实时价走 `/realtime` 另算 ✓。
+        # `?fresh=1` ⇒ 跳过缓存强制重算（页面上的「强制重算」按钮走这条）✓
+        force = bool(request.args.get("fresh"))
+        with _cache_lock:
+            cached, cached_ts, busy = _cache["html"], _cache["ts"], _cache["busy"]
+        if force:
+            cached = None
+        if cached is not None:
+            if time.time() - cached_ts > INDEX_TTL_SEC and not busy:
+                with _cache_lock:
+                    _cache["busy"] = True
+                threading.Thread(target=_refresh_cache, daemon=True).start()
+            resp = Response(cached, mimetype="text/html; charset=utf-8")
+            resp.headers["Cache-Control"] = "no-store"   # 浏览器侧仍不许缓存
+            resp.headers["X-Render"] = "cache-%ds" % int(time.time() - cached_ts)
+            return resp
         try:
             html = render_dashboard(get_features(), prices_path=prices_path)
         except Exception as exc:      # 渲染失败不能把服务搞挂
             return Response("渲染失败：%s: %s" % (type(exc).__name__, exc),
                             status=500, mimetype="text/plain; charset=utf-8")
+        with _cache_lock:
+            _cache["html"], _cache["ts"] = html, time.time()
         resp = Response(html, mimetype="text/html; charset=utf-8")
-        resp.headers["Cache-Control"] = "no-store"   # 刷新必须拿新的
+        resp.headers["Cache-Control"] = "no-store"
+        resp.headers["X-Render"] = "cold"
         return resp
 
     @app.route("/api/factors")

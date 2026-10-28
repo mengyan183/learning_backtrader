@@ -269,6 +269,7 @@
   <div class="sync-head">
     <span id="syncVerdict" class="sync-badge">体检中…</span>
     <button id="syncBtn" class="btn-xs" type="button">刷新</button>
+    <button id="freshBtn" class="btn-xs" type="button">强制重算整页</button>
     <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
     <button id="restartBtn" class="btn-xs" type="button">重启服务</button>
   </div>
@@ -919,7 +920,10 @@ function loadTasks() {
         var trs = "";
         for (var j = 0; j < d.tasks.length; j++) {
           var t = d.tasks[j];
-          trs += "<tr><td>" + t.label + "</td><td>" + (t.last_run || "—") + "</td>" +
+          trs += "<tr><td>" + t.label +
+            (t.schedule && t.schedule !== "—"
+              ? "<br><span class='c-sub fs12'>" + t.schedule + "</span>" : "") +
+            "</td><td>" + (t.last_run || "—") + "</td>" +
             "<td class='c-sub'>—</td><td>" + (t.registered
               ? "<span class='c-ok'>已注册</span>"
               : "<span class='c-bad'>未注册</span>") + "</td><td></td></tr>";
@@ -1106,6 +1110,11 @@ function loadTasks() {
     if (b) { b.addEventListener("click", loadSync); }
     if (d) { d.addEventListener("click", deployLatest); }
     if (r) { r.addEventListener("click", restartService); }
+    var fb = document.getElementById("freshBtn");
+    // 整页默认走缓存（秒开）；要最新就点这个 ⇒ 打 ?fresh=1 跳过缓存重算 ✓
+    if (fb) {
+      fb.addEventListener("click", function () { location.href = "/?fresh=1"; });
+    }
   })();
   loadSync();
 

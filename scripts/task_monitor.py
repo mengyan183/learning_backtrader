@@ -67,6 +67,22 @@ TASKS = [
     "com.xingguo.fg-evolve-weekly",   # 每周一 07:00 进化周报（默认不推飞书）
 ]
 
+#: 任务频率（2026-10-28 新增展示）。
+#: 为什么需要：页面只显示「最后日期」，于是**每周日**跑的 kb-update（10-25）、
+#: **每季度**跑的 quarterly-walkforward（10-21）、**每周一**跑的 evolve-weekly（10-26）
+#: 看起来像「停更了」✗ —— 用户得靠记忆区分日/周/季任务 ✗。
+TASK_SCHEDULE = {
+    "com.xingguo.fg-auto-update":    "每日 02:00",
+    "com.xingguo.fg-daily":          "每日 05:30",
+    "com.xingguo.fg-kb-update":      "每周日 03:00",
+    "com.xingguo.fg-shoutu-refresh": "每日 09/17/22",
+    "com.fg.shoutu-daily":           "每日 06:30",
+    "com.fg.shoutu-history":         "每日 06:35（条件）",
+    "com.fg.quarterly-walkforward":  "每季度首日 08:00",
+    "com.xingguo.fg-evolve-verify":  "每日 06:10",
+    "com.xingguo.fg-evolve-weekly":  "每周一 07:00",
+}
+
 # 任务 → 日志文件候选（plist StandardOutPath）。launchd 不暴露"最后运行时间"，
 # 以日志文件最后写入时间（mtime）作为最近一次运行的近似（2026-10-16 新增展示）。
 # ⚠️ 2026-10-20 修正：部分脚本把输出重定向到**自写日志**（如 logs/auto-update.log），
@@ -192,6 +208,7 @@ def collect_status(today=None):
         ok = t in registered
         last_run, last_run_file = _task_last_run(t)
         task_rows.append({"label": t, "registered": ok, "ok": ok,
+                          "schedule": TASK_SCHEDULE.get(t, "—"),
                           "last_run": last_run,
                           "last_run_file": str(last_run_file) if last_run_file else None})
         if not ok:

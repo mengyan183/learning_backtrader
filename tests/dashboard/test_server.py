@@ -59,9 +59,14 @@ def test_serves_dashboard_over_http(tmp_path):
 
 
 def test_recomputes_on_every_request(tmp_path):
-    """**核心**：每次请求都**重新计算**，不是启动时算一次后缓存。
+    """**核心契约（2026-10-28 修订）**：默认走缓存，`?fresh=1` 才强制重算。
 
-    这正是「打开/刷新即最新」的实现方式 —— 用户明确要求的行为。
+    原契约是「每次请求都重算」—— 但 Mac 全量数据实测**手机上刷新一次要等近 1 分钟** ✗
+    （本机 2524 行 0.8s，Mac 数据量大一个量级）。数据是日频，几分钟陈旧不影响结论，
+    而「打开就等一分钟」是每次都要付的代价 ⇒ 改为：
+      · 默认命中缓存（秒开）✓
+      · `?fresh=1` 强制重算（页面「强制重算」按钮）✓ —— 「要最新」仍然随时可得
+    本测试同时锁住这两条，防止有人把强制刷新入口删掉 ✗。
     """
     calls = []
 
@@ -72,9 +77,12 @@ def test_recomputes_on_every_request(tmp_path):
     srv, base = _serve(fake, tmp_path)
     try:
         _get(base + "/")
+        assert len(calls) == 1, "首次请求必须渲染"
         _get(base + "/")
         _get(base + "/")
-        assert len(calls) == 3, "每次请求都应重新计算（实际 %d 次）" % len(calls)
+        assert len(calls) == 1, "缓存期内不应重复渲染（实际 %d 次）" % len(calls)
+        _get(base + "/?fresh=1")
+        assert len(calls) == 2, "?fresh=1 必须强制重算（实际 %d 次）" % len(calls)
     finally:
         srv.shutdown()
 
