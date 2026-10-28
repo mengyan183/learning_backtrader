@@ -1005,6 +1005,14 @@ function loadTasks() {
     var hint = document.getElementById("syncHint");
     var det = document.getElementById("syncDetail");
     if (!badge || !hint || !det) { return; }
+    // 🔴 2026-10-28：点「刷新体检」原来**没有任何可见变化** ✗ ——
+    //   数据没变时数字全一样，用户以为按钮坏了 ✗ ⇒ 按钮态 + 「检查于 HH:MM:SS」✓
+    var btn = document.getElementById("syncBtn");
+    var btnTxt = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "刷新中…"; }
+    function done() {
+      if (btn) { btn.disabled = false; btn.textContent = btnTxt; }
+    }
     fetch("/api/sync_health", { cache: "no-store" }).then(function (r) {
       return r.json();
     }).then(function (d) {
@@ -1042,11 +1050,15 @@ function loadTasks() {
         ? ("近 15 分钟新落 " + (byp.fresh || 0) + " 个 · 回执失败日志 " + failTxt)
         : ("插件层 " + (byp.count || 0) + " 个（最老 " + ageTxt(byp.oldest_min) +
            " · 近 15 分钟新落 " + (byp.fresh || 0) + " 个）· 回执失败日志 " + failTxt));
+      // 「检查于」是「按钮真的执行了」的唯一凭据 ✓（数据没变时数字完全一样 ✗）
+      rows.push("检查于 " + String(d.checked_at || "").slice(11, 19));
       det.textContent = rows.join("\n");
+      done();
     }).catch(function (e) {
       badge.textContent = "❔ 体检失败";
       badge.className = "sync-badge v-unknown";
       hint.textContent = "接口不可达：" + e;
+      done();
     });
   }
 
