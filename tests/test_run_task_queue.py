@@ -66,6 +66,20 @@ def test_exception_is_recorded(tmp_path, monkeypatch):
     assert r["status"] == "failed" and "炸了" in r["output"]
 
 
+def test_agent_status_shape():
+    """定时器状态必须可读且不抛 ✓（看板据此决定是否显示安装按钮）。"""
+    st = q.agent_status()
+    assert set(st) >= {"installed", "loaded", "label"}
+    assert st["label"] == q.LABEL
+
+
+def test_install_agent_refuses_off_mac(monkeypatch):
+    """非 macOS ⇒ 明确拒绝并给原因 ✓（不能假装成功，否则用户以为装好了）。"""
+    monkeypatch.setattr(q.sys, "platform", "win32")
+    r = q.install_agent()
+    assert r["ok"] is False and "macOS" in r["reason"]
+
+
 def test_done_task_not_rerun(tmp_path, monkeypatch):
     """已有 result 且 status 非 pending ⇒ 不再执行 ✓（幂等，launchd 每 10s 会重复扫）。"""
     monkeypatch.setattr(q, "QUEUE", str(tmp_path))

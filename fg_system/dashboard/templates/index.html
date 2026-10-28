@@ -273,6 +273,8 @@
     <button id="cleanBtn" class="btn-xs" type="button">清理堆积</button>
     <!-- 只在「运行副本与仓库不一致」时出现 ✓（正常时别占位） -->
     <button id="syncRtBtn" class="btn-xs btn-danger" type="button" hidden>同步运行副本</button>
+    <!-- 队列定时器没装时才出现 ✓（装好后自动隐藏，不占位） -->
+    <button id="agentBtn" class="btn-xs btn-danger" type="button" hidden>安装队列定时器</button>
     <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
     <button id="restartBtn" class="btn-xs" type="button">重启服务</button>
   </div>
@@ -1011,6 +1013,9 @@ function loadTasks() {
     fetch("/api/task_queue", { cache: "no-store" }).then(function (r) {
       return r.json();
     }).then(function (d) {
+      // 定时器没加载 ⇒ 放出发射按钮（装了之后自动隐藏 ✓）
+      var ab = document.getElementById("agentBtn");
+      if (ab) { ab.hidden = !(d.agent && d.agent.loaded === false); }
       var it = d.items || [];
       if (!it.length) { box.textContent = "最近任务：无"; return; }
       var lines = ["最近任务："];
@@ -1245,6 +1250,38 @@ function loadTasks() {
         }).catch(function (e) {
           if (msg) { msg.textContent = "❌ " + e; }
         }).then(function () { rb.disabled = false; });
+      });
+    }
+    // 安装队列定时器（看板跑在 Mac 上，有 launchctl 权限 ✓）
+    var ab = document.getElementById("agentBtn");
+    if (ab) {
+      ab.addEventListener("click", function () {
+        var msg = document.getElementById("deployMsg");
+        if (!window.confirm("安装任务队列的 launchd 定时器（每 10 秒扫一次任务）？\n" +
+            "会写入 ~/Library/LaunchAgents/ 并 launchctl bootstrap，可重复执行")) {
+          return;
+        }
+        ab.disabled = true;
+        if (msg) { msg.textContent = "安装定时器…"; }
+        fetch("/api/install_agent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirm: "install_agent" })
+        }).then(function (r) {
+          return r.text().then(function (t) {
+            if (!r.ok) { throw new Error(t); }
+            return JSON.parse(t);
+          });
+        }).then(function (d) {
+          if (msg) {
+            msg.textContent = d.ok
+              ? ("✅ 队列定时器已安装并加载（" + d.label + "）")
+              : ("❌ " + (d.reason || d.stderr || "安装失败"));
+          }
+          loadQueue();
+        }).catch(function (e) {
+          if (msg) { msg.textContent = "❌ " + e; }
+        }).then(function () { ab.disabled = false; });
       });
     }
   })();

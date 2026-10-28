@@ -22,12 +22,65 @@
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 QUEUE = os.path.join(ROOT, "docs", "task-queue")
+
+#: launchd 定时器（本脚本每 10s 被调一次）—— 看板可一键安装 ✓
+LABEL = "com.xingguo.fg-task-queue"
+PLIST_SRC = os.path.join(ROOT, "scripts", LABEL + ".plist")
+PLIST_DST = os.path.join(os.path.expanduser("~"), "Library", "LaunchAgents",
+                         LABEL + ".plist")
+
+
+def agent_status():
+    """定时器是否已安装 / 已加载（看板据此决定要不要显示安装按钮）。"""
+    installed = os.path.isfile(PLIST_DST)
+    loaded = False
+    try:
+        r = subprocess.run(["launchctl", "list"], capture_output=True,
+                           text=True, timeout=15)
+        loaded = LABEL in (r.stdout or "")
+    except (subprocess.SubprocessError, OSError):
+        pass
+    return {"installed": installed, "loaded": loaded, "label": LABEL}
+
+
+def install_agent():
+    """把 plist 装进 `~/Library/LaunchAgents` 并 bootstrap（幂等，重复点会先 bootout）。
+
+    🔴 为什么可以在页面上做：看板服务本身就跑在 Mac 本地、以用户身份运行 ✓，
+    有写 `~/Library/LaunchAgents` 和执行 `launchctl` 的权限 ✓。
+    安全边界：源是仓库里的固定 plist、目标是固定的 LaunchAgents 路径、无用户输入 ✓。
+    """
+    if sys.platform != "darwin":
+        return {"ok": False, "reason": "只有 macOS 支持 launchd（当前 %s）" % sys.platform}
+    if not os.path.isfile(PLIST_SRC):
+        return {"ok": False, "reason": "仓库里没有 plist：%s" % PLIST_SRC}
+    try:
+        os.makedirs(os.path.dirname(PLIST_DST), exist_ok=True)
+        shutil.copy2(PLIST_SRC, PLIST_DST)
+    except OSError as exc:
+        return {"ok": False, "reason": "拷贝 plist 失败：%s" % exc}
+
+    dom = "gui/%d" % os.getuid()
+    try:
+        # 先卸再装（幂等）：未加载时 bootout 会报错，忽略即可 ✓
+        subprocess.run(["launchctl", "bootout", dom + "/" + LABEL],
+                       capture_output=True, timeout=30)
+        r = subprocess.run(["launchctl", "bootstrap", dom, PLIST_DST],
+                           capture_output=True, text=True, timeout=60)
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "launchctl 执行失败：%s" % exc}
+    st = agent_status()
+    out = {"ok": bool(st["loaded"]) or r.returncode == 0,
+           "stdout": (r.stdout or "")[-300:], "stderr": (r.stderr or "")[-300:]}
+    out.update(st)
+    return out
 
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)

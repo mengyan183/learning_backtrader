@@ -607,9 +607,35 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
                 merged[tid] = item
         items = sorted(merged.values(), key=lambda x: str(x.get("at") or ""),
                        reverse=True)[:10]
-        resp = Response(_json_ok({"items": items}), mimetype="application/json")
+        agent = {}
+        try:
+            from scripts import run_task_queue as _rtq
+            agent = _rtq.agent_status()
+        except Exception:
+            pass
+        resp = Response(_json_ok({"items": items, "agent": agent}),
+                        mimetype="application/json")
         resp.headers["Cache-Control"] = "no-store"
         return resp
+
+    @app.route("/api/install_agent", methods=["POST"])
+    def _install_agent():
+        """安装任务队列的 launchd 定时器（看板本身跑在 Mac 上，有权限 ✓）。
+
+        安全边界：源是仓库里固定的 plist、目标是固定的 `~/Library/LaunchAgents`、
+        不接受任何用户输入、重复点会先 bootout 再 bootstrap（幂等）✓。
+        """
+        payload = request.get_json(force=True, silent=True) or {}
+        if str(payload.get("confirm") or "") != "install_agent":
+            return Response("需要二次确认：POST {\"confirm\": \"install_agent\"}",
+                            status=400, mimetype="text/plain; charset=utf-8")
+        from scripts import run_task_queue as _rtq
+        try:
+            r = _rtq.install_agent()
+        except Exception as exc:
+            return Response("安装失败：%s: %s" % (type(exc).__name__, exc),
+                            status=500, mimetype="text/plain; charset=utf-8")
+        return _json_ok(r)
 
     @app.route("/api/sync_cleanup", methods=["POST"])
     def _sync_cleanup():
