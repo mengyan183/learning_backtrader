@@ -1,0 +1,13 @@
+{
+  "id": "t-20261028-1936-clean_sync_partial",
+  "action": "clean_sync_partial",
+  "params": {
+    "pkg": "sync_1028w"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"removed\": [\"sync_1028w_1.md\", \"sync_1028w_2.md\"], \"count\": 2}",
+  "started_at": "2026-10-28T19:38:04",
+  "finished_at": "2026-10-28T19:38:04",
+  "duration_s": 0.0
+}
