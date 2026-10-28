@@ -66,6 +66,33 @@ def test_exception_is_recorded(tmp_path, monkeypatch):
     assert r["status"] == "failed" and "炸了" in r["output"]
 
 
+def test_auto_clean_triggers_above_threshold(tmp_path, monkeypatch):
+    """堆积超阈值 ⇒ 每轮顺手归档 ✓（A 方案：自愈，不靠人记得下发）。"""
+    from fg_system.dashboard import sync_health as sh
+    moved = []
+    monkeypatch.setattr(sh, "_bypass_stats",
+                        lambda now: {"count": sh.BACKLOG_WARN + 10})
+    monkeypatch.setattr(sh, "archive_backlog",
+                        lambda **k: moved.append(1) or {"moved": 5, "dest": "/x"})
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    monkeypatch.setattr(q, "ACTIONS", {})
+    q.run_once(commit=False)
+    assert moved == [1], "超阈值时必须归档 ✗"
+
+
+def test_auto_clean_skips_below_threshold(tmp_path, monkeypatch):
+    """没超阈值 ⇒ 一个文件都不动 ✓（别每 10s 白扫一遍磁盘）。"""
+    from fg_system.dashboard import sync_health as sh
+    moved = []
+    monkeypatch.setattr(sh, "_bypass_stats", lambda now: {"count": 5})
+    monkeypatch.setattr(sh, "archive_backlog",
+                        lambda **k: moved.append(1) or {"moved": 0})
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    monkeypatch.setattr(q, "ACTIONS", {})
+    q.run_once(commit=False)
+    assert moved == []
+
+
 def test_agent_status_shape():
     """定时器状态必须可读且不抛 ✓（看板据此决定是否显示安装按钮）。"""
     st = q.agent_status()

@@ -153,8 +153,28 @@ def _write_result(spec, status, rc, output, started, finished):
     return p
 
 
+def _auto_clean():
+    """每轮顺手自愈：插件层堆积超阈值就归档（2026-10-28 A 方案）。
+
+    为什么不做成「下发任务」：这是**周期性自愈**，不是一次性动作 ——
+    每 10s 跑一次、超阈值才动，不需要人记得下发 ✓。
+    为什么还要保留手动按钮：自愈是兜底，手动是「我现在就想清」。
+    """
+    try:
+        from fg_system.dashboard import sync_health as sh
+        if sh._bypass_stats(time.time())["count"] < sh.BACKLOG_WARN:
+            return None
+        return sh.archive_backlog()
+    except Exception:
+        return None            # 自愈失败绝不能影响正常任务 ✓
+
+
 def run_once(commit=True):
     """跑一轮。返回 [(id, status), ...]。"""
+    auto = _auto_clean()
+    if auto and auto.get("moved"):
+        print("[auto-clean] 已归档 %d 个插件层文件 -> %s"
+              % (auto["moved"], auto.get("dest")))
     done = []
     for spec in _load_pending():
         action = str(spec.get("action") or "")
