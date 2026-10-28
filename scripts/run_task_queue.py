@@ -20,6 +20,7 @@
     .venv/bin/python scripts/run_task_queue.py --no-commit  # 只执行不提交（调试）
 """
 import argparse
+import glob
 import json
 import os
 import shutil
@@ -101,10 +102,33 @@ def _act_sync_runtime(params):
     return sync_health.sync_runtime_copy()
 
 
+def _act_clean_sync_partial(params):
+    """删掉**指定包**的残留分片（`~/.openclaw/tmp/fg-sync-in/<pkg>_*.md`）✓。
+
+    动机（MT-87，2026-10-28）：Windows 侧弃用的包永远收不齐 ✗ ⇒ bypass 每次同步
+    都报「分片不齐，请补发」✗。只删 `pkg` 前缀的分片 ✓，不碰 `.done` / 其它包 ✗。
+    """
+    from fg_system.dashboard import sync_health
+    pkg = str(params.get("pkg") or "")
+    # 🔴 只允许 [A-Za-z0-9_] —— 挡住 `..`、`/`、`*` 这类会越出目录的写法 ✗
+    if not pkg or any(not (c.isalnum() or c == "_") for c in pkg):
+        return {"ok": False, "reason": "pkg 名非法（只允许 [A-Za-z0-9_]）：%r" % pkg}
+    removed = []
+    for p in sorted(glob.glob(os.path.join(sync_health.SHARD_IN, pkg + "_*.md"))):
+        try:
+            os.remove(p)
+        except OSError as exc:
+            return {"ok": False, "removed": removed,
+                    "reason": "删 %s 失败：%s" % (os.path.basename(p), exc)}
+        removed.append(os.path.basename(p))
+    return {"ok": True, "removed": removed, "count": len(removed)}
+
+
 #: 🔴 唯一可执行清单。键是**任务名**，值是固定函数 —— 不接受任何命令字符串 ✓
 ACTIONS = {
     "cleanup_backlog": _act_cleanup_backlog,
     "sync_runtime": _act_sync_runtime,
+    "clean_sync_partial": _act_clean_sync_partial,
 }
 
 

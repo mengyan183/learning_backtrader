@@ -116,3 +116,25 @@ def test_done_task_not_rerun(tmp_path, monkeypatch):
     q.run_once(commit=False)
     q.run_once(commit=False)
     assert len(hits) == 1, "已完成的任务被重复执行了 ✗"
+
+
+# ------------------------------------------------ MT-87：清理某包的残留分片
+
+def test_clean_sync_partial_removes_only_that_package(tmp_path, monkeypatch):
+    """只删**指定包**的分片 ✓ —— 别把其它包、`.done` 一起删了 ✗。"""
+    from fg_system.dashboard import sync_health
+    monkeypatch.setattr(sync_health, "SHARD_IN", str(tmp_path))
+    for n in ("sync_1028w_1.md", "sync_1028w_2.md",
+              "sync_1028x_1.md", "sync_1028w_1.md.done"):
+        (tmp_path / n).write_text("x", encoding="utf-8")
+    r = q._act_clean_sync_partial({"pkg": "sync_1028w"})
+    assert r["ok"] is True and r["count"] == 2
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "sync_1028w_1.md.done", "sync_1028x_1.md"]
+
+
+def test_clean_sync_partial_rejects_bad_pkg():
+    """包名非法必须报错 ✓ —— 不许借 `..` / `/` / `*` 越出分片目录 ✗。"""
+    for bad in ("", "..", "a/b", "a b", "*"):
+        r = q._act_clean_sync_partial({"pkg": bad})
+        assert r["ok"] is False, "非法包名 %r 被放行了 ✗" % bad
