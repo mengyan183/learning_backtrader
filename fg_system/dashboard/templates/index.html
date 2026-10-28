@@ -1046,7 +1046,9 @@ function loadTasks() {
     var msg = document.getElementById("deployMsg");
     var btn = document.getElementById("deployBtn");
     if (!msg || !btn) { return; }
-    if (!window.confirm("从 gitee 拉取最新代码并重启看板服务？\n（只跑 git fetch + merge --ff-only，失败会保留原状）")) {
+    // 文案不再写死 gitee —— Mac 的 origin 可能是 github，代码实际从 gitee 进来 ✗
+    if (!window.confirm("从远程仓库拉取最新代码并重启看板服务？\n" +
+        "（自动在所有远程的 main 里挑最新的那个；失败保留原状）")) {
       return;
     }
     btn.disabled = true;
@@ -1063,6 +1065,7 @@ function loadTasks() {
     }).then(function (d) {
       msg.textContent = d.ok
         ? ("✅ " + d.old + " → " + d.new +
+           "（" + (d.remote || "?") + " 落后 " + (d.behind || 0) + "）" +
            (d.restart_scheduled ? "，2 秒后重启服务（刷新页面即新版本）" : "（无变更，未重启）"))
         : ("❌ 部署失败：" + (d.error || "") + "\n" + (d.log_tail || ""));
       loadSync();

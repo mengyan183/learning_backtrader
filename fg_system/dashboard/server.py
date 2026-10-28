@@ -619,7 +619,7 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             _json.dump({"pid": os.getpid(),
                         "started": _dt.datetime.now().isoformat(timespec="seconds")}, f)
         lines = ["", "=== %s 部署开始 ===" % _dt.datetime.now().isoformat(timespec="seconds")]
-        old = ""
+        old, best, url, behind = "", None, None, 0
         try:
             def _git(*args):
                 r = _sp.run(["git"] + list(args), cwd=config.ROOT,
@@ -629,28 +629,49 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
 
             old = _git("rev-parse", "--short", "HEAD").stdout.strip()
             branch = _git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
-            _git("fetch", "origin", "main")
+            # 🔴 2026-10-28 修正：**不能写死 origin** ✗ —— Mac 的 origin 可能是 github，
+            # 而代码实际从 gitee 进来 ⇒ `fetch origin` 拿到的是旧的 ⇒ 页面显示「无变更」
+            # 却根本没部署 ✗（用户实测「一键部署不生效」就是这个）。
+            # ⇒ fetch --all，然后在所有 `*/main` 里挑**落后最多**的那个部署 ✓
+            _git("fetch", "--all", "--prune")
+            remotes = []
+            for r in _git("remote").stdout.split():
+                if _git("rev-parse", "--verify", "-q", r + "/main").returncode == 0:
+                    remotes.append(r)
+            if not remotes:
+                raise RuntimeError("没有任何远程的 main 分支可部署（fetch --all 之后仍无）")
+            best, best_behind = None, -1
+            for r in remotes:
+                c = _git("rev-list", "--left-right", "--count",
+                         "HEAD..." + r + "/main").stdout.split()
+                b = int(c[1]) if len(c) > 1 else 0
+                lines.append("  %s/main 落后 %d" % (r, b))
+                if b > best_behind:
+                    best, best_behind = r, b
+            ref = best + "/main"
+            url = _git("remote", "get-url", best).stdout.strip()
+            lines.append("选用远程 %s（%s）" % (best, url))
             # 🔴 分叉守卫（2026-10-28）：本地有未推送提交时 `--ff-only` 必然失败 ✗，
             # 而原始 git 报错对手机上的用户毫无意义 ✗ ⇒ 提前算清楚并给出可执行的结论 ✓
-            cnt = _git("rev-list", "--left-right", "--count", "HEAD...origin/main").stdout.split()
+            cnt = _git("rev-list", "--left-right", "--count", "HEAD..." + ref).stdout.split()
             ahead = int(cnt[0]) if cnt else 0
             behind = int(cnt[1]) if len(cnt) > 1 else 0
             lines.append("分支 %s · 领先 %d · 落后 %d" % (branch, ahead, behind))
             if ahead:
                 # 领先但**内容完全一致**（只是提交元数据不同，例如入库后又被收平过）
                 # ⇒ 安全对齐 ✓（用 --mixed：只动 HEAD 与索引，工作区文件一个不碰 ✓）
-                if _git("diff", "--quiet", "origin/main", "HEAD").returncode == 0:
-                    _git("reset", "--mixed", "origin/main")
-                    lines.append("领先 %d 但内容一致 ⇒ 已对齐到 origin（工作区未动）" % ahead)
+                if _git("diff", "--quiet", ref, "HEAD").returncode == 0:
+                    _git("reset", "--mixed", ref)
+                    lines.append("领先 %d 但内容一致 ⇒ 已对齐到 %s（工作区未动）" % (ahead, ref))
                     ahead = 0
                 else:
                     raise RuntimeError(
                         "本地分支 %s 有 %d 个未推送提交且**含实际改动** ⇒ "
                         "自动丢弃会丢代码 ✗。先在 Mac 上 `git push`，"
-                        "或确认这些改动不要了再 `git reset --hard origin/main`"
-                        % (branch, ahead))
+                        "或确认这些改动不要了再 `git reset --hard %s`"
+                        % (branch, ahead, ref))
             if behind:
-                _git("merge", "--ff-only", "origin/main")
+                _git("merge", "--ff-only", ref)
             new = _git("rev-parse", "--short", "HEAD").stdout.strip()
             lines.append("HEAD %s → %s%s" % (old, new, "" if old != new else "（无变化）"))
             ok, err = True, None
@@ -668,8 +689,9 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         # 代码变了才重启（Flask 不会自动重载 .py ⇒ 不重启等于没部署 ✗）。
         restarted = ok and old != new and _schedule_restart()
         return _json_ok({"ok": ok, "old": old, "new": new, "error": err,
+                         "remote": best, "url": url, "behind": behind,
                          "restart_scheduled": restarted,
-                         "log_tail": "\n".join(lines[-6:])})
+                         "log_tail": "\n".join(lines[-8:])})
 
     @app.route("/api/restart", methods=["POST"])
     def _restart():
