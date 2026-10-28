@@ -278,11 +278,10 @@
   <div id="syncDetail" class="note"></div>
   <div id="deployMsg" class="msg"></div>
   <p class="msg-top">体检只读 Mac 本地四个观测点（插件落盘 / 分片 / .done / send-fail.log），
-    <b>覆盖不到「消息连 OpenClaw 网关都没收到」</b> —— 那种情况四个点全空，与「今天没人发东西」无法区分 ✗。
-    部署只跑固定命令（<code>git fetch</code> + <code>git merge --ff-only</code>），不接受任何参数。
-    「重启服务」只 <code>launchctl kickstart</code>，不碰 git —— 入库后新 <code>.py</code> 要重启才加载。</p>
-  <p class="msg-top">插件层目录（<code>~/.openclaw/tmp/fg-sync-bypass-in/</code>）消费后<b>不会自动清理</b> ⇒
-    堆到几百个只是变慢，不是故障（黄色提示，不判红）。要清理就在 Mac 上把它整体挪走：
+    <b>覆盖不到「消息连 OpenClaw 网关都没收到」</b> —— 那种情况四个点全空，与「今天没人发东西」无法区分。
+    部署 = <code>fetch --all</code> + 挑落后最多的 <code>*/main</code> + <code>merge --ff-only</code>（无参数）；
+    重启服务 = 只 <code>launchctl kickstart</code>，不碰 git。</p>
+  <p class="msg-top">插件层目录消费后<b>不会自动清理</b>，堆到几百个只是变慢、不是故障。清理：
     <code>mv ~/.openclaw/tmp/fg-sync-bypass-in ~/.openclaw/tmp/fg-sync-bypass-in.$(date +%m%d)</code></p>
 </div>
 </div>
@@ -1028,12 +1027,14 @@ function loadTasks() {
       if (d.last_ingest) {
         rows.push("最近入库：" + d.last_ingest.name + "（" + d.last_ingest.age_min + " 分钟前）");
       }
-      rows.push("插件层 " + d.bypass_in.count + " 个（近 15 分钟新落 " +
-        (d.bypass_in.fresh || 0) + " 个 · 最老 " +
-        (d.bypass_in.oldest_min == null ? "—"
-          : Math.round(d.bypass_in.oldest_min / 1440) + " 天") +
-        "）· 回执失败日志 " +
-        (d.send_fail.exists ? d.send_fail.size + " B" : "无"));
+      // 堆积数字只在黄条里说一次 ✓ —— 有 warning 时明细不再重复同一组数字 ✗
+      var byp = d.bypass_in || {};
+      var failTxt = d.send_fail.exists ? d.send_fail.size + " B" : "无";
+      rows.push(d.warning
+        ? ("近 15 分钟新落 " + (byp.fresh || 0) + " 个 · 回执失败日志 " + failTxt)
+        : ("插件层 " + (byp.count || 0) + " 个（最老 " +
+           (byp.oldest_min == null ? "—" : Math.round(byp.oldest_min / 1440) + " 天") +
+           " · 近 15 分钟新落 " + (byp.fresh || 0) + " 个）· 回执失败日志 " + failTxt));
       det.textContent = rows.join("\n");
     }).catch(function (e) {
       badge.textContent = "❔ 体检失败";
