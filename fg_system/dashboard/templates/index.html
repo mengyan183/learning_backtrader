@@ -268,7 +268,9 @@
      为什么需要：sync_1028a 发出 32 片、`--sent-status` 显示 32/32 已发，
      但 Mac 侧 65 条消息全积压在 OpenClaw pending（worker 未认领）⇒ bypass 没落盘 ⇒ 无回执。
      Windows 端只能看到「我发了」和「gitee 有无新提交」两头，中间态完全黑箱 ⇒ 这里补上 ✓ -->
-<div class="sec-wrap" data-name="任务">
+<!-- 2026-10-28：与「定时任务执行情况」拆成两页 ✓ —— 前者是「链路是否通」，
+     后者是「脚本有没有按时跑」，混在一页要滚很久才看完 ✗ -->
+<div class="sec-wrap" data-name="同步">
 <h2>同步链路与部署</h2>
 <div class="sec">
   <div class="sync-head">
@@ -290,9 +292,10 @@
   <p class="msg-top">体检只读 Mac 本地四个观测点（插件落盘 / 分片 / .done / send-fail.log），
     <b>覆盖不到「消息连 OpenClaw 网关都没收到」</b> —— 那种情况四个点全空，与「今天没人发东西」无法区分。
     部署 = <code>fetch --all</code> + 挑落后最多的 <code>*/main</code> + <code>merge --ff-only</code>（无参数）；
-    重启服务 = 只 <code>launchctl kickstart</code>，不碰 git。</p>
-  <p class="msg-top">插件层目录消费后<b>不会自动清理</b>，堆到几百个只是变慢、不是故障。清理：
-    <code>mv ~/.openclaw/tmp/fg-sync-bypass-in ~/.openclaw/tmp/fg-sync-bypass-in.$(date +%m%d)</code></p>
+    重启服务 = 只让 launchd 重启仪表盘进程，不碰 git。</p>
+  <p class="msg-top">插件层目录消费后<b>不会自动清理</b>，堆到几百个只是变慢、不是故障。
+    点「清理堆积」= 在 Mac 上把 30 分钟前的历史文件挪进 <code>archive_MMDD/</code>（只挪不删 ✓）——
+    <b>不用手工敲命令</b>；需要 Mac 做的事一律走任务队列或这里的按钮 ✓。</p>
 </div>
 </div>
 
@@ -311,6 +314,7 @@
 <button class="sheet-item" data-name="标的查询">标的查询</button>
 <button class="sheet-item" data-name="关注列表">关注列表</button>
 <button class="sheet-item" data-name="任务">任务</button>
+<button class="sheet-item" data-name="同步">同步</button>
 </div>
 </div>
 

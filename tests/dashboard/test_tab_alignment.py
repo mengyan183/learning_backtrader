@@ -109,6 +109,27 @@ def test_factor_page_keeps_every_block():
         assert kept in page, "%s 必须落在分因子子页 ✗" % kept
 
 
+def test_sync_section_is_separate_page():
+    """「同步链路与部署」必须自成一段 ✓。
+
+    2026-10-28 用户反馈：它和「定时任务执行情况」挤在「任务」页，要滚很久才看完 ✗。
+    现在拆成「更多 → 同步」✓。
+    """
+    t = _html()
+    assert 'data-name="同步"' in t, "缺「同步」区块 ✗"
+    task = _slice(t, "任务", "同步")
+    assert "定时任务执行情况" in task
+    assert "同步链路与部署" not in task, "同步链路又混回任务页了 ✗"
+    assert "同步链路与部署" in t[t.index('data-name="同步"'):]
+
+
+def test_no_manual_commands_on_the_page():
+    """页面不得给**人工命令** ✓ —— Mac 侧操作一律走任务队列/按钮 ✗。"""
+    t = _html()
+    for bad in ("mv ~/.openclaw", "rm -f ~/.openclaw", "launchctl kickstart"):
+        assert bad not in t, "页面又让用户手工敲 %r 了 ✗" % bad
+
+
 def test_weight_lab_is_gone():
     """权重沙盘必须删净 ✓ —— 它能拖出一个和真实指数同色同档位的假数字 ✗。"""
     t = _html()
