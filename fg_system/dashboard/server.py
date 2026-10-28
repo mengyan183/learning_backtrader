@@ -120,6 +120,32 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
                         "Cache-Control": "no-store",
                     })
 
+    @app.after_request
+    def _gzip_text(resp):
+        """文本响应 gzip ✓ —— 首页 212 KB 的 JSON 字面量压完约 30 KB（2026-10-28）。
+
+        手机端首屏成本 = **下载 + 解析**，压缩是唯一无损的大头 ✓。
+        `direct_passthrough`（send_file 的静态资源）跳过 —— 它们有自己的条件请求 ✓。
+        """
+        import gzip
+        if (resp.direct_passthrough or resp.status_code >= 300
+                or "gzip" not in request.headers.get("Accept-Encoding", "")):
+            return resp
+        if not (resp.mimetype.startswith("text/")
+                or resp.mimetype in ("application/json", "application/javascript")):
+            return resp
+        data = resp.get_data()
+        if len(data) < 1024:
+            return resp
+        gz = gzip.compress(data, 6)
+        if len(gz) >= len(data):
+            return resp
+        resp.set_data(gz)
+        resp.headers["Content-Encoding"] = "gzip"
+        resp.headers["Content-Length"] = str(len(gz))
+        resp.headers["Vary"] = "Accept-Encoding"
+        return resp
+
     # ---- 首页渲染缓存（2026-10-28）----
     # 缓存 HTML 而不是 features：渲染本身也耗时，缓存结果才能让手机端秒开 ✓
     import threading

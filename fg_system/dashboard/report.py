@@ -719,75 +719,6 @@ def _decay_rate_block(features, prices):
             "<th>当前损耗速率（年化，近20日σ）</th></tr>" + "".join(lines) + "</table>")
 
 
-def _svg_line(points, width=900, height=260, pad=36, y_min=None, y_max=None,
-              color="#1f77b4", bands=None):
-    """内联 SVG 折线；points 为 [(date_str, value)]，跳过 NaN。"""
-    pts = [(d, float(v)) for d, v in points if v is not None and float(v) == float(v)]
-    if len(pts) < 2:
-        return "<p>数据点不足，无法绘图</p>"
-
-    xs = list(range(len(pts)))
-    vals = [v for _, v in pts]
-    if y_min is None:
-        y_min = min(vals)
-    if y_max is None:
-        y_max = max(vals)
-    if y_max == y_min:
-        y_max, y_min = y_max + 1.0, y_min - 1.0
-
-    def sx(i):
-        return pad + (width - 2 * pad) * i / (len(pts) - 1)
-
-    def sy(v):
-        return height - pad - (height - 2 * pad) * (v - y_min) / (y_max - y_min)
-
-    parts = []
-    # 档位带（背景横条）
-    if bands:
-        for lo, hi, col in bands:
-            top = sy(min(hi, y_max))
-            bot = sy(max(lo, y_min))
-            if bot > top:
-                parts.append('<rect x="%d" y="%.1f" width="%d" height="%.1f" fill="%s" '
-                             'opacity="0.13"/>' % (pad, top, width - 2 * pad, bot - top, col))
-
-    # 边框 + 网格（深色主题：细半透明）
-    parts.append('<rect class="frame" x="%d" y="%d" width="%d" height="%d" fill="none" '
-                 'stroke="rgba(255,255,255,0.1)"/>' % (pad, pad, width - 2 * pad, height - 2 * pad))
-    for gy in (0.25, 0.5, 0.75):
-        parts.append('<line class="grid" x1="%d" y1="%.1f" x2="%d" y2="%.1f" '
-                     'stroke-dasharray="3,3"/>'
-                     % (pad, pad + gy * (height - 2 * pad), width - pad,
-                        pad + gy * (height - 2 * pad)))
-
-    # 面积渐变 + 折线
-    area = ("%s%.1f,%.1f " % ("M", sx(0), sy(vals[0]))
-            + " ".join("L%.1f,%.1f" % (sx(i), sy(v)) for i, v in enumerate(vals))
-            + " L%.1f,%.1f Z" % (sx(len(vals) - 1), sy(vals[-1])))
-    parts.append(
-        '<defs><linearGradient id="grad%s" x1="0" y1="0" x2="0" y2="1">'
-        '<stop offset="0%%" stop-color="%s" stop-opacity="0.28"/>'
-        '<stop offset="100%%" stop-color="%s" stop-opacity="0.0"/>'
-        '</linearGradient></defs>'
-        '<path d="%s" fill="url(#grad%s)" stroke="none"/>' % (color.replace("#", "c"), color, color, area, color.replace("#", "c")))
-    d = " ".join("%s%.1f,%.1f" % ("M" if i == 0 else "L", sx(i), sy(v))
-                 for i, (_, v) in enumerate(pts))
-    parts.append('<path d="%s" fill="none" stroke="%s" stroke-width="2" stroke-linejoin="round" '
-                 'stroke-linecap="round"/>' % (d, color))
-
-    # 轴标签
-    parts.append('<text x="%d" y="%d" font-size="11">%s</text>'
-                 % (pad, height - 12, pts[0][0]))
-    parts.append('<text x="%d" y="%d" font-size="11" text-anchor="end">%s</text>'
-                 % (width - pad, height - 12, pts[-1][0]))
-    parts.append('<text x="%d" y="%d" font-size="11">%.1f</text>'
-                 % (pad - 6, pad + 4, y_max))
-    parts.append('<text x="%d" y="%d" font-size="11" fill="#8b949e">%.1f</text>'
-                 % (pad - 6, height - pad + 4, y_min))
-    return '<svg class="chart" viewBox="0 0 %d %d" preserveAspectRatio="xMidYMid meet">%s</svg>' % (
-        width, height, "".join(parts))
-
-
 def _factors_block(valid):
     keys = [k for k in ["vix", "term", "price", "breadth", "fed"] if k in valid.columns]
     if not keys:
@@ -967,12 +898,8 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
     shoutu = _shoutu
     # 个股系统指数输入复用 prices（尊重 prices_path：文件缺失时为空表 → 自动回退市场）
 
-    bands = []
-    edges = [-1e9] + list(config.ZONE_EDGES) + [1e9]
-    for i in range(5):
-        bands.append((edges[i], edges[i + 1], ZONE_COLORS[i]))
-
-    index_svg = _svg_line(index_points, bands=bands, y_min=0.0, y_max=100.0)
+    # 2026-10-28：删掉这里原本的 SVG 折线构建 —— 它算完**从没传给模板** ✗
+    # （图表早已换成 echarts，走 index_json）⇒ 每次渲染白算 1765 个点的 SVG ✗
 
     # hero 的「今日动作」复用持仓卡的逐标的结论 ✓（acts 为出参 ✓）
     # hero 的「实盘 vs 目标偏离」也复用同一组数字 ✓（expo 为出参 ✓）
@@ -1002,13 +929,17 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         loss=_loss_block(prices),
         external_note=("已录入 %d 条外部指数记录" % len(external)
                        if external else "未录入（不影响其他功能）"),
-        index_json=_json(index_points),
+        # 🔴 2026-10-28：内联 JSON 原来把 float 全精度写进去 ✗ —— 实测整页 473 KB，
+        # 其中 FACTORS 独占 281 KB（`45.23809523809524` 这种 18 字符 × 1765 点 × 5 条 ✗）。
+        # ① 小数位按用途收紧（指数 1 位、仓位 4 位）；② 因子图只画 sparkline，
+        #    日期轴 `show:false` 根本不用 ⇒ 只发值数组 ✓（省掉 5×1765 个日期 ✗）
+        index_json=_json([(d, round(float(v), 1)) for d, v in index_points]),
         factors_json=_json({
-            k: [(d.strftime("%Y-%m-%d"), float(v)) for d, v in valid[k].items()]
+            k: [None if v != v else round(float(v), 1) for v in valid[k]]
             for k in ["vix", "term", "price", "breadth", "fed"] if k in valid.columns
         }),
         position_json=_json([
-            (d.strftime("%Y-%m-%d"), float(v))
+            (d.strftime("%Y-%m-%d"), round(float(v), 4))
             for d, v in valid["target_position"].dropna().items()
         ]) if "target_position" in valid.columns else _json([]),
         external_json=_json(external),

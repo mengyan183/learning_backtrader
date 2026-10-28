@@ -176,6 +176,26 @@ def test_sticky_header_and_style_floor():
     assert not bad, "注释符出现在行中间，会提前闭合注释并吞掉下一条规则：%r" % bad[:3]
 
 
+def test_inline_json_rounds_floats_and_drops_factor_dates(tmp_path):
+    """**守卫**：内联 JSON 必须收敛小数位 + 因子图不带日期 ✓。
+
+    2026-10-28 实测：首页 HTML **473 KB**，其中 FACTORS 独占 281 KB ——
+    `45.23809523809524`（18 字符）× 1765 点 × 5 条 ✗，外加 5×1765 个日期 ✗，
+    而因子 sparkline 的日期轴是 `show:false`，**根本不显示** ✗。
+    """
+    idx = pd.date_range("2023-01-01", periods=60, freq="B")
+    feats = pd.DataFrame({"fg_index": 50.123456789, "zone": 2,
+                          "target_position": 0.123456789012345,
+                          "vix": 50.987654321}, index=idx)
+    html = report.render_html(feats, prices_path=str(tmp_path / "none.csv"))
+    assert "50.123456789" not in html, "指数值又按全精度写进内联 JSON 了 ✗"
+    assert "0.123456789012345" not in html, "仓位值又按全精度写进内联 JSON 了 ✗"
+    m = re.search(r"var FACTORS = (.*?);\n", html, re.S)
+    assert m, "模板里找不到 FACTORS"
+    assert not re.search(r"\d{4}-\d{2}-\d{2}", m.group(1)), \
+        "FACTORS 又带上日期字符串了 ✗（日期轴不显示）"
+
+
 def test_sync_mobile_override_comes_after_base_rules():
     """**守卫**：同步页的窄屏覆盖必须写在**基础规则之后** ✓。
 

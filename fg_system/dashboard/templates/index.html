@@ -564,15 +564,17 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
       if (!el || !FACTORS[FKEYS[i]]) { return; }
       var ch = echarts.init(el);
       window.__charts.push(ch);
+      // 2026-10-28：后端只发**值数组** ✓ —— sparkline 的日期轴是 show:false，
+      // 发 5×1765 个日期纯属浪费（实测占 115 KB ✗）
       var data = FACTORS[FKEYS[i]];
       ch.setOption({
         backgroundColor: "transparent",
         grid: { left: 2, right: 2, top: 6, bottom: 2 },
         xAxis: { type: "category", show: false, boundaryGap: false,
-                 data: data.map(function (p) { return p[0]; }) },
+                 data: data.map(function (_, j) { return j; }) },
         yAxis: { type: "value", show: false,
                  splitLine: { show: false } },
-        series: [{ type: "line", data: data.map(function (p) { return p[1]; }),
+        series: [{ type: "line", data: data,
           smooth: true, symbol: "none",
           lineStyle: { width: 1.6, color: FCOLORS[i] },
           areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
