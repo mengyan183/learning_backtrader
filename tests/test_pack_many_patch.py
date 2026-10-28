@@ -195,6 +195,31 @@ def test_patch_has_index_line_for_real_repo_file(monkeypatch, tmp_path):
         open(path, "wb").write(original)
 
 
+def test_patch_index_new_sha_matches_crlf_payload(monkeypatch, repo_file):
+    """🔴 回归（2026-10-28）：基准是 **CRLF** 时，`index` 的新 blob SHA 必须按
+    **写进 diff 的那份字节（CRLF）** 算 ✓。
+
+    原来按工作区的 LF 内容算 ✗ ⇒ 与 patch 实际产物不一致 ✗
+    ⇒ Mac 端 `git apply --3way` 判「patch 不适用」✗
+    （`sync_1028v` 的 `tests/test_feishu_send.py` 实测被拒 ✗）。
+    """
+    import subprocess
+    rel = repo_file("dist/_tmp_packmany_crlf.py", "a = 1\nb = 3\n")
+    monkeypatch.setattr(pm, "_base_text", lambda r, ref: "a = 1\r\nb = 2\r\n")
+    monkeypatch.setattr(pm, "_in_base", lambda r, ref: True)
+    monkeypatch.setattr(pm, "_git_blob_sha", lambda ref, r: "aaaaaaa")
+    payload, reasons = pm._patch_payload([rel], "origin/main")
+    assert reasons == []
+    head = [l for l in payload.split(b"\n") if l.startswith(b"index ")][0]
+    new_sha = head.split(b"..")[1].split(b" ")[0].decode()
+    # patch 实际产物 = 基准行尾（CRLF）+ 工作区内容
+    want = subprocess.run(["git", "-C", pm.REPO, "hash-object", "--stdin"],
+                          input=b"a = 1\r\nb = 3\r\n",
+                          capture_output=True).stdout.decode().strip()[:7]
+    assert new_sha == want, \
+        "index 的新 blob SHA 必须等于 patch 应用后的产物 ✗（否则 Mac 端 --3way 必失败）"
+
+
 # ---------------------------------------------------------------- 3) 基准不存在 → 回落
 
 def test_patch_falls_back_when_base_missing(monkeypatch, tmp_path, repo_file, capsys):

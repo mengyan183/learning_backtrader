@@ -41,6 +41,12 @@ from fg_system import config                     # noqa: E402
 
 TEXT_DIR = os.path.join(config.ROOT, "dist", "feishu", "text")
 
+# Windows 控制台默认 GBK ⇒ 打印中文/`✓` 会崩 ✓；
+# 且 stdout 重定向到文件时是**块缓冲** ✗ ⇒ 进程被中断就一个字都不留 ✗
+# （2026-10-28 实测：`--limit 2` 那几次日志全空，只能靠台账反推 ✗）
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
+
 
 # ---------------------------------------------------- 已发台账（WT-46 / WT-48）
 def _pkg_of(name):
@@ -95,6 +101,46 @@ def sent_status(pkg):
     print("%s：已发 **%d/%d** 片；缺片 %s"
           % (pkg, len(done), total, missing if missing else "**无** ✓"))
     return missing
+def _lock_path():
+    return os.path.join(TEXT_DIR, ".feishu_send.lock")
+
+
+def _acquire_lock():
+    """拿**发送锁**；已有进程在发 ⇒ SystemExit（**不抢** ✗）。返回 fd。
+
+    🔴 根因（2026-10-28 实测）：两个发送进程并发时，后启动的那个在 `main()` 里
+    先跑 `bsk.reap()`（清残留会话）✗ ⇒ 把前一个进程正在用的 bsk 会话**踢掉** ✗
+    ⇒ 前一批发到第 2 片时 `observe()` 失败/挂死 ⇒ 只发出 1 片就中止 ✗
+    （`--limit 2` 连续四次都只发 1 片，日志还全空 ✗）。
+    ⇒ 串行化：拿不到锁就明确报错，绝不并发 ✓。
+    """
+    os.makedirs(TEXT_DIR, exist_ok=True)
+    fd = os.open(_lock_path(), os.O_CREAT | os.O_RDWR)
+    try:
+        if os.name == "nt":
+            import msvcrt
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        raise SystemExit(
+            "❌ 另一个 `feishu_send.py` 正在发送 ⇒ 本次退出 ✓\n"
+            "   并发发送会让后启动的进程 reap 掉前一个的 bsk 会话 ✗\n"
+            "   ⇒ 前一批只发出前几片就中止（2026-10-28 实测 `--limit 2` 只发 1 片 ✗）。\n"
+            "   等它跑完再发；查进度用 `--sent-status <包>` ✓")
+    return fd
+
+
+def _release_lock(fd):
+    """关 fd 即释放锁 ✓（失败不影响发送结果 ✓）。"""
+    try:
+        os.close(fd)
+    except OSError:
+        pass
+
+
 FEISHU_URL = "https://www.feishu.cn/messenger/"
 TEXTBOX_RE = re.compile(r"(@e\d+)\s+textbox")
 BUTTON_RE = re.compile(r"(@e\d+)\s+button\s+\"([^\"]*)\"")
@@ -280,6 +326,7 @@ def main():
         print("（--dry-run：未碰浏览器）")
         return 0
 
+    lock_fd = _acquire_lock()
     bsk = Bsk()
     try:
         # 🔴 先清掉**所有残留会话** ✓ —— 泄漏的会话会让 `observe` 挂起 ✗
@@ -390,6 +437,7 @@ def main():
         return 0
     finally:
         bsk.stop()
+        _release_lock(lock_fd)
         print("bsk 会话已结束。")
 
 

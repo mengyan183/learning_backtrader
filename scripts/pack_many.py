@@ -255,7 +255,11 @@ def _patch_payload(srcs, base_ref):
             chunks.append("--- %s ---\n（与基准无差异）\n" % rel)
             continue
         header = "diff --git a/%s b/%s\n" % (rel, rel)
-        old, new = _git_blob_sha(base_ref, rel), _git_hash_blob(cur.encode("utf-8"))
+        # 🔴 必须对**写进 diff 的那份字节**算 SHA ✗ —— 基准是 CRLF 时 `cur_txt` 已被
+        # 转成 CRLF ✓，而 `cur` 是 LF ✗ ⇒ 新 blob SHA 对不上 patch 实际产物 ✗
+        # ⇒ Mac 端 `git apply --3way` 判「patch 不适用」（2026-10-28 实测：
+        # `sync_1028v` 的 tests/test_feishu_send.py 就是这样被拒 ✗）。
+        old, new = _git_blob_sha(base_ref, rel), _git_hash_blob(cur_txt.encode("utf-8"))
         if old and new:
             header += "index %s..%s 100644\n" % (old, new)
         # 🔴 删除行告警（2026-10-19）：本项目 Windows 侧**只追加** ✓ ⇒ 出现删除行通常意味着
