@@ -218,6 +218,17 @@ def test_all_tables_wrapped_with_price_data(tmp_path):
     assert static.count('<div class="scroll">') == n_table
 
 
+def test_fresh_param_is_one_shot(tmp_path):
+    """**守卫**：`?fresh=1` 必须**一次性** ✓。
+
+    2026-10-28 手机端实测：点「强制重算整页」后地址栏永远留着 `?fresh=1` ✗
+    ⇒ 之后每次刷新、每次从主屏图标打开都强制重算（几秒白屏 ✗）。
+    """
+    html = _render(tmp_path)
+    assert "replaceState" in html, "缺「用完把 ?fresh=1 从地址栏摘掉」的处理 ✗"
+    assert "/[?&]fresh=1/" in html, "判断条件必须只认 fresh=1 ✓（别把别的参数一起清掉）"
+
+
 def test_echarts_is_lazy_loaded(tmp_path):
     """**守卫**：echarts（1MB）不得随首屏加载 ✓。
 

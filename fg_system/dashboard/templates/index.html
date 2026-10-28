@@ -316,6 +316,14 @@
 
 <script>
 
+// 2026-10-28：`?fresh=1` 是**一次性**的跳过缓存 ✓ —— 不清掉地址栏会一直带着它 ✗
+// ⇒ 之后每次刷新 / 从主屏图标打开都强制重算（手机上就是几秒白屏 ✗）。
+// `replaceState` 只改地址栏、不重载、不留历史记录 ✓。
+(function () {
+  if (!/[?&]fresh=1/.test(location.search)) { return; }
+  try { history.replaceState(null, "", location.pathname); } catch (e) {}
+})();
+
 // 🔴 **HTML 转义** ✗（2026-10-21 修 P1 XSS ✓）：接口返回的 `it.symbol` /
 // `it.error` 等是**服务端字符串** ✗ ⇒ 直接拼 `innerHTML` 会被当 HTML 执行 ✗。
 function esc(s) {
