@@ -7,10 +7,18 @@
 
 本文件用 09-22 那组真实数字锁住「分平台 + 合计」口径。
 """
+import re
+
 import numpy as np
 import pandas as pd
 
 from fg_system.dashboard import report
+
+
+def _plain(html):
+    """去标签后的纯文本 ✓ —— 2026-10-27 数字条从 `<p class='sub'>` 改成
+    `<div class='expo'>`（超配提权），「合计 102.6%」不再是连续子串 ✓。"""
+    return re.sub(r"<[^>]+>", "", html)
 
 # ---- 2026-09-22 真实快照（用户实测） -------------------------------------
 STOCK_MV = 18187.07      # 富途持仓市值合计
@@ -74,7 +82,7 @@ def _accounts():
 def test_deviation_line_two_platforms_and_combined_total():
     line = report._deviation_line(_features(), _positions(), None, _accounts())
     # 合计 = (18187.07 + 2554.03) / (17202.17 + 3012.19) = 102.6%
-    assert "合计 102.6%" in line
+    assert "合计 102.6%" in _plain(line)
     assert "富途 105.7%" in line
     assert "OKX 84.8%" in line
     # 混算的旧值 120.6% 绝不能出现
@@ -108,7 +116,7 @@ def test_nan_market_value_flags_account_instead_of_silent_skip():
     assert isinstance(line, str) and line          # 不崩 ✓
     assert "OKX 数据不全" in line
     # 该平台的 NaN 未被静默计入合计（合计退回仅富途完整数据）
-    assert "合计 105.7%" in line
+    assert "合计 105.7%" in _plain(line)
 
 
 # ---- 用例 4：只有富途（无 crypto 行）⇒ 正常渲染、不崩 ---------------------
@@ -124,7 +132,7 @@ def test_only_stock_platform_renders():
     line = report._deviation_line(_features(), pos, None, acc)
     assert isinstance(line, str)
     assert "富途 105.7%" in line
-    assert "合计 105.7%" in line
+    assert "合计 105.7%" in _plain(line)
     assert "OKX" not in line
 
 

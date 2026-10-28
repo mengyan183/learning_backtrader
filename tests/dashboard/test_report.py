@@ -148,6 +148,55 @@ def test_html_has_mobile_breakpoint(tmp_path):
     assert "max-width:600px" in css.replace(" ", "")
 
 
+def test_sticky_header_and_style_floor():
+    """**守卫**：粘性表头靠三件事同时成立 ✓ —— 少一件就**静默失效** ✗。
+
+    1) `table.card th` 必须 `position:sticky`；
+    2) `div.scroll` 必须是纵向滚动容器 ✓ 否则 sticky 没有可粘的上下文 ✗；
+    3) `table.card` **不能**有 `overflow:hidden` ✗ 它自己会变成滚动容器 ✗。
+
+    另锁两件 2026-10-27 改过的事：body 不再有径向光晕 ✓、
+    reduced-motion 覆盖全局 transition ✓（原来只覆盖了 sheet ✗）。
+    """
+    css = open(os.path.join(os.path.dirname(report.__file__),
+                            "static", "style.css"), encoding="utf-8").read()
+    flat = css.replace(" ", "").replace("\n", "")
+    assert "table.cardth" in flat and "position:sticky" in flat
+    assert "div.scroll{overflow:auto" in flat and "max-height:70vh" in flat
+    card = flat.split("table.card{")[1].split("}")[0]
+    assert "overflow:hidden" not in card, \
+        "table.card 上的 overflow:hidden 会让粘性表头失效（它自己成了滚动容器）"
+    body = flat.split("body{")[1].split("}")[0]
+    assert "radial-gradient" not in body, "body 的径向光晕是装饰，已删，别加回来"
+    assert "prefers-reduced-motion:reduce" in flat
+    assert "transition-duration:.01ms!important" in flat
+    # 注释里的「星号+斜杠」会提前闭合注释 ✗ ⇒ 吞掉紧跟的第一条规则 ✗
+    # （2026-10-27 踩过两次：input 规则被吞，输入框一直白底，且 cssRules 里查不到 ✗）
+    bad = [ln for ln in css.splitlines() if "*/" in ln[:-2]]
+    assert not bad, "注释符出现在行中间，会提前闭合注释并吞掉下一条规则：%r" % bad[:3]
+
+
+def test_hero_admits_stale_signal():
+    """**守卫**：信号日超容差 ⇒ hero 必须自曝「非当前」✓。
+
+    原来 hero 只写「信号日」，52px 的分数永远像当下的 ✗
+    （2026-10-27 实测：页面时间 10-27、信号日 10-12，差 15 天，用户可能按旧读数下单 ✗）。
+    """
+    def _feats(days_ago):
+        idx = pd.date_range(end=pd.Timestamp.now().normalize()
+                            - pd.Timedelta(days=days_ago), periods=5, freq="D")
+        return pd.DataFrame({"fg_index": [50.0] * 5, "zone": [2] * 5}, index=idx)
+
+    old = report._state_card(_feats(15))
+    assert "stale-flag" in old, "过期信号必须挂 stale-flag ✗"
+    assert "数据停更 15 天" in old and "非当前" in old
+    assert "hero-num stale" in old, "过期的分数必须降级显示（不再像当下）✗"
+
+    fresh = report._state_card(_feats(0))
+    assert "stale-flag" not in fresh, "新鲜信号不得误报过期 ✗"
+    assert "hero-num stale" not in fresh
+
+
 def test_all_tables_wrapped_with_price_data(tmp_path):
     """**回归**：有价格数据时第 5/6/7 区块也会渲染表格，必须同样被包住。
 

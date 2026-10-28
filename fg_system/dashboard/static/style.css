@@ -21,8 +21,13 @@
   /* 语义色 */
   --accent:#4f8ef7;        /* 品牌蓝 */
   --accent-soft:rgba(79,142,247,.14);
-  --up:#f85149;            /* 警示 / 浮亏（红） */
-  --down:#3fb950;          /* 正向 / 浮盈（绿） */
+  /* 2026-10-27：改美股惯例 ✓ 绿涨红跌（原为红涨绿跌 ✗）。
+     顺带把 token 改成**语义命名** —— 旧的 `--up` 值是红，名字和值自相矛盾 ✗，
+     且被「熔断/异常」和「系统覆盖」共用，一改就错位 ✗。现在：
+       --gain = 涨 / 浮盈 / 正常
+       --loss = 跌 / 浮亏 / 异常 / 熔断（都是「需要你动手」） */
+  --gain:#3fb950;
+  --loss:#f85149;
   --warn:#f0ad4e;
 
   /* 形状 */
@@ -46,13 +51,33 @@ html{scrollbar-color:var(--surface-3) transparent;scrollbar-width:thin}
   border:2px solid var(--bg)}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,
 [tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* 2026-10-27：表单控件与按钮也跟调色板 ✓ —— 之前是浏览器默认的白底黑字 ✗，
+   在深色页里像没做完 ✗。
+   用元素选择器（特异性 0,0,1）就够低 ✓：.inp / .inp-num / .inp-text / .btn 系列 /
+   .tab-btn / .sheet-item 都是类（0,1,0），自动压过这里 ✓ ⇒ 不需要任何覆盖 ✓
+   ⚠️ 本注释里绝不能出现「星号+斜杠」✗ —— 会提前闭合注释 ✗，
+   把紧跟的第一条规则整条吞掉 ✗（2026-10-27 踩过两次：input 规则被吞，
+   输入框仍是白底，cssRules 里根本查不到，误判成浏览器丢 :where ✗） */
+input,textarea,select{background:var(--surface);color:var(--fg);border:1px solid var(--border);
+  border-radius:var(--radius-xs);font:inherit;font-size:13px;padding:6px 8px}
+/* placeholder 用 --fg-muted（≈7:1）而非 --fg-sub（3.4:1，AA 不过 ✗）——
+   2026-10-27 深色化时引入，被 impeccable detect 抓到 ✓ */
+input::placeholder,textarea::placeholder{color:var(--fg-muted)}
+input[type=radio],input[type=checkbox]{accent-color:var(--accent);
+  width:15px;height:15px;vertical-align:-2px;margin:0 5px 0 0;cursor:pointer;
+  background:none;border:none;padding:0}
+button{background:var(--surface-2);color:var(--fg);border:1px solid var(--border-strong);
+  border-radius:var(--radius-xs);font:inherit;font-size:13px;padding:6px 14px;cursor:pointer;
+  transition:background-color .15s ease,border-color .15s ease}
+button:hover{background:var(--surface-3);border-color:var(--accent)}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.55;cursor:default;transform:none}
 *{box-sizing:border-box}
+/* 2026-10-27：删掉 body 的两层径向光晕 ✓ —— 零偏移的彩色光晕是装饰 ✗，
+   不表达任何层级信息，且让深色底发灰 ✗。层级交给 .sec 的面板渐变 ✓ */
 body{font-family:-apple-system,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
   margin:0;padding:18px;
-  background:
-    radial-gradient(1100px 520px at 18% -12%,#14202f 0%,rgba(20,32,47,0) 58%),
-    radial-gradient(900px 480px at 105% 0%,#101c2b 0%,rgba(16,28,43,0) 55%),
-    var(--bg);
+  background:var(--bg);
   color:var(--fg);-webkit-text-size-adjust:100%;font-variant-numeric:tabular-nums}
 .wrap{max-width:1080px;margin:0 auto}
 h1{font-size:21px;font-weight:800;margin:2px 0 4px;letter-spacing:.3px}
@@ -64,12 +89,27 @@ h2{font-size:13px;margin:24px 0 10px;
 .sec{background:linear-gradient(180deg,var(--surface) 0%,#0e1420 100%);
   border:1px solid var(--border);border-radius:var(--radius);
   padding:16px;margin:0 0 10px;box-shadow:var(--shadow-card)}
-table.card{border-collapse:collapse;width:100%;background:transparent;border-radius:var(--radius-sm);overflow:hidden}
+/* 2026-10-27：去掉 table 上的 overflow:hidden ✗ —— 它会自己变成滚动容器 ✗，
+   使下面的 position:sticky 表头粘在**表格**顶部而不是滚动区顶部 ✗（等于没效果 ✗）。
+   border-collapse 下圆角本来就不裁单元格 ⇒ 去掉无损 ✓ */
+table.card{border-collapse:collapse;width:100%;background:transparent;border-radius:var(--radius-sm)}
 table.card th,table.card td{border-bottom:1px solid var(--border);padding:9px 12px;font-size:13px;text-align:left}
-table.card th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:12px;letter-spacing:.3px}
+/* 粘性表头（关注列表 24 行 × 9 列，滚下去会忘列名 ✗） */
+table.card th{background:var(--surface-2);color:var(--fg-muted);font-weight:600;font-size:12px;
+  letter-spacing:.3px;position:sticky;top:0;z-index:2}
 table.card tbody tr:hover{background:var(--surface-3)}
 table.card tr:last-child td{border-bottom:none}
-div.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+/* 横滑容器同时做纵向滚动区 ✓ —— 只有这样 sticky 表头才有可粘的滚动上下文 ✓；
+   70vh 上限让长表在页内自滚，不把整页拉成几屏 ✗ */
+div.scroll{overflow:auto;-webkit-overflow-scrolling:touch;max-width:100%;max-height:70vh}
+/* 横滑边缘渐隐提示 ✓（能滑但看不出来能滑 ✗）：遮罩在容器坐标系里固定，
+   内容滚动时边缘始终是「有东西被切掉」的暗示 ✓。class 由 JS 按 scrollLeft 开关 ✓ */
+div.scroll.can-r{-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent 100%);
+  mask-image:linear-gradient(90deg,#000 88%,transparent 100%)}
+div.scroll.can-l{-webkit-mask-image:linear-gradient(270deg,#000 88%,transparent 100%);
+  mask-image:linear-gradient(270deg,#000 88%,transparent 100%)}
+div.scroll.can-l.can-r{-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 12%,#000 88%,transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 12%,#000 88%,transparent 100%)}
 .zone{display:inline-block;padding:3px 10px;border-radius:20px;color:#fff;font-size:12px;font-weight:600;
   box-shadow:0 1px 3px rgba(0,0,0,.4)}
 /* 状态卡 hero */
@@ -84,6 +124,42 @@ div.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 .hero-num.sm{font-size:34px}
 .hero-unit{color:var(--fg-muted);font-size:12px}
 .hero-fg .zone{align-self:flex-start}
+/* 2026-10-27：过期信号必须看得见 ✓ —— 原来 52px 的分数永远像「当下」✗，
+   而它可能是 15 天前的读数 ✗（用户会按它下单 ✗） */
+.hero-num.stale{color:var(--fg-muted)}
+.stale-flag{margin-left:auto;margin-right:8px;padding:2px 9px;border-radius:20px;
+  font-size:12px;font-weight:700;color:#f0ad4e;
+  background:rgba(240,173,78,.14);border:1px solid rgba(240,173,78,.45)}
+/* hero 里的「今日动作」：全站唯一一句可执行判断，不该埋在 12.5px 小字里 ✗ */
+.hero-act{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);
+  font-size:15px;font-weight:700;color:var(--fg)}
+/* 过期数据下的动作建议：降级为提示 ✓（不能像当下的指令一样被读 ✗） */
+.hero-act.stale{color:var(--fg-muted);font-weight:600;font-size:14px}
+/* 2026-10-27（critique P0）：模型目标 vs 实盘偏离原来是一行 12px 灰字 ✗ ——
+   「实盘 102.6% / 目标 24.6% / 偏离 +78pp」是全页最大的风险事实，
+   现在升成首屏数字条 ✓（持仓页 + hero 各一处，数字同源 ✓） */
+.expo{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;
+  margin:0 0 12px;padding:10px 14px;border-radius:var(--radius-sm);
+  background:var(--surface-2);border:1px solid var(--border);font-size:12px}
+.expo-i{display:flex;align-items:baseline;gap:6px}
+.expo-l{color:var(--fg-muted)}
+.expo-i b{font-size:17px;font-weight:800;font-family:var(--font-num);
+  font-variant-numeric:tabular-nums}
+.expo-gap b{color:var(--fg)}
+.expo-side{color:var(--fg-muted);font-size:12px}
+.expo-d{color:var(--fg-muted);font-size:12px;margin-left:auto}
+.hero-expo{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;
+  margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:13px}
+.hero-expo b{font-size:16px;font-weight:800;font-family:var(--font-num);
+  font-variant-numeric:tabular-nums}
+.hero-expo .expo-l{color:var(--fg-muted);font-size:12px}
+.hero-expo .expo-gap{color:var(--fg);font-weight:700}
+/* 快照日期：贴在「现价」后面 ✓ —— 快照 09-22 而行情 10-12 时，
+   光写「现价」就是在冒充当下 ✗ */
+.snap-d{color:var(--fg-muted);font-size:12px}
+.stale-flag.inline{display:inline-block;margin:0 0 10px}
+/* 实时盈亏单独标注 ✓ —— 不再覆盖快照浮盈 ✗（同卡两个数字会互相矛盾 ✗） */
+.rt-pct{color:var(--fg-muted);font-size:12px;margin-left:6px}
 /* 双系数紧凑条（持仓页/区块顶部） */
 .duo-strip{display:flex;gap:24px;flex-wrap:wrap;align-items:center;
   background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);
@@ -96,15 +172,17 @@ div.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 .stat{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);
   padding:10px 12px;transition:transform .12s ease,border-color .12s ease}
 .stat:active{transform:scale(.98)}
-.stat-label{color:var(--fg-muted);font-size:11px;margin-bottom:4px;letter-spacing:.3px}
+/* 2026-10-27：正文/说明类文字 11px ⇒ 12px ✓（11px 在手机上等于不可读 ✗）。
+   药丸标签（.tag/.zone/.f-zone）与指示点不动 ✓ —— 它们不是正文 ✓ */
+.stat-label{color:var(--fg-muted);font-size:12px;margin-bottom:4px;letter-spacing:.3px}
 .stat-value{font-size:17px;font-weight:700;font-family:var(--font-num)}
-.stat-value.bad{color:var(--up)}
+.stat-value.bad{color:var(--loss)}
 /* 温度刻度条（参考 szdt.tech 市场温度） */
 .temp{margin:2px 0 4px}
 .temp-track{height:10px;border-radius:6px;background:linear-gradient(90deg,#8b0000,#d9534f,#f0ad4e,#5cb85c,#006400);position:relative;margin-bottom:6px}
 .temp-fill{position:absolute;inset:0 auto 0 0;border-radius:6px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
 .temp-dot{position:absolute;top:-4px;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid #d29922;transform:translateX(-50%);box-shadow:0 1px 4px rgba(0,0,0,.5)}
-.temp-ticks{display:flex;justify-content:space-between;color:var(--fg-muted);font-size:11px}
+.temp-ticks{display:flex;justify-content:space-between;color:var(--fg-muted);font-size:12px}
 /* 持仓卡片网格 */
 .h-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .h-card{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
@@ -115,21 +193,22 @@ div.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 .h-left{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;margin-right:8px}
 .h-line1{display:flex;align-items:center;gap:8px}
 .h-sym{font-size:16px;font-weight:800;letter-spacing:.3px}
-.h-line2{font-size:11px;color:var(--fg-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px}
+.h-line2{font-size:12px;color:var(--fg-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px}
 .h-act{font-size:12px;font-weight:800;padding:2px 10px;border-radius:20px;letter-spacing:.5px;white-space:nowrap}
 .act-buy{background:rgba(63,185,80,.22);color:#3fb950;border:1px solid rgba(63,185,80,.5)}
 .act-sell{background:rgba(248,81,73,.22);color:#f85149;border:1px solid rgba(248,81,73,.5)}
 .act-hold{background:rgba(139,148,158,.18);color:var(--fg-muted);border:1px solid var(--border)}
 .h-pnl{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;font-family:var(--font-num)}
-.h-pnl.up{color:var(--up)} .h-pnl.down{color:var(--down)}
+/* 美股惯例：盈利绿、亏损红 ✓（原来盈利红、亏损绿 ✗） */
+.h-pnl.up{color:var(--gain)} .h-pnl.down{color:var(--loss)}
 .h-name{color:var(--fg-muted);font-size:12px;margin:2px 0 8px}
 .h-mid{font-size:12px;color:var(--fg);margin-bottom:4px;font-family:var(--font-num)}
 .h-mid2{font-size:12px;color:var(--fg-muted);margin-bottom:10px}
-.h-cost{font-size:11px;color:var(--fg-muted);line-height:1.45;margin-bottom:8px;
+.h-cost{font-size:12px;color:var(--fg-muted);line-height:1.45;margin-bottom:8px;
   padding:4px 8px;background:var(--surface-3);border-radius:6px}
-.h-trend{font-size:11px;color:var(--fg-muted);margin-bottom:5px;
+.h-trend{font-size:12px;color:var(--fg-muted);margin-bottom:5px;
   font-family:var(--font-num);letter-spacing:.2px}
-.h-risk{font-size:11px;line-height:1.5;margin-bottom:8px}
+.h-risk{font-size:12px;line-height:1.5;margin-bottom:8px}
 .tag-risk{background:rgba(240,173,78,.16);color:#e0a239;
   border:1px solid rgba(240,173,78,.45);padding:1px 7px;margin-right:4px;
   display:inline-block;border-radius:20px;font-size:10.5px;font-weight:600}
@@ -143,7 +222,7 @@ div.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
 .h-tags{display:flex;flex-wrap:wrap;gap:6px}
 .tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;color:#fff}
 .tag-zone{opacity:.95}
-.tag-in{background:rgba(63,185,80,.25);color:var(--down);border:1px solid rgba(63,185,80,.4)}
+.tag-in{background:rgba(63,185,80,.25);color:var(--gain);border:1px solid rgba(63,185,80,.4)}
 .tag-shoutu{background:rgba(224,162,57,.22);color:#e0a239;border:1px solid rgba(224,162,57,.45)}
 .tag-out{background:rgba(139,148,158,.2);color:var(--fg-muted);border:1px solid var(--border)}
 .tag-adv{background:var(--surface-3);color:var(--fg);border:1px solid var(--border)}
@@ -157,26 +236,35 @@ svg.chart .frame{stroke:rgba(255,255,255,.1)}
 .echart{height:220px;width:100%}
 .f-chart{height:64px;width:100%}
 .f-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+/* 2026-10-27：窗口变窄 / 手机旋转后 echarts 画布保留旧像素宽 ⇒ 撑破视口 ✗
+   （实测 390→921→390 后 documentElement.scrollWidth 445 > 390 ✗）。
+   容器允许收缩 + 裁掉画布溢出 ✓，下一次 resize 会重绘 ✓ */
 .f-card{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
-  padding:10px 14px;box-shadow:var(--shadow-card)}
+  padding:10px 14px;box-shadow:var(--shadow-card);min-width:0}
+.f-chart,.echart,.echart-main{min-width:0;overflow:hidden}
 .f-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
-.f-name{font-size:11px;color:var(--fg-muted);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.f-name{font-size:12px;color:var(--fg-muted);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
 .f-val{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;font-family:var(--font-num)}
 .f-zone{font-size:10px;color:var(--fg-muted);border:1px solid var(--border);border-radius:8px;padding:1px 6px;margin-left:4px;white-space:nowrap}
-.f-zone[data-zone="0"],.f-zone[data-zone="4"]{color:#f85149;border-color:#f85149}
-.f-zone[data-zone="1"],.f-zone[data-zone="3"]{color:#d29922;border-color:#d29922}
+/* 2026-10-27 色契约（critique P2 落地）：
+   - 贪恐档位 = 热力阶，颜色由 `ZONE_COLORS`（report.py）内联给出，
+     与温度条 / 图表档位带同向：恐惧=红端 → 贪婪=绿端 ✓
+   - 纯 `#f85149` 只表示「需要你动手」：`.c-bad` / `.fail` / `.errbar` / 浮亏 ✓
+   - 原来这里的 `.f-zone[data-zone=...]` 四条是**死代码** ✗ ——
+     全工程没有任何地方输出 `f-zone`（实测 `.f-card` 5 个 / `.f-zone` 0 个），
+     却被读成「极度恐惧和极度贪婪同为红色」的撞车 ⇒ 已删除 ✓（删代码优于改代码 ✓） */
 .f-chart svg{width:100%;height:auto;display:block}
 /* 情绪子信号条（E1） */
 .sent{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;
   background:var(--surface-2);border:1px solid var(--border);border-radius:12px;
   padding:10px 14px;font-size:12px}
-.sent-t{font-size:11px;color:var(--fg-muted);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-right:2px}
+.sent-t{font-size:12px;color:var(--fg-muted);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-right:2px}
 .sent-k{color:var(--fg-muted);font-weight:600}
 .sent-v{font-weight:800;font-variant-numeric:tabular-nums;font-family:var(--font-num)}
 .sent-v.up{color:#f85149}.sent-v.down{color:#7ee787}
 .sent-v.hot{color:#f85149}.sent-v.cold{color:#58a6ff}.sent-v.flat{color:var(--fg-muted)}
 .sent-v small{font-weight:600;opacity:.85}
-.sent-d{color:var(--fg-muted);font-size:11px;margin-left:auto}
+.sent-d{color:var(--fg-muted);font-size:12px;margin-left:auto}
 /* 目标仓位进度条 */
 .pos-cap{font-size:26px;font-weight:800;margin:2px 0 10px;font-variant-numeric:tabular-nums;font-family:var(--font-num)}
 .pos-bar{height:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px}
@@ -188,7 +276,7 @@ svg.chart .frame{stroke:rgba(255,255,255,.1)}
 .cmp-bar{height:22px;border-radius:6px;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:700;color:#fff;min-width:24px;white-space:nowrap;overflow:hidden}
 .cmp-s{background:linear-gradient(90deg,#1f6feb,#58a6ff)}
 .cmp-b{background:rgba(139,148,158,.35);color:var(--fg)}
-.cmp-note{color:var(--fg-muted);font-size:11px;margin-top:8px}
+.cmp-note{color:var(--fg-muted);font-size:12px;margin-top:8px}
 /* 其它区块内表格间距 */
 .sec table.card{margin:4px 0 0}
 /* Tab 导航（参考 szdt.tech 底部导航） */
@@ -244,7 +332,7 @@ body{padding-bottom:72px}
   font-family:var(--font-num);margin:0 4px}
 .w-zone{font-size:14px;font-weight:800;padding:2px 10px;border-radius:16px;background:rgba(139,148,158,.2);
   border:1px solid var(--border)}
-.w-note{display:block;margin-top:6px;font-size:11px;color:var(--fg-muted)}
+.w-note{display:block;margin-top:6px;font-size:12px;color:var(--fg-muted)}
 .w-hint{color:var(--fg-muted);font-size:12px}
 
 /* 美联储政策环境卡片 */
@@ -266,15 +354,95 @@ body{padding-bottom:72px}
   padding:8px 8px calc(8px + env(safe-area-inset-bottom,0px));
   box-shadow:0 -18px 40px -20px rgba(0,0,0,.95);
   animation:sheet-rise .2s cubic-bezier(.16,1,.3,1)}
-.sheet-item{display:block;width:100%;padding:14px 16px;text-align:left;
+.sheet-item{display:flex;align-items:center;gap:10px;width:100%;padding:14px 16px;text-align:left;
   background:none;border:none;border-radius:10px;color:var(--fg);
   font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;
   transition:background-color .15s ease}
 .sheet-item:hover{background:var(--surface-2)}
 .sheet-item:active{background:var(--surface-3)}
 .sheet-item:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+/* 2026-10-27：选中态 ✓ —— 原来只有「更多」高亮 ✗，
+   进了子页看不出自己在哪一项 ✗。点只用色块+右侧圆点，不加左边框 ✗ */
+.sheet-item.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.sheet-item.on::after{content:"";width:6px;height:6px;border-radius:50%;
+  background:var(--accent);margin-left:auto}
 @keyframes sheet-fade{from{opacity:0}to{opacity:1}}
 @keyframes sheet-rise{from{transform:translateY(14px)}to{transform:translateY(0)}}
+
+/* ============================================================
+   2026-10-27：抽掉内联 style 后的通用小件 ✓
+   （原来同一套样式在模板里复制了 80+ 份 ✗，改一处要改几十行 ✗）
+   ============================================================ */
+.form-row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.inp-num{width:84px;padding:4px}
+.inp-text{width:160px;padding:4px}
+.inp{width:280px;padding:4px 8px;background:#0d1117;color:#c9d1d9;
+  border:1px solid #30363d;border-radius:4px}
+.btn{padding:6px 16px;cursor:pointer}
+.btn-sm{padding:4px 12px;cursor:pointer}
+.btn-xs{padding:2px 10px;cursor:pointer}
+.btn-link{display:inline-block;padding:6px 14px;border:1px solid #30363d;
+  border-radius:6px;color:#58a6ff;text-decoration:none}
+.msg{margin-top:6px;font-size:12px;color:#888}
+.msg-top{margin-top:8px;font-size:12px;color:#888}
+.hint{font-size:12px;color:#888;margin-bottom:6px}
+.note{font-size:12px;color:#8b949e}
+.note-inline{font-size:12px;color:#8b949e;margin-left:8px}
+.note-date{font-size:12px;color:#8b949e;margin:4px 0}
+.muted{color:#888}
+.lbl-sm{font-size:12px}
+.q-title{font-size:13px}
+.mb4{margin-bottom:4px}
+.mb8{margin-bottom:8px}
+.row-gap{margin:6px 0}
+.src-ok{color:#3fb950}
+.src-bad{color:#e5534b}
+.src-none{color:#8b949e}
+.td-note{font-size:12px;color:#8b949e}
+.td-num-sm{font-size:12px}
+.fs12{font-size:12px}
+.c-stale{color:#e5534b;font-weight:bold}
+.c-ok{color:#3fb950}
+.c-bad{color:#f85149}
+.c-sub{color:#8b949e}
+/* 紧凑表（定时任务）：列多、行短，用比 table.card 更小的内距 ✓ */
+table.t-compact{width:100%;font-size:12px;border-collapse:collapse}
+/* 2026-10-27：任务表也要粘表头 ✓ —— 之前 sticky 只写在 `table.card th` ✗，
+   `t-compact` 实测 `position:static` ⇒ 滚 62px 表头就没了 ✗（`滞后/容差` 恰恰最需要它 ✗） */
+table.t-compact th{color:#8b949e;text-align:left;
+  position:sticky;top:0;z-index:2;background:var(--surface)}
+table.t-compact th:first-child,table.t-compact td:first-child{padding:4px}
+table.t-compact tr+tr{border-top:1px solid rgba(255,255,255,.06)}
+/* 任务表分组标题（2026-10-27）：需要处理 / 正常 / 任务注册 ✓ */
+.t-group{display:flex;align-items:center;gap:10px;margin:14px 0 6px;
+  font-size:12px;font-weight:700;letter-spacing:.3px}
+.t-group:first-child{margin-top:0}
+
+/* 加载骨架 + 失败重试（⑤）—— 原来只有一行「加载中…」✗，
+   看不出是慢还是死了 ✗；失败只留一句灰字，没有恢复入口 ✗ */
+.sk{height:14px;border-radius:6px;margin:6px 0;
+  background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 50%,var(--surface-2) 75%);
+  background-size:200% 100%;animation:sk-sweep 1.2s linear infinite}
+.sk:first-child{margin-top:0}
+@keyframes sk-sweep{from{background-position:100% 0}to{background-position:-100% 0}}
+.fail{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:10px 12px;border-radius:var(--radius-sm);
+  background:rgba(248,81,73,.10);border:1px solid rgba(248,81,73,.35);
+  color:var(--fg);font-size:12px}
+/* 页面级错误横幅（2026-10-27）—— 正常流里、可关闭 ✓，
+   不再 position:fixed 压住 h1 ✗ */
+.errbar{display:flex;align-items:flex-start;gap:10px;margin:0 0 14px;
+  padding:10px 12px;border-radius:var(--radius-sm);font-size:12px;line-height:1.55;
+  background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.45);color:var(--fg)}
+.errbar-msg{flex:1;min-width:0;white-space:pre-wrap;word-break:break-word}
+.errbar-x{flex:none;width:26px;height:26px;padding:0;font-size:16px;line-height:1;
+  background:none;border:none;color:var(--fg-muted);cursor:pointer;border-radius:6px}
+.errbar-x:hover{background:var(--surface-3);color:var(--fg)}
+
+/* 2026-10-27：动效统一降级 ✓ —— 原来只覆盖了新加的 sheet ✗，
+   既有 .stat/.h-card/.tab-btn 的 transition 与 rt-blink 动画仍在跑 ✗ */
 @media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important}
   .sheet,.sheet-panel{animation:none}
 }

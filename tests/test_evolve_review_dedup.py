@@ -18,7 +18,8 @@ import evolve_review as er
 def _mk_existing(tmp_path, rows):
     """造一个假 hypotheses.md。rows: list of (hid, assumption, test, falsify)。"""
     p = os.path.join(tmp_path, "hypotheses.md")
-    with open(p, "w") as f:
+    # 🔴 必须显式 utf-8 ✗ —— Windows 默认 GBK，写出来再被 `encoding="utf-8"` 读会崩 ✗
+    with open(p, "w", encoding="utf-8") as f:
         f.write("# hypotheses\n\n")
         for hid, a, t, fl in rows:
             f.write(f"| {hid} | 2026-10-17 | {a} | {t} | {fl} | open | note |\n")

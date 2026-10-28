@@ -217,7 +217,7 @@ def extract_json(text):
 def next_hyp_id():
     if not os.path.exists(HYP):
         return "H-001"
-    ids = re.findall(r"H-(\d+)", open(HYP).read())
+    ids = re.findall(r"H-(\d+)", open(HYP, encoding="utf-8").read())
     return f"H-{max((int(i) for i in ids), default=0) + 1:03d}"
 
 
@@ -309,7 +309,9 @@ def _is_duplicate(cand_tokens, existing):
 def register_hypotheses(cands, via):
     today = date.today().isoformat()
     added = []
-    existing = open(HYP).read() if os.path.exists(HYP) else ""
+    # 🔴 2026-10-28：必须显式 utf-8 ✗ —— Windows 默认 GBK，而 hypotheses.md 是 UTF-8，
+    # 不写 encoding 会在 Windows 上 UnicodeDecodeError（Mac 上恰好默认 UTF-8 所以没暴露 ✗）
+    existing = open(HYP, encoding="utf-8").read() if os.path.exists(HYP) else ""
     existing_hyps = _load_existing_hypotheses()  # MT-51：归一化查重
     # MT-68：每日登记上限（防 LLM 一天刷一堆候选积压；只限流，不改判据/阈值 ✓）
     DAILY_REGISTER_CAP = 3
@@ -350,7 +352,7 @@ def register_hypotheses(cands, via):
             row = (f"| {hid} | {today} | {a} | {t} | {f} | pending-revise | "
                    f"由 evolve_review 自动登记（{via}）；证据：{e[:60]}；"
                    f"**R1.7 列名校验：{reason}** |")
-            with open(HYP, "a") as fh:
+            with open(HYP, "a", encoding="utf-8") as fh:   # 必须 utf-8，见上方注释
                 fh.write(row + "\n")
             added.append(hid)
             existing += row
@@ -361,7 +363,7 @@ def register_hypotheses(cands, via):
         hid = next_hyp_id()
         row = (f"| {hid} | {today} | {a} | {t} | {f} | open | "
                f"由 evolve_review 自动登记（{via}）；证据：{e[:60]} |")
-        with open(HYP, "a") as fh:
+        with open(HYP, "a", encoding="utf-8") as fh:       # 必须 utf-8，见上方注释
             fh.write(row + "\n")
         added.append(hid)
         existing += row

@@ -4,7 +4,7 @@
 <title>{{ title }}</title>
 {{ pwa_head }}
 <script src="/static/echarts.min.js"></script>
-<link rel="stylesheet" href="/static/style.css?v=20261027a"></head><body>
+<link rel="stylesheet" href="/static/style.css?v=20261027k"></head><body>
 <!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
      而**运行时错误在手机上根本看不到** ✗（没有控制台）。
      ⇒ 本段**必须**是页面里**第一个** script 块 ✓ ——
@@ -13,20 +13,39 @@
      ⇒ 捕获到就把错误**贴在页面顶部** ✓，截图即可定位 ✓。 -->
 <script>
 (function () {
+  // 🔴 2026-10-27：原来是 position:fixed 的开发调试条 ✗ ——
+  //   压住页面 h1（截图实测 ✗）、关不掉 ✗、文案是 fetch 规范口气 ✗。
+  //   ⇒ 改成**正常流里的横幅**（放 body 最前 ⇒ 不再遮挡任何内容 ✓）+ 可关闭 ✓。
   function bar() {
     var b = document.getElementById("__errbar");
     if (!b) {
       b = document.createElement("div");
       b.id = "__errbar";
-      b.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;" +
-        "background:#7d1d1d;color:#fff;padding:8px 12px;font-size:12px;" +
-        "font-family:monospace;white-space:pre-wrap;max-height:45vh;overflow:auto";
-      (document.body || document.documentElement).appendChild(b);
+      b.className = "errbar";
+      b.setAttribute("role", "alert");
+      var msg = document.createElement("div");
+      msg.className = "errbar-msg";
+      b.appendChild(msg);
+      var x = document.createElement("button");
+      x.type = "button";
+      x.className = "errbar-x";
+      x.setAttribute("aria-label", "关闭提示");
+      x.textContent = "×";
+      x.addEventListener("click", close);
+      b.appendChild(x);
+      var body = document.body || document.documentElement;
+      body.insertBefore(b, body.firstChild);
     }
     return b;
   }
+  function close() {
+    var b = document.getElementById("__errbar");
+    if (b && b.parentNode) { b.parentNode.removeChild(b); }
+  }
   function show(tag, msg) {
-    try { bar().textContent += "[" + tag + "] " + msg + "\n"; } catch (e) {}
+    try {
+      bar().querySelector(".errbar-msg").textContent += "[" + tag + "] " + msg + "\n";
+    } catch (e) {}
   }
   // JS 运行时错误 + 语法错误（本段在主脚本之前 ⇒ 能捕获到主脚本的解析失败 ✓）
   window.addEventListener("error", function (e) {
@@ -53,9 +72,9 @@
     _fails++;
     if (_fails >= 3 && !_hinted) {
       _hinted = true;
-      show("接口", "连续 " + _fails + " 个接口请求失败 —— 页面数据可能为空 ✗。"
-        + "若用「账号:密码@主机」形式访问，浏览器会拒绝所有 fetch ✗，"
-        + "请改用不带凭据的正常地址 ✓");
+      show("数据", "接口连续 " + _fails + " 次未连通 · 页面上的数字可能不是最新的。"
+        + "若用「账号:密码@主机」形式访问，浏览器会拒绝请求，"
+        + "请改用不带凭据的地址后刷新。");
     }
   }
   if (typeof _origFetch === "function") {
@@ -115,51 +134,51 @@
 <div class="sec">{{ human30 }}</div>
 <h2>快速打卡（0-100 自评）</h2>
 <div class="sec">
-<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
-  <label style="font-size:12px">心/认知<br><input id="h30mind" type="number" min="0" max="100" value="60" style="width:84px;padding:4px"></label>
-  <label style="font-size:12px">体/行动<br><input id="h30body" type="number" min="0" max="100" value="60" style="width:84px;padding:4px"></label>
-  <label style="font-size:12px">精神/意义<br><input id="h30spirit" type="number" min="0" max="100" value="60" style="width:84px;padding:4px"></label>
-  <label style="font-size:12px">职/事业<br><input id="h30vocation" type="number" min="0" max="100" value="60" style="width:84px;padding:4px"></label>
-  <label style="font-size:12px">备注<br><input id="h30note" type="text" maxlength="200" placeholder="可选" style="width:160px;padding:4px"></label>
-  <button id="h30btn" style="padding:6px 16px;cursor:pointer">保存今日打卡</button>
+<div class="form-row">
+  <label class="lbl-sm">心/认知<br><input id="h30mind" class="inp-num" type="number" min="0" max="100" value="60"></label>
+  <label class="lbl-sm">体/行动<br><input id="h30body" class="inp-num" type="number" min="0" max="100" value="60"></label>
+  <label class="lbl-sm">精神/意义<br><input id="h30spirit" class="inp-num" type="number" min="0" max="100" value="60"></label>
+  <label class="lbl-sm">职/事业<br><input id="h30vocation" class="inp-num" type="number" min="0" max="100" value="60"></label>
+  <label class="lbl-sm">备注<br><input id="h30note" class="inp-text" type="text" maxlength="200" placeholder="可选"></label>
+  <button id="h30btn" class="btn">保存今日打卡</button>
 </div>
-<div id="h30Msg" style="margin-top:6px;font-size:12px;color:#888"></div>
+<div id="h30Msg" class="msg"></div>
 </div>
 <h2>问答打卡（30 秒 · 5 级量表 → 确定性转分）</h2>
 <div class="sec">
-  <div style="font-size:12px;color:#888;margin-bottom:6px">每题选 1-5（强烈不同意→强烈同意），映射 20/40/60/80/100，无 AI 判分、可复算。</div>
+  <div class="hint">每题选 1-5（强烈不同意→强烈同意），映射 20/40/60/80/100，无 AI 判分、可复算。</div>
   <div id="h30qa">
-    <div style="margin-bottom:8px"><div style="font-size:13px">① 心/认知：今天我能清晰思考，不被情绪带着走</div>
-      <label style="font-size:12px"><input type="radio" name="h30q_mind" value="1">1 强烈不同意</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_mind" value="2">2</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_mind" value="3">3 一般</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_mind" value="4">4</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_mind" value="5">5 强烈同意</label>
+    <div class="mb8"><div class="q-title">① 心/认知：今天我能清晰思考，不被情绪带着走</div>
+      <label class="lbl-sm"><input type="radio" name="h30q_mind" value="1">1 强烈不同意</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_mind" value="2">2</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_mind" value="3">3 一般</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_mind" value="4">4</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_mind" value="5">5 强烈同意</label>
     </div>
-    <div style="margin-bottom:8px"><div style="font-size:13px">② 体/行动：今天我的精力足以执行计划</div>
-      <label style="font-size:12px"><input type="radio" name="h30q_body" value="1">1 强烈不同意</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_body" value="2">2</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_body" value="3">3 一般</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_body" value="4">4</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_body" value="5">5 强烈同意</label>
+    <div class="mb8"><div class="q-title">② 体/行动：今天我的精力足以执行计划</div>
+      <label class="lbl-sm"><input type="radio" name="h30q_body" value="1">1 强烈不同意</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_body" value="2">2</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_body" value="3">3 一般</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_body" value="4">4</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_body" value="5">5 强烈同意</label>
     </div>
-    <div style="margin-bottom:8px"><div style="font-size:13px">③ 精神/意义：今天做的事让我觉得有意义</div>
-      <label style="font-size:12px"><input type="radio" name="h30q_spirit" value="1">1 强烈不同意</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_spirit" value="2">2</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_spirit" value="3">3 一般</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_spirit" value="4">4</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_spirit" value="5">5 强烈同意</label>
+    <div class="mb8"><div class="q-title">③ 精神/意义：今天做的事让我觉得有意义</div>
+      <label class="lbl-sm"><input type="radio" name="h30q_spirit" value="1">1 强烈不同意</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_spirit" value="2">2</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_spirit" value="3">3 一般</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_spirit" value="4">4</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_spirit" value="5">5 强烈同意</label>
     </div>
-    <div style="margin-bottom:8px"><div style="font-size:13px">④ 职/事业：今天我在事业/职业上推进了重要事项</div>
-      <label style="font-size:12px"><input type="radio" name="h30q_vocation" value="1">1 强烈不同意</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_vocation" value="2">2</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_vocation" value="3">3 一般</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_vocation" value="4">4</label>
-      <label style="font-size:12px"><input type="radio" name="h30q_vocation" value="5">5 强烈同意</label>
+    <div class="mb8"><div class="q-title">④ 职/事业：今天我在事业/职业上推进了重要事项</div>
+      <label class="lbl-sm"><input type="radio" name="h30q_vocation" value="1">1 强烈不同意</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_vocation" value="2">2</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_vocation" value="3">3 一般</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_vocation" value="4">4</label>
+      <label class="lbl-sm"><input type="radio" name="h30q_vocation" value="5">5 强烈同意</label>
     </div>
   </div>
-  <button id="h30qabtn" style="padding:6px 16px;cursor:pointer">提交问答打卡</button>
-  <div id="h30qaMsg" style="margin-top:6px;font-size:12px;color:#888"></div>
+  <button id="h30qabtn" class="btn">提交问答打卡</button>
+  <div id="h30qaMsg" class="msg"></div>
 </div>
 <h2>四象限层级位置（最新）</h2>
 <div class="sec"><div id="chartH30Radar" class="echart-main"></div></div>
@@ -169,76 +188,74 @@
 <div class="sec"><div id="h30Metatype" class="sub">加载中…</div></div>
 <h2>四象限趋势（可切换 7/30/90 天）</h2>
 <div class="sec">
-<div style="margin-bottom:4px">
-<button class="h30win" data-win="7" style="padding:2px 10px;cursor:pointer">7 天</button>
-<button class="h30win" data-win="30" style="padding:2px 10px;cursor:pointer">30 天</button>
-<button class="h30win" data-win="90" style="padding:2px 10px;cursor:pointer">90 天</button>
+<div class="mb4">
+<button class="h30win btn-xs" data-win="7">7 天</button>
+<button class="h30win btn-xs" data-win="30">30 天</button>
+<button class="h30win btn-xs" data-win="90">90 天</button>
 </div>
 <div id="chartHuman30" class="echart-main"></div>
 </div>
 <h2>AI 复盘（H-REV-001 · 点按生成）</h2>
 <div class="sec">
-<p style="color:#888" id="h30reviewText">用本地模型解读最近自评序列（只解读成长，不碰交易判决）；生成约需 30-60 秒。</p>
-<button id="h30reviewBtn" style="padding:4px 12px;cursor:pointer">生成 AI 复盘</button>
+<p class="muted" id="h30reviewText">用本地模型解读最近自评序列（只解读成长，不碰交易判决）；生成约需 30-60 秒。</p>
+<button id="h30reviewBtn" class="btn-sm">生成 AI 复盘</button>
 </div>
 </div>
 
 <div class="sec-wrap" data-name="标的查询">
 <h2>按标的查系统贪恐系数</h2>
 <div class="sec">
-<p style="font-size:12px;color:#8b949e">
+<p class="note">
 输入代码（逗号分隔，如 <code>NVDA,GDXU,BTC-USDT</code>）⇒ 返回<b>个股级</b>系统贪恐系数（0-100，高分=贪婪）。
-🔴 <b>来源三态必须看清</b>：<b style="color:#3fb950">个股</b>（真·个股分）/
-<b style="color:#e5534b">大盘回退</b>（已登记但底层历史 &lt; 816 行 ⇒ 显示的是<b>大盘</b>分 ✗）/
-<b style="color:#8b949e">未登记</b>（不给分 ✗，需先在 <code>config.SIGNAL_UNDERLYING_MAP</code> 登记）。
+🔴 <b>来源三态必须看清</b>：<b class="src-ok">个股</b>（真·个股分）/
+<b class="src-bad">大盘回退</b>（已登记但底层历史 &lt; 816 行 ⇒ 显示的是<b>大盘</b>分 ✗）/
+<b class="src-none">未登记</b>（不给分 ✗，需先在 <code>config.SIGNAL_UNDERLYING_MAP</code> 登记）。
 </p>
-<div style="margin:6px 0">
-  <input id="sfgInput" type="text" placeholder="NVDA,GDXU" value="NVDA,GDXU"
-         style="width:280px;padding:4px 8px;background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:4px">
-  <button id="sfgBtn" style="padding:4px 12px;cursor:pointer">查询</button>
-  <span id="sfgDate" style="margin-left:10px;font-size:12px;color:#8b949e"></span>
+<div class="row-gap">
+  <input id="sfgInput" class="inp" type="text" placeholder="NVDA,GDXU" value="NVDA,GDXU">
+  <button id="sfgBtn" class="btn-sm">查询</button>
+  <span id="sfgDate" class="note-inline"></span>
 </div>
 <!-- 🔴 必须 `class="scroll"` ✗：`report.py` 的后处理正则**只包裹静态 HTML** ✓，
      JS 动态拼的 table 它包不到 ✗（正则已跳过 script 块 ✓）
      ⇒ 容器必须自己带 ✓。标的查询有 10 列 ✓，窄屏不包就横向溢出 ✗ -->
 <div id="sfgTable" class="scroll"></div>
-<div id="sfgMsg" style="margin-top:6px;font-size:12px;color:#888"></div>
+<div id="sfgMsg" class="msg"></div>
 </div>
 </div>
 
 <div class="sec-wrap" data-name="关注列表">
 <h2>3× 做多 ETF 关注列表</h2>
 <div class="sec">
-<p style="font-size:12px;color:#8b949e">
+<p class="note">
 全部<b>美股 3× 做多</b>杠杆 ETF（官网 ETF 全资产页本地清单 ✓，纯本地读取不联网）。
 列：官网现价、<b>系统贪恐个股分</b>（0-100，高分=贪婪，未登记底层不给分 ✗）、<b>守猪待兔分</b>（0-100，第二系统 ✓）。
 未登记底层的标的只显示官网参考分（标注「官网」），不冒充系统个股分。
 </p>
-<p style="margin:6px 0">
+<p class="row-gap">
   <!-- MT-67 方案A：纯跳转，URL 不带激活码 ✗；激活码仅本机 API 使用，绝不进前端/git/日志 ✓ -->
-  <a href="https://fe.szdt.tech/invest/#/etf" target="_blank" rel="noopener noreferrer"
-     style="display:inline-block;padding:6px 14px;border:1px solid #30363d;border-radius:6px;color:#58a6ff;text-decoration:none">
+  <a class="btn-link" href="https://fe.szdt.tech/invest/#/etf" target="_blank" rel="noopener noreferrer">
     打开守猪待兔官网 ETF 页（对照）
   </a>
-  <span style="font-size:11px;color:#8b949e;margin-left:8px">激活码仅本机 API 使用，不随链接传出 ✓</span>
+  <span class="note-inline">激活码仅本机 API 使用，不随链接传出 ✓</span>
 </p>
-<div id="wlDate" style="font-size:12px;color:#8b949e;margin:4px 0"></div>
+<div id="wlDate" class="note-date"></div>
 <!-- 🔴 必须套 `div.scroll` ✗（项目约定：`div.scroll{overflow-x:auto}` ✓）——
      关注列表有 9 列 ✓，窄屏会横向溢出 ✗ ⇒ 页面整体出现横向滚动条 ✗
      ⇒ 表现为「部分内容渲染异常」✗（2026-10-27 修） -->
 <div id="wlTable" class="scroll"></div>
-<div id="wlMsg" style="margin-top:6px;font-size:12px;color:#888"></div>
+<div id="wlMsg" class="msg"></div>
 </div>
 </div>
 
 <div class="sec-wrap" data-name="任务">
 <h2>定时任务执行情况</h2>
 <div class="sec">
-<p id="taskSummary" style="color:#888">加载中…</p>
+<p id="taskSummary" class="muted">加载中…</p>
 <!-- 🔴 同上：JS 动态拼表 ⇒ 容器自己带 `scroll` ✓ -->
 <div id="taskTable" class="scroll"></div>
-<div id="taskMsg" style="margin-top:6px;font-size:12px;color:#888"></div>
-<p style="font-size:12px;color:#888;margin-top:8px">异常项可点击「重试」后台触发对应脚本（仅白名单），约 1-2 分钟后自动刷新本区块查看恢复。</p>
+<div id="taskMsg" class="msg"></div>
+<p class="msg-top">异常项可点击「重试」后台触发对应脚本（仅白名单），约 1-2 分钟后自动刷新本区块查看恢复。</p>
 </div>
 </div>
 
@@ -289,10 +306,19 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
       wraps[i].className = "sec-wrap" +
         (wraps[i].dataset.name === name ? " on" : "");
     }
+    // 2026-10-27：面板项也要有选中态 ✓ —— 否则进了子页看不出在哪一项 ✗
+    var sitems = document.querySelectorAll("#moreSheet .sheet-item");
+    for (var s = 0; s < sitems.length; s++) {
+      var hit = sitems[s].dataset.name === name;
+      sitems[s].className = "sheet-item" + (hit ? " on" : "");
+      if (hit) { sitems[s].setAttribute("aria-current", "page"); }
+      else { sitems[s].removeAttribute("aria-current"); }
+    }
     var charts = window.__charts || [];
     for (var c = 0; c < charts.length; c++) {
       try { charts[c].resize(); } catch (e) {}
     }
+    syncAllFade();
   }
   function markTab(n) {
     for (var j = 0; j < tabs.length; j++) {
@@ -304,6 +330,45 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
     }
   }
   function closeSheet() { if (sheet) { sheet.hidden = true; } }
+  var REDUCE = !!(window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion:reduce)").matches);
+
+  // ---- 加载态 / 失败态（2026-10-27 ⑤）----
+  // 原来只有一行「加载中…」✗：慢和死了长得一样 ✗；
+  // 失败也只留一句灰字，没有任何恢复入口 ✗
+  function skel(box, rows) {
+    if (!box) { return; }
+    var h = "";
+    for (var i = 0; i < rows; i++) { h += "<div class='sk'></div>"; }
+    box.innerHTML = h;
+  }
+  function failed(box, msg, retry) {
+    if (!box) { return; }
+    box.innerHTML = "<div class='fail'><span>" + esc(msg) + "</span>" +
+      "<button type='button' class='btn-sm fs12'>重试</button></div>";
+    box.querySelector(".fail button").addEventListener("click", retry);
+  }
+
+  // ---- 横滑边缘渐隐（2026-10-27 ⑥）----
+  // div.scroll 能横滑，但没有任何「还能滑」的提示 ✗
+  function syncFade(el) {
+    var max = el.scrollWidth - el.clientWidth;
+    el.classList.toggle("can-l", el.scrollLeft > 2);
+    el.classList.toggle("can-r", max > 2 && el.scrollLeft < max - 2);
+  }
+  function syncAllFade() {
+    var els = document.querySelectorAll("div.scroll");
+    for (var i = 0; i < els.length; i++) { syncFade(els[i]); }
+  }
+  (function () {
+    var els = document.querySelectorAll("div.scroll");
+    for (var i = 0; i < els.length; i++) {
+      (function (el) {
+        el.addEventListener("scroll", function () { syncFade(el); });
+      })(els[i]);
+    }
+  })();
+  window.addEventListener("resize", syncAllFade);
   for (var k = 0; k < tabs.length; k++) {
     (function (idx) {
       tabs[k].addEventListener("click", function () {
@@ -330,7 +395,7 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
           showByName(el.dataset.name);
           markTab(moreIdx);                  // 次级页仍高亮「更多」✓
           closeSheet();
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          window.scrollTo({ top: 0, behavior: REDUCE ? "auto" : "smooth" });
         } catch (e) {
           if (window.console) { console.error("面板切换失败", e); }
         }
@@ -739,6 +804,7 @@ async function querySymbolFg() {
   const dateEl = document.getElementById('sfgDate');
   if (!raw) { msg.textContent = '请输入代码'; return; }
   msg.textContent = '查询中…';
+  skel(box, 4);
   try {
     const r = await fetch('/api/symbol_fg?symbols=' + encodeURIComponent(raw));
     const j = await r.json();
@@ -758,20 +824,21 @@ async function querySymbolFg() {
       const shTxt = it.shoutu == null ? '—'
         : (it.shoutu.toFixed(1) + ' ' + (it.shoutu_zone || '')
            + (it.shoutu_stale ? ' ⚠️' : ''));
-      const dSty = stale ? 'color:#e5534b;font-weight:bold' : '';
+      const dCls = stale ? ' class="c-stale"' : '';
       return '<tr><td>' + esc(it.symbol) + '</td><td>' + (esc(it.underlying) || '—') +
              '</td><td>' + (esc(it.rows) || 0) + '</td><td><b>' + esc(val) + '</b></td>' +
              '<td>' + (esc(it.zone) || '—') + '</td>' +
              '<td style="color:' + color(it.source) + '">' + esc(src) + '</td>' +
-             '<td style="' + dSty + '">' + esc(dTxt) + '</td>' +
+             '<td' + dCls + '>' + esc(dTxt) + '</td>' +
              '<td>' + esc(shTxt) + '</td>' +
-             '<td style="font-size:11px;color:#8b949e">' + (esc(it.error) || '') + '</td></tr>';
+             '<td class="td-note">' + (esc(it.error) || '') + '</td></tr>';
     }).join('');
     box.innerHTML = '<table class="card"><tr><th>标的</th><th>底层</th><th>行数</th>' +
       '<th>分数</th><th>档位</th><th>来源</th><th>数据日期</th><th>守猪待兔</th><th>说明</th></tr>' +
       rows + '</table>';
     msg.textContent = '';
-  } catch (e) { msg.textContent = '查询失败：' + e; }
+    syncAllFade();
+  } catch (e) { failed(box, '查询失败：' + e, querySymbolFg); }
 }
 document.getElementById('sfgBtn').addEventListener('click', querySymbolFg);
 
@@ -779,40 +846,59 @@ function loadTasks() {
     var sum = document.getElementById("taskSummary");
     var box = document.getElementById("taskTable");
     if (!sum || !box) { return; }
+    sum.textContent = "加载中…";
+    skel(box, 5);
+    var HEAD = "<table class='t-compact'><tr><th>数据/任务</th><th>最后日期</th>" +
+      "<th title='滞后自然日数 / 容忍上限；滞后≤容差即判正常'>滞后/容差</th>" +
+      "<th>状态</th><th></th></tr>";
+    function rowHtml(r) {
+      return "<tr>" +
+        "<td>" + r.name + "</td>" +
+        "<td>" + (r.last || "—") + "</td>" +
+        "<td class='" + (r.ok ? "c-sub" : "c-bad") + "'>" +
+          (r.lag == null ? "—" : r.lag + "/" + (r.tol == null ? "?" : r.tol)) + "</td>" +
+        "<td>" + (r.ok
+          ? "<span class='c-ok'>正常</span>"
+          : "<span class='c-bad'>停更 " + (r.lag == null ? "? " : r.lag + " 天") + "</span>") + "</td>" +
+        "<td>" + (r.ok ? "" : "<button data-retry='" + r.name + "' class='btn-xs fs12'>重试</button>") + "</td></tr>";
+    }
+    function group(cls, title, n, rows) {
+      return "<div class='t-group'><span class='t-group-t " + cls + "'>" +
+        title + " · " + n + "</span></div>" + HEAD + rows + "</table>";
+    }
     fetch("/api/tasks", { cache: "no-store" }).then(function (r) {
       return r.json();
     }).then(function (d) {
+      // 🔴 2026-10-27：原来 25 行同款红 ⇒ 等于没有红 ✗
+      //   ⇒ 分「需要处理 / 正常 / 任务注册」三组，异常组按 滞后÷容差 降序 ✓
+      var bad = [], good = [];
+      for (var i = 0; i < d.data.length; i++) {
+        (d.data[i].ok ? good : bad).push(d.data[i]);
+      }
+      bad.sort(function (a, b) {
+        return (b.lag || 0) / (b.tol || 1) - (a.lag || 0) / (a.tol || 1);
+      });
       sum.textContent = d.all_ok
         ? "✅ 全部正常：" + d.data.length + " 项数据 + " + d.tasks.length + " 个任务注册在位"
-        : "⚠️ " + d.issues.length + " 项异常（见下，可点重试）";
-      var html = "<table style='width:100%;font-size:12px;border-collapse:collapse'>" +
-        "<tr style='color:#8b949e;text-align:left'>" +
-        "<th style='padding:4px'>数据/任务</th><th>最后日期</th>" +
-        "<th title='滞后自然日数 / 容忍上限；滞后≤容差即判正常'>滞后/容差</th>" +
-        "<th>状态</th><th></th></tr>";
-      for (var i = 0; i < d.data.length; i++) {
-        var r = d.data[i];
-        html += "<tr style='border-top:1px solid rgba(255,255,255,.06)'>" +
-          "<td style='padding:4px'>" + r.name + "</td>" +
-          "<td>" + (r.last || "—") + "</td>" +
-          "<td style='color:" + (r.ok ? "#8b949e" : "#f85149") + "'>" +
-            (r.lag == null ? "—" : r.lag + "/" + (r.tol == null ? "?" : r.tol)) + "</td>" +
-          "<td>" + (r.ok
-            ? "<span style='color:#3fb950'>正常</span>"
-            : "<span style='color:#f85149'>停更 " + (r.lag == null ? "? " : r.lag + " 天") + "</span>") + "</td>" +
-          "<td>" + (r.ok ? "" : "<button data-retry='" + r.name + "' style='padding:2px 10px;cursor:pointer;font-size:12px'>重试</button>") + "</td></tr>";
+        : "⚠️ " + bad.length + " 项需要处理（已按 滞后÷容差 排序，越靠前越急）";
+      var html = "";
+      if (bad.length) {
+        html += group("c-bad", "需要处理", bad.length, bad.map(rowHtml).join(""));
       }
-      for (var j = 0; j < d.tasks.length; j++) {
-        var t = d.tasks[j];
-        html += "<tr style='border-top:1px solid rgba(255,255,255,.06)'>" +
-          "<td style='padding:4px'>" + t.label + "</td>" +
-          "<td>" + (t.last_run || "—") + "</td>" +
-          "<td style='color:#8b949e'>—</td>" +
-          "<td>" + (t.registered
-            ? "<span style='color:#3fb950'>已注册</span>"
-            : "<span style='color:#f85149'>未注册</span>") + "</td><td></td></tr>";
+      if (good.length) {
+        html += group("c-sub", "正常", good.length, good.map(rowHtml).join(""));
       }
-      html += "</table>";
+      if (d.tasks.length) {
+        var trs = "";
+        for (var j = 0; j < d.tasks.length; j++) {
+          var t = d.tasks[j];
+          trs += "<tr><td>" + t.label + "</td><td>" + (t.last_run || "—") + "</td>" +
+            "<td class='c-sub'>—</td><td>" + (t.registered
+              ? "<span class='c-ok'>已注册</span>"
+              : "<span class='c-bad'>未注册</span>") + "</td><td></td></tr>";
+        }
+        html += group("c-sub", "任务注册", d.tasks.length, trs);
+      }
       box.innerHTML = html;
       var btns = box.querySelectorAll("[data-retry]");
       for (var b = 0; b < btns.length; b++) {
@@ -822,8 +908,10 @@ function loadTasks() {
           });
         })(btns[b]);
       }
+      syncAllFade();
     }).catch(function () {
-      sum.textContent = "状态加载失败（服务未重启？）";
+      sum.textContent = "状态加载失败";
+      failed(box, "任务状态加载失败（服务未重启？）", loadTasks);
     });
   }
   // MT-66：3× 做多 ETF 关注列表（纯本地，不联网）
@@ -832,10 +920,11 @@ function loadTasks() {
     var msg = document.getElementById("wlMsg");
     var dateEl = document.getElementById("wlDate");
     if (!box) { return; }
+    skel(box, 6);
     fetch("/api/watchlist_3x", { cache: "no-store" }).then(function (r) {
       return r.json();
     }).then(function (j) {
-      if (j.error) { msg.textContent = j.error; box.innerHTML = ""; return; }
+      if (j.error) { failed(box, j.error, loadWatchlist); return; }
       var head = [];
       if (j.as_of) { head.push("官网清单截至 " + j.as_of); }
       if (j.data_date) { head.push("系统数据截至 " + j.data_date); }
@@ -859,15 +948,18 @@ function loadTasks() {
           "<td><b>" + esc(fg) + "</b></td>" +
           "<td>" + (esc(it.fg_zone) || "—") + "</td>" +
           "<td style='color:" + color(it.fg_source) + "'>" + esc(fgSrc) + "</td>" +
-          "<td style='font-size:11px'>" + esc(uni) + "</td>" +
+          "<td class='td-num-sm'>" + esc(uni) + "</td>" +
           "<td>" + esc(sh) + "</td>" +
-          "<td style='font-size:11px;color:#8b949e'>" + esc(fgDate) + "</td></tr>";
+          "<td class='td-note'>" + esc(fgDate) + "</td></tr>";
       }).join("");
       box.innerHTML = "<table class='card'><tr><th>标的</th><th>名称</th><th>底层</th>" +
         "<th>官网现价</th><th>贪恐分</th><th>档位</th><th>来源</th>" +
         "<th>官网参考</th><th>守猪待兔</th><th>系统日期</th></tr>" + rows + "</table>";
       msg.textContent = "";
-    }).catch(function (e) { msg.textContent = "关注列表加载失败：" + e; });
+      syncAllFade();
+    }).catch(function (e) {
+      failed(box, "关注列表加载失败：" + e, loadWatchlist);
+    });
   }
   loadTasks();
   loadWatchlist();
@@ -908,13 +1000,17 @@ function loadTasks() {
         if (mid) {
           mid.innerHTML = mid.innerHTML.replace(/现价[^<]*/,
             "现价 " + rt.price.toFixed(2) + " <span class='rt-dot'>●</span>");
+          // 🔴 2026-10-27：不再改写 .h-pnl ✗ —— 它是持仓快照的浮盈，
+          //   被实时价覆盖后会与 .h-cost 里那句「浮盈 +36.7%」互相矛盾 ✗
+          //   （实测 BTC 同卡出现 +33.6% 与 +36.7% 两个数字 ✗）。
+          //   ⇒ 快照浮盈保持不动 ✓，实时盈亏另起一个显式标注 ✓
           var mm = mid.textContent.match(/成本 ([\d.]+)/);
-          var pnlEl = cards[i].querySelector(".h-pnl");
-          if (pnlEl && mm) {
-            var cost = parseFloat(mm[1]);
-            var pct = (rt.price / cost - 1) * 100;
-            pnlEl.textContent = (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
-            pnlEl.className = "h-pnl " + (pct >= 0 ? "up" : "down");
+          if (mm) {
+            var pct = (rt.price / parseFloat(mm[1]) - 1) * 100;
+            var rp = document.createElement("span");
+            rp.className = "rt-pct";
+            rp.textContent = "实时 " + (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
+            mid.appendChild(rp);
           }
         }
       }

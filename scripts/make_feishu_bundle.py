@@ -48,6 +48,14 @@ import re
 import sys
 import tarfile
 
+# 🔴 2026-10-28：Windows 控制台默认 GBK，本脚本会打印 ⚠/✅ 等符号 ✗ ⇒
+# UnicodeEncodeError 直接崩（实测 3 个 bootstrap 测试因此失败 ✗）。
+# 与 analyze_shoutu_variants.py / backfill_*.py 同一处理方式 ✓
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fg_system import config                     # noqa: E402
 

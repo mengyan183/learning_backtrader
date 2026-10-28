@@ -30,7 +30,7 @@ ZONE_NAMES = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"]
 STALE_MAX_DAYS = 5
 
 
-def _holdings_block(features, shoutu=None, prices=None):
+def _holdings_block(features, shoutu=None, prices=None, acts=None, expo=None):
     """持仓标的看板：我的持仓 × 市场贪恐环境 × 系统覆盖与指令（只读快照）。
 
     数据口径：
@@ -39,6 +39,10 @@ def _holdings_block(features, shoutu=None, prices=None):
     - 市场贪恐 = features 最新 fg_index（**市场级**；标的级系数数据源
       szdt.tech/universe 未覆盖 GDXU/YINN/CONL/CRCG/AXTX，故不虚造标的级系数）
     - 系统覆盖 = config.SYMBOLS ∪ CRYPTO_FLAT_SYMBOLS（与 portfolio_check 同口径）
+
+    `acts`：可选出参 ✓ —— 传入 list 时按 (symbol, 动作) 追加 ✓，
+    供 hero 的「今日动作」一行复用**这里已算好的**结论 ✓（不重复实现交易规则 ✓）。
+    `expo`：可选出参 ✓ —— 填入「模型目标 / 实盘合计 / 偏离」✓，供 hero 镜像同一组数字 ✓。
     """
     out = ["<p style='font-size:12px;color:#8b949e'>每标的展示<b>双系统贪恐系数</b>："
            "系统 = 个股系统指数（0-100，五档）；"
@@ -48,7 +52,7 @@ def _holdings_block(features, shoutu=None, prices=None):
            "🔴 <b>底层数据不足时系统列会回退市场指数，并在标签后缀标注来源</b>"
            "（2026-10-20 起；此前回退后与个股分格式相同、无法分辨 ✗）—— "
            "需底层历史 ≥ 窗口 756 + 60 交易日，否则回退。"
-           "持仓来自实盘快照，只读；浮盈亏按红涨绿跌着色。</p>"]
+           "持仓来自实盘快照，只读；浮盈亏按美股惯例着色（绿涨红跌）。</p>"]
     try:
         pos = pd.read_csv(config.POSITIONS_PATH)
     except (FileNotFoundError, pd.errors.EmptyDataError):
@@ -112,6 +116,18 @@ def _holdings_block(features, shoutu=None, prices=None):
     # 分平台敞口：逐标的占比的**分母必须是该标的所属平台**的净值 ✓
     # （此前一律除富途 net ⇒ OKX 的 BTC 被算成 14.8% ✗）
     exposure = _account_exposure(acc, latest)
+    # 🔴 2026-10-27（critique P1「过期只降级容器、没降级词」）：
+    #   持仓快照可能比行情旧很多天（实测快照 09-22 / 行情 10-12 ✗），
+    #   而卡片上写的是「现价」✗ ⇒ 必须把快照日贴在数字旁边 ✓
+    try:
+        _snap_md = pd.to_datetime(latest["date"].iloc[0]).strftime("%m-%d")
+        _snap_age = max(0, int((pd.Timestamp.now().normalize()
+                                - pd.to_datetime(latest["date"].iloc[0]).normalize()).days))
+    except Exception:
+        _snap_md, _snap_age = "", 0
+    if _snap_age > MAX_SIGNAL_LAG_DAYS:
+        out.append("<span class='stale-flag inline'>持仓快照 %s · %d 天前（非当前）</span>"
+                   % (_snap_md, _snap_age))
     cards = []
     # 模型目标 vs 实盘偏离：**合计**口径 = Σ市值 / Σ净值（两平台都合并）✓。
     # 它是**整体**指标，不属于任何单个平台 ⇒ 用 `_all_net()` ✓；
@@ -233,6 +249,8 @@ def _holdings_block(features, shoutu=None, prices=None):
                     act, act_cls = "观望", "act-hold"
         else:
             act, act_cls = "观望", "act-hold"
+        if acts is not None:                       # hero「今日动作」复用这里 ✓
+            acts.append((sym, act))
         # 覆盖三态：系统信号 / 守猪待兔系数 / 不在跟踪范围
         if in_s:
             cov_cls, cov_txt = "tag-in", "✅ 系统覆盖"
@@ -268,6 +286,14 @@ def _holdings_block(features, shoutu=None, prices=None):
             cost_adv = "卖出信号：注意滑点与税（资本利得），分批执行"
         elif act == "观望" and cost_adv is None:
             cost_adv = "观望：等待系数进入买卖区间，避免在区间内追涨杀跌"
+        # 🔴 2026-10-27（critique P0「一卡一结论」）：同一张卡里「买入」芯片与
+        #   「建议分批减仓 / 可考虑止盈」并存 ✗ —— act 是信号轴、cost_adv 是成本轴，
+        #   两者不同轴，不能同时用祈使句 ✗（用户只会执行最后读到的那句 ✗）。
+        #   ⇒ act=买入 时只陈述事实 + 指向同页已有的仓位上限 ✓，不再给相反动作 ✓。
+        if act == "买入" and pnl is not None and cost_adv \
+                and cost_adv[:4] in ("深度浮亏", "浮亏 +", "浮亏 -", "浮盈 +", "浮盈 -"):
+            cost_adv = ("风险提示：%s %+.1f%%（与买入信号不同轴，先看下方仓位上限）"
+                        % ("浮盈" if pnl >= 0 else "浮亏", pnl))
         # P4 趋势结构（200EMA 方向 + 近 20 日支撑/阻力）
         _trend = risk_mod.trend_tags(prices, sym, price)
         if _trend is not None:
@@ -304,7 +330,8 @@ def _holdings_block(features, shoutu=None, prices=None):
             "<span class='h-act %s'>%s</span></div>"
             "<div class='h-line2'>%s</div></div>"
             "<span class='h-pnl %s'>%s</span></div>"
-            "<div class='h-mid'>成本 %s · 现价 %s</div>"
+            "<div class='h-mid'>成本 %s · 现价 %s"
+            "<span class='snap-d'>（%s）</span></div>"
             "<div class='h-mid2'>市值 %s · 占净值 %s · 数量 %s</div>"
             "<div class='h-cost'>%s</div>"
             "<div class='h-trend'>%s</div>"
@@ -317,14 +344,14 @@ def _holdings_block(features, shoutu=None, prices=None):
             "</div></div>"
             % (sym, sym, act_cls, act, name, pnl_cls, pnl_txt,
                _fmt(cost) if cost is not None else "—",
-               _fmt(price) if price is not None else "—",
+               _fmt(price) if price is not None else "—", _snap_md,
                _fmt(mv), ("%.1f%%" % ratio) if ratio is not None else "—",
                _fmt(qty), cost_adv or "",
                trend_txt or "趋势结构：数据不足",
                _r_tags, risk_adv or "",
                sys_bg, sys_txt, s_bg, s_txt,
                cov_cls, cov_txt, advise))
-    out.append(_deviation_line(features, latest, _dev_net, acc))
+    out.append(_deviation_line(features, latest, _dev_net, acc, expo))
     body = "".join(out)
     if not cards:
         return body + "<p>无持仓记录</p>"
@@ -426,7 +453,7 @@ def _all_net(exposure):
     return float(sum(vals)) if vals else None
 
 
-def _deviation_line(features, latest, net=None, acc=None):
+def _deviation_line(features, latest, net=None, acc=None, expo=None):
     """模型目标仓位 vs 实盘持仓占净值的偏离（**只报事实，不带指令** ✗，方案 C ✓）。
 
     - 模型目标仓位 = `features["target_position"]` 最后一行（模型数据日 = index.max）
@@ -482,8 +509,24 @@ def _deviation_line(features, latest, net=None, acc=None):
             parts.append("%s %.1f%%" % (word, e["ratio"] * 100.0))
     detail = " / ".join(parts) if parts else ""
     per_txt = ("（%s）" % detail) if detail else ""
-    return ("<p class='sub'>模型目标 %.1f%% · 实盘 合计 %.1f%%%s · 偏离 %+.1f pp（%s）"
-            "（模型数据日 %s / 持仓快照日 %s）</p>"
+    if expo is not None:                      # 供 hero 镜像同一组数字 ✓
+        expo.update({"target": d["target"] * 100.0,
+                     "actual": d["actual"] * 100.0,
+                     "gap_pp": d["gap_pp"],
+                     "side": _SIDE_WORDS.get(d["side"], d["side"]),
+                     "snap": snap_date or "—",
+                     "model": model_date})
+    # 🔴 2026-10-27（critique P0）：原来是一行 12px 灰字 `.sub` ✗ ——
+    #   「实盘 102.6% vs 目标 24.6%，偏离 +78pp」是全页最大的风险事实，
+    #   埋在说明段里等于不存在 ✗ ⇒ 改成首屏可见的数字条 ✓
+    return ("<div class='expo'>"
+            "<span class='expo-i'><span class='expo-l'>模型目标</span> "
+            "<b>%.1f%%</b></span>"
+            "<span class='expo-i'><span class='expo-l'>实盘合计</span> "
+            "<b>%.1f%%</b>%s</span>"
+            "<span class='expo-i expo-gap'><span class='expo-l'>偏离</span> "
+            "<b>%+.1f pp</b><span class='expo-side'>%s</span></span>"
+            "<span class='expo-d'>模型数据日 %s / 持仓快照日 %s</span></div>"
             % (d["target"] * 100.0, d["actual"] * 100.0, per_txt,
                d["gap_pp"], _SIDE_WORDS.get(d["side"], d["side"]),
                model_date, snap_date or "—"))
@@ -529,7 +572,36 @@ def _duo_strip(features, shoutu_mkt=None):
 
 
 # ------------------------------------------------------------------ 区块
-def _state_card(features, shoutu_mkt=None):
+#: 信号日距今超过这么多自然日 ⇒ hero 必须承认「非当前」✓
+#: 与 scripts/check_freshness.py 的 MAX_LAG_DAYS 同值（吸收周末/节假日）✓
+MAX_SIGNAL_LAG_DAYS = 3
+
+
+def _signal_lag_days(valid):
+    """信号日距今的自然日数 ✓；未来日期/时钟异常按 0 处理 ✓。"""
+    try:
+        return max(0, int((pd.Timestamp.now().normalize()
+                           - valid.index[-1].normalize()).days))
+    except Exception:
+        return 0
+
+
+def _action_summary(acts):
+    """把逐标的动作收成一行 ✓ —— 只**复述** `_holdings_block` 已算出的结论 ✓，
+    这里不实现任何交易规则 ✓（规则改动仍走 docs/trading-discipline.md 第 8 条 ✓）。"""
+    buy = [s for s, a in acts if a == "买入"]
+    sell = [s for s, a in acts if a == "卖出"]
+    if not buy and not sell:
+        return ""
+    parts = []
+    if buy:
+        parts.append("买入 " + "、".join(buy))
+    if sell:
+        parts.append("卖出 " + "、".join(sell))
+    return " · ".join(parts)
+
+
+def _state_card(features, shoutu_mkt=None, action_html=None, exposure=None):
     valid = features.dropna(subset=["fg_index"])
     if valid.empty:
         return "<p>指数无效（warmup 未完成）</p>"
@@ -566,19 +638,45 @@ def _state_card(features, shoutu_mkt=None):
         shoutu_html = ("<div class='hero-fg muted'>"
                        "<span class='hero-num sm'>—</span>"
                        "<span class='hero-unit'>守猪待兔未接入</span></div>")
+    lag = _signal_lag_days(valid)
+    stale = lag > MAX_SIGNAL_LAG_DAYS
+    # 🔴 2026-10-27：过期数据不许冒充「现在」✗ —— 原实现只写「信号日」，
+    # 而 52px 的分数看起来永远是当下的 ✗（实测差 15 天 ✗）。
+    stale_flag = ("<span class='stale-flag'>数据停更 %d 天 · 非当前</span>" % lag
+                  if stale else "")
+    # 🔴 过期数据下的「今日动作」比不显示更危险 ✗ —— 必须标出来源日期并降级 ✓
+    #    critique P1：只降级「容器」不够 ✗，**词**也要降级 ✓（今日 → MM-DD 当日）
+    act_label = ("%s 当日动作" % valid.index[-1].strftime("%m-%d")
+                 if stale else "今日动作")
+    act_cls = "hero-act stale" if stale else "hero-act"
+    act_html = ("<div class='%s'>%s：%s</div>"
+                % (act_cls, act_label, action_html or "无 · 全部观望"))
+    # 🔴 critique P0：超配是全页最大的风险事实，不能只躺在持仓页的 12px 灰字里 ✗
+    expo_html = ""
+    if exposure:
+        expo_html = ("<div class='hero-expo'>"
+                     "<span class='expo-l'>实盘合计</span><b>%.1f%%</b>"
+                     "<span class='expo-l'>模型目标</span><b>%.1f%%</b>"
+                     "<span class='expo-gap'>偏离 %+.1f pp · %s</span></div>"
+                     % (exposure["actual"], exposure["target"],
+                        exposure["gap_pp"], exposure["side"]))
     return """
     <div class="hero">
       <div class="hero-top"><span class="hero-date">信号日 %s</span>
-        <span class="zone" style="background:%s">%s</span></div>
+        %s<span class="zone" style="background:%s">%s</span></div>
       <div class="hero-duo">
-        <div class="hero-fg"><span class="hero-num">%.1f</span>
-          <span class="hero-unit">贪恐系数（当前系统）</span></div>
+        <div class="hero-fg"><span class="hero-num%s">%.1f</span>
+          <span class="hero-unit">贪恐系数（系统指数）</span></div>
         %s
       </div>
       %s
       <div class="stat-grid">%s</div>
-    </div>""" % (valid.index[-1].strftime("%Y-%m-%d"), ZONE_COLORS[zone],
-                 ZONE_NAMES[zone], fg, shoutu_html, temp, stat)
+      %s
+      %s
+    </div>""" % (valid.index[-1].strftime("%Y-%m-%d"), stale_flag,
+                 ZONE_COLORS[zone], ZONE_NAMES[zone],
+                 " stale" if stale else "", fg, shoutu_html, temp, stat,
+                 expo_html, act_html)
 
 
 def _loss_block(prices):
@@ -876,6 +974,13 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
 
     index_svg = _svg_line(index_points, bands=bands, y_min=0.0, y_max=100.0)
 
+    # hero 的「今日动作」复用持仓卡的逐标的结论 ✓（acts 为出参 ✓）
+    # hero 的「实盘 vs 目标偏离」也复用同一组数字 ✓（expo 为出参 ✓）
+    acts = []
+    expo = {}
+    holdings_html = _holdings_block(features, shoutu=shoutu, prices=prices,
+                                    acts=acts, expo=expo)
+
     from jinja2 import Environment, FileSystemLoader
     _tpl_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
     _env = Environment(loader=FileSystemLoader(_tpl_dir), autoescape=False)
@@ -885,9 +990,10 @@ def render_html(features, title="贪婪恐惧指数仪表盘", prices_path=None)
         valid_days=len(valid),
         span=("%s ~ %s" % (valid.index[0].strftime("%Y-%m-%d"),
                            valid.index[-1].strftime("%Y-%m-%d")) if len(valid) else "无"),
-        card=_state_card(features, shoutu_mkt=shoutu_mkt),
+        card=_state_card(features, shoutu_mkt=shoutu_mkt,
+                         action_html=_action_summary(acts), exposure=expo),
         fed_card=fed.fed_card_html(fed.fed_context()),
-        holdings=_holdings_block(features, shoutu=shoutu, prices=prices),
+        holdings=holdings_html,
         factors=_factors_block(valid),
         sentiment=_sentiment_block(),
         position=_position_block(valid),

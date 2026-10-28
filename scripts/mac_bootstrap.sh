@@ -40,6 +40,14 @@ cd "$DEST" || exit 1
 python3 - <<'PY'
 import base64, glob, io, os, re, sys, tarfile
 
+# 🔴 2026-10-28：Windows 控制台默认 GBK，本脚本会打印 ✅/⚠ ✗ ⇒
+# UnicodeEncodeError 直接崩（实测 3 个 bootstrap 测试因此失败 ✗）。
+# 与 scripts/*.py 的处理方式一致 ✓（Mac 上是 UTF-8，无副作用 ✓）
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # 这两个字面量是 make_feishu_bundle 测试替换的锚点，别改成 argv 取值
 src = os.path.expanduser("~/Downloads/fg")
 dest = os.path.expanduser("~/learning_backtrader")
