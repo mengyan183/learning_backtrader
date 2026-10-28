@@ -1019,9 +1019,8 @@ function loadTasks() {
         var line = icon + " " + (x.action || "?") + " · " +
           String(x.at || "").replace("T", " ").slice(5, 16);
         if (x.duration_s != null) { line += " · " + x.duration_s + "s"; }
-        if (x.status === "failed" && x.output) {
-          line += " · " + String(x.output).slice(0, 40);
-        }
+        // 2026-10-28：成功也要显示 output ✓ —— 只给「✅ 0s」看不出它到底删了什么 ✗
+        if (x.output) { line += " · " + String(x.output).slice(0, 60); }
         lines.push(line);
       }
       box.textContent = lines.join("\n");

@@ -133,6 +133,30 @@ def test_clean_sync_partial_removes_only_that_package(tmp_path, monkeypatch):
         "sync_1028w_1.md.done", "sync_1028x_1.md"]
 
 
+def test_git_commit_warns_when_push_fails(monkeypatch, capsys):
+    """推送失败必须**留痕** ✓。
+
+    原来 `except: pass` 把 commit/push 的一切失败吞掉 ✗ ⇒ 结果文件只留在 Mac 本地，
+    Windows 端永远看不到任务结果 ✗（2026-10-28 实测：
+    `t-…-clean_sync_partial.result.json` 至今没进 gitee ✗）。
+    """
+    class _R:
+        def __init__(self, rc, err=""):
+            self.returncode = rc
+            self.stderr = err
+
+    class _SP:
+        SubprocessError = q.subprocess.SubprocessError
+
+        @staticmethod
+        def run(cmd, **kw):
+            return _R(0) if cmd[1] in ("add", "commit") else _R(1, "denied")
+
+    monkeypatch.setattr(q, "subprocess", _SP)
+    q._git_commit([("t1", "done")])
+    assert "推送失败" in capsys.readouterr().out
+
+
 def test_clean_sync_partial_rejects_bad_pkg():
     """包名非法必须报错 ✓ —— 不许借 `..` / `/` / `*` 越出分片目录 ✗。"""
     for bad in ("", "..", "a/b", "a b", "*"):

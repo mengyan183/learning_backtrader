@@ -242,10 +242,18 @@ def _git_commit(done):
                            capture_output=True, text=True, timeout=120)
         if r.returncode != 0:          # 无变更可提交 ⇒ 不是错误 ✓
             return
-        subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
-                       capture_output=True, timeout=180)
-    except (subprocess.SubprocessError, OSError):
-        pass                           # 提交/推送失败不影响任务本身的结果文件 ✓
+        p = subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
+                           capture_output=True, text=True, timeout=180)
+        # 🔴 推送失败**必须留痕** ✗ —— 原来 `except: pass` 把一切吞掉 ⇒
+        # 结果文件只躺在 Mac 本地，Windows 端永远看不到任务结果 ✗
+        # （2026-10-28 实测：`t-…-clean_sync_partial.result.json` 至今没进 gitee ✗）
+        # 日志落在 plist 的 StandardOutPath `/tmp/fg_task_queue.log` ✓。
+        if p.returncode != 0:
+            print("[warn] 结果已提交但**推送失败**（rc=%s）：%s"
+                  % (p.returncode, (p.stderr or "").strip()[-200:]))
+    except (subprocess.SubprocessError, OSError) as exc:
+        # 失败不影响任务本身的结果文件 ✓，但必须可查 ✗
+        print("[warn] 结果提交/推送失败：%s" % exc)
 
 
 def main(argv=None):

@@ -229,6 +229,18 @@ def test_fresh_param_is_one_shot(tmp_path):
     assert "/[?&]fresh=1/" in html, "判断条件必须只认 fresh=1 ✓（别把别的参数一起清掉）"
 
 
+def test_task_list_shows_output_for_done_tasks(tmp_path):
+    """✅ 的任务也要显示 `output` ✓。
+
+    2026-10-28 手机端实测：`clean_sync_partial` 只显示「✅ · 0s」✗
+    ⇒ 看不出它到底删了什么（0 秒既可能是「删了 2 个」也可能是「什么都没找到」✗）。
+    """
+    html = _render(tmp_path)
+    assert 'x.status === "failed" && x.output' not in html, \
+        "成功任务又只显示状态、不显示结果了 ✗"
+    assert "x.output" in html
+
+
 def test_echarts_is_lazy_loaded(tmp_path):
     """**守卫**：echarts（1MB）不得随首屏加载 ✓。
 
