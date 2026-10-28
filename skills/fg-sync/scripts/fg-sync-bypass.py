@@ -15,6 +15,26 @@ import hashlib, json, os, re, subprocess, sys, time, urllib.request
 
 HOME = os.path.expanduser("~")
 IN_DIR = os.path.join(HOME, ".openclaw", "tmp", "fg-sync-in")
+#: 飞书插件落盘目录（本脚本的输入）
+BYPASS_IN = os.path.join(HOME, ".openclaw", "tmp", "fg-sync-bypass-in")
+
+
+def _archive_source(msg_file):
+    """消费完把源消息文件挪进 `archive_<MMDD>/` —— **只挪不删** ✓，可回看原始消息 ✓。
+
+    🔴 2026-10-28 根因：这个目录以前**只写不清** ✗ ⇒ 19 天堆了 3956 个文件 ✗，
+    连看板体检都被误判成「bypass 没被调用」（bypass_stuck 恒红 ✗）。
+    ⇒ 消费成功后自动挪走 ✓，目录不再无限增长 ✓。
+    只在文件确实位于 `fg-sync-bypass-in/` 时才动（防误挪别处的文件）✓。
+    """
+    try:
+        if os.path.dirname(os.path.abspath(msg_file)) != os.path.abspath(BYPASS_IN):
+            return
+        dest = os.path.join(BYPASS_IN, "archive_" + time.strftime("%m%d"))
+        os.makedirs(dest, exist_ok=True)
+        os.replace(msg_file, os.path.join(dest, os.path.basename(msg_file)))
+    except OSError:
+        pass                    # 挪不动不影响主流程（分片已落盘）✓
 CFG_PATH = os.path.join(HOME, ".openclaw", "openclaw.json")
 REPO = "/Users/xingguo/learning_backtrader"
 FG_RE = re.compile(r"###FG:([^:#\n]+):(\d+)/(\d+)###([\s\S]*?)###FG:end###")
@@ -223,6 +243,7 @@ def main():
         # 非分片消息：命中待办关键词 → 直接回传待办快照（免 LLM）
         if TODO_RE.search(text):
             run_todo_snapshot(chat_id)
+        _archive_source(msg_file)      # 消费完就挪走 ✓（不挪会一直堆 ✗）
         return
 
     os.makedirs(IN_DIR, exist_ok=True)
@@ -250,6 +271,9 @@ def main():
         elif recv > 0 and recv % 100 == 0:
             send_feishu_checked(pkg + " 进度",
                                 f"📥 {pkg} 已收 {recv}/{total} 片", chat_id)
+
+    _archive_source(msg_file)          # 分片已落盘 ⇒ 源消息可以挪走了 ✓
+                                       # 中途抛异常则不会执行到这里（保留源文件便于排查 ✓）
 
 
 if __name__ == "__main__":
