@@ -1,0 +1,9 @@
+# 任务队列目录（2026-10-28）
+#
+# Windows 下发 `docs/task-queue/<id>.json`（status=pending）
+# → Mac 的 run_task_queue.py 执行白名单 action
+# → 写 `docs/task-queue/<id>.result.json` 并 git push
+# → Windows `git fetch` 后在看板看结果
+#
+# 🔴 只允许白名单 action 名（见 scripts/run_task_queue.py 的 ACTIONS），
+#    绝不接受命令字符串 ✗ —— 那等于把 RCE 开在飞书群里。

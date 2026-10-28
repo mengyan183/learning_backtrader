@@ -580,6 +580,37 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             return Response("sync_health 失败：%s: %s" % (type(exc).__name__, exc),
                             status=500, mimetype="text/plain; charset=utf-8")
 
+    @app.route("/api/task_queue")
+    def _task_queue_api():
+        """任务队列状态（只读）：读 `docs/task-queue/*.json`，result 覆盖 pending。
+
+        2026-10-28：页面上的一次性动作改为「任务下发」后，这里就是它的状态面板 ✓
+        （下发方看得到 done/failed/耗时，失败还带输出尾巴）。
+        """
+        import glob as _glob
+        import json as _json
+        q = os.path.join(config.ROOT, "docs", "task-queue")
+        merged = {}
+        for p in _glob.glob(os.path.join(q, "*.json")):
+            try:
+                with open(p, encoding="utf-8") as f:
+                    d = _json.load(f)
+            except (OSError, ValueError):
+                continue
+            tid = d.get("id") or os.path.basename(p)
+            status = str(d.get("status") or "pending")
+            item = {"id": tid, "action": d.get("action"), "status": status,
+                    "at": d.get("finished_at") or d.get("created_at"),
+                    "duration_s": d.get("duration_s"),
+                    "output": str(d.get("output") or "")[:160]}
+            if tid not in merged or status != "pending":
+                merged[tid] = item
+        items = sorted(merged.values(), key=lambda x: str(x.get("at") or ""),
+                       reverse=True)[:10]
+        resp = Response(_json_ok({"items": items}), mimetype="application/json")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
     @app.route("/api/sync_cleanup", methods=["POST"])
     def _sync_cleanup():
         """清理插件层堆积：把 30 分钟前的历史文件**挪进 archive 子目录**（不删 ✓）。

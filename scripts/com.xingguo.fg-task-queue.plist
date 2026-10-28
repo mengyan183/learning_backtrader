@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+        <key>Label</key>
+        <string>com.xingguo.fg-task-queue</string>
+        <key>ProgramArguments</key>
+        <array>
+                <string>/Users/xingguo/learning_backtrader/.venv/bin/python</string>
+                <string>/Users/xingguo/learning_backtrader/scripts/run_task_queue.py</string>
+        </array>
+        <key>WorkingDirectory</key>
+        <string>/Users/xingguo/learning_backtrader</string>
+        <key>StartInterval</key>
+        <integer>10</integer>
+        <key>StandardErrorPath</key>
+        <string>/tmp/fg_task_queue.log</string>
+        <key>StandardOutPath</key>
+        <string>/tmp/fg_task_queue.log</string>
+        <key>RunAtLoad</key>
+        <true/>
+</dict>
+</plist>

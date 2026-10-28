@@ -279,6 +279,7 @@
   <p id="syncHint" class="muted">—</p>
   <p id="syncWarn" class="sync-warn" hidden></p>
   <div id="syncDetail" class="note"></div>
+  <div id="queueList" class="note"></div>
   <div id="deployMsg" class="msg"></div>
   <p class="msg-top">体检只读 Mac 本地四个观测点（插件落盘 / 分片 / .done / send-fail.log），
     <b>覆盖不到「消息连 OpenClaw 网关都没收到」</b> —— 那种情况四个点全空，与「今天没人发东西」无法区分。
@@ -1002,6 +1003,32 @@ function loadTasks() {
     shards_waiting: "⚠️ 分片不齐", bypass_stuck: "🔴 消息未消费",
     receipt_failed: "⚠️ 回执发不出"
   };
+  // 任务队列（2026-10-28）：一次性动作改成「下发 → Mac 执行 → 结果回传」后，
+  // 这里显示最近几条，替代「每来一个需求就加一个按钮」✗
+  function loadQueue() {
+    var box = document.getElementById("queueList");
+    if (!box) { return; }
+    fetch("/api/task_queue", { cache: "no-store" }).then(function (r) {
+      return r.json();
+    }).then(function (d) {
+      var it = d.items || [];
+      if (!it.length) { box.textContent = "最近任务：无"; return; }
+      var lines = ["最近任务："];
+      for (var i = 0; i < Math.min(it.length, 5); i++) {
+        var x = it[i];
+        var icon = x.status === "done" ? "✅" : (x.status === "failed" ? "❌" : "⏳");
+        var line = icon + " " + (x.action || "?") + " · " +
+          String(x.at || "").replace("T", " ").slice(5, 16);
+        if (x.duration_s != null) { line += " · " + x.duration_s + "s"; }
+        if (x.status === "failed" && x.output) {
+          line += " · " + String(x.output).slice(0, 40);
+        }
+        lines.push(line);
+      }
+      box.textContent = lines.join("\n");
+    }).catch(function () { box.textContent = "最近任务：读取失败"; });
+  }
+
   function loadSync() {
     var badge = document.getElementById("syncVerdict");
     var hint = document.getElementById("syncHint");
@@ -1014,6 +1041,7 @@ function loadTasks() {
     if (btn) { btn.disabled = true; btn.textContent = "刷新中…"; }
     function done() {
       if (btn) { btn.disabled = false; btn.textContent = btnTxt; }
+      loadQueue();
     }
     fetch("/api/sync_health", { cache: "no-store" }).then(function (r) {
       return r.json();
