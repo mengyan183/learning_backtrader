@@ -580,6 +580,32 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             return Response("sync_health 失败：%s: %s" % (type(exc).__name__, exc),
                             status=500, mimetype="text/plain; charset=utf-8")
 
+    @app.route("/api/sync_cleanup", methods=["POST"])
+    def _sync_cleanup():
+        """清理插件层堆积：把 30 分钟前的历史文件**挪进 archive 子目录**（不删 ✓）。
+
+        为什么做成按钮而不是让 Mac 侧 agent 干：清理是「看一眼就知道该不该做」的事，
+        而 agent 要耗一次会话 + 还得给它写权限 ✗。
+        🔴 安全（本服务默认无鉴权）：
+          ① 必须带 `{"confirm": "cleanup"}`；
+          ② **只挪不删** ⇒ 挪错了 `mv archive_xxx/* .` 就能还原 ✓；
+          ③ 只动 `fg-sync-bypass-in/` 里 30 分钟前的 `.md` ——
+             不碰 `fg-sync-in/`（那是待入库分片，动了会丢包 ✗）、不碰 `Data/` ✓。
+        """
+        payload = request.get_json(force=True, silent=True) or {}
+        if str(payload.get("confirm") or "") != "cleanup":
+            return Response("需要二次确认：POST {\"confirm\": \"cleanup\"}",
+                            status=400, mimetype="text/plain; charset=utf-8")
+        from fg_system.dashboard import sync_health as _sh
+        try:
+            r = _sh.archive_backlog()
+        except Exception as exc:
+            return Response("清理失败：%s: %s" % (type(exc).__name__, exc),
+                            status=500, mimetype="text/plain; charset=utf-8")
+        out = {"ok": r["moved"] > 0}
+        out.update(r)
+        return _json_ok(out)
+
     @app.route("/api/deploy", methods=["POST"])
     def _deploy():
         """一键部署：`git fetch origin main` + `git merge --ff-only origin/main`，再重启看板。

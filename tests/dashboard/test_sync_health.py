@@ -96,6 +96,32 @@ def test_receipt_failed_when_send_fail_log_not_empty(tmp_path, monkeypatch):
     assert r["verdict"] == "receipt_failed", r["hint"]
 
 
+def test_archive_backlog_moves_only_old_files(tmp_path, monkeypatch):
+    """清理只挪**够老**的文件，且**目录必须还在**（插件按固定路径写盘 ✗）。"""
+    byp, shard = _fake(tmp_path, monkeypatch)
+    old = time.time() - 3600
+    for i in range(3):
+        p = byp / ("old_%d.md" % i)
+        p.write_text("x", encoding="utf-8")
+        os.utime(p, (old, old))
+    fresh = byp / "fresh.md"
+    fresh.write_text("y", encoding="utf-8")          # 刚落的，不能挪
+
+    r = sh.archive_backlog()
+    assert r["moved"] == 3, r
+    assert os.path.isdir(str(byp)), "目录被挪走了 ⇒ 插件后续写盘会失败 ✗"
+    assert (byp / "fresh.md").is_file(), "刚落的文件不能挪（可能正在处理）✗"
+    assert os.path.isdir(r["dest"])
+    assert len(os.listdir(r["dest"])) == 3
+
+
+def test_archive_backlog_noop_when_dir_missing(tmp_path, monkeypatch):
+    """Windows / 未装 OpenClaw ⇒ 不报错，返回原因（页面显示「无需清理」）✓。"""
+    monkeypatch.setattr(sh, "BYPASS_IN", str(tmp_path / "nope"))
+    r = sh.archive_backlog()
+    assert r["moved"] == 0 and r["reason"]
+
+
 def test_ok_when_recent_done_marker(tmp_path, monkeypatch):
     """有 `.done` 且新鲜 ⇒ ok（别把正常状态报成异常）✓。"""
     byp, shard = _fake(tmp_path, monkeypatch)

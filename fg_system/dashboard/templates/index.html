@@ -270,6 +270,7 @@
     <span id="syncVerdict" class="sync-badge">体检中…</span>
     <button id="syncBtn" class="btn-xs" type="button">刷新</button>
     <button id="freshBtn" class="btn-xs" type="button">强制重算整页</button>
+    <button id="cleanBtn" class="btn-xs" type="button">清理堆积</button>
     <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
     <button id="restartBtn" class="btn-xs" type="button">重启服务</button>
   </div>
@@ -1118,6 +1119,38 @@ function loadTasks() {
     // 整页默认走缓存（秒开）；要最新就点这个 ⇒ 打 ?fresh=1 跳过缓存重算 ✓
     if (fb) {
       fb.addEventListener("click", function () { location.href = "/?fresh=1"; });
+    }
+    // 清理堆积：把插件层 30 分钟前的历史文件挪进 archive 子目录（**只挪不删** ✓）
+    var cb = document.getElementById("cleanBtn");
+    if (cb) {
+      cb.addEventListener("click", function () {
+        var msg = document.getElementById("deployMsg");
+        if (!window.confirm("把插件层 30 分钟前的历史文件挪进 archive 子目录？\n" +
+            "（只挪不删，挪错了可以在 Mac 上 mv 回去）")) {
+          return;
+        }
+        cb.disabled = true;
+        if (msg) { msg.textContent = "清理中…"; }
+        fetch("/api/sync_cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirm: "cleanup" })
+        }).then(function (r) {
+          return r.text().then(function (t) {
+            if (!r.ok) { throw new Error(t); }
+            return JSON.parse(t);
+          });
+        }).then(function (d) {
+          if (msg) {
+            msg.textContent = d.moved > 0
+              ? ("✅ 已挪走 " + d.moved + " 个 → " + d.dest)
+              : ("无需清理：" + (d.reason || "没有够老的文件"));
+          }
+          loadSync();
+        }).catch(function (e) {
+          if (msg) { msg.textContent = "❌ " + e; }
+        }).then(function () { cb.disabled = false; });
+      });
     }
   })();
   loadSync();

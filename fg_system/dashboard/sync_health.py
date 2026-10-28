@@ -197,6 +197,38 @@ def collect():
     }
 
 
+def archive_backlog(older_than_sec=1800, now=None):
+    """把插件层的历史文件挪进 `archive_<MMDD-HHMM>/` —— **不删** ✓，可回滚 ✓。
+
+    为什么挪**文件**而不是整个目录：插件按固定路径写盘，
+    整个目录被 mv 走之后新写入会失败 ✗；只挪文件则目录始终在 ✓。
+    为什么只挪 30 分钟前的：避免打断正在处理的那条 ✓。
+    为什么只动 `fg-sync-bypass-in/`：`fg-sync-in/` 是 watcher 的待入库分片，
+    动它会丢包 ✗（那个目录的清理由 watcher 自己负责 ✓）。
+    """
+    now = time.time() if now is None else now
+    if not os.path.isdir(BYPASS_IN):
+        return {"moved": 0, "dest": None, "reason": "插件层目录不存在（本机不是 Mac？）"}
+    old = []
+    for n in _list_md(BYPASS_IN):
+        mt = _stat(os.path.join(BYPASS_IN, n))["mtime"]
+        if mt and now - mt >= older_than_sec:
+            old.append(n)
+    if not old:
+        return {"moved": 0, "dest": None,
+                "reason": "没有超过 %d 分钟的文件" % (older_than_sec // 60)}
+    dest = os.path.join(BYPASS_IN, "archive_" + time.strftime("%m%d-%H%M"))
+    os.makedirs(dest, exist_ok=True)
+    moved = 0
+    for n in old:
+        try:
+            os.replace(os.path.join(BYPASS_IN, n), os.path.join(dest, n))
+            moved += 1
+        except OSError:
+            pass                       # 单个文件挪不动就跳过，不影响其余 ✓
+    return {"moved": moved, "dest": dest, "reason": None}
+
+
 if __name__ == "__main__":
     import json
     print(json.dumps(collect(), ensure_ascii=False, indent=2))
