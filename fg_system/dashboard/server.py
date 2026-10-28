@@ -663,27 +663,6 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         out.update(r)
         return _json_ok(out)
 
-    @app.route("/api/sync_runtime", methods=["POST"])
-    def _sync_runtime():
-        """把**仓库版** `fg-sync-bypass.py` 覆盖到运行时副本（`~/.openclaw/workspace/...`）。
-
-        2026-10-28 实测：两者 md5 不一致 ⇒ 仓库改动不生效 ✗ 且无报错 ✗。
-        安全边界：源是仓库里已 review 的文件、目标是固定路径、无用户输入、覆盖前留备份 ✓。
-        """
-        payload = request.get_json(force=True, silent=True) or {}
-        if str(payload.get("confirm") or "") != "sync_runtime":
-            return Response("需要二次确认：POST {\"confirm\": \"sync_runtime\"}",
-                            status=400, mimetype="text/plain; charset=utf-8")
-        from fg_system.dashboard import sync_health as _sh
-        try:
-            r = _sh.sync_runtime_copy()
-        except Exception as exc:
-            return Response("同步失败：%s: %s" % (type(exc).__name__, exc),
-                            status=500, mimetype="text/plain; charset=utf-8")
-        out = {"ok": bool(r.get("ok"))}
-        out.update(r)
-        return _json_ok(out)
-
     @app.route("/api/deploy", methods=["POST"])
     def _deploy():
         """一键部署：`git fetch origin main` + `git merge --ff-only origin/main`，再重启看板。

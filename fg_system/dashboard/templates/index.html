@@ -272,7 +272,6 @@
     <button id="freshBtn" class="btn-xs" type="button">强制重算整页</button>
     <button id="cleanBtn" class="btn-xs" type="button">清理堆积</button>
     <!-- 只在「运行副本与仓库不一致」时出现 ✓（正常时别占位） -->
-    <button id="syncRtBtn" class="btn-xs btn-danger" type="button" hidden>同步运行副本</button>
     <!-- 队列定时器没装时才出现 ✓（装好后自动隐藏，不占位） -->
     <button id="agentBtn" class="btn-xs btn-danger" type="button" hidden>安装队列定时器</button>
     <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
@@ -1087,17 +1086,16 @@ function loadTasks() {
            " · 近 15 分钟新落 " + (byp.fresh || 0) + " 个）· 回执失败日志 " + failTxt));
       // 运行时副本：飞书插件可能调的是 ~/.openclaw/workspace 那份 ✗ ——
       // 那样改了仓库也「没生效」，且没有任何报错提示 ✗ ⇒ 这里显式说出来 ✓
+      // 2026-10-28：按钮已删（一次性动作改走任务下发：dispatch_task.py --action sync_runtime）
+      // 这里保留状态显示 ✓ —— 不一致时必须看得出来，否则「改了没生效」永远无声 ✗
       var rt = d.runtime_copy || {};
-      var rtBtn = document.getElementById("syncRtBtn");
       if (rt.repo && rt.runtime) {
         rows.push("运行副本（bypass）：" + (rt.same
           ? "与仓库一致 ✓"
-          : "⚠️ 与仓库不一致 —— 仓库改动未生效，点「同步运行副本」"));
+          : "⚠️ 与仓库不一致 —— 仓库改动未生效，下发 sync_runtime 任务修复"));
       } else if (rt.repo && !rt.runtime) {
         rows.push("运行副本（bypass）：不存在（插件直接用仓库版）");
       }
-      // 不一致才把按钮放出来 ✓（正常时它不该占位）
-      if (rtBtn) { rtBtn.hidden = !(rt.repo && rt.runtime && rt.same === false); }
       // 「检查于」是「按钮真的执行了」的唯一凭据 ✓（数据没变时数字完全一样 ✗）
       rows.push("检查于 " + String(d.checked_at || "").slice(11, 19));
       det.textContent = rows.join("\n");
@@ -1216,40 +1214,6 @@ function loadTasks() {
         }).catch(function (e) {
           if (msg) { msg.textContent = "❌ " + e; }
         }).then(function () { cb.disabled = false; });
-      });
-    }
-    // 同步运行副本：只在「与仓库不一致」时可见 ✓
-    var rb = document.getElementById("syncRtBtn");
-    if (rb) {
-      rb.addEventListener("click", function () {
-        var msg = document.getElementById("deployMsg");
-        if (!window.confirm("把仓库版 fg-sync-bypass.py 覆盖到运行时副本？\n" +
-            "（覆盖前会自动留 .bak 备份，可回滚）")) {
-          return;
-        }
-        rb.disabled = true;
-        if (msg) { msg.textContent = "同步运行副本…"; }
-        fetch("/api/sync_runtime", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ confirm: "sync_runtime" })
-        }).then(function (r) {
-          return r.text().then(function (t) {
-            if (!r.ok) { throw new Error(t); }
-            return JSON.parse(t);
-          });
-        }).then(function (d) {
-          if (msg) {
-            msg.textContent = d.ok
-              ? ("✅ 已同步运行副本" +
-                 (d.backup ? "（旧版备份 " + String(d.backup).split("/").pop() + "）" : "") +
-                 (d.same ? " · 校验一致 ✓" : " · ⚠️ 校验不一致，请刷新再看"))
-              : ("❌ " + (d.reason || "同步失败"));
-          }
-          loadSync();
-        }).catch(function (e) {
-          if (msg) { msg.textContent = "❌ " + e; }
-        }).then(function () { rb.disabled = false; });
       });
     }
     // 安装队列定时器（看板跑在 Mac 上，有 launchctl 权限 ✓）
