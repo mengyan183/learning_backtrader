@@ -13,6 +13,8 @@
 import importlib.util
 import os
 
+import pytest
+
 from fg_system import config
 
 _SPEC = os.path.join(config.ROOT, "scripts", "feishu_send.py")
@@ -89,3 +91,21 @@ def test_send_loop_raises_with_resume_hint_on_failure():
     tail = src[idx:]
     assert "--start" in tail, "发送失败时应给出 --start 续发指令"
     assert "raise SystemExit" in tail, "发送失败必须抛错，不得静默继续"
+
+
+def test_send_lock_blocks_concurrent_run(tmp_path, monkeypatch):
+    """**守卫**：两个发送进程不许并发 ✓。
+
+    2026-10-28 实测：并发时后启动的进程会先 `bsk.reap()`（清残留会话）✗
+    ⇒ 把前一个正在用的会话踢掉 ⇒ 前一批**只发出 1 片就中止** ✗
+    （`--limit 2` 连续四次都只发 1 片，日志还全空 ✗）。
+    """
+    monkeypatch.setattr(fs, "TEXT_DIR", str(tmp_path))
+    fd = fs._acquire_lock()
+    try:
+        with pytest.raises(SystemExit):
+            fs._acquire_lock()
+    finally:
+        fs._release_lock(fd)
+    # 释放后必须能再拿到 ✓（否则发完一包就永久卡死 ✗）
+    fs._release_lock(fs._acquire_lock())
