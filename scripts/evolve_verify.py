@@ -10,6 +10,7 @@
 口径纪律（与 evolution-plan.md §6 一致）：
   证伪即成果；数据不足不硬凑结论（宁可 verifying 等数据）。
 """
+import argparse
 import csv
 import datetime as dt
 import os
@@ -308,7 +309,15 @@ def _data_is_stale(max_days=3):
     return gap > max_days, "features.csv 末行 %s（距今 %d 天）" % (last, gap)
 
 
-def main():
+def main(argv=None):
+    ap = argparse.ArgumentParser(
+        description="假说每日复检（H-002 ~ H-009）")
+    ap.add_argument(
+        "--quiet", action="store_true",
+        help="只播**状态变化** ✓：跳过行 / 样本不足 / 未变的 adopted 折叠成一行"
+             "（写表与 memory 日志不受影响 ✓）")
+    args = ap.parse_args(argv)
+
     stale, why = _data_is_stale()
     if stale:
         print("❌ 数据过期，**拒绝回写** ✗：%s" % why)
@@ -317,19 +326,47 @@ def main():
         return 2
 
     done = current_status()
-    results = []
+    skipped, results = [], []
     for c in CHECKS:
         r = c()
         # 已归档/已判伪的**不再出现在日报** ✗ —— 否则会持续传播过时的「未恢复」理由 ✗
         if done.get(r["id"]) in ("falsified", "archived"):
-            print("[%s] 跳过（当前状态 %s，不再自动复检）" % (r["id"], done[r["id"]]))
+            skipped.append((r["id"], done[r["id"]]))
+            if not args.quiet:
+                print("[%s] 跳过（当前状态 %s，不再自动复检）"
+                      % (r["id"], done[r["id"]]))
             continue
         results.append(r)
+
+    unchanged = [r for r in results if done.get(r["id"]) == r["status"]]
     for r in results:
+        # 🔴 2026-10-29：`--quiet` 下**状态没变就不播** ✓ —— 昨天 adopted、今天
+        # 还是 adopted 的那些行，每天重播一遍证据纯属噪音 ✗（用户实测：9 行里
+        # 只有 3 行是当天新结论 ✗）
+        if args.quiet and r in unchanged:
+            continue
         print("[%s] %s：%s" % (r["id"], r["status"], r["evidence"]))
+
+    if args.quiet:
+        for line in _quiet_summary(skipped, unchanged):
+            print(line)
+
     update_hypotheses(results)
     append_memory(results)
     return check_table_structure()
+
+
+def _quiet_summary(skipped, unchanged):
+    """`--quiet` 的折叠行 ✓ —— 三类噪音各压成一行（保持可追溯，但不刷屏）✓。"""
+    out = []
+    if skipped:
+        out.append("[跳过] %d 条已判伪/已归档，不再复检：%s"
+                   % (len(skipped), "、".join(i for i, _ in skipped)))
+    for status, label in (("verifying", "样本不足"), ("adopted", "维持")):
+        ids = [r["id"] for r in unchanged if r["status"] == status]
+        if ids:
+            out.append("[%s] %d 条%s：%s" % (label, len(ids), status, "、".join(ids)))
+    return out
 
 
 if __name__ == "__main__":

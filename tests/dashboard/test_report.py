@@ -191,6 +191,19 @@ def test_index_gran_selector_defaults_to_week(tmp_path):
     assert "cur[1] = v;" in html, "周期值必须是收盘值，不是桶内第一个点 ✗"
 
 
+def test_index_range_selector_defaults_to_3y(tmp_path):
+    """时间窗三档（近1年/近3年/全部）✓，默认**近 3 年** ✓。
+
+    2026-10-29：`fg_index` 从 2019-09 起有效（因子 warmup 结束），四档周期都画
+    全量 ⇒ 7 年挤进 330px，用户问「为什么都从 2019 年 10 月开始」✗。
+    """
+    html = _render(tmp_path)
+    for r in ("1y", "3y", "all"):
+        assert 'data-range="%s"' % r in html, "缺 %s 时间窗 ✗" % r
+    assert 'class="idxrange btn-xs on" data-range="3y"' in html, "默认窗不是近3年 ✗"
+    assert "idxSlice" in html, "时间窗裁剪函数缺失 ✗"
+
+
 def test_inline_json_rounds_floats_and_drops_factor_dates(tmp_path):
     """**守卫**：内联 JSON 必须收敛小数位 + 因子图不带日期 ✓。
 

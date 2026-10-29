@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{{ title }}</title>
 {{ pwa_head }}
-<link rel="stylesheet" href="/static/style.css?v=20261029a"></head><body>
+<link rel="stylesheet" href="/static/style.css?v=20261029b"></head><body>
 <!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
      而**运行时错误在手机上根本看不到** ✗（没有控制台）。
      ⇒ 本段**必须**是页面里**第一个** script 块 ✓ ——
@@ -110,6 +110,13 @@
 <button class="idxwin btn-xs" data-gran="month" type="button">月线</button>
 <button class="idxwin btn-xs" data-gran="year" type="button">年线</button>
 <button class="idxwin btn-xs" data-gran="all" type="button">全部</button>
+</div>
+<!-- 2026-10-29：时间窗 ✓ —— 数据本身从 2019-09 起（fg_index warmup 结束），
+     默认只画近 3 年，市面软件同款「先看近端、要看久远再切全部」✓ -->
+<div class="idx-range">
+<button class="idxrange btn-xs" data-range="1y" type="button">近1年</button>
+<button class="idxrange btn-xs on" data-range="3y" type="button">近3年</button>
+<button class="idxrange btn-xs" data-range="all" type="button">全部</button>
 </div>
 <div id="chartIndex" class="echart-main"></div>
 </div>
@@ -534,7 +541,21 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
 
   // 2026-10-29：周/月/年 = 该周期的**收盘值**（标签取周期末交易日）✓，仍画折线 ✓。
   // （蜡烛图方案已被否 ✗；更早那版「取桶内第一个点」也不是收盘价 ✗）
-  var IDX_GRAN = "week", idxChart = null;
+  var IDX_GRAN = "week", IDX_RANGE = "3y", idxChart = null;
+  // 时间窗：只留最近 N 年 ✓ —— 序列从 2019-09 起（fg_index warmup 结束），
+  // 默认画全量等于把 7 年挤进 330px ✗
+  function idxSlice(pts) {
+    if (IDX_RANGE === "all" || pts.length < 2) { return pts; }
+    var years = IDX_RANGE === "1y" ? 1 : 3;
+    var last = Date.parse(pts[pts.length - 1][0] + "T00:00:00Z");
+    var cutoff = last - years * 365.25 * 864e5;
+    var out = [];
+    for (var i = 0; i < pts.length; i++) {
+      if (Date.parse(pts[i][0] + "T00:00:00Z") >= cutoff) { out.push(pts[i]); }
+    }
+    // 年线 + 近1年 可能只剩 1 根 ⇒ 兜底画全部，别给空图 ✗
+    return out.length >= 2 ? out : pts;
+  }
   function idxPeriod(gran) {
     if (gran === "all") { return INDEX; }
     function key(d) {
@@ -558,7 +579,7 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
     return out;
   }
   function indexOption(gran) {
-    var pts = idxPeriod(gran);
+    var pts = idxSlice(idxPeriod(gran));
     return {
       backgroundColor: "transparent",
       grid: { left: 6, right: 12, top: 30, bottom: 6, containLabel: true },
@@ -591,18 +612,27 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
     idxChart = echarts.init(el);
     window.__charts.push(idxChart);
     idxChart.setOption(indexOption(IDX_GRAN));
-    var bs = document.querySelectorAll(".idxwin");
-    for (var b = 0; b < bs.length; b++) {
-      (function (btn) {
-        btn.addEventListener("click", function () {
-          IDX_GRAN = btn.getAttribute("data-gran") || "week";
-          for (var j = 0; j < bs.length; j++) {
-            bs[j].className = "idxwin btn-xs" + (bs[j] === btn ? " on" : "");
-          }
-          idxChart.setOption(indexOption(IDX_GRAN));
-        });
-      })(bs[b]);
+    // 两组按钮（周期 / 时间窗）走同一套绑定 ✓ —— 任一变化都整份重画 ✓
+    function bindGroup(sel, cls, attr, setter) {
+      var bs = document.querySelectorAll(sel);
+      for (var b = 0; b < bs.length; b++) {
+        (function (btn) {
+          btn.addEventListener("click", function () {
+            setter(btn.getAttribute(attr));
+            for (var j = 0; j < bs.length; j++) {
+              bs[j].className = cls + (bs[j] === btn ? " on" : "");
+            }
+            idxChart.setOption(indexOption(IDX_GRAN));
+          });
+        })(bs[b]);
+      }
     }
+    bindGroup(".idxwin", "idxwin btn-xs", "data-gran", function (v) {
+      IDX_GRAN = v || "week";
+    });
+    bindGroup(".idxrange", "idxrange btn-xs", "data-range", function (v) {
+      IDX_RANGE = v || "3y";
+    });
   }
 
   var FKEYS = ["vix", "term", "price", "breadth", "fed"];
