@@ -1,0 +1,13 @@
+{
+  "id": "t-20261029-1842-net_probe",
+  "action": "net_probe",
+  "params": {
+    "method": "POST",
+    "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+    "auth": "1",
+    "body": "{}",
+    "secs": "30"
+  },
+  "status": "pending",
+  "created_at": "2026-10-29T18:42:33"
+}
