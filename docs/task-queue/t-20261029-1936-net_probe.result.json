@@ -1,0 +1,14 @@
+{
+  "id": "t-20261029-1936-net_probe",
+  "action": "net_probe",
+  "params": {
+    "chat": "1",
+    "model": "mistralai/mistral-large-2-instruct"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"result\": {\"proxy\": \"http://127.0.0.1:7890\", \"url\": \"https://integrate.api.nvidia.com/v1/models\", \"proxy_port\": {\"ok\": true, \"ms\": 2}, \"via_proxy\": {\"ok\": true, \"status\": 200, \"method\": \"GET\", \"ms\": 423}, \"chat\": {\"ok\": false, \"ms\": 563, \"reason\": \"RuntimeError: 调用失败(1次): HTTP Error 404: Not Found\"}}}",
+  "started_at": "2026-10-29T19:52:33",
+  "finished_at": "2026-10-29T19:52:34",
+  "duration_s": 1.02
+}
