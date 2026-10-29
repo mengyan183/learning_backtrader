@@ -124,11 +124,44 @@ def _act_clean_sync_partial(params):
     return {"ok": True, "removed": removed, "count": len(removed)}
 
 
+#: 允许 tail 的日志 —— **固定白名单** ✓（不接受任意路径 ✗，否则等于远程读文件 ✗）
+TAIL_LOGS = {
+    "daily": "/tmp/fg_daily.log",
+    "task_queue": "/tmp/fg_task_queue.log",
+}
+
+
+def _act_daily_log_tail(params):
+    """回传某个运行日志的尾巴 ✓。
+
+    动机（2026-10-29）：简报连续两天没发，只能靠 `/tmp/fg_daily.log` 定位 ✗ ——
+    而「让用户去 Mac 上敲命令」违反「Mac 侧操作一律走队列」✗。
+    `which` 走白名单，`lines` 上限 200 ✓。
+    """
+    which = str(params.get("which") or "daily")
+    path = TAIL_LOGS.get(which)
+    if not path:
+        return {"ok": False,
+                "reason": "未知日志 %r（可选：%s）" % (which, ", ".join(sorted(TAIL_LOGS)))}
+    try:
+        n = max(1, min(int(params.get("lines") or 60), 200))
+    except (TypeError, ValueError):
+        n = 60
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            tail = fh.readlines()[-n:]
+    except OSError as exc:
+        return {"ok": False, "reason": "读不到 %s：%s" % (path, exc)}
+    return {"ok": True, "which": which, "path": path,
+            "lines": len(tail), "tail": "".join(tail)}
+
+
 #: 🔴 唯一可执行清单。键是**任务名**，值是固定函数 —— 不接受任何命令字符串 ✓
 ACTIONS = {
     "cleanup_backlog": _act_cleanup_backlog,
     "sync_runtime": _act_sync_runtime,
     "clean_sync_partial": _act_clean_sync_partial,
+    "daily_log_tail": _act_daily_log_tail,
 }
 
 

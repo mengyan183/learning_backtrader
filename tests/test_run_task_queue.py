@@ -154,6 +154,23 @@ def test_prune_queue_keeps_recent_and_never_drops_pending(tmp_path, monkeypatch)
     assert len(dropped) == 8, "13 - 9 = 4 个任务 × 2 文件 = 8 ✗（实际 %d）" % len(dropped)
 
 
+def test_daily_log_tail_reads_only_whitelisted(tmp_path, monkeypatch):
+    """`daily_log_tail` 只读**白名单**日志 ✓ —— 任意路径等于远程读文件 ✗。"""
+    log = tmp_path / "d.log"
+    log.write_text("\n".join("行%d" % i for i in range(100)), encoding="utf-8")
+    monkeypatch.setattr(q, "TAIL_LOGS", {"daily": str(log)})
+    r = q._act_daily_log_tail({"which": "daily", "lines": 5})
+    assert r["ok"] is True and r["lines"] == 5
+    assert r["tail"].strip().endswith("行99"), "tail 必须取**最后**几行 ✗"
+    # 白名单外的名字一律拒绝（不能借它读任意文件）
+    assert q._act_daily_log_tail({"which": "/etc/passwd"})["ok"] is False
+    # lines 上限 200（文件只有 100 行 ⇒ 全给）
+    assert q._act_daily_log_tail({"which": "daily", "lines": 9999})["lines"] == 100
+    # 文件不存在 ⇒ 明确失败
+    monkeypatch.setattr(q, "TAIL_LOGS", {"daily": str(tmp_path / "nope.log")})
+    assert q._act_daily_log_tail({"which": "daily"})["ok"] is False
+
+
 def test_git_commit_warns_when_push_fails(monkeypatch, capsys):
     """推送失败必须**留痕** ✓。
 
