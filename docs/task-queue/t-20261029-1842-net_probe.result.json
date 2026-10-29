@@ -1,0 +1,17 @@
+{
+  "id": "t-20261029-1842-net_probe",
+  "action": "net_probe",
+  "params": {
+    "method": "POST",
+    "url": "https://integrate.api.nvidia.com/v1/chat/completions",
+    "auth": "1",
+    "body": "{}",
+    "secs": "30"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"result\": {\"proxy\": \"http://127.0.0.1:7890\", \"url\": \"https://integrate.api.nvidia.com/v1/chat/completions\", \"proxy_port\": {\"ok\": true, \"ms\": 3}, \"via_proxy\": {\"ok\": false, \"status\": 400, \"method\": \"POST\", \"ms\": 541, \"reason\": \"HTTP 400\"}}}",
+  "started_at": "2026-10-29T18:43:32",
+  "finished_at": "2026-10-29T18:43:33",
+  "duration_s": 0.62
+}
