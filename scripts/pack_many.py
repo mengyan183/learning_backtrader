@@ -232,24 +232,27 @@ def _patch_payload(srcs, base_ref):
             reasons.append("%s：拿不到基准（%s 不存在 / 非 git 仓库 / 无代理）"
                            % (rel, base_ref))
             continue
-        # 🔴 **按基准文件的行尾统一两侧** ✓（2026-10-21）：
-        # `cur` 是 `open(..., encoding="utf-8")` 读的 ⇒ Python 通用换行 ⇒ **恒为 LF** ✗；
-        # 若基准是 CRLF ✗ ⇒ 不统一就会「每行都算改动」✗（`+368/-305` ✗）；
-        # 若强行把基准转 LF ✗ ⇒ diff 上下文是 LF ✗ ⇒ 在 CRLF 文件上 apply 失败 ✗。
-        # ⇒ 以**基准**为准：基准 CRLF ⇒ 把 cur 也转 CRLF ✓；基准 LF ⇒ 把 base 转 LF ✓。
+        # 🔴 2026-10-29（第二次修正，教训 12 的完整版）：
+        # **基准 blob 是 CRLF ⇒ 这个文件根本不能走 patch** ✗，直接判 reasons ✓。
+        #
+        # 为什么（两条独立的死路，都实测过）：
+        #   ① diff 上下文行尾对不上 ✗ —— 接收方 Mac 的 worktree **恒为 LF**
+        #      （`.gitattributes`：`*.py/*.sh/*.md` 显式 `eol=lf`；其余 `text=auto`
+        #       且 Mac 无 autocrlf ⇒ 也是 LF），而按基准 blob（CRLF）生成的
+        #       diff 上下文是 CRLF ⇒ `git apply` 失败 ✗
+        #      （2026-10-29 `sync_1028bd` 的 `fg_system/factors/base.py` 实测 ✗）
+        #   ② 就算强行把两侧都转 LF，`--3way` 仍会因「index blob 是 CRLF、
+        #      worktree 是 LF」报 `does not match index` ✗（教训 12 上半段 ✓）
+        #
+        # ⇒ 唯一稳的路：**该文件单独打整文件包**（`pack_many <pkg> <file>`）✓。
+        #   这里判 reasons 让调用方整体回落整文件 ✓，并**明确打印**原因 ✗（别静默 ✗）。
         if "\r\n" in base:
-            base_txt = base
-            cur_txt = cur.replace("\r\n", "\n").replace("\n", "\r\n")
-            # 🔴 2026-10-29：**纯行尾变更**（内容逐字相同、只有 EOL 不同）✗ ——
-            # 上面那步把两边都归一成 CRLF ⇒ diff 变空 ⇒ 文件被**静默跳过** ✗。
-            # 实测：8 个 CRLF blob 归一的包，13 个文件只带出 5 个文件块 ✗。
-            # ⇒ 此时改用**原始字节**做 diff（要改的就是行尾）✓，
-            #   新 blob SHA 也随之取 `cur`（LF）✓ —— 两处口径一致 ✓。
-            if cur_txt == base_txt and cur != base:
-                base_txt, cur_txt = base, cur
-        else:
-            base_txt = base.replace("\r\n", "\n")
-            cur_txt = cur
+            reasons.append(
+                "%s：**blob 是 CRLF** ⇒ patch 必失败（Mac 工作区是 LF）"
+                "，请单独打整文件包 ✓" % rel)
+            continue
+        base_txt = base.replace("\r\n", "\n")
+        cur_txt = cur
         diff = "".join(difflib.unified_diff(
             base_txt.splitlines(True), cur_txt.splitlines(True),
             fromfile="a/" + rel, tofile="b/" + rel))

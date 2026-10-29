@@ -22,6 +22,7 @@ import pandas as pd
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
+from fg_system.factors import base as fbase  # noqa: E402
 from fg_system.factors import protocol as fproto  # noqa: E402
 from fg_system.factors import credit_spread as cs  # noqa: E402
 
@@ -41,17 +42,36 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", metavar="PATH", help="把完整报告写到 JSON")
     ap.add_argument("--lag-days", type=int, default=0, help="额外保守滞后（默认0）")
+    ap.add_argument("--orthogonalize", metavar="COL", default=None,
+                    help="先剔除 features.csv 该列（如 fed）再评测 ✓ 滚动 β、shift(1) 无前视")
     args = ap.parse_args(argv)
 
     spy = _spy_close()
     df = cs.load(str(REPO / AVAIL_CSV))
     z = cs.baa10y_zscore(df, spy.index, lag_days=args.lag_days)
 
+    feat_path = REPO / "Data" / "features.csv"
+    feat = (pd.read_csv(feat_path, parse_dates=["date"]).set_index("date")
+            if feat_path.exists() else None)
+
+    fid = "C1_BAA10Y"
+    if args.orthogonalize:
+        col = args.orthogonalize
+        if feat is None or col not in feat.columns:
+            print("✗ features.csv 里没有列 %r ⇒ 无法正交化" % col)
+            return 2
+        raw = z
+        z = fbase.orthogonalize(raw, feat[col])
+        fid += "|orth:" + col
+        print("# 正交化：剔除 %s（滚动 β 用 t-1 窗口，无前视 ✓）" % col)
+        print("  残差非空 %d / 原序列非空 %d\n"
+              % (int(z.notna().sum()), int(raw.notna().sum())))
+
     rep = fproto.screen_report(
-        z, spy, factor_id="C1_BAA10Y", target="SPY", direction="逆向",
+        z, spy, factor_id=fid, target="SPY", direction="逆向",
         horizons=HORIZONS, window=WINDOW, n_buckets=5, fee=fproto.DEFAULT_FEE)
 
-    print("# C1_BAA10Y 信用利差因子评测（MT-76 ④）")
+    print("# C1_BAA10Y 信用利差因子评测（MT-76 ④）" + ("  [正交化]" if args.orthogonalize else ""))
     print(f"样本：{rep['sample_start']} → {rep['sample_end']}，n_days={rep['n_days']}")
     print(f"判定：{rep['verdict']['status']} —— {rep['verdict']['detail']}")
     print()
@@ -69,9 +89,8 @@ def main(argv=None):
             f"{lay.get('top_minus_bottom', float('nan'))*100:+.2f}% |")
 
     # 与现有情绪/宏观因子的相关性（正交性取证，Spearman，z 非空区间）
-    feat_path = REPO / "Data" / "features.csv"
-    if feat_path.exists():
-        feat = pd.read_csv(feat_path, parse_dates=["date"]).set_index("date")
+    # 正交化后这里应该看到目标列的相关系数**掉到 0 附近** ✓（正交化是否生效的活证据）
+    if feat is not None:
         jz = z.dropna()
         cmp = feat.reindex(jz.index)
         print("\n## 与现有因子 Spearman 相关（正交性取证）")

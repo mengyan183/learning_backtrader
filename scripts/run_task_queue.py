@@ -225,6 +225,31 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_eval_baa10y(params):
+    """在 Mac 上跑 **C1 信用利差评测** ✓（`fred_baa10y_avail.csv` 只在 Mac 本地 ✗）。
+
+    `orth` 非空 ⇒ 先剔除该列（如 `fed`）再评测 ✓（用户裁定：先正交化再进裁判 ✓）；
+    `json` 非空 ⇒ 把完整报告写到该路径（相对路径按仓库根解析 ✓）。
+    """
+    cmd = [sys.executable, os.path.join(ROOT, "scripts", "eval_baa10y.py")]
+    orth = str(params.get("orth") or "").strip()
+    if orth:
+        cmd += ["--orthogonalize", orth]
+    out = str(params.get("json") or "").strip()
+    if out:
+        cmd += ["--json", out if os.path.isabs(out) else os.path.join(ROOT, out)]
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=900)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 900 秒未完成"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "orth": orth or None,
+            "stdout": (r.stdout or "")[-2500:], "stderr": (r.stderr or "")[-500:]}
+
+
 def _act_run_invest_research(params):
     """跑一次投研简报 ✓ —— 默认 `--dry-run`（不推飞书）✓。
 
@@ -297,6 +322,7 @@ ACTIONS = {
     "futu_preflight": _act_futu_preflight,
     "run_invest_research": _act_run_invest_research,
     "install_daily_plist": _act_install_daily_plist,
+    "eval_baa10y": _act_eval_baa10y,
 }
 
 

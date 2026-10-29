@@ -160,6 +160,12 @@ def test_futu_preflight_is_registered():
     assert callable(q.ACTIONS["futu_preflight"])
 
 
+def test_eval_baa10y_is_registered():
+    """`eval_baa10y` 必须在白名单里 ✓（信用利差数据只在 Mac 本地 ✗）。"""
+    assert "eval_baa10y" in q.ACTIONS
+    assert callable(q.ACTIONS["eval_baa10y"])
+
+
 def test_run_invest_research_is_registered():
     """`run_invest_research` 必须在白名单里 ✓（今天就能验证简报链路 ✗ 别干等明天）。"""
     assert "run_invest_research" in q.ACTIONS

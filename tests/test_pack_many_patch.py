@@ -195,48 +195,39 @@ def test_patch_has_index_line_for_real_repo_file(monkeypatch, tmp_path):
         open(path, "wb").write(original)
 
 
-def test_pure_eol_change_is_not_dropped(monkeypatch, repo_file):
-    """🔴 **纯行尾变更不能被静默跳过** ✗（2026-10-29）。
+def test_crlf_blob_is_refused_not_silently_dropped(monkeypatch, repo_file):
+    """🔴 **基准 blob 是 CRLF ⇒ 必须明确拒绝走 patch** ✓（2026-10-29 第二次修正）。
 
-    基准是 CRLF、工作区改成 LF、内容逐字相同 ⇒ 按基准行尾归一后 diff 为空 ✗
-    ⇒ 文件被静默丢弃 ✗（实测：13 个文件的归一包只带出 **5** 个文件块 ✗）。
-    这种包最坏：双方都以为发了 ✓，Mac 上什么都没变 ✗。
+    两条死路都实测过：
+    ① diff 上下文是 CRLF，而 Mac 的 worktree 恒为 LF（`.gitattributes` 的
+       `*.py/*.sh/*.md eol=lf` + 无 autocrlf）⇒ `git apply` 失败 ✗
+       （`sync_1028bd` 的 `fg_system/factors/base.py` ✗）；
+    ② 就算两侧都转 LF，`--3way` 也会因「index blob CRLF / worktree LF」报
+       `does not match index` ✗（教训 12）。
+    ⇒ 只能单独打整文件包 ✓。这里锁住「**明确拒绝**」而不是「生成一个注定失败的 diff」✗。
     """
-    rel = repo_file("dist/_tmp_packmany_eol.py", "a = 1\nb = 2\n")
-    monkeypatch.setattr(pm, "_base_text", lambda r, ref: "a = 1\r\nb = 2\r\n")
-    monkeypatch.setattr(pm, "_in_base", lambda r, ref: True)
-    monkeypatch.setattr(pm, "_git_blob_sha", lambda ref, r: "aaaaaaa")
-    payload, reasons = pm._patch_payload([rel], "origin/main")
-    assert reasons == []
-    diff = payload.decode("utf-8")
-    assert "diff --git" in diff, "纯行尾变更被静默跳过了 ✗（包会少文件）"
-    assert "-a = 1\r\n" in diff, "diff 没体现「基准是 CRLF」✗"
-    assert "+a = 1\n" in diff, "diff 没体现「新文件是 LF」✗"
-
-
-def test_patch_index_new_sha_matches_crlf_payload(monkeypatch, repo_file):
-    """🔴 回归（2026-10-28）：基准是 **CRLF** 时，`index` 的新 blob SHA 必须按
-    **写进 diff 的那份字节（CRLF）** 算 ✓。
-
-    原来按工作区的 LF 内容算 ✗ ⇒ 与 patch 实际产物不一致 ✗
-    ⇒ Mac 端 `git apply --3way` 判「patch 不适用」✗
-    （`sync_1028v` 的 `tests/test_feishu_send.py` 实测被拒 ✗）。
-    """
-    import subprocess
     rel = repo_file("dist/_tmp_packmany_crlf.py", "a = 1\nb = 3\n")
     monkeypatch.setattr(pm, "_base_text", lambda r, ref: "a = 1\r\nb = 2\r\n")
     monkeypatch.setattr(pm, "_in_base", lambda r, ref: True)
     monkeypatch.setattr(pm, "_git_blob_sha", lambda ref, r: "aaaaaaa")
+
     payload, reasons = pm._patch_payload([rel], "origin/main")
-    assert reasons == []
-    head = [l for l in payload.split(b"\n") if l.startswith(b"index ")][0]
-    new_sha = head.split(b"..")[1].split(b" ")[0].decode()
-    # patch 实际产物 = 基准行尾（CRLF）+ 工作区内容
-    want = subprocess.run(["git", "-C", pm.REPO, "hash-object", "--stdin"],
-                          input=b"a = 1\r\nb = 3\r\n",
-                          capture_output=True).stdout.decode().strip()[:7]
-    assert new_sha == want, \
-        "index 的新 blob SHA 必须等于 patch 应用后的产物 ✗（否则 Mac 端 --3way 必失败）"
+
+    assert payload is None, "CRLF 基准仍生成了 patch ⇒ Mac 端必失败 ✗"
+    assert len(reasons) == 1 and "CRLF" in reasons[0], \
+        "拒绝原因必须点明 CRLF ✓（否则下个会话还会重蹈）"
+
+
+def test_crlf_base_pure_eol_change_also_refused(monkeypatch, repo_file):
+    """纯行尾变更（内容相同、只有 EOL 不同）同样拒绝 ✓ —— 与上面同一条死路 ✗。"""
+    rel = repo_file("dist/_tmp_packmany_eol.py", "a = 1\nb = 2\n")
+    monkeypatch.setattr(pm, "_base_text", lambda r, ref: "a = 1\r\nb = 2\r\n")
+    monkeypatch.setattr(pm, "_in_base", lambda r, ref: True)
+    monkeypatch.setattr(pm, "_git_blob_sha", lambda ref, r: "aaaaaaa")
+
+    payload, reasons = pm._patch_payload([rel], "origin/main")
+
+    assert payload is None and "CRLF" in reasons[0]
 
 
 # ---------------------------------------------------------------- 3) 基准不存在 → 回落
@@ -349,40 +340,31 @@ def test_patch_warns_on_deleted_lines(monkeypatch, capsys, repo_file):
     assert "本地可能旧于 origin" in out
 
 # ------------------------------------------------ 5) CRLF 文件（2026-10-21 修）
-def test_patch_crlf_file_diff_is_small_and_crlf(tmp_path, monkeypatch):
-    """基准是 **CRLF** ⇒ diff 必须（a）**只含真实改动** ✓、（b）上下文是 **CRLF** ✓。
+def test_patch_crlf_base_refused_via_payload(tmp_path, monkeypatch):
+    """基准 **CRLF** ⇒ 拒绝（**不是**「用 CRLF 上下文生成 diff」✗）。
 
-    2026-10-21 实测 ✗：`scripts/feishu_send.py` 只加 63 行，却出现两种错法 ——
-    ① 两侧行尾不同 ⇒ `+368/-305`（整文件 ✗）；
-    ② 强行把基准转 LF ⇒ diff 上下文是 LF ✗ ⇒ Mac 侧 `git apply` **失败** ✗
-       （实际报「patch 应用失败 → scripts/feishu_send.py」✗）。
-    ⇒ 正解：**以基准行尾为准**统一两侧 ✓。
+    ⚠️ 2026-10-29 口径反转：2026-10-21 曾认定「以基准行尾为准统一两侧」是正解 ✓，
+    但那是基于「Mac 侧文件也是 CRLF」的假设 ✗ —— 实际 `.gitattributes` 把
+    `*.py/*.sh/*.md` 钉成 `eol=lf`，Mac 的 worktree **恒为 LF** ✗
+    ⇒ CRLF 上下文的 diff 在 Mac 上必然失败 ✗（`sync_1028bd` 的 base.py 实测 ✗）。
+    ⇒ 现在一律拒绝，改走整文件包 ✓。
     """
     rel = "scripts/_tmp_crlf_probe.py"
     d = tmp_path / "scripts"
     d.mkdir()
-    # 工作区文件：LF（等价于 `open(..., encoding="utf-8")` 通用换行的结果 ✓）
     (d / "_tmp_crlf_probe.py").write_bytes(b"line1\nline2\nline2b\nline3\n")
 
     monkeypatch.setattr(pm, "REPO", str(tmp_path))
     monkeypatch.setattr(pm, "_base_text",
-                        lambda r, ref: "line1\r\nline2\r\nline3\r\n")   # 基准：CRLF
+                        lambda r, ref: "line1\r\nline2\r\nline3\r\n")
     monkeypatch.setattr(pm, "_in_base", lambda r, ref: True)
     monkeypatch.setattr(pm, "_git_blob_sha", lambda ref, r: "aaaaaaa")
     monkeypatch.setattr(pm, "_git_hash_blob", lambda data: "bbbbbbb")
 
     payload, reasons = pm._patch_payload([rel], "origin/main")
-    assert reasons == []
-    diff = payload.decode("utf-8")
-    adds = sum(1 for l in diff.splitlines()
-               if l.startswith("+") and not l.startswith("+++"))
-    dels = sum(1 for l in diff.splitlines()
-               if l.startswith("-") and not l.startswith("---"))
-    # 只插了 1 行 ⇒ +1/-0 ✓（若两侧行尾不一致会是 +4/-3 = 整文件 ✗）
-    assert adds + dels <= 2, "diff 应只含真实改动，实际 +%d/-%d" % (adds, dels)
-    assert adds >= 1
-    # 上下文必须带 CRLF ✓（否则在 CRLF 文件上 apply 失败 ✗）
-    assert "\r\n" in diff
+
+    assert payload is None, "CRLF 基准不该再生成 diff ✗（Mac 上必失败）"
+    assert reasons and "CRLF" in reasons[0]
 
 # --------------------------------- 6) 无差异文件必须告警（2026-10-21 ✗）
 def test_patch_warns_on_unchanged_file(monkeypatch, tmp_path, repo_file, capsys):
