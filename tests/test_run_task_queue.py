@@ -160,6 +160,12 @@ def test_futu_preflight_is_registered():
     assert callable(q.ACTIONS["futu_preflight"])
 
 
+def test_run_pipeline_is_registered():
+    """`run_pipeline` 必须在白名单里 ✓（features 尾行缺因子时要能重算）。"""
+    assert "run_pipeline" in q.ACTIONS
+    assert callable(q.ACTIONS["run_pipeline"])
+
+
 def test_factor_diag_is_registered():
     """`factor_diag` 必须在白名单里 ✓ —— VIX/TERM 为什么缺只能上 Mac 查 ✗。"""
     assert "factor_diag" in q.ACTIONS

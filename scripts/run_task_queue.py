@@ -225,6 +225,33 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_run_pipeline(params):
+    """重算 `features.csv`（与每日链**同一条**调用序列 ✓）。
+
+    动机（2026-10-29 实测）：`features.csv` 尾行的 `vix`/`term` 是空 ✗，
+    而 `raw/vix.csv`、`raw/prices.csv` 都已到新日期 ✓ ⇒ 说明 pipeline 当时
+    **在 vix 数据补齐之前**就跑了，尾行因子只能留空，之后没人重算 ✗。
+
+    🔴 会**覆写** `features.csv` / `portfolio_features.csv` ✗ —— 所以只跑
+    与每日链完全相同的三步（不多做、不少做），避免两条口径打架 ✓。
+    """
+    code = ("from fg_system import pipeline;"
+            "pipeline.run(write=True);"
+            "us=pipeline.run_equity_v2();"
+            "cr=pipeline.run_crypto(write=True);"
+            "pipeline.run_portfolio(us, cr, write=True)")
+    try:
+        r = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
+                           capture_output=True, text=True, timeout=1800)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 1800 秒未完成"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": (r.stdout or "")[-1200:],
+            "stderr": (r.stderr or "")[-500:]}
+
+
 def _act_factor_diag(params):
     """查六因子为什么缺 ✓ —— 只读，报各数据源的尾行日期与近 30 行非空数。
 
@@ -483,6 +510,7 @@ ACTIONS = {
     "eval_baa10y": _act_eval_baa10y,
     "net_probe": _act_net_probe,
     "factor_diag": _act_factor_diag,
+    "run_pipeline": _act_run_pipeline,
 }
 
 
