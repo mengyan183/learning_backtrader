@@ -94,6 +94,26 @@ def test_health_is_one_line_when_everything_ok(tmp_path, monkeypatch):
     assert txt == "全部正常 ✓（富途 OpenD / AI 三阶段 / 六因子）", txt
 
 
+def test_health_treats_judge_error_text_as_missing(monkeypatch):
+    """裁判返回**失败文案**时也必须算「缺裁判」✓。
+
+    2026-10-29 实测漏报 ✗：简报正文写着「裁判调用失败（NIM）…」，
+    而健康块只报「缺 情绪、归因」✗ —— 因为 `stage_judge` 失败时返回的是
+    **字符串**（保留原因给用户看），健康块把非空字符串当成了「可用」✗。
+    """
+    ir = _load("invest_research", "scripts/invest_research.py")
+    monkeypatch.setitem(sys.modules, "futu_health",
+                        type("X", (), {"read_status": staticmethod(lambda: None)}))
+    monkeypatch.setattr(ir, "_missing_factor_count", lambda: 0)
+
+    txt = ir._data_health_block(
+        {}, "有情绪", "有归因",
+        "裁判调用失败（NIM）：调用失败(1次): The read operation timed out，本次以归因结论为准。")
+
+    assert "缺 裁判" in txt, txt
+    assert "缺 情绪" not in txt, "情绪明明有，别误报 ✗"
+
+
 def test_health_lists_missing_stages(monkeypatch):
     """AI 阶段缺失必须**在顶部点名** ✓（2026-10-29 实测：NIM 超时那行却只写「富途正常」✗）。"""
     ir = _load("invest_research", "scripts/invest_research.py")

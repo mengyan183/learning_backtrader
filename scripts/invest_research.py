@@ -851,6 +851,17 @@ def _futu_health_block():
     return _data_health_block({})
 
 
+#: 裁判失败时 `stage_judge` 返回的是**带原因的文案**（保留原因给用户看 ✓），
+#: 但健康块不能把这种文案当成「裁判可用」✗（2026-10-29 实测：简报里明明写着
+#: 「裁判调用失败」，健康块却只报「缺 情绪、归因」✗）
+_JUDGE_FAIL_PREFIXES = ("裁判调用失败", "（裁判未按三行格式")
+
+
+def _judge_ok(judge):
+    """裁判是否真的产出了三行裁决 ✓（失败文案不算 ✗）。"""
+    return bool(judge) and not str(judge).startswith(_JUDGE_FAIL_PREFIXES)
+
+
 def _missing_factor_count():
     """六因子里有几个算不出来 ✓（读不到就返回 0，别让健康块自己崩 ✗）。"""
     try:
@@ -886,8 +897,9 @@ def _data_health_block(snap, sentiment=None, attribution=None, judge=None):
             lines.append("⚠️ 富途 OpenD：**不可用** —— %s（%s 检查；"
                          "持仓/成交可能停留在上一交易日 ✗ 本简报已按现有数据生成 ✓）"
                          % (st.get("reason") or "未知原因", at))
-    miss = [n for n, v in (("情绪", sentiment), ("归因", attribution),
-                           ("裁判", judge)) if not v]
+    miss = [n for n, ok in (("情绪", bool(sentiment)),
+                            ("归因", bool(attribution)),
+                            ("裁判", _judge_ok(judge))) if not ok]
     if miss:
         lines.append("AI 三阶段：**缺 %s** ✗（对应小节为占位）" % "、".join(miss))
     n_miss = _missing_factor_count()
