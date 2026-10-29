@@ -1,0 +1,11 @@
+{
+  "id": "t-20261029-1518-run_invest_research",
+  "action": "run_invest_research",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"reason\": \"超过 600 秒未完成\"}",
+  "started_at": "2026-10-29T15:20:30",
+  "finished_at": "2026-10-29T15:30:30",
+  "duration_s": 600.01
+}
