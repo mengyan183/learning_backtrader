@@ -1,0 +1,10 @@
+{
+  "id": "t-20261029-194352-daily_log_tail",
+  "action": "daily_log_tail",
+  "params": {
+    "which": "task_queue",
+    "lines": "50"
+  },
+  "status": "pending",
+  "created_at": "2026-10-29T19:43:52"
+}
