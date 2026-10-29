@@ -28,6 +28,65 @@ def _load():
     return mod
 
 
+def test_stages_run_concurrently(monkeypatch):
+    """三个**互不依赖**的阶段必须并发 ✓。
+
+    2026-10-29 实测：串行跑一次简报 **478 秒** ✗ —— 新闻 / Hermes / NIM 是三个
+    2~3 分钟的 LLM 调用，排队等 ✗。并发后只等最慢那个 ✓。
+
+    ⚠️ `stage_judge` **不在**并发之列 ✗ —— 它的入参就是 sentiment 与 attribution
+    的产出，必须等它们回来 ✓。
+    """
+    import threading
+    import time
+
+    m = _load()
+    peak = {"now": 0, "max": 0}
+    lock = threading.Lock()
+
+    def slow(tag):
+        with lock:
+            peak["now"] += 1
+            peak["max"] = max(peak["max"], peak["now"])
+        time.sleep(0.25)
+        with lock:
+            peak["now"] -= 1
+        return tag
+
+    monkeypatch.setattr(m, "fetch_news", lambda snap: slow("news"))
+    monkeypatch.setattr(m, "_read_hermes_key", lambda: "k")
+    monkeypatch.setattr(m, "_read_nim_key", lambda: "k")
+    monkeypatch.setattr(m, "stage_sentiment", lambda k, snap: slow("sent"))
+    monkeypatch.setattr(m, "stage_attribution",
+                        lambda k, snap, kb=None: slow("attr"))
+
+    t0 = time.time()
+    news, sent, attr = m._run_stages({"date": "2026-10-29"})
+    took = time.time() - t0
+
+    assert (news, sent, attr) == ("news", "sent", "attr")
+    assert peak["max"] == 3, "三个阶段没有真正并发（峰值 %d）✗" % peak["max"]
+    assert took < 0.6, "看起来还是串行（%.2fs）✗" % took
+
+
+def test_one_stage_failure_does_not_kill_others(monkeypatch):
+    """一个阶段挂了只影响它自己 ✓ —— 与串行版的降级语义一致 ✓。"""
+    m = _load()
+
+    def boom(*a, **k):
+        raise RuntimeError("hermes down")
+
+    monkeypatch.setattr(m, "fetch_news", lambda snap: "news")
+    monkeypatch.setattr(m, "_read_hermes_key", lambda: "k")
+    monkeypatch.setattr(m, "_read_nim_key", lambda: "k")
+    monkeypatch.setattr(m, "stage_sentiment", boom)
+    monkeypatch.setattr(m, "stage_attribution", lambda *a, **k: "attr")
+
+    news, sent, attr = m._run_stages({"date": "2026-10-29"})
+    assert news == "news" and attr == "attr", "一个阶段挂了连累了别的 ✗"
+    assert sent is None, "挂掉的阶段应为 None（下游写「跳过：X 不可用」）✗"
+
+
 def test_brief_is_pushed_even_when_a_stage_fails(monkeypatch, tmp_path):
     """**守卫**：任一 AI 阶段缺失也必须推送 ✓（用户要的是「每天收到」✗）。"""
     m = _load()

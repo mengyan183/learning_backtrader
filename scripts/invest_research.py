@@ -15,6 +15,7 @@ BTC 持仓现价回退源：OKX REST(走 7890 代理)；FG_STATIC_ONLY=1 时跳�
 import argparse
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor
 import subprocess
 import sys
 import urllib.request
@@ -1110,6 +1111,39 @@ def _send_feishu(msg_type, content_obj):
     return resp.get("code") == 0, resp.get("msg", resp)
 
 
+def _run_stages(snap, kb=None):
+    """并发跑三个**互不依赖**的阶段：新闻 / Hermes 情绪 / NIM 归因 ✓。
+
+    🔴 `stage_judge` **不能**并发 ✗ —— 它的入参就是 `sentiment` 与 `attribution`
+    的产出（裁判要在两者之上做判断）⇒ 必须等它们回来 ✓。
+
+    2026-10-29 实测：一次简报 **478 秒**，绝大部分耗在这三个串行等待上 ✗
+    （每个阶段都是一次 2~3 分钟的 LLM 调用）。三个并行后只剩**最慢那个**的时长 ✓。
+
+    失败语义与串行版完全一致 ✓：任何一个阶段抛错 ⇒ 只把该阶段置 None 并打一行日志，
+    其余阶段照常 ✓（下游 `build_brief_sections` 会写「（跳过：X 不可用）」占位 ✓）。
+    """
+    def _guarded(label, fn):
+        try:
+            return fn()
+        except Exception as exc:                       # noqa: BLE001
+            print("%s失败: %s" % (label, exc))
+            return None
+
+    jobs = {
+        "news": ("新闻抓取", lambda: fetch_news(snap)),
+        "sentiment": ("Hermes 阶段", lambda: stage_sentiment(_read_hermes_key(), snap)),
+        "attribution": ("NIM 阶段",
+                        lambda: stage_attribution(_read_nim_key(), snap, kb=kb)),
+    }
+    out = {}
+    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+        futs = {k: pool.submit(_guarded, lbl, fn) for k, (lbl, fn) in jobs.items()}
+        for k, fut in futs.items():
+            out[k] = fut.result()
+    return out["news"], out["sentiment"], out["attribution"]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="只产出简报不推送飞书")
@@ -1119,20 +1153,9 @@ def main():
     snap = build_snapshot()
     brief_path = REPO / "Data" / f"invest_brief_{snap['date']}.md"
 
-    sentiment = attribution = judge = None
-    news = None
-    try:
-        news = fetch_news(snap)
-    except Exception as e:
-        print("新闻抓取失败:", e)
-    try:
-        sentiment = stage_sentiment(_read_hermes_key(), snap)
-    except Exception as e:
-        print("Hermes 阶段失败:", e)
-    try:
-        attribution = stage_attribution(_read_nim_key(), snap, kb=args.kb)
-    except Exception as e:
-        print("NIM 阶段失败:", e)
+    judge = None
+    # 2026-10-29：三个独立阶段并发 ✓（串行时一次简报 478 秒 ✗）
+    news, sentiment, attribution = _run_stages(snap, kb=args.kb)
     try:
         judge = stage_judge(_read_nim_key(), snap, sentiment or "（无）", attribution or "（无）")
     except Exception as e:
