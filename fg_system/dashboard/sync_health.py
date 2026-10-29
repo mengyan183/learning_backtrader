@@ -255,7 +255,41 @@ def collect():
     }
 
 
-def archive_backlog(older_than_sec=1800, now=None):
+#: 归档目录保留天数 ✓ —— 2026-10-29 用户口径「历史归档只保留最近 3 天」
+ARCHIVE_KEEP_DAYS = 3
+
+
+def _prune_archives(keep_days, now):
+    """删掉超过 `keep_days` 天的 `archive_*` 目录 ✓ —— 归档**不轮转**会无限涨 ✗。
+
+    目录名是 `archive_%m%d-%H%M`（**没有年份** ✗）⇒ 不能用名字算年龄，
+    改用目录 mtime ✓（里面的文件都是同一批挪进去的）。
+    """
+    if not keep_days or keep_days <= 0:
+        return 0
+    cutoff = now - keep_days * 86400
+    removed = 0
+    try:
+        names = os.listdir(BYPASS_IN)
+    except OSError:
+        return 0
+    for n in names:
+        if not n.startswith("archive_"):
+            continue
+        p = os.path.join(BYPASS_IN, n)
+        if not os.path.isdir(p):
+            continue
+        try:
+            if os.path.getmtime(p) > cutoff:
+                continue
+            shutil.rmtree(p)
+            removed += 1
+        except OSError:
+            pass                       # 单个删不掉不影响其余 ✓
+    return removed
+
+
+def archive_backlog(older_than_sec=1800, now=None, keep_days=ARCHIVE_KEEP_DAYS):
     """把插件层的历史文件挪进 `archive_<MMDD-HHMM>/` —— **不删** ✓，可回滚 ✓。
 
     为什么挪**文件**而不是整个目录：插件按固定路径写盘，
@@ -284,7 +318,10 @@ def archive_backlog(older_than_sec=1800, now=None):
             moved += 1
         except OSError:
             pass                       # 单个文件挪不动就跳过，不影响其余 ✓
-    return {"moved": moved, "dest": dest, "reason": None}
+    # 2026-10-29：顺手轮转归档 ✓ —— 只挪不删的话磁盘会一直涨 ✗
+    pruned = _prune_archives(keep_days, now)
+    return {"moved": moved, "dest": dest, "reason": None,
+            "pruned": pruned, "keep_days": keep_days}
 
 
 if __name__ == "__main__":

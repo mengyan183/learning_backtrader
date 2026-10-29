@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{{ title }}</title>
 {{ pwa_head }}
-<link rel="stylesheet" href="/static/style.css?v=20261029c"></head><body>
+<link rel="stylesheet" href="/static/style.css?v=20261029d"></head><body>
 <!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
      而**运行时错误在手机上根本看不到** ✗（没有控制台）。
      ⇒ 本段**必须**是页面里**第一个** script 块 ✓ ——
@@ -1136,6 +1136,14 @@ function loadTasks() {
           "<span class='task-st'>" + (ST[x.status] || "排队中") + "</span>" +
           "<span class='task-act'>" + esc(x.action || "?") + "</span>" +
           "<span class='task-meta'>" + esc(meta) + "</span>" +
+          // 2026-10-29：延迟重装的结果要单独显示 ✓ —— 主结果里的「已拷贝（8 秒后重装）」
+          // 只说明拷贝成功，装没装成得看这一行 ✗
+          (x.reinstall
+            ? "<span class='task-out " + (x.reinstall.ok ? "ok" : "bad") + "'>" +
+              (x.reinstall.ok ? "重装成功 ✓" : "重装失败 ✗") +
+              "（rc=" + esc(String(x.reinstall.rc)) + " · " +
+              esc(String(x.reinstall.at || "").replace("T", " ").slice(5, 16)) + "）</span>"
+            : "") +
           (x.output ? "<span class='task-out'>" + esc(String(x.output)) + "</span>" : "") +
           "</div>");
       }

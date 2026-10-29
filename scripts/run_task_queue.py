@@ -190,14 +190,26 @@ def _act_install_daily_plist(params):
             continue
         if label.endswith("fg-task-queue"):
             # 延迟重装：先让本任务把结果写完 ✓
-            subprocess.Popen(
-                ["/bin/sh", "-c",
-                 "sleep 8; launchctl bootout %s/%s 2>/dev/null; "
-                 "launchctl bootstrap %s %s; launchctl enable %s/%s"
-                 % (domain, label, domain, dst, domain, label)],
-                start_new_session=True,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            out[name] = "已拷贝（8 秒后重装）"
+            # 🔴 2026-10-29：重装结果**必须落盘** ✗ —— 原来起个游离 shell 就返回，
+            # `ok:true` 只代表「拷贝成功」，8 秒后成没成无人回收 ✗
+            # ⇒ 那个 shell 把结果写进 `<tid>.reinstall.json` ✓，下一轮 `_collect_reinstall`
+            #   读回来并回写进任务结果 ✓（看板可见 ✓）。
+            tid = str(params.get("_tid") or ("plist-" + time.strftime("%H%M%S")))
+            marker = os.path.join(QUEUE, tid + ".reinstall.json")
+            script = (
+                "sleep 8; "
+                "launchctl bootout {dom}/{lab} 2>/dev/null; "
+                "launchctl bootstrap {dom} {dst}; RC=$?; "
+                "launchctl enable {dom}/{lab} 2>/dev/null; "
+                "printf '{{\"ok\": %s, \"rc\": %s, \"at\": \"%s\","
+                " \"label\": \"{lab}\"}}' "
+                "\"$([ $RC -eq 0 ] && echo true || echo false)\" \"$RC\" "
+                "\"$(date +%Y-%m-%dT%H:%M:%S)\" > {marker}"
+            ).format(dom=domain, lab=label, dst=dst, marker=marker)
+            subprocess.Popen(["/bin/sh", "-c", script],
+                             start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            out[name] = "已拷贝（8 秒后重装，结果下轮回写）"
             continue
         try:
             subprocess.run(["launchctl", "bootout", "%s/%s" % (domain, label)],
@@ -268,6 +280,11 @@ def _act_daily_log_tail(params):
         return {"ok": False, "reason": "读不到 %s：%s" % (path, exc)}
     return {"ok": True, "which": which, "path": path,
             "lines": len(tail), "tail": "".join(tail)}
+
+
+#: 需要 `_tid` 的动作 ✓ —— 只有「结果要延迟回写」的才需要知道自己是哪个任务
+#: （`install_daily_plist` 的游离 shell 要把结果写成 `<tid>.reinstall.json` ✓）
+NEEDS_TID = {"install_daily_plist"}
 
 
 #: 🔴 唯一可执行清单。键是**任务名**，值是固定函数 —— 不接受任何命令字符串 ✓
@@ -408,6 +425,48 @@ def _prune_queue(keep=KEEP_TASKS):
     return dropped
 
 
+def _collect_reinstall():
+    """把「延迟重装」的结果并回任务结果 ✓，返回被更新的任务 id 列表。
+
+    2026-10-29：`install_daily_plist` 对队列作业只能**延迟 8 秒**重装（当场 bootout
+    会把自己杀掉 ✗）⇒ 它返回的 `ok:true` 只代表**拷贝成功**，重装成没成无人回收 ✗。
+    现在那个游离 shell 把结果写进 `<tid>.reinstall.json` ✓，这里下一轮读回来：
+    ① 打印一行到 `/tmp/fg_task_queue.log`；② 回写进 `<tid>.result.json` 的
+    `reinstall` 字段（看板可见 ✓）；③ 删掉标记 ✓。
+    """
+    changed = []
+    if not os.path.isdir(QUEUE):
+        return changed
+    for name in sorted(os.listdir(QUEUE)):
+        if not name.endswith(".reinstall.json"):
+            continue
+        tid = name[:-len(".reinstall.json")]
+        mp = os.path.join(QUEUE, name)
+        try:
+            with open(mp, encoding="utf-8") as fh:
+                mark = json.load(fh)
+        except (OSError, ValueError):
+            mark = {"ok": False, "reason": "标记文件读不出"}
+        rp = os.path.join(QUEUE, tid + ".result.json")
+        try:
+            with open(rp, encoding="utf-8") as fh:
+                res = json.load(fh)
+            res["reinstall"] = mark
+            with open(rp, "w", encoding="utf-8") as fh:
+                json.dump(res, fh, ensure_ascii=False, indent=2)
+            changed.append(tid)
+            print("[reinstall] %s %s（rc=%s）"
+                  % (tid, "重装成功 ✓" if mark.get("ok") else "重装**失败** ✗",
+                     mark.get("rc")))
+        except (OSError, ValueError) as exc:
+            print("[warn] 重装结果回写失败（%s）：%s" % (tid, exc))
+        try:
+            os.remove(mp)
+        except OSError:
+            pass
+    return changed
+
+
 #: 补推节流：launchd 每 10s 一轮，失败时别把日志刷爆 ✗
 _PUSH_RETRY = {"ts": 0.0}
 
@@ -444,6 +503,8 @@ def _try_push_pending(interval=300):
 def run_once(commit=True):
     """跑一轮。返回 [(id, status), ...]。"""
     _try_push_pending()
+    # 上一轮「延迟重装」的结果在这轮收 ✓（顺带把结果并进任务结果文件 ✓）
+    reinstalled = _collect_reinstall()
     auto = _auto_clean()
     if auto and auto.get("moved"):
         print("[auto-clean] 已归档 %d 个插件层文件 -> %s"
@@ -466,7 +527,12 @@ def run_once(commit=True):
         # 在看板上一直显示「排队中」，用户以为卡住了 ✗
         _mark_running(spec["id"])
         try:
-            r = fn(spec.get("params") or {})
+            # `_tid` 只给**声明需要**的动作（见 `NEEDS_TID`）✓ —— 全局注入会污染
+            # 其它动作的 params（有测试锁着「动作收到的就是下发的那份」✗）
+            _params = dict(spec.get("params") or {})
+            if action in NEEDS_TID:
+                _params.setdefault("_tid", spec["id"])
+            r = fn(_params)
             ok = bool(r.get("ok")) if isinstance(r, dict) else True
             _write_result(spec, "done" if ok else "failed",
                           0 if ok else 1,
@@ -481,13 +547,15 @@ def run_once(commit=True):
         finally:
             _clear_running(spec["id"])
 
-    if done and commit:
-        # 2026-10-29：顺带瘦身 ✓ —— 每个任务两个 json 永不清理会无限涨 ✗
-        dropped = _prune_queue()
-        if dropped:
-            print("[prune] 清理 %d 个旧任务文件（只留最近 %d 个）"
-                  % (len(dropped), KEEP_TASKS))
-        _git_commit(done)
+    # 只有重装结果回写、没有新任务时也要提交 ✓（否则结果永远留在 Mac 本地 ✗）
+    if commit and (done or reinstalled):
+        if done:
+            # 2026-10-29：顺带瘦身 ✓ —— 每个任务两个 json 永不清理会无限涨 ✗
+            dropped = _prune_queue()
+            if dropped:
+                print("[prune] 清理 %d 个旧任务文件（只留最近 %d 个）"
+                      % (len(dropped), KEEP_TASKS))
+        _git_commit(done or [(t, "reinstall") for t in reinstalled])
     return done
 
 

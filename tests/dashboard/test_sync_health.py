@@ -178,3 +178,46 @@ def test_ok_when_recent_done_marker(tmp_path, monkeypatch):
     r = sh.collect()
     assert r["verdict"] == "ok", r["hint"]
     assert r["last_ingest"]["name"] == "sync_demo.done"
+
+
+def test_archive_backlog_prunes_old_archive_dirs(tmp_path, monkeypatch):
+    """归档目录超过 `keep_days` 必须删掉 ✓ —— 只挪不删会无限涨 ✗。
+
+    2026-10-29 用户口径：**历史归档只保留最近 3 天** ✓。
+    """
+    byp, _ = _fake(tmp_path, monkeypatch)
+    old = byp / "archive_1019-0300"
+    old.mkdir()
+    (old / "a.md").write_text("x", encoding="utf-8")
+    fresh = byp / "archive_1029-0300"
+    fresh.mkdir()
+    (fresh / "b.md").write_text("x", encoding="utf-8")
+    msg = byp / "msg.md"
+    msg.write_text("x", encoding="utf-8")
+
+    old_ts = time.time() - 10 * 86400          # 10 天前
+    os.utime(str(old), (old_ts, old_ts))
+    os.utime(str(msg), (old_ts, old_ts))       # 30 分钟前的才会被挪走
+
+    r = sh.archive_backlog(now=time.time(), keep_days=3)
+
+    assert r["moved"] == 1, "超 30 分钟的消息没被归档 ✗"
+    assert r["pruned"] == 1, "超 3 天的归档目录没被删 ✗"
+    assert not old.exists(), "10 天前的归档还在 ✗"
+    assert fresh.exists(), "3 天内的归档被误删了 ✗"
+
+
+def test_archive_backlog_keeps_all_when_keep_days_zero(tmp_path, monkeypatch):
+    """`keep_days=0` ⇒ 只归档不轮转 ✓（留个关掉的口子）。"""
+    byp, _ = _fake(tmp_path, monkeypatch)
+    old = byp / "archive_1019-0300"
+    old.mkdir()
+    msg = byp / "msg.md"
+    msg.write_text("x", encoding="utf-8")
+    old_ts = time.time() - 10 * 86400
+    os.utime(str(old), (old_ts, old_ts))
+    os.utime(str(msg), (old_ts, old_ts))
+
+    r = sh.archive_backlog(now=time.time(), keep_days=0)
+
+    assert r["pruned"] == 0 and old.exists()

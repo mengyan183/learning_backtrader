@@ -628,6 +628,8 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
             item = {"id": tid, "action": d.get("action"), "status": status,
                     "at": d.get("finished_at") or d.get("created_at"),
                     "duration_s": d.get("duration_s"),
+                    # 2026-10-29：延迟重装的结果 ✓（install_daily_plist 专用）
+                    "reinstall": d.get("reinstall"),
                     "output": str(d.get("output") or "")[:160]}
             # 2026-10-29：**执行中**状态 ✓ —— 否则 8 分钟的简报任务一直显示「排队中」✗
             # （用户实测：`run_invest_research` 跑了 478 秒，看板全程「排队中」✗）

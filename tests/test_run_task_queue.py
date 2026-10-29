@@ -166,6 +166,57 @@ def test_run_invest_research_is_registered():
     assert callable(q.ACTIONS["run_invest_research"])
 
 
+def test_collect_reinstall_writes_back_result(tmp_path, monkeypatch, capsys):
+    """延迟重装的结果必须**回写进任务结果** ✓。
+
+    2026-10-29：`install_daily_plist` 对队列作业只能延迟 8 秒重装（当场 bootout
+    会把自己杀掉 ✗）⇒ 它返回的 `ok:true` 只代表**拷贝成功** ✗，重装成没成无人回收 ✗。
+    """
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    tid = "t-1"
+    (tmp_path / (tid + ".result.json")).write_text(json.dumps({
+        "id": tid, "action": "install_daily_plist",
+        "status": "done", "output": "{}"}), encoding="utf-8")
+    (tmp_path / (tid + ".reinstall.json")).write_text(json.dumps({
+        "ok": True, "rc": 0, "at": "2026-10-29T14:00:00"}), encoding="utf-8")
+
+    changed = q._collect_reinstall()
+
+    assert changed == [tid]
+    res = json.loads((tmp_path / (tid + ".result.json")).read_text(encoding="utf-8"))
+    assert res["reinstall"]["ok"] is True and res["reinstall"]["rc"] == 0
+    assert not (tmp_path / (tid + ".reinstall.json")).exists(), \
+        "标记没删 ⇒ 下一轮会重复回写 ✗"
+    assert "重装成功" in capsys.readouterr().out
+
+
+def test_collect_reinstall_reports_failure(tmp_path, monkeypatch, capsys):
+    """重装失败也必须**明确回写** ✓ —— 否则队列 agent 死了都没人知道 ✗。"""
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    tid = "t-2"
+    (tmp_path / (tid + ".result.json")).write_text(json.dumps({
+        "id": tid, "action": "install_daily_plist", "status": "done"}),
+        encoding="utf-8")
+    (tmp_path / (tid + ".reinstall.json")).write_text(json.dumps({
+        "ok": False, "rc": 5, "at": "2026-10-29T14:00:00"}), encoding="utf-8")
+
+    q._collect_reinstall()
+
+    res = json.loads((tmp_path / (tid + ".result.json")).read_text(encoding="utf-8"))
+    assert res["reinstall"]["ok"] is False
+    out = capsys.readouterr().out
+    assert "失败" in out and "rc=5" in out
+
+
+def test_collect_reinstall_ignores_missing_result(tmp_path, monkeypatch):
+    """结果文件不在时不能崩 ✓（标记仍要清掉，别让它永远挡着）。"""
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    (tmp_path / "t-3.reinstall.json").write_text(
+        json.dumps({"ok": True}), encoding="utf-8")
+    assert q._collect_reinstall() == []
+    assert not (tmp_path / "t-3.reinstall.json").exists()
+
+
 def test_running_marker_roundtrip(tmp_path, monkeypatch):
     """「执行中」旁路标记的写/删 ✓ —— 不回写任务 json（崩溃后仍能重试）✗。"""
     monkeypatch.setattr(q, "QUEUE", str(tmp_path))
