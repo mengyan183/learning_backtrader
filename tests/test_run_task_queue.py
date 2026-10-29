@@ -154,6 +154,12 @@ def test_prune_queue_keeps_recent_and_never_drops_pending(tmp_path, monkeypatch)
     assert len(dropped) == 8, "13 - 9 = 4 个任务 × 2 文件 = 8 ✗（实际 %d）" % len(dropped)
 
 
+def test_futu_preflight_is_registered():
+    """`futu_preflight` 必须在白名单里 ✓（下发方可调用）。"""
+    assert "futu_preflight" in q.ACTIONS
+    assert callable(q.ACTIONS["futu_preflight"])
+
+
 def test_install_evolve_tasks_reports_failure(monkeypatch):
     """定时器重装：脚本不存在 / 返回非 0 ⇒ `ok=False` ✓（不许静默成功 ✗）。"""
     monkeypatch.setattr(q, "ROOT", "/nonexistent-root")

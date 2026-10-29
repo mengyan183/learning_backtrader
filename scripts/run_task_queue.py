@@ -143,6 +143,20 @@ def _act_install_evolve_tasks(params):
             "stdout": (r.stdout or "")[-900:], "stderr": (r.stderr or "")[-400:]}
 
 
+def _act_futu_preflight(params):
+    """探一次富途 OpenD 端口 ✓ —— 只读、2 秒超时、零副作用 ✓。
+
+    动机（2026-10-29）：新加的「预检 + 硬超时」要等到明天 05:30 才被跑到 ✗，
+    这里让 Mac **立刻验一次** ✓，顺带把状态落盘（简报里就能看到）✓。
+    """
+    if os.path.join(ROOT, "scripts") not in sys.path:
+        sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import futu_health
+    ok, why = futu_health.preflight()
+    futu_health.write_status(ok, why, "queue:futu_preflight")
+    return {"ok": bool(ok), "reason": why}
+
+
 #: 允许 tail 的日志 —— **固定白名单** ✓（不接受任意路径 ✗，否则等于远程读文件 ✗）
 TAIL_LOGS = {
     "daily": "/tmp/fg_daily.log",
@@ -182,6 +196,7 @@ ACTIONS = {
     "clean_sync_partial": _act_clean_sync_partial,
     "daily_log_tail": _act_daily_log_tail,
     "install_evolve_tasks": _act_install_evolve_tasks,
+    "futu_preflight": _act_futu_preflight,
 }
 
 

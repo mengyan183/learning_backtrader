@@ -32,7 +32,9 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # 同目录模块 ✓
 from fg_system import config  # noqa: E402
+import futu_health  # noqa: E402  —— 预检/硬超时/状态落盘 ✓
 
 ACCOUNTS_HEADER = ["date", "account", "net_value", "securities_mv", "cash",
                    "unrealized_pnl", "day_pnl", "currency", "note"]
@@ -418,7 +420,20 @@ def main():
     positions = positions[positions["date"] != date].reset_index(drop=True)
     a_before = len(accounts)
     p_before = len(positions)
-    accounts, positions = sync_futu(accounts, positions, date)
+    # 🔴 2026-10-29：富途**先预检端口** ✗ —— OpenD 没开时绝不能进 SDK ✗
+    # （SDK 进 `_init_connect_sync` 就是无界重连 ✗，2026-10-28 连刷 3 小时把整条
+    #   每日链拖死 ✗）。连不上就跳过富途、只用 OKX ✓，并把状态落盘给简报 ✓。
+    futu_ok, futu_why = futu_health.preflight()
+    if futu_ok:
+        futu_health.guard(step="sync_positions")
+        try:
+            accounts, positions = sync_futu(accounts, positions, date)
+        finally:
+            futu_health.done()
+        futu_health.write_status(True, "富途同步完成", "sync_positions")
+    else:
+        futu_health.write_status(False, futu_why, "sync_positions")
+        print("[sync] %s ⇒ 跳过富途，仅用 OKX（状态已记入简报）" % futu_why)
     accounts, positions = sync_okx(accounts, positions, date)
     new_a = len(accounts) - a_before
     new_p = len(positions) - p_before

@@ -30,8 +30,11 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # 同目录模块 ✓
 
 import pandas as pd  # noqa: E402
+
+import futu_health  # noqa: E402  —— 预检/硬超时/状态落盘 ✓
 
 try:                                   # noqa: E402
     import futu                        # noqa: E402
@@ -129,10 +132,26 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--quiet", action="store_true", help="只输出汇总一行")
     args = ap.parse_args()
-    df = fetch_all()
+
+    # 🔴 2026-10-29：先做端口预检 ✗ —— OpenD 没开时**绝不能进 SDK** ✗
+    # （SDK 一进 `_init_connect_sync` 就是无界重连 ✗，2026-10-28 实测连刷 3 小时 ✗）
+    ok, why = futu_health.preflight()
+    if not ok:
+        futu_health.write_status(False, why, "fetch_trades_futu")
+        print("[futu] %s ⇒ 跳过成交抓取（**不阻塞后续步骤**，状态已记入简报）" % why)
+        return 0
+    futu_health.guard(step="fetch_trades_futu")
+    try:
+        df = fetch_all()
+    finally:
+        futu_health.done()
+
     if df.empty:
+        futu_health.write_status(False, "无成交数据（账户无成交或查询失败）",
+                                 "fetch_trades_futu")
         print("[futu] 无成交数据（连接失败或账户无成交）")
         return 1
+    futu_health.write_status(True, "抓取成功 %d 笔" % len(df), "fetch_trades_futu")
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     df.to_csv(OUT, index=False)
     n = len(df)

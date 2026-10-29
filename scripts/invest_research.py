@@ -783,6 +783,29 @@ def _major_contradiction():
         return None
 
 
+def _futu_health_block():
+    """富途数据源健康 ✓ —— 连不上必须**在简报里说出来** ✗。
+
+    2026-10-29 用户裁定：「如果连接富途有问题，则应该在简报中体现，不要卡死」✓
+    —— 既不能把整条链拖死 ✗（2026-10-28 SDK 重连连刷 3 小时 ⇒ 简报根本没发 ✗），
+    也不能安静地少一段 ✗（用户只会觉得「今天没简报」✗）。
+    """
+    try:
+        sys.path.insert(0, str(REPO / "scripts"))
+        import futu_health  # noqa: PLC0415 —— 同目录脚本，延迟导入 ✓
+    except Exception:                                  # noqa: BLE001
+        return ""
+    st = futu_health.read_status()
+    if not st:
+        return ""
+    at = str(st.get("at") or "")[:16].replace("T", " ")
+    if st.get("ok"):
+        return "富途 OpenD：正常 ✓（%s 检查）" % at
+    return ("⚠️ 富途 OpenD：**不可用** —— %s\n"
+            "（%s 检查；持仓/成交可能停留在上一交易日 ✗ 本简报已按现有数据生成 ✓）"
+            % (st.get("reason") or "未知原因", at))
+
+
 def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     """结构化简报（飞书富文本 post 用）：[ ("标题", "正文"), "hr", ... ]"""
     from fg_system import fed as _fed
@@ -791,6 +814,10 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     _warn = _freshness_block()
     if _warn:
         secs.append(("⚠️ 数据新鲜度", _warn))
+        secs.append("hr")
+    _ds = _futu_health_block()
+    if _ds:
+        secs.append(("🔌 数据源健康", _ds))
         secs.append("hr")
     secs.append(("市场快照", build_snapshot_lines(snap)))
     secs.append("hr")
