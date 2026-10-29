@@ -28,6 +28,37 @@ def _load():
     return mod
 
 
+def test_date_label_shows_both_dates_when_out_of_sync():
+    """**守卫**：指数日与持仓日不一致时**两个都写** ✓（2026-10-29 裁定方案 ②）。
+
+    原来只写 `snap["date"]`（持仓快照日）✗ —— 持仓同步失败那天，标题显示 10-26
+    而正文指数是 10-27 的 ✗，`verify_brief` 报「数据不同步」✗。
+    """
+    m = _load()
+    assert m._date_label({"date": "2026-10-26",
+                          "index_date": "2026-10-27"}) == \
+        "2026-10-27（指数）/ 10-26（持仓）"
+    # 一致时只写一个 ✓（别啰嗦）
+    assert m._date_label({"date": "2026-10-27",
+                          "index_date": "2026-10-27"}) == "2026-10-27"
+    # 缺 index_date（老快照/异常）⇒ 退回持仓日 ✓ 不能崩 ✗
+    assert m._date_label({"date": "2026-10-26"}) == "2026-10-26"
+
+
+def test_title_first_date_is_index_date():
+    """标题后**第一个**日期必须是指数日 ✓ —— `verify_brief` 就取它做比对 ✓。
+
+    取错的话会拿持仓日去比 features 尾行 ⇒ 又报「数据不同步」✗。
+    """
+    import re
+
+    m = _load()
+    label = m._date_label({"date": "2026-10-26", "index_date": "2026-10-27"})
+    got = re.search(r"多智能体投研简报\s*(20\d{2}-\d{2}-\d{2})",
+                    "# 多智能体投研简报 " + label).group(1)
+    assert got == "2026-10-27", "verify_brief 会取到持仓日 ⇒ 又报数据不同步 ✗"
+
+
 def test_stages_run_concurrently(monkeypatch):
     """三个**互不依赖**的阶段必须并发 ✓。
 

@@ -281,6 +281,7 @@ def _load_snapshot():
         row = f.dropna(subset=["fg_index"]).iloc[-1]
         snap["fg"] = {"fg_index": float(row["fg_index"]),
                       "date": str(row["date"].date())}
+        snap["index_date"] = snap["fg"]["date"]   # 与 build_snapshot 对齐 ✓
     except Exception:
         snap["fg"] = None
     try:

@@ -173,6 +173,9 @@ def build_snapshot():
         }
     else:
         snap["fg"] = None
+    # 2026-10-29：指数数据日单独留一份 ✓ —— `snap["date"]` 是**持仓快照日**，
+    # 两者不同源、经常差一天 ✗（持仓同步失败那天，指数已经算到新日期 ✗）
+    snap["index_date"] = (snap["fg"] or {}).get("date")
 
     # 守猪待兔最新（各标的）
     st = pd.read_csv(DATA / "raw" / "shoutu_fng.csv", parse_dates=["date"])
@@ -231,7 +234,8 @@ def build_snapshot():
 
 
 def snapshot_text(snap):
-    lines = [f"数据日期: {snap['date']}"]
+    # 2026-10-29：喂给 LLM 的日期也写双日 ✓ —— 只给持仓日会让模型把指数当成旧数据 ✗
+    lines = [f"数据日期: {_date_label(snap)}"]
     if snap.get("fg"):
         f = snap["fg"]
         lines.append(f"系统贪恐指数: {f['fg_index']} [{f['zone']}] 目标仓位: {f['target_position']} 回撤: {f['drawdown']} 熔断: {f['circuit_breaker']}")
@@ -1014,12 +1018,29 @@ def _kb_brief_text(hits):
     return "\n\n".join(lines)
 
 
+def _date_label(snap):
+    """标题日期：**指数日在前、持仓日在后** ✓（2026-10-29 用户裁定方案 ②）。
+
+    原来只写 `snap["date"]`（持仓快照日）✗ —— 持仓同步失败那天，标题显示 10-26
+    而正文的贪恐指数是 10-27 的 ✗（`verify_brief` 因此报「数据不同步」✗）。
+    两个日期都写出来，谁也不冒充谁 ✓。
+
+    指数日放**前**是有意的：`verify_brief` 取标题后第一个日期做比对 ✓
+    ⇒ 现在取到的就是指数数据日，与 features 尾行一致，那条 WARN 自然消失 ✓。
+    """
+    idx = str(snap.get("index_date") or "")
+    pos = str(snap.get("date") or "")
+    if idx and pos and idx != pos:
+        return "%s（指数）/ %s（持仓）" % (idx, pos[5:])
+    return idx or pos
+
+
 def build_brief(snap, sentiment, attribution, judge, news=None):
     from fg_system import fed as _fed
     _fctx = _fed.fed_context()
     _warn = _freshness_block()
     lines = [
-        f"# 多智能体投研简报 {snap['date']}",
+        f"# 多智能体投研简报 {_date_label(snap)}",
         "",
     ]
     if _warn:
@@ -1151,7 +1172,12 @@ def main():
     args = ap.parse_args()
 
     snap = build_snapshot()
-    brief_path = REPO / "Data" / f"invest_brief_{snap['date']}.md"
+    # 文件名按**指数数据日** ✓（那才是这份简报在讲的那天）；
+    # 持仓日落后时不再出现「10-27 的简报存成 10-26」✗
+    # ⚠️ 括号不能省 ✗ —— `/` 与 `%` 同优先级且左结合 ⇒ `REPO / "…%s" % x`
+    # 会先算 `(Path) % x`（TypeError: Path % str ✗）
+    brief_path = REPO / "Data" / ("invest_brief_%s.md" % (
+        snap.get("index_date") or snap["date"]))
 
     judge = None
     # 2026-10-29：三个独立阶段并发 ✓（串行时一次简报 478 秒 ✗）
@@ -1201,7 +1227,7 @@ def main():
     # 「任一阶段失败自动降级」自相矛盾 ✗）。只在**三个全缺**时留一行日志 ✓。
     if not (sentiment or attribution or judge):
         print("[degrade] 三个 AI 阶段全缺 ⇒ 仍按占位版本推送（不再静默不发）")
-    ok, msg = push_feishu_rich(f"📊 多智能体投研简报 {snap['date']}",
+    ok, msg = push_feishu_rich(f"📊 多智能体投研简报 {_date_label(snap)}",
                                build_brief_sections(snap, sentiment, attribution, judge, news))
     print(f"飞书富文本推送: {'成功' if ok else f'失败 {msg}'}")
     return 0 if ok else 1
