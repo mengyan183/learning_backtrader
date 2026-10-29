@@ -368,15 +368,24 @@ def _act_net_probe(params):
             status = r.status
             out["via_proxy"] = {"ok": True, "status": status, "method": method,
                                 "ms": int((time.time() - t0) * 1000)}
-            # `body_out=1` ⇒ 带回响应正文前 N 字 ✓
-            # 2026-10-29：要挑「NIM 上还有哪个模型能用」，必须先看到模型列表 ✗
+            # `body_out=1` ⇒ 解析出**模型 id 列表** ✓（不回传原始正文 ✗）
+            # 2026-10-29 踩坑：原始正文 3000 字，而 `_write_result` 只留尾部
+            # `output[-2000:]` ✗ ⇒ 开头的 `deepseek-ai/*` 正好被截掉 ✗
+            # ⇒ 只回「数量 + 按关键词筛过的 id」，几十个字就够 ✓
             if str(params.get("body_out") or "") in ("1", "true", "yes"):
                 try:
-                    n = max(100, min(int(params.get("body_len") or 1500), 4000))
-                    out["via_proxy"]["body"] = r.read(n).decode(
-                        "utf-8", "replace")
+                    import re
+                    n = max(1000, min(int(params.get("body_len") or 20000), 60000))
+                    txt = r.read(n).decode("utf-8", "replace")
+                    ids = re.findall(r'"id"\s*:\s*"([^"]+)"', txt)
+                    kw = str(params.get("models_like") or "deepseek,qwen,llama-3.3")
+                    keys = [k.strip().lower() for k in kw.split(",") if k.strip()]
+                    out["via_proxy"]["model_count"] = len(ids)
+                    out["via_proxy"]["models"] = [
+                        i for i in ids
+                        if any(k in i.lower() for k in keys)][:40]
                 except Exception as exc:           # noqa: BLE001
-                    out["via_proxy"]["body"] = "读取失败：%s" % exc
+                    out["via_proxy"]["models"] = "解析失败：%s" % exc
     except urllib.error.HTTPError as exc:
         # 401/404 这类**也是有效情报** ✓ —— 说明链路通、只是鉴权/路径不对 ✓
         out["via_proxy"] = {"ok": False, "status": exc.code, "method": method,
@@ -396,7 +405,9 @@ def _act_net_probe(params):
             if os.path.join(ROOT, "scripts") not in sys.path:
                 sys.path.insert(0, os.path.join(ROOT, "scripts"))
             import invest_research as ir
-            reply = ir._chat(ir.NIM_URL, ir._read_nim_key(), ir.NIM_MODEL,
+            # `model` 可覆盖 ⇒ 换模型前先单测候选 ✓（2026-10-29）
+            reply = ir._chat(ir.NIM_URL, ir._read_nim_key(),
+                             str(params.get("model") or ir.NIM_MODEL),
                              "你是连通性探针。", "只回复 OK", max_tokens=8,
                              proxy=ir.PROXY, timeout=60, retries=1)
             out["chat"] = {"ok": True, "ms": int((time.time() - t0) * 1000),
