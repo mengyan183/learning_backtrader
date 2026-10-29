@@ -1,0 +1,14 @@
+{
+  "id": "t-20261029-1358-daily_log_tail",
+  "action": "daily_log_tail",
+  "params": {
+    "which": "task_queue",
+    "lines": "40"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"which\": \"task_queue\", \"path\": \"/tmp/fg_task_queue.log\", \"lines\": 25, \"tail\": \"t-20261028-1649-cleanup_backlog -> done\\nt-20261028-1936-clean_sync_partial -> done\\n[warn] 结果已提交但**推送失败**（rc=128）：gh auth git-credential get: gh: command not found\\nfatal: could not read Username for 'https://github.com': Device not configured\\nt-20261029-1012-daily_log_tail -> done\\n[warn] 结果已提交但**推送失败**（rc=128）：gh auth git-credential get: gh: command not found\\nfatal: could not read Username for 'https://github.com': Device not configured\\nt-20261029-1043-install_evolve_tasks -> done\\n[warn] 结果已提交但**推送失败**（rc=128）：gh auth git-credential get: gh: command not found\\nfatal: could not read Username for 'https://github.com': Device not configured\\nt-20261029-1102-daily_log_tail -> done\\n[warn] 结果已提交但**推送失败**（rc=128）：gh auth git-credential get: gh: command not found\\nfatal: could not read Username for 'https://github.com': Device not configured\\nt-20261029-1104-futu_preflight -> done\\n[warn] 结果已提交但**推送失败**（rc=128）：gh auth git-credential get: gh: command not found\\nfatal: could not read Username for 'https://github.com': Device not configured\\nt-20261029-1128-run_invest_research -> done\\n[warn] 补推仍失败（rc=128）：gh auth git-credential get: gh: command not found\\nfatal: could not read Username for 'https://github.com': Device not configured\\n[warn] 结果已提交但**推送失败**（rc=128）：gh auth git-credential get: gh: command not found\\nfatal: could not read Username for 'https://github.com': Device not configured\\nt-20261029-1147-install_daily_plist -> done\\n[push] 补推成功（之前失败的提交已同步）\\n[push] 补推成功（之前失败的提交已同步）\\n[push] 补推成功（之前失败的提交已同步）\\n\"}",
+  "started_at": "2026-10-29T13:59:47",
+  "finished_at": "2026-10-29T13:59:47",
+  "duration_s": 0.0
+}
