@@ -1145,9 +1145,12 @@ def main():
     if blocked:
         print("[verify] 简报存在阻断级问题，跳过飞书推送（请先核查 last_brief_check.json）")
         return 2
-    if not (sentiment and attribution and judge):
-        print("存在缺失阶段，跳过飞书推送（dry-run 模式已可查看简报）")
-        return
+    # 🔴 2026-10-29：**任一阶段缺失也照发** ✓ —— `build_brief_sections` 早就给每个
+    # 缺失阶段写了「（跳过：X 不可用）」占位 ✓，这里却把**整条简报**都扣下不发 ✗
+    # ⇒ 用户连续两天收不到简报、且没有任何提示 ✗（与模块 docstring
+    # 「任一阶段失败自动降级」自相矛盾 ✗）。只在**三个全缺**时留一行日志 ✓。
+    if not (sentiment or attribution or judge):
+        print("[degrade] 三个 AI 阶段全缺 ⇒ 仍按占位版本推送（不再静默不发）")
     ok, msg = push_feishu_rich(f"📊 多智能体投研简报 {snap['date']}",
                                build_brief_sections(snap, sentiment, attribution, judge, news))
     print(f"飞书富文本推送: {'成功' if ok else f'失败 {msg}'}")

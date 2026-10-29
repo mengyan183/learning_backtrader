@@ -185,6 +185,10 @@ def test_index_gran_selector_defaults_to_week(tmp_path):
     for g in ("week", "month", "year", "all"):
         assert 'data-gran="%s"' % g in html, "缺 %s 档 ✗" % g
     assert 'class="idxwin btn-xs on" data-gran="week"' in html, "默认档不是周线 ✗"
+    # 周/月/年必须是 **K 线**（每根 = 该周期 开/高/低/收），不是「取第一个点」✗
+    assert 'type: "candlestick"' in html, "周/月/年又退回折线了 ✗（市面软件是 K 线）"
+    assert "notMerge: true" in html, \
+        "折线 ↔ K 线切换必须 notMerge ✗（否则 line 的样式残留到蜡烛上）"
 
 
 def test_inline_json_rounds_floats_and_drops_factor_dates(tmp_path):

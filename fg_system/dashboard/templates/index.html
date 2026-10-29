@@ -532,57 +532,85 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
   var ZONES = [[0,20,"#8b0000"],[20,40,"#d9534f"],[40,60,"#f0ad4e"],
                [60,80,"#5cb85c"],[80,100,"#006400"]];
 
-  // 2026-10-29：历史采样四档（周/月/年/全部）✓ —— 1765 个日点画在 330px 宽上
-  // 一个像素挤 5 个点，既看不清又拖慢首绘 ✗。降采样在**前端**做 ⇒ 后端包体不变 ✓。
+  // 2026-10-29：按**市面股票软件**的做法重做周期切换 ✓ ——
+  //   周/月/年 = **K 线**：每根 = 该周期的 开/高/低/收，x 轴标**该周期最后一个交易日**；
+  //   「全部」= 日频折线（原视觉）。
+  // 上一版只是「每个桶取第一个点」✗ —— 既不是周期收盘价、标签还是周期首日 ✗，
+  // 所以形状和软件对不上（用户反馈「和我预期的不一样」✗）。
   var IDX_GRAN = "week", idxChart = null;
-  function idxSample(gran) {
-    if (gran === "all") { return INDEX; }
-    function bucket(d) {
+  function idxBars(gran) {
+    if (gran === "all") { return null; }
+    function key(d) {
       if (gran === "year") { return d.slice(0, 4); }
       if (gran === "month") { return d.slice(0, 7); }
       // 周：按「距 1970 的周序号」分桶 —— 只用于分组，不要求周号本身正确 ✓
       return String(Math.floor(Date.parse(d + "T00:00:00Z") / 6048e5));
     }
-    var out = [], last = null;
+    var bars = [], cur = null;
     for (var i = 0; i < INDEX.length; i++) {
-      var k = bucket(INDEX[i][0]);
-      if (k !== last) { out.push(INDEX[i]); last = k; }   // 每桶取第一个点 ✓
+      var d = INDEX[i][0], v = INDEX[i][1];
+      var k = key(d);
+      if (!cur || cur.k !== k) {
+        if (cur) { bars.push(cur); }
+        cur = { k: k, d: d, o: v, h: v, l: v, c: v };
+      } else {
+        if (v > cur.h) { cur.h = v; }
+        if (v < cur.l) { cur.l = v; }
+        cur.c = v;
+        cur.d = d;                      // 标签取周期**末**交易日 ✓
+      }
     }
-    return out;
+    if (cur) { bars.push(cur); }
+    return bars;
   }
-  function indexOption(pts) {
-    return {
+  var ZONE_AREAS = ZONES.map(function (z) {
+    return [{ yAxis: z[0], itemStyle: { color: z[2] + "1a" } }, { yAxis: z[1] }];
+  });
+  function indexOption(gran) {
+    var bars = idxBars(gran);
+    var opt = {
       backgroundColor: "transparent",
       grid: { left: 6, right: 12, top: 30, bottom: 6, containLabel: true },
       tooltip: mrg({ trigger: "axis" }, tip),
-      xAxis: { type: "category", boundaryGap: false,
-        data: pts.map(function (p) { return p[0]; }),
+      xAxis: { type: "category", boundaryGap: !!bars,
+        data: bars ? bars.map(function (b) { return b.d; })
+                   : INDEX.map(function (p) { return p[0]; }),
         axisLine: { lineStyle: { color: BORDER } },
         axisLabel: { color: SUB, fontSize: 10 } },
       yAxis: { type: "value", min: 0, max: 100,
         axisLabel: { color: SUB, fontSize: 10 },
-        splitLine: { lineStyle: { color: SPLIT } } },
-      series: [{
-        type: "line", data: pts.map(function (p) { return p[1]; }),
+        splitLine: { lineStyle: { color: SPLIT } } }
+    };
+    if (bars) {
+      opt.series = [{
+        type: "candlestick",
+        // echarts 蜡烛图顺序 = [开, 收, 低, 高] ✓
+        data: bars.map(function (b) { return [b.o, b.c, b.l, b.h]; }),
+        itemStyle: { color: "#3fb950", color0: "#f85149",
+                     borderColor: "#3fb950", borderColor0: "#f85149" },
+        markArea: { silent: true, data: ZONE_AREAS }
+      }];
+    } else {
+      opt.series = [{
+        type: "line", data: INDEX.map(function (p) { return p[1]; }),
         smooth: true, symbol: "none",
         lineStyle: { width: 2, color: "#58a6ff" },
         areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
           colorStops: [{ offset: 0, color: "rgba(88,166,255,.30)" },
                        { offset: 1, color: "rgba(88,166,255,0)" }] } },
-        markArea: { silent: true,
-          data: ZONES.map(function (z) {
-            return [{ yAxis: z[0], itemStyle: { color: z[2] + "1a" } },
-                    { yAxis: z[1] }];
-          }) }
-      }]
-    };
+        markArea: { silent: true, data: ZONE_AREAS }
+      }];
+    }
+    return opt;
   }
   function buildIndexChart() {
     var el = document.getElementById("chartIndex");
     if (!el) { return; }
     idxChart = echarts.init(el);
     window.__charts.push(idxChart);
-    idxChart.setOption(indexOption(idxSample(IDX_GRAN)));
+    // notMerge ⇒ 折线 ↔ K 线是**两种 series 类型** ✗，合并会把 line 的
+    // smooth/areaStyle 残留到 candlestick 上 ✗ ⇒ 每次整份替换 ✓
+    idxChart.setOption(indexOption(IDX_GRAN), { notMerge: true });
     var bs = document.querySelectorAll(".idxwin");
     for (var b = 0; b < bs.length; b++) {
       (function (btn) {
@@ -591,7 +619,7 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
           for (var j = 0; j < bs.length; j++) {
             bs[j].className = "idxwin btn-xs" + (bs[j] === btn ? " on" : "");
           }
-          idxChart.setOption(indexOption(idxSample(IDX_GRAN)));
+          idxChart.setOption(indexOption(IDX_GRAN), { notMerge: true });
         });
       })(bs[b]);
     }
