@@ -18,6 +18,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 import subprocess
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -1144,10 +1145,29 @@ def _run_stages(snap, kb=None):
     失败语义与串行版完全一致 ✓：任何一个阶段抛错 ⇒ 只把该阶段置 None 并打一行日志，
     其余阶段照常 ✓（下游 `build_brief_sections` 会写「（跳过：X 不可用）」占位 ✓）。
     """
-    def _guarded(label, fn):
+    def _log(line):
+        """阶段级日志落盘 ✓ —— 被外层超时杀掉时**还能知道卡在哪一步** ✗。
+
+        2026-10-29 实测：队列动作 600 秒超时，`subprocess` 杀进程 ⇒ stdout 全丢 ✗
+        ⇒ 只知道「超时」，不知道卡在新闻还是 LLM ✗。
+        """
         try:
-            return fn()
+            d = os.path.join(REPO, "Data", "health")
+            os.makedirs(d, exist_ok=True)
+            with open(os.path.join(d, "invest_stages.log"), "a",
+                      encoding="utf-8") as fh:
+                fh.write("%s %s\n" % (time.strftime("%H:%M:%S"), line))
+        except OSError:
+            pass
+
+    def _guarded(label, fn):
+        _log("start %s" % label)
+        try:
+            r = fn()
+            _log("done  %s" % label)
+            return r
         except Exception as exc:                       # noqa: BLE001
+            _log("fail  %s: %s" % (label, exc))
             print("%s失败: %s" % (label, exc))
             return None
 

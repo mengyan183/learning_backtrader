@@ -290,6 +290,12 @@ def test_tail_logs_include_evolve_verify():
     assert q.TAIL_LOGS["evolve_verify"].endswith("evolve_verify.log")
 
 
+def test_tail_logs_include_invest_stages():
+    """简报阶段日志必须在白名单里 ✓ —— 超时被杀时它是唯一线索 ✗。"""
+    assert "invest" in q.TAIL_LOGS
+    assert q.TAIL_LOGS["invest"].endswith("invest_stages.log")
+
+
 def test_install_evolve_tasks_reports_failure(monkeypatch):
     """定时器重装：脚本不存在 / 返回非 0 ⇒ `ok=False` ✓（不许静默成功 ✗）。"""
     monkeypatch.setattr(q, "ROOT", "/nonexistent-root")

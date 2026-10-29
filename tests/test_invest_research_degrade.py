@@ -100,6 +100,29 @@ def test_stages_run_concurrently(monkeypatch):
     assert took < 0.6, "看起来还是串行（%.2fs）✗" % took
 
 
+def test_stage_progress_is_logged(tmp_path, monkeypatch):
+    """阶段级进度必须**落盘** ✓。
+
+    2026-10-29 实测：队列动作 600 秒超时，`subprocess` 杀掉进程 ⇒ stdout 全丢 ✗
+    ⇒ 只知道「超时」，不知道卡在新闻还是某个 LLM 阶段 ✗。
+    """
+    m = _load()
+    monkeypatch.setattr(m, "REPO", str(tmp_path))
+    monkeypatch.setattr(m, "fetch_news", lambda snap: "n")
+    monkeypatch.setattr(m, "_read_hermes_key", lambda: "k")
+    monkeypatch.setattr(m, "_read_nim_key", lambda: "k")
+    monkeypatch.setattr(m, "stage_sentiment", lambda k, snap: "s")
+    monkeypatch.setattr(m, "stage_attribution", lambda k, snap, kb=None: "a")
+
+    m._run_stages({"date": "2026-10-29"})
+
+    txt = (tmp_path / "Data" / "health" / "invest_stages.log").read_text(
+        encoding="utf-8")
+    assert txt.count("start") == 3, "三个阶段都该有 start 记录 ✗"
+    assert "done  新闻抓取" in txt
+    assert "done  Hermes 阶段" in txt
+
+
 def test_one_stage_failure_does_not_kill_others(monkeypatch):
     """一个阶段挂了只影响它自己 ✓ —— 与串行版的降级语义一致 ✓。"""
     m = _load()

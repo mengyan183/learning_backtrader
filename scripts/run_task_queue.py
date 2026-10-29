@@ -262,10 +262,14 @@ def _act_run_invest_research(params):
     if not push:
         cmd.append("--dry-run")
     try:
+        # 🔴 2026-10-29：600 → **900** 秒 ✗ —— 实测一次 dry-run 到 600 秒被杀，
+        # 而串行版历史耗时 478 秒（并发版不该更慢）⇒ 说明阶段耗时波动很大 ✗。
+        # 与每日链 `run_guarded` 给这步的 900 秒对齐 ✓。
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=600)
+                           timeout=900)
     except subprocess.TimeoutExpired:
-        return {"ok": False, "reason": "超过 600 秒未完成"}
+        return {"ok": False, "reason": "超过 900 秒未完成"
+                "（阶段级进度见 daily_log_tail --which invest）"}
     except (subprocess.SubprocessError, OSError) as exc:
         return {"ok": False, "reason": "执行失败：%s" % exc}
     return {"ok": r.returncode == 0, "rc": r.returncode, "push": push,
@@ -279,6 +283,9 @@ TAIL_LOGS = {
     "daily": "/tmp/fg_daily.log",
     "task_queue": "/tmp/fg_task_queue.log",
     "evolve_verify": os.path.join(ROOT, "logs", "evolve_verify.log"),
+    # 2026-10-29：简报阶段级日志 ✓ —— 队列超时杀进程时 stdout 全丢 ✗，
+    # 只有这个文件能看出卡在新闻还是某个 LLM 阶段 ✓
+    "invest": os.path.join(ROOT, "Data", "health", "invest_stages.log"),
 }
 
 
