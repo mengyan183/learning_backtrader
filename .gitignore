@@ -135,3 +135,6 @@ Data/trade_log_merged.csv
 
 # 队列「执行中」旁路标记（运行态，2026-10-29）
 docs/task-queue/*.running
+
+# 运行时健康状态（富途预检 / 简报阶段日志，2026-10-29）
+Data/health/

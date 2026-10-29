@@ -225,6 +225,49 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_net_probe(params):
+    """探「本地代理端口」+「经代理取一次」✓ —— 只读、秒级。
+
+    动机（2026-10-29）：简报两个 LLM 阶段都 `timed out`（不是 connection refused ✗）
+    ⇒ 怀疑本地代理（Clash 127.0.0.1:7890）能连上但上游卡住 ✗。
+    队列跑在 launchd 里，环境与登录 shell 不同 ✗ ⇒ 只能在 Mac 本地实测 ✓。
+    """
+    import socket
+    import urllib.parse
+    import urllib.request
+
+    proxy = str(params.get("proxy") or "http://127.0.0.1:7890")
+    url = str(params.get("url") or "https://integrate.api.nvidia.com/v1/models")
+    out = {"proxy": proxy, "url": url}
+
+    # ① 代理端口能不能连（3 秒）
+    u = urllib.parse.urlsplit(proxy)
+    t0 = time.time()
+    try:
+        s = socket.create_connection((u.hostname, u.port or 80), timeout=3)
+        s.close()
+        out["proxy_port"] = {"ok": True,
+                             "ms": int((time.time() - t0) * 1000)}
+    except OSError as exc:
+        out["proxy_port"] = {"ok": False, "reason": str(exc)}
+
+    # ② 经代理真取一次（10 秒）—— 只看到不到得了，不看状态码 ✓
+    t0 = time.time()
+    try:
+        op = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
+        req = urllib.request.Request(url, method="GET")
+        with op.open(req, timeout=10) as r:
+            out["via_proxy"] = {"ok": True, "status": r.status,
+                                "ms": int((time.time() - t0) * 1000)}
+    except Exception as exc:                       # noqa: BLE001
+        out["via_proxy"] = {"ok": False,
+                            "ms": int((time.time() - t0) * 1000),
+                            "reason": "%s: %s" % (type(exc).__name__, exc)}
+    return {"ok": out["proxy_port"].get("ok") and out["via_proxy"].get("ok"),
+            "result": out}
+
+
 def _act_eval_baa10y(params):
     """在 Mac 上跑 **C1 信用利差评测** ✓（`fred_baa10y_avail.csv` 只在 Mac 本地 ✗）。
 
@@ -330,6 +373,7 @@ ACTIONS = {
     "run_invest_research": _act_run_invest_research,
     "install_daily_plist": _act_install_daily_plist,
     "eval_baa10y": _act_eval_baa10y,
+    "net_probe": _act_net_probe,
 }
 
 

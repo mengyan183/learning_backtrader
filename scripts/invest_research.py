@@ -29,7 +29,10 @@ DATA = REPO / "Data"
 HERMES_URL = "http://127.0.0.1:8642/v1/chat/completions"
 NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 NIM_MODEL = "deepseek-ai/deepseek-v4.1-flash"
-PROXY = "http://127.0.0.1:7890"
+#: LLM 调用走的本地代理（Mac 上是 Clash 默认端口）✓
+#: 🔴 2026-10-29：原来**硬编码** ✗ —— Clash 换端口就得改代码 ✗；
+#: 现在可用 `FG_LLM_PROXY` 覆盖（空串 = 不用代理）✓
+PROXY = os.environ.get("FG_LLM_PROXY", "http://127.0.0.1:7890")
 FEISHU_OPEN_ID = "ou_c4f5cd25e5001a853309524e899dd6d2"
 OKX_TICKER_URL = "https://www.okx.com/api/v5/market/ticker?instId={sym}"
 # 公司电脑只跑静态数据时置 1，禁止任何外部行情 API（富途/OKX）
@@ -361,12 +364,12 @@ def stage_attribution(nim_key, snap, kb=None):
     user = f"{kb_txt}以下是今日持仓快照：\n{snapshot_text(snap)}\n\n请输出深度归因分析。"
     try:
         out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
-                    max_tokens=4096, proxy=PROXY, timeout=300, retries=2)
+                    max_tokens=4096, proxy=PROXY, timeout=120, retries=2)
         clean = _clean_attribution(out)
         if clean is None:
             # 疑似 prompt 回显/思考 → 重试一次（NIM 偶发）
             out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
-                        max_tokens=4096, proxy=PROXY, timeout=300, retries=1)
+                        max_tokens=4096, proxy=PROXY, timeout=120, retries=1)
             clean = _clean_attribution(out)
         return clean
     except Exception as e:
@@ -401,11 +404,11 @@ def stage_judge(nim_key, snap, sentiment, attribution):
             "请直接输出三行裁决文本。")
     try:
         out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
-                    max_tokens=400, proxy=PROXY, timeout=180, retries=1)
+                    max_tokens=400, proxy=PROXY, timeout=120, retries=1)
         v = _validate_judge(out)
         if v is None:
             out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
-                        max_tokens=400, proxy=PROXY, timeout=180, retries=1)
+                        max_tokens=400, proxy=PROXY, timeout=120, retries=1)
             v = _validate_judge(out)
         if v is None:
             return "（裁判未按三行格式输出，本次以归因/风控结论为准。）"
@@ -1189,6 +1192,8 @@ def _run_stages(snap, kb=None):
     # 用 daemon 线程而不是 ThreadPoolExecutor ✗ —— 后者退出时会 join 所有
     # 未完成线程 ⇒ 一个挂死的 HTTP 调用照样把进程拖住 ✗（Python 无法杀线程 ✓，
     # 只能不 join + daemon，让进程能正常退 ✓）。
+    # 记下这次用的代理 ✓ —— 下次再超时，一眼能看出是不是代理/端口的问题 ✗
+    _log("proxy=%s stage_timeout=%ds" % (PROXY or "(none)", STAGE_TIMEOUT))
     out, timed_out = {}, set()
 
     def _worker(key, label, fn):

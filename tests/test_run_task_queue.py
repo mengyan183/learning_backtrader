@@ -160,6 +160,12 @@ def test_futu_preflight_is_registered():
     assert callable(q.ACTIONS["futu_preflight"])
 
 
+def test_net_probe_is_registered():
+    """`net_probe` 必须在白名单里 ✓ —— 诊断代理只能从 Mac 本地探 ✗。"""
+    assert "net_probe" in q.ACTIONS
+    assert callable(q.ACTIONS["net_probe"])
+
+
 def test_eval_baa10y_is_registered():
     """`eval_baa10y` 必须在白名单里 ✓（信用利差数据只在 Mac 本地 ✗）。"""
     assert "eval_baa10y" in q.ACTIONS

@@ -91,13 +91,12 @@ def test_stages_run_concurrently(monkeypatch):
     monkeypatch.setattr(m, "stage_attribution",
                         lambda k, snap, kb=None: slow("attr"))
 
-    t0 = time.time()
     news, sent, attr = m._run_stages({"date": "2026-10-29"})
-    took = time.time() - t0
 
     assert (news, sent, attr) == ("news", "sent", "attr")
+    # 只看**并发峰值**，不看墙钟 ✗ —— 墙钟断言（took<0.6）在负载高的机器上会假红，
+    # 而「峰值==3」已经能确定性证明三个线程同时在跑 ✓
     assert peak["max"] == 3, "三个阶段没有真正并发（峰值 %d）✗" % peak["max"]
-    assert took < 0.6, "看起来还是串行（%.2fs）✗" % took
 
 
 def test_hung_stage_degrades_instead_of_blocking(monkeypatch):
