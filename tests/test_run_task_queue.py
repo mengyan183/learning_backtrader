@@ -133,6 +133,43 @@ def test_clean_sync_partial_removes_only_that_package(tmp_path, monkeypatch):
         "sync_1028w_1.md.done", "sync_1028x_1.md"]
 
 
+def test_broken_task_file_is_quarantined(tmp_path, monkeypatch, capsys):
+    """写坏的任务 json 必须**隔离** ✓ —— 否则每轮静默跳过、任务永久饿死 ✗。
+
+    2026-10-29 实测：一个 json 末尾粘了 patch 头（`diff --git ...`）✗
+    ⇒ `json.load` 抛 ValueError ⇒ 被 `except: continue` 吞掉 ✗
+    ⇒ 日志里**完全没有这条任务**，也永远不会执行 ✗。
+    """
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    bad = tmp_path / "t-20261029-1936-demo.json"
+    bad.write_text('{"id": "x", "action": "demo"}\ndiff --git a/x b/x\n',
+                   encoding="utf-8")
+
+    assert q._load_pending() == []
+    assert not bad.exists(), "坏文件没被隔离 ⇒ 下轮还会空转 ✗"
+    assert (tmp_path / "t-20261029-1936-demo.json.broken").exists()
+    assert "已隔离为 .broken" in capsys.readouterr().out
+
+
+def test_pending_is_sorted_by_id(tmp_path, monkeypatch):
+    """待执行任务按 **id** 升序（先进先出）✓。
+
+    id 是 `t-YYYYmmdd-HHMMSS-<action>`，字典序恒等于时间序 ✓；
+    而 `created_at` 可能缺失（缺失会排最前，抢跑 ✗）。
+    """
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    for tid, created in (("t-20261029-2000-demo", ""),
+                         ("t-20261029-1930-demo", "2026-10-29T19:30:00"),
+                         ("t-20261029-1945-demo", "2026-10-29T19:45:00")):
+        (tmp_path / (tid + ".json")).write_text(
+            json.dumps({"id": tid, "action": "demo", "params": {},
+                        "status": "pending", "created_at": created}),
+            encoding="utf-8")
+
+    assert [s["id"] for s in q._load_pending()] == [
+        "t-20261029-1930-demo", "t-20261029-1945-demo", "t-20261029-2000-demo"]
+
+
 def test_prune_queue_keeps_recent_and_never_drops_pending(tmp_path, monkeypatch):
     """只留最近 10 个**已完成**任务 ✓。
 

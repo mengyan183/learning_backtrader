@@ -546,7 +546,16 @@ def _load_pending():
         try:
             with open(p, encoding="utf-8") as f:
                 spec = json.load(f)
-        except (OSError, ValueError):
+        except (OSError, ValueError) as exc:
+            # 🔴 2026-10-29 实测：一个被写坏的 json（文件末尾粘了 patch 头 ✗）
+            # 会被**每轮静默跳过** ✗ ⇒ 任务永久饿死、且没人知道 ✗
+            # ⇒ 打一行警告并改名成 `.broken`（不再匹配 *.json，不再空转）✓
+            print("[warn] 任务文件读不出，已隔离为 .broken：%s（%s）"
+                  % (name, exc))
+            try:
+                os.replace(p, p + ".broken")
+            except OSError:
+                pass
             continue
         if str(spec.get("status") or "pending") != "pending":
             continue
@@ -557,7 +566,10 @@ def _load_pending():
         if os.path.exists(os.path.join(QUEUE, tid + ".result.json")):
             continue
         out.append(spec)
-    out.sort(key=lambda s: str(s.get("created_at") or ""))
+    # 🔴 2026-10-29：按 **id** 排序（先进先出）✗ —— id 是
+    # `t-YYYYmmdd-HHMMSS-<action>`，字典序**恒等于**时间序 ✓；
+    # 而 `created_at` 可能缺失/手写错误（缺失会排最前，抢跑 ✗）。
+    out.sort(key=lambda s: str(s.get("id") or ""))
     return out
 
 
