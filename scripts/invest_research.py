@@ -33,6 +33,9 @@ NIM_MODEL = "deepseek-ai/deepseek-v4.1-flash"
 #: 🔴 2026-10-29：原来**硬编码** ✗ —— Clash 换端口就得改代码 ✗；
 #: 现在可用 `FG_LLM_PROXY` 覆盖（空串 = 不用代理）✓
 PROXY = os.environ.get("FG_LLM_PROXY", "http://127.0.0.1:7890")
+
+#: 知识库佐证的最低相关度 ✓ —— 低于它的命中与当天持仓基本无关，宁缺毋滥 ✗
+KB_MIN_SCORE = 0.7
 FEISHU_OPEN_ID = "ou_c4f5cd25e5001a853309524e899dd6d2"
 OKX_TICKER_URL = "https://www.okx.com/api/v5/market/ticker?instId={sym}"
 # 公司电脑只跑静态数据时置 1，禁止任何外部行情 API（富途/OKX）
@@ -513,7 +516,9 @@ def build_snapshot_lines(snap):
     out = []
     if snap.get("fg"):
         f = snap["fg"]
-        out.append(f"系统贪恐指数 {f['fg_index']} [{f['zone']}] · 目标仓位 {f['target_position']} · 回撤 {f['drawdown']:.2%} · 熔断{'已触发' if f['circuit_breaker'] else '未触发'}")
+        # 2026-10-29：目标仓位打**百分比** ✗ —— 原来直接打 float，
+        # 简报里出现 `0.4708333333333333` ✗
+        out.append(f"系统贪恐指数 {f['fg_index']} [{f['zone']}] · 目标仓位 {float(f['target_position']):.1%} · 回撤 {f['drawdown']:.2%} · 熔断{'已触发' if f['circuit_breaker'] else '未触发'}")
     if snap.get("shoutu"):
         # 全量展示（修复 2026-10-07 审查发现的 [:6] 静默截断：UPRO/YINN 被隐藏）
         items = list(snap["shoutu"].items())
@@ -523,7 +528,10 @@ def build_snapshot_lines(snap):
         out.append(f"守猪待兔({snap['shoutu_date']}): {pairs}")
     out.append("持仓:")
     for r in snap["positions"]:
-        pnl = f"{r['pnl']} ({r['pnl_pct']}%)" if r["pnl"] is not None else "无行情"
+        # 2026-10-29：统一 2 位小数 ✗ —— 原来直接打 pandas float，
+        # 同一列里 `-869.78` 和 `-1276.8` 混着出现 ✗
+        pnl = ("%.2f (%.2f%%)" % (r["pnl"], r["pnl_pct"])
+               if r["pnl"] is not None else "无行情")
         flag = "🔺" if (r["pnl"] or 0) > 0 else ("🔻" if (r["pnl"] or 0) < 0 else "▪️")
         out.append(f"{flag} {r['symbol']} {r['name']} · 成本 {r['cost']} · 现价 {r['last_close'] or '—'} · 浮盈亏 {pnl}")
     out.append(f"账户净值: " + " / ".join(f"{k} {v}" for k, v in (snap.get('accounts') or {}).items()))
@@ -537,15 +545,16 @@ def risk_brief_text(snap):
     知识库来源：RaynerTeo《Math Behind》/ Peter Brandt 风控。
     """
     lines = []
-    for r in snap.get("positions", []):
-        sym = r["symbol"]
-        if r.get("risk_limit"):
-            if r["risk_over"]:
-                lines.append("⚠ %s 市值 %.0f > 1%%风险上限 %.0f：建议减仓"
-                             % (sym, r["mv"], r["risk_limit"]))
-            else:
-                lines.append("✓ %s 未超 1%%风险上限（%.0f）"
-                             % (sym, r["risk_limit"]))
+    # 2026-10-29：**只给汇总** ✓ —— 逐标的的「市值/上限」在下面「减仓操作」里
+    # 已经逐条列过一次 ✗，两节重复同一批数字纯属噪音 ✗。
+    pos = snap.get("positions", [])
+    over = [r for r in pos if r.get("risk_limit") and r["risk_over"]]
+    if over:
+        lines.append("⚠ %d/%d 个标的超出 1%% 风险上限（合计需减 %.0f）—— 逐标的见「减仓操作」"
+                     % (len(over), len(pos),
+                        sum(r["mv"] - r["risk_limit"] for r in over)))
+    elif pos:
+        lines.append("✓ 全部标的未超 1%% 风险上限")
     ks = snap.get("kill_switch")
     if ks:
         lines.append("🔴 连亏保护触发：当日亏损 %s (%.1f%%) ≥ 2%%净值，"
@@ -601,8 +610,9 @@ def action_brief_text(snap):
         if over and greedy:
             act = "减仓（价格风控+贪婪双触发，优先级最高）"
         elif over:
-            act = "减仓至上限%.0f（仅价格风控，系数%s；只降敞口不追方向）" % (
-                lim, "贪婪" if greedy else "非贪婪")
+            # 2026-10-29：后缀从**每条**挪到段首 ✗ —— 原来 6 条各带一遍
+            # 「（仅价格风控，系数非贪婪；只降敞口不追方向）」✗
+            act = "减仓至上限%.0f" % lim
         elif fearful:
             act = "持有/可加（恐慌买入区且敞口合规）"
         else:
@@ -618,6 +628,10 @@ def action_brief_text(snap):
     head = ("引擎A=价格风控(P1 1%规则)：市值超上限必须减到上限（硬敞口）；"
             "引擎B=贪恐系数：只定方向不动手；A+B 同时贪婪=最高减仓优先级。"
             "🟡 研究参考，实盘需人工确认。")
+    # 2026-10-29：把「仅价格风控/只降敞口不追方向」的说明**提到段首说一次** ✗
+    # —— 原来 6 条各带一遍同样的后缀 ✗
+    if any("减仓至上限" in ln for ln in out):
+        head += ("\n标注「减仓至上限」= 仅价格风控触发（系数非贪婪）⇒ 只降敞口、不追方向。")
     return head + "\n" + "\n".join(out)
 
 
@@ -793,26 +807,56 @@ def _major_contradiction():
 
 
 def _futu_health_block():
-    """富途数据源健康 ✓ —— 连不上必须**在简报里说出来** ✗。
+    """（兼容保留）旧入口 —— 现在走 `_data_health_block` ✓。"""
+    return _data_health_block({})
 
-    2026-10-29 用户裁定：「如果连接富途有问题，则应该在简报中体现，不要卡死」✓
-    —— 既不能把整条链拖死 ✗（2026-10-28 SDK 重连连刷 3 小时 ⇒ 简报根本没发 ✗），
-    也不能安静地少一段 ✗（用户只会觉得「今天没简报」✗）。
+
+def _missing_factor_count():
+    """六因子里有几个算不出来 ✓（读不到就返回 0，别让健康块自己崩 ✗）。"""
+    try:
+        import pandas as pd
+
+        from fg_system import config
+        from fg_system.index import factor_score_summary
+        row = pd.read_csv(os.path.join(config.ROOT, "Data", "features.csv")).tail(1).iloc[-1]
+        s = factor_score_summary(row) or {}
+        return sum(1 for v in s.values() if v.get("score") is None)
+    except Exception:                                  # noqa: BLE001
+        return 0
+
+
+def _data_health_block(snap, sentiment=None, attribution=None, judge=None):
+    """🔌 数据源健康：富途 + AI 三阶段 + 因子完整性 ✓（2026-10-29 扩展）。
+
+    原来只报富途 ✗ —— 那次 VIX/TERM 缺、NIM 超时，这一行却只写「富途正常」✗
+    ⇒ 读者以为一切都好 ✗。**缺什么就在顶部说清楚** ✓。
     """
+    lines = []
     try:
         sys.path.insert(0, str(REPO / "scripts"))
         import futu_health  # noqa: PLC0415 —— 同目录脚本，延迟导入 ✓
+        st = futu_health.read_status()
     except Exception:                                  # noqa: BLE001
-        return ""
-    st = futu_health.read_status()
-    if not st:
-        return ""
-    at = str(st.get("at") or "")[:16].replace("T", " ")
-    if st.get("ok"):
-        return "富途 OpenD：正常 ✓（%s 检查）" % at
-    return ("⚠️ 富途 OpenD：**不可用** —— %s\n"
-            "（%s 检查；持仓/成交可能停留在上一交易日 ✗ 本简报已按现有数据生成 ✓）"
-            % (st.get("reason") or "未知原因", at))
+        st = None
+    if st:
+        at = str(st.get("at") or "")[:16].replace("T", " ")
+        if st.get("ok"):
+            lines.append("富途 OpenD：正常 ✓（%s 检查）" % at)
+        else:
+            lines.append("⚠️ 富途 OpenD：**不可用** —— %s（%s 检查；"
+                         "持仓/成交可能停留在上一交易日 ✗ 本简报已按现有数据生成 ✓）"
+                         % (st.get("reason") or "未知原因", at))
+    miss = [n for n, v in (("情绪", sentiment), ("归因", attribution),
+                           ("裁判", judge)) if not v]
+    if miss:
+        lines.append("AI 三阶段：**缺 %s** ✗（对应小节为占位）" % "、".join(miss))
+    n_miss = _missing_factor_count()
+    if n_miss:
+        lines.append("六因子：**缺 %d 个** ✗（见下方分项）" % n_miss)
+    # 全都正常时压成**一行** ✓ —— 每天铺三行「正常」纯属占版面 ✗
+    if not lines or all(ln.startswith("富途 OpenD：正常") for ln in lines):
+        return "全部正常 ✓（富途 OpenD / AI 三阶段 / 六因子）"
+    return "\n".join(lines)
 
 
 def build_brief_sections(snap, sentiment, attribution, judge, news=None):
@@ -824,7 +868,7 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     if _warn:
         secs.append(("⚠️ 数据新鲜度", _warn))
         secs.append("hr")
-    _ds = _futu_health_block()
+    _ds = _data_health_block(snap, sentiment, attribution, judge)
     if _ds:
         secs.append(("🔌 数据源健康", _ds))
         secs.append("hr")
@@ -1006,6 +1050,11 @@ def _kb_brief_text(hits):
     if not hits:
         return "（知识库不可用或未命中）"
     import re
+    # 2026-10-29：**相关度阈值 0.7** ✗ —— 实测 0.607/0.644 命中过两段泛泛的
+    # 交易心理（RaynerTeo / ChatWithTraders），与当天持仓毫无关系 ✗ ⇒ 宁缺毋滥 ✓
+    hits = [h for h in hits if float(h.get("score") or 0) >= KB_MIN_SCORE]
+    if not hits:
+        return "（本次无相关度 ≥ %.1f 的知识库观点）" % KB_MIN_SCORE
     lines = []
     for h in hits:
         snip = h["snippet"].replace("\n", " ").strip()
@@ -1049,6 +1098,10 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
     ]
     if _warn:
         lines += ["## ⚠️ 数据新鲜度", _warn, "", "---", ""]
+    # 2026-10-29：md 版也带上健康块 ✗ —— 原来只有飞书富文本有，
+    # 归档的 .md 看不到「缺什么」✗
+    lines += ["## 🔌 数据源健康",
+              _data_health_block(snap, sentiment, attribution, judge), "", "---", ""]
     lines += [
         "## 市场快照",
         "```",

@@ -77,10 +77,31 @@ def test_brief_shows_futu_unavailable(monkeypatch, tmp_path):
     assert "上一交易日" in txt, "要提示数据可能陈旧 ✗"
 
 
-def test_brief_stays_silent_without_status(tmp_path, monkeypatch):
-    """没有状态文件 ⇒ 不加这一节 ✓（本机没跑过富途时别硬凑一行 ✗）。"""
+def test_health_is_one_line_when_everything_ok(tmp_path, monkeypatch):
+    """全都正常时压成**一行** ✓ —— 每天铺三行「正常」纯属占版面 ✗。
+
+    2026-10-29 扩展：健康块从「只报富途」扩到「富途 + AI 三阶段 + 六因子」，
+    正常态必须仍然只有一行（否则等于把噪音搬到了顶部 ✗）。
+    """
     ir = _load("invest_research", "scripts/invest_research.py")
     fh = _futu_health()
     monkeypatch.setattr(fh, "STATUS_PATH", str(tmp_path / "nope.json"))
     monkeypatch.setitem(sys.modules, "futu_health", fh)
-    assert ir._futu_health_block() == ""
+    monkeypatch.setattr(ir, "_missing_factor_count", lambda: 0)
+
+    txt = ir._data_health_block({}, "s", "a", "j")
+
+    assert txt == "全部正常 ✓（富途 OpenD / AI 三阶段 / 六因子）", txt
+
+
+def test_health_lists_missing_stages(monkeypatch):
+    """AI 阶段缺失必须**在顶部点名** ✓（2026-10-29 实测：NIM 超时那行却只写「富途正常」✗）。"""
+    ir = _load("invest_research", "scripts/invest_research.py")
+    monkeypatch.setitem(sys.modules, "futu_health",
+                        type("X", (), {"read_status": staticmethod(lambda: None)}))
+    monkeypatch.setattr(ir, "_missing_factor_count", lambda: 2)
+
+    txt = ir._data_health_block({}, "s", None, None)
+
+    assert "缺 归因、裁判" in txt, txt
+    assert "六因子：**缺 2 个**" in txt

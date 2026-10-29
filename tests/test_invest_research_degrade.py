@@ -99,6 +99,48 @@ def test_stages_run_concurrently(monkeypatch):
     assert peak["max"] == 3, "三个阶段没有真正并发（峰值 %d）✗" % peak["max"]
 
 
+def test_snapshot_lines_format_numbers():
+    """简报里的数字必须**可读** ✓（2026-10-29 用户实测）。
+
+    - 目标仓位原来直接打 float ⇒ 出现 `0.4708333333333333` ✗
+    - 浮盈亏同一列里 1 位 / 2 位小数混用（`-1276.8` vs `-869.78`）✗
+    """
+    m = _load()
+    snap = {
+        "fg": {"fg_index": 36.4, "zone": "1.0",
+               "target_position": 0.4708333333333333,
+               "drawdown": 0.0633, "circuit_breaker": False},
+        "shoutu": {}, "shoutu_date": "2026-10-29",
+        "positions": [{"symbol": "YINN", "name": "x", "cost": 26.82,
+                       "last_close": 21.28, "pnl": -1276.8, "pnl_pct": -27.34}],
+        "accounts": {"stock": 11017.4},
+    }
+    txt = m.build_snapshot_lines(snap)
+
+    assert "目标仓位 47.1%" in txt, txt
+    assert "0.4708333333333333" not in txt, "目标仓位又打全精度了 ✗"
+    assert "-1276.80 (-27.34%)" in txt, "浮盈亏没统一 2 位小数 ✗"
+
+
+def test_reduce_suffix_is_stated_once():
+    """「仅价格风控 / 只降敞口不追方向」只在**段首**说一次 ✓。
+
+    2026-10-29 实测：6 条减仓各带一遍同样的后缀 ✗。
+    """
+    m = _load()
+    snap = {"positions": [
+        {"symbol": "YINN", "mv": 3341, "risk_limit": 1255, "risk_over": True,
+         "sys_fg": 25.9, "sys_fg_note": "个股级"},
+        {"symbol": "GDXU", "mv": 3393, "risk_limit": 487, "risk_over": True,
+         "sys_fg": 32.8, "sys_fg_note": "个股级"},
+    ], "shoutu": {}}
+
+    txt = m.action_brief_text(snap)
+
+    assert txt is not None
+    assert txt.count("只降敞口") == 1, "后缀又被逐条重复了 ✗"
+
+
 def test_hung_stage_degrades_instead_of_blocking(monkeypatch):
     """单阶段卡住必须**降级跳过** ✓ —— 不许拖死整条简报 ✗。
 
