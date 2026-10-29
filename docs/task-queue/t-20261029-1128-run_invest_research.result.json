@@ -1,0 +1,11 @@
+{
+  "id": "t-20261029-1128-run_invest_research",
+  "action": "run_invest_research",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"push\": false, \"stdout\": \"[warn] GDXU 合成：2/2535 天因腿缺失被剔除（腿 = GDX / GDXJ）\\n2026-10-29 11:30:47,519 | 8881 | 140704390205888 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7521413198069385238(1) context=<futu.quote.open_quote_context.OpenQuoteContext object at 0x7f9c1cd3e410>\\n2026-10-29 11:30:48,255 | 8881 | 123145555156992 | [open_context_base.py:521] on_disconnect: Disconnected: conn=0(1) reason=CallClose\\n简报已写入: /Users/xingguo/learning_backtrader/Data/invest_brief_2026-10-26.md\\n[verify] 简报检查: 通过 (fail=0 warn=1)\\n[verify] WARN: 36.4 == features 尾行 2026-10-27 的 36.4；指数数据日 2026-10-27 ≠ 简报标题日 2026-10-26（数据不同步）\\n# 多智能体投研简报 2026-10-26\\n\\n## 市场快照\\n```\\n系统贪恐指数 36.4 [1.0] · 目标仓位 0.4708333333333333 · 回撤 6.33% · 熔断未触发\\n守猪待兔(2026-10-29): AXTX -77.0 / CONL -63.0 / CRCG -90.0 / GDXU -93.0 / SOXL -70.0 / TQQQ -11.0 / UPRO 2.0 / YINN -87.0\\n持仓:\\n🔻 YINN 三倍做多富时中国ETF-Direxion · 成本 26.82 · 现价 21.2 · 浮盈亏 -882.34 (-20.95%)\\n🔻 GDXU 三倍做多黄金矿业ETN-MicroSectors · 成本 111.19 · 现价 74.83 · 浮盈亏 -1527.12 (-32.7%)\\n🔻 CRCG 2倍做多CRCL ETF-Leverage Shares · 成本 18.822 · 现价 10.58 · 浮盈亏 -1483.56 (-43.79%)\\n🔻 CONL 2倍做多COIN ETF-GraniteShares · 成本 5.458\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-10-29T11:30:46",
+  "finished_at": "2026-10-29T11:38:44",
+  "duration_s": 478.05
+}
