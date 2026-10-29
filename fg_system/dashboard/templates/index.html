@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{{ title }}</title>
 {{ pwa_head }}
-<link rel="stylesheet" href="/static/style.css?v=20261029b"></head><body>
+<link rel="stylesheet" href="/static/style.css?v=20261029c"></head><body>
 <!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
      而**运行时错误在手机上根本看不到** ✗（没有控制台）。
      ⇒ 本段**必须**是页面里**第一个** script 块 ✓ ——
@@ -1123,12 +1123,15 @@ function loadTasks() {
       }
       // 2026-10-28：原来是「✅ 动作 · 时间 · 0s」一行纯文本 ✗
       // ⇒ 状态用文字药丸 + 结果单独一行 ✓（emoji 当图标不算图标系统 ✗）
-      var ST = { done: "完成", failed: "失败" };
+      var ST = { done: "完成", failed: "失败", running: "执行中" };
       var rows = ["<div class='task-head'>最近任务</div>"];
       for (var i = 0; i < Math.min(it.length, 5); i++) {
         var x = it[i];
         var meta = String(x.at || "").replace("T", " ").slice(5, 16);
-        if (x.duration_s != null) { meta += " · " + x.duration_s + "s"; }
+        // 执行中要显示**已跑多久** ✓ —— 只写「排队中」看不出是在跑还是卡住 ✗
+        if (x.status === "running" && x.elapsed_s != null) {
+          meta += " · 已 " + Math.max(1, Math.round(x.elapsed_s / 60)) + " 分";
+        } else if (x.duration_s != null) { meta += " · " + x.duration_s + "s"; }
         rows.push("<div class='task-row s-" + (x.status || "pending") + "'>" +
           "<span class='task-st'>" + (ST[x.status] || "排队中") + "</span>" +
           "<span class='task-act'>" + esc(x.action || "?") + "</span>" +

@@ -359,6 +359,34 @@ def _task_ids():
     return out
 
 
+#: 「正在执行」标记后缀 —— **旁路文件，不写回任务 json** ✗
+#: 为什么不在 json 里写 status=running：进程若中途被杀，json 会永远停在 running ✗
+#: ⇒ `_load_pending` 再也不认领它 ⇒ 任务永远不执行 ✗（比显示不准严重得多 ✗）。
+#: 旁路标记最坏只是看板显示「执行中」到超时 ✓。
+RUNNING_SUFFIX = ".running"
+#: 标记超过这么久 ⇒ 视为**残留**（进程已死），看板不再显示执行中 ✓
+RUNNING_STALE_SEC = 1200
+
+
+def _running_path(tid):
+    return os.path.join(QUEUE, tid + RUNNING_SUFFIX)
+
+
+def _mark_running(tid):
+    try:
+        with open(_running_path(tid), "w", encoding="utf-8") as fh:
+            json.dump({"started_at": time.strftime("%Y-%m-%dT%H:%M:%S")}, fh)
+    except OSError:
+        pass
+
+
+def _clear_running(tid):
+    try:
+        os.remove(_running_path(tid))
+    except OSError:
+        pass
+
+
 def _prune_queue(keep=KEEP_TASKS):
     """只留最近 `keep` 个**已完成**任务 ✓，返回被删文件名列表。
 
@@ -434,6 +462,9 @@ def run_once(commit=True):
                           started, time.strftime("%Y-%m-%dT%H:%M:%S"))
             done.append((spec["id"], "failed"))
             continue
+        # 2026-10-29：执行期打「运行中」旁路标记 ✓ —— 否则 8 分钟的简报任务
+        # 在看板上一直显示「排队中」，用户以为卡住了 ✗
+        _mark_running(spec["id"])
         try:
             r = fn(spec.get("params") or {})
             ok = bool(r.get("ok")) if isinstance(r, dict) else True
@@ -447,6 +478,8 @@ def run_once(commit=True):
                           "%s: %s" % (type(exc).__name__, exc),
                           started, time.strftime("%Y-%m-%dT%H:%M:%S"))
             done.append((spec["id"], "failed"))
+        finally:
+            _clear_running(spec["id"])
 
     if done and commit:
         # 2026-10-29：顺带瘦身 ✓ —— 每个任务两个 json 永不清理会无限涨 ✗

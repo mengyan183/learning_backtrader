@@ -166,6 +166,16 @@ def test_run_invest_research_is_registered():
     assert callable(q.ACTIONS["run_invest_research"])
 
 
+def test_running_marker_roundtrip(tmp_path, monkeypatch):
+    """「执行中」旁路标记的写/删 ✓ —— 不回写任务 json（崩溃后仍能重试）✗。"""
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    q._mark_running("t-1")
+    assert (tmp_path / "t-1.running").exists()
+    q._clear_running("t-1")
+    assert not (tmp_path / "t-1.running").exists()
+    q._clear_running("t-1")                 # 重复删不报错 ✓
+
+
 def test_install_daily_plist_is_registered():
     """`install_daily_plist` 必须在白名单里 ✓（plist 只改仓库副本不生效 ✗）。"""
     assert "install_daily_plist" in q.ACTIONS

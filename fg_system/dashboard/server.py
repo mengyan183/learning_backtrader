@@ -629,6 +629,23 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
                     "at": d.get("finished_at") or d.get("created_at"),
                     "duration_s": d.get("duration_s"),
                     "output": str(d.get("output") or "")[:160]}
+            # 2026-10-29：**执行中**状态 ✓ —— 否则 8 分钟的简报任务一直显示「排队中」✗
+            # （用户实测：`run_invest_research` 跑了 478 秒，看板全程「排队中」✗）
+            if status == "pending":
+                try:
+                    with open(os.path.join(q, tid + ".running"),
+                              encoding="utf-8") as _fh:
+                        _mark = _json.load(_fh)
+                    _started = str(_mark.get("started_at") or "")
+                    _age = time.time() - time.mktime(
+                        time.strptime(_started, "%Y-%m-%dT%H:%M:%S"))
+                    # 标记超过 20 分钟 ⇒ 进程已死，别一直显示执行中 ✓
+                    if 0 <= _age < 1200:
+                        item["status"] = "running"
+                        item["started_at"] = _started
+                        item["elapsed_s"] = int(_age)
+                except (OSError, ValueError):
+                    pass
             if tid not in merged or status != "pending":
                 merged[tid] = item
         items = sorted(merged.values(), key=lambda x: str(x.get("at") or ""),
