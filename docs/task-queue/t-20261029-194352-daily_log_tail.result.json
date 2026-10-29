@@ -1,0 +1,14 @@
+{
+  "id": "t-20261029-194352-daily_log_tail",
+  "action": "daily_log_tail",
+  "params": {
+    "which": "task_queue",
+    "lines": "50"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "t found\\nfatal: could not read Username for 'https://github.com': Device not configured\\nt-20261029-1104-futu_preflight -> done\\n[warn] 结果已提交但**推送失败**（rc=128）：gh auth git-credential get: gh: command not found\\nfatal: could not read Username for 'https://github.com': Device not configured\\nt-20261029-1128-run_invest_research -> done\\n[warn] 补推仍失败（rc=128）：gh auth git-credential get: gh: command not found\\nfatal: could not read Username for 'https://github.com': Device not configured\\n[warn] 结果已提交但**推送失败**（rc=128）：gh auth git-credential get: gh: command not found\\nfatal: could not read Username for 'https://github.com': Device not configured\\nt-20261029-1147-install_daily_plist -> done\\n[push] 补推成功（之前失败的提交已同步）\\n[push] 补推成功（之前失败的提交已同步）\\n[push] 补推成功（之前失败的提交已同步）\\nt-20261029-1358-daily_log_tail -> done\\n[push] 补推成功（之前失败的提交已同步）\\n[auto-clean] 已归档 125 个插件层文件 -> /Users/xingguo/.openclaw/tmp/fg-sync-bypass-in/archive_1029-1420\\n[push] 补推成功（之前失败的提交已同步）\\n[push] 补推成功（之前失败的提交已同步）\\nt-20261029-1508-eval_baa10y -> failed\\n[prune] 清理 2 个旧任务文件（只留最近 10 个）\\nt-20261029-1518-run_invest_research -> failed\\n[push] 补推成功（之前失败的提交已同步）\\n[prune] 清理 2 个旧任务文件（只留最近 10 个）\\nt-20261029-1552-run_invest_research -> done\\n[prune] 清理 4 个旧任务文件（只留最近 10 个）\\nt-20261029-1619-net_probe -> done\\nt-20261029-1619-run_invest_research -> done\\n[prune] 清理 4 个旧任务文件（只留最近 10 个）\\nt-20261029-1652-net_probe -> failed\\nt-20261029-1652-run_invest_research -> done\\n[push] 补推成功（之前失败的提交已同步）\\n[prune] 清理 4 个旧任务文件（只留最近 10 个）\\nt-20261029-1716-factor_diag -> done\\nt-20261029-1716-net_probe -> failed\\n[prune] 清理 4 个旧任务文件（只留最近 10 个）\\nt-20261029-1842-net_probe -> failed\\nt-20261029-1842-run_pipeline -> done\\n[push] 补推成功（之前失败的提交已同步）\\n[prune] 清理 4 个旧任务文件（只留最近 10 个）\\nt-20261029-1905-factor_diag -> done\\nt-20261029-1905-net_probe -> done\\n[prune] 清理 2 个旧任务文件（只留最近 10 个）\\nt-20261029-1915-net_probe -> done\\n[prune] 清理 2 个旧任务文件（只留最近 10 个）\\nt-20261029-1932-net_probe -> done\\n[prune] 清理 4 个旧任务文件（只留最近 10 个）\\nt-20261029-193706-net_probe -> failed\\n\"}",
+  "started_at": "2026-10-29T19:44:49",
+  "finished_at": "2026-10-29T19:44:49",
+  "duration_s": 0.0
+}
