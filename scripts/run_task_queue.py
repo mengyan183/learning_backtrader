@@ -124,6 +124,25 @@ def _act_clean_sync_partial(params):
     return {"ok": True, "removed": removed, "count": len(removed)}
 
 
+def _act_install_evolve_tasks(params):
+    """重新注册 evolve 定时器（跑仓库里的 `install_evolve_tasks.sh`）✓。
+
+    动机（2026-10-29）：plist 只改仓库副本**不生效** ✗ —— 真身是
+    `~/Library/LaunchAgents/*.plist`，必须重跑安装脚本才会重新 bootstrap ✓。
+    固定脚本、固定路径，不接受任何参数 ✓（与白名单同一原则 ✗）。
+    """
+    script = os.path.join(ROOT, "scripts", "install_evolve_tasks.sh")
+    if not os.path.exists(script):
+        return {"ok": False, "reason": "找不到 %s" % script}
+    try:
+        r = subprocess.run(["bash", script], cwd=ROOT, capture_output=True,
+                           text=True, timeout=180)
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": (r.stdout or "")[-900:], "stderr": (r.stderr or "")[-400:]}
+
+
 #: 允许 tail 的日志 —— **固定白名单** ✓（不接受任意路径 ✗，否则等于远程读文件 ✗）
 TAIL_LOGS = {
     "daily": "/tmp/fg_daily.log",
@@ -162,6 +181,7 @@ ACTIONS = {
     "sync_runtime": _act_sync_runtime,
     "clean_sync_partial": _act_clean_sync_partial,
     "daily_log_tail": _act_daily_log_tail,
+    "install_evolve_tasks": _act_install_evolve_tasks,
 }
 
 

@@ -56,6 +56,24 @@ def test_quiet_prints_only_status_changes(monkeypatch, capsys):
     assert "[维持] 1 条" in out and "H-001" in out
 
 
+def test_daily_timer_runs_quiet():
+    """每日 06:10 的定时器必须带 `--quiet` ✓ —— **副本和安装脚本都要改** ✗。
+
+    2026-10-29：只改 `scripts/*.plist` 副本**不生效** ✗ —— 真身是
+    `~/Library/LaunchAgents/*.plist`，由 `install_evolve_tasks.sh` 生成 ✓。
+    只改副本的话，下次重装又会把旧参数写回去 ✗。
+    """
+    root = config.ROOT
+    with open(os.path.join(root, "scripts",
+                           "com.xingguo.fg-evolve-verify.plist"),
+              encoding="utf-8") as fh:
+        assert 'evolve_verify.py" --quiet' in fh.read(), "plist 副本没带 --quiet ✗"
+    with open(os.path.join(root, "scripts", "install_evolve_tasks.sh"),
+              encoding="utf-8") as fh:
+        assert 'evolve_verify.py evolve_verify.log "--quiet"' in fh.read(), \
+            "安装脚本没传 --quiet ⇒ 重新注册会把旧参数写回 ✗"
+
+
 def test_without_quiet_everything_still_prints(monkeypatch, capsys):
     """默认行为不许变 ✓ —— 现有调用方（每日链）没有传 `--quiet`。"""
     ev = _load()

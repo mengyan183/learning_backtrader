@@ -240,6 +240,13 @@ def _patch_payload(srcs, base_ref):
         if "\r\n" in base:
             base_txt = base
             cur_txt = cur.replace("\r\n", "\n").replace("\n", "\r\n")
+            # 🔴 2026-10-29：**纯行尾变更**（内容逐字相同、只有 EOL 不同）✗ ——
+            # 上面那步把两边都归一成 CRLF ⇒ diff 变空 ⇒ 文件被**静默跳过** ✗。
+            # 实测：8 个 CRLF blob 归一的包，13 个文件只带出 5 个文件块 ✗。
+            # ⇒ 此时改用**原始字节**做 diff（要改的就是行尾）✓，
+            #   新 blob SHA 也随之取 `cur`（LF）✓ —— 两处口径一致 ✓。
+            if cur_txt == base_txt and cur != base:
+                base_txt, cur_txt = base, cur
         else:
             base_txt = base.replace("\r\n", "\n")
             cur_txt = cur

@@ -195,6 +195,25 @@ def test_patch_has_index_line_for_real_repo_file(monkeypatch, tmp_path):
         open(path, "wb").write(original)
 
 
+def test_pure_eol_change_is_not_dropped(monkeypatch, repo_file):
+    """🔴 **纯行尾变更不能被静默跳过** ✗（2026-10-29）。
+
+    基准是 CRLF、工作区改成 LF、内容逐字相同 ⇒ 按基准行尾归一后 diff 为空 ✗
+    ⇒ 文件被静默丢弃 ✗（实测：13 个文件的归一包只带出 **5** 个文件块 ✗）。
+    这种包最坏：双方都以为发了 ✓，Mac 上什么都没变 ✗。
+    """
+    rel = repo_file("dist/_tmp_packmany_eol.py", "a = 1\nb = 2\n")
+    monkeypatch.setattr(pm, "_base_text", lambda r, ref: "a = 1\r\nb = 2\r\n")
+    monkeypatch.setattr(pm, "_in_base", lambda r, ref: True)
+    monkeypatch.setattr(pm, "_git_blob_sha", lambda ref, r: "aaaaaaa")
+    payload, reasons = pm._patch_payload([rel], "origin/main")
+    assert reasons == []
+    diff = payload.decode("utf-8")
+    assert "diff --git" in diff, "纯行尾变更被静默跳过了 ✗（包会少文件）"
+    assert "-a = 1\r\n" in diff, "diff 没体现「基准是 CRLF」✗"
+    assert "+a = 1\n" in diff, "diff 没体现「新文件是 LF」✗"
+
+
 def test_patch_index_new_sha_matches_crlf_payload(monkeypatch, repo_file):
     """🔴 回归（2026-10-28）：基准是 **CRLF** 时，`index` 的新 blob SHA 必须按
     **写进 diff 的那份字节（CRLF）** 算 ✓。

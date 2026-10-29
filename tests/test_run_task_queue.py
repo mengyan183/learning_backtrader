@@ -154,6 +154,12 @@ def test_prune_queue_keeps_recent_and_never_drops_pending(tmp_path, monkeypatch)
     assert len(dropped) == 8, "13 - 9 = 4 个任务 × 2 文件 = 8 ✗（实际 %d）" % len(dropped)
 
 
+def test_install_evolve_tasks_reports_failure(monkeypatch):
+    """定时器重装：脚本不存在 / 返回非 0 ⇒ `ok=False` ✓（不许静默成功 ✗）。"""
+    monkeypatch.setattr(q, "ROOT", "/nonexistent-root")
+    assert q._act_install_evolve_tasks({})["ok"] is False
+
+
 def test_daily_log_tail_reads_only_whitelisted(tmp_path, monkeypatch):
     """`daily_log_tail` 只读**白名单**日志 ✓ —— 任意路径等于远程读文件 ✗。"""
     log = tmp_path / "d.log"

@@ -21,7 +21,9 @@ DOMAIN="gui/$(id -u)"
 mkdir -p "$AGENT_DIR" "$REPO/logs"
 
 register() {
+    # $7 = 可选命令行参数（2026-10-29 新增：evolve_verify 走 --quiet ✓）
     local label="$1" hour="$2" minute="$3" weekday="$4" script="$5" log="$6"
+    local extra="${7:-}"
     local plist="$AGENT_DIR/$label.plist"
 
     # weekday 为空 ⇒ 每日；否则固定星期（0=Sun … 6=Sat）
@@ -43,7 +45,7 @@ register() {
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>.venv/bin/python "$REPO/scripts/$script"</string>
+        <string>.venv/bin/python "$REPO/scripts/$script"${extra:+ $extra}</string>
     </array>
     <key>WorkingDirectory</key>
     <string>$REPO</string>
@@ -70,7 +72,8 @@ EOF
 }
 
 # 每日 06:10 验证（数据过期闸门 return 2，不回写 ✓）
-register com.xingguo.fg-evolve-verify 6 10 "" evolve_verify.py evolve_verify.log
+# 2026-10-29：`--quiet` ⇒ 只播状态变化 ✓（跳过/样本不足/未变 adopted 各折叠一行 ✓）
+register com.xingguo.fg-evolve-verify 6 10 "" evolve_verify.py evolve_verify.log "--quiet"
 # 每周一(1) 07:00 周报（默认不推飞书 ✓）
 register com.xingguo.fg-evolve-weekly 7 0 1 evolve_weekly.py evolve_weekly.log
 
