@@ -1,9 +1,0 @@
-{
-  "id": "t-20261028-1936-clean_sync_partial",
-  "action": "clean_sync_partial",
-  "params": {
-    "pkg": "sync_1028w"
-  },
-  "status": "pending",
-  "created_at": "2026-10-28T19:36:42"
-}
