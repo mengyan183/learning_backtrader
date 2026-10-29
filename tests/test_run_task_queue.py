@@ -197,6 +197,30 @@ def test_futu_preflight_is_registered():
     assert callable(q.ACTIONS["futu_preflight"])
 
 
+def test_key_diag_never_leaks_plaintext(tmp_path, monkeypatch):
+    """`key_diag` **只回前缀与长度** ✓ —— 绝不回明文 ✗（结果会进 git ✗）。"""
+    monkeypatch.setattr(q.os.path, "expanduser", lambda p: str(tmp_path))
+    (tmp_path / ".credentials.yaml").write_text(
+        "nvidia: nvapi-ABCDEFGHIJKLMNOP\n"
+        "deepseek: sk-1234567890abcdefghij\n", encoding="utf-8")
+
+    r = q._act_key_diag({"dir": str(tmp_path)})
+
+    assert r["ok"] is True
+    hits = r["result"]["hits"]
+    kinds = {h["kind"] for h in hits}
+    assert kinds == {"nvapi", "sk"}, hits
+    blob = json.dumps(r, ensure_ascii=False)
+    assert "ABCDEFGHIJKLMNOP" not in blob, "把 NVIDIA key 明文回传了 ✗"
+    assert "1234567890abcdefghij" not in blob, "把 DeepSeek key 明文回传了 ✗"
+    assert "nvapi-ABCD…" in blob, "前缀也没回（10 字符 + 省略号）"
+
+
+def test_key_diag_missing_dir(tmp_path):
+    """目录不存在 ⇒ 明确失败 ✓（别静默返回空）。"""
+    assert q._act_key_diag({"dir": str(tmp_path / "nope")})["ok"] is False
+
+
 def test_run_pipeline_is_registered():
     """`run_pipeline` 必须在白名单里 ✓（features 尾行缺因子时要能重算）。"""
     assert "run_pipeline" in q.ACTIONS

@@ -225,6 +225,53 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_key_diag(params):
+    """找本机 API key ✓ —— **只回前缀与长度，绝不回明文** ✗。
+
+    动机（2026-10-29）：NIM 免费通道走不通（唯一可用模型卡死、其余 404），
+    要切 DeepSeek 官方，但得先确认 key 在哪、是什么结构 ——
+    `~/.dsh/.credentials.yaml` 里既有 `nvapi-`（NVIDIA）也可能有 `sk-`（DeepSeek）✗。
+    """
+    import re
+
+    root = os.path.expanduser(str(params.get("dir") or "~/.dsh"))
+    if not os.path.isdir(root):
+        return {"ok": False, "reason": "目录不存在：%s" % root}
+    pats = {"nvapi": re.compile(r"nvapi-[A-Za-z0-9_\-]{8,}"),
+            "sk": re.compile(r"sk-[A-Za-z0-9_\-]{16,}"),
+            "sk-or": re.compile(r"sk-or-[A-Za-z0-9_\-]{16,}")}
+    files, hits, seen = [], [], set()
+    for dirpath, dirs, names in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in (".git", "node_modules", "__pycache__")]
+        for f in names:
+            p = os.path.join(dirpath, f)
+            rel = os.path.relpath(p, root)
+            try:
+                sz = os.path.getsize(p)
+            except OSError:
+                continue
+            files.append("%s（%d B）" % (rel, sz))
+            if sz > 512 * 1024:                 # 大文件（模型/日志）不扫 ✓
+                continue
+            try:
+                with open(p, encoding="utf-8", errors="ignore") as fh:
+                    txt = fh.read()
+            except OSError:
+                continue
+            for kind, rx in pats.items():
+                for m in rx.finditer(txt):
+                    v = m.group(0)
+                    sig = (rel, kind, v[:10], len(v))
+                    if sig in seen:
+                        continue
+                    seen.add(sig)
+                    hits.append({"file": rel, "kind": kind,
+                                 "prefix": v[:10] + "…", "len": len(v)})
+    return {"ok": True, "result": {"dir": root,
+                                   "files": files[:40],
+                                   "hits": hits[:40]}}
+
+
 def _act_run_pipeline(params):
     """重算 `features.csv`（与每日链**同一条**调用序列 ✓）。
 
@@ -531,6 +578,7 @@ ACTIONS = {
     "net_probe": _act_net_probe,
     "factor_diag": _act_factor_diag,
     "run_pipeline": _act_run_pipeline,
+    "key_diag": _act_key_diag,
 }
 
 
