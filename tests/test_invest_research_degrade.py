@@ -100,6 +100,31 @@ def test_stages_run_concurrently(monkeypatch):
     assert took < 0.6, "看起来还是串行（%.2fs）✗" % took
 
 
+def test_hung_stage_degrades_instead_of_blocking(monkeypatch):
+    """单阶段卡住必须**降级跳过** ✓ —— 不许拖死整条简报 ✗。
+
+    2026-10-29 用户裁定：并发版仍破 600 秒 ⇒ 说明有阶段会长时间挂住 ✗
+    ⇒ 每个阶段加 `STAGE_TIMEOUT`，超了就 None（简报照发 + 写「跳过：超时」）✓。
+    """
+    import time as _t
+
+    m = _load()
+    monkeypatch.setattr(m, "STAGE_TIMEOUT", 0.4)
+    monkeypatch.setattr(m, "fetch_news", lambda snap: "news")
+    monkeypatch.setattr(m, "_read_hermes_key", lambda: "k")
+    monkeypatch.setattr(m, "_read_nim_key", lambda: "k")
+    monkeypatch.setattr(m, "stage_sentiment", lambda k, snap: _t.sleep(30))
+    monkeypatch.setattr(m, "stage_attribution", lambda k, snap, kb=None: "attr")
+
+    t0 = _t.time()
+    news, sent, attr = m._run_stages({"date": "2026-10-29"})
+    took = _t.time() - t0
+
+    assert took < 5, "卡住的阶段把整条简报拖住了（%.1fs）✗" % took
+    assert sent is None, "卡住的阶段应降级为 None ✗"
+    assert news == "news" and attr == "attr", "正常阶段被连累了 ✗"
+
+
 def test_stage_progress_is_logged(tmp_path, monkeypatch):
     """阶段级进度必须**落盘** ✓。
 

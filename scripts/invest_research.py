@@ -15,9 +15,9 @@ BTC 持仓现价回退源：OKX REST(走 7890 代理)；FG_STATIC_ONLY=1 时跳�
 import argparse
 import json
 import os
-from concurrent.futures import ThreadPoolExecutor
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -1133,6 +1133,11 @@ def _send_feishu(msg_type, content_obj):
     return resp.get("code") == 0, resp.get("msg", resp)
 
 
+#: 单个 AI 阶段的上限（秒）✓ —— 超了就**降级跳过**，不许拖死整条简报 ✗
+#: 2026-10-29 实测：三个阶段并发仍突破 600 秒 ⇒ 说明有阶段会长时间挂住 ✗。
+STAGE_TIMEOUT = 240
+
+
 def _run_stages(snap, kb=None):
     """并发跑三个**互不依赖**的阶段：新闻 / Hermes 情绪 / NIM 归因 ✓。
 
@@ -1141,6 +1146,9 @@ def _run_stages(snap, kb=None):
 
     2026-10-29 实测：一次简报 **478 秒**，绝大部分耗在这三个串行等待上 ✗
     （每个阶段都是一次 2~3 分钟的 LLM 调用）。三个并行后只剩**最慢那个**的时长 ✓。
+
+    每个阶段还有 **`STAGE_TIMEOUT` 上限** ✓ —— 超了就降级为 None（简报照发，
+    写「（跳过：X 超时）」）✗ 而不是把整条链拖死 ✗（2026-10-29 实测并发版仍破 600s ✗）。
 
     失败语义与串行版完全一致 ✓：任何一个阶段抛错 ⇒ 只把该阶段置 None 并打一行日志，
     其余阶段照常 ✓（下游 `build_brief_sections` 会写「（跳过：X 不可用）」占位 ✓）。
@@ -1177,12 +1185,30 @@ def _run_stages(snap, kb=None):
         "attribution": ("NIM 阶段",
                         lambda: stage_attribution(_read_nim_key(), snap, kb=kb)),
     }
-    out = {}
-    with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
-        futs = {k: pool.submit(_guarded, lbl, fn) for k, (lbl, fn) in jobs.items()}
-        for k, fut in futs.items():
-            out[k] = fut.result()
-    return out["news"], out["sentiment"], out["attribution"]
+    # 🔴 2026-10-29 用户裁定：**单阶段卡住就降级跳过** ✗，不许拖死整条简报 ✗
+    # 用 daemon 线程而不是 ThreadPoolExecutor ✗ —— 后者退出时会 join 所有
+    # 未完成线程 ⇒ 一个挂死的 HTTP 调用照样把进程拖住 ✗（Python 无法杀线程 ✓，
+    # 只能不 join + daemon，让进程能正常退 ✓）。
+    out, timed_out = {}, set()
+
+    def _worker(key, label, fn):
+        out[key] = _guarded(label, fn)
+
+    threads = []
+    for key, (label, fn) in jobs.items():
+        t = threading.Thread(target=_worker, args=(key, label, fn), daemon=True)
+        t.start()
+        threads.append((key, label, t))
+
+    deadline = time.time() + STAGE_TIMEOUT
+    for key, label, t in threads:
+        t.join(max(0.0, deadline - time.time()))
+        if t.is_alive():
+            timed_out.add(key)
+            _log("timeout %s (>%ds) ⇒ 降级跳过" % (label, STAGE_TIMEOUT))
+            print("%s超时（>%ds）⇒ 降级跳过" % (label, STAGE_TIMEOUT))
+    return tuple(None if k in timed_out else out.get(k)
+                 for k in ("news", "sentiment", "attribution"))
 
 
 def main():
