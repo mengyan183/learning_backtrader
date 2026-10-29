@@ -133,6 +133,27 @@ def test_clean_sync_partial_removes_only_that_package(tmp_path, monkeypatch):
         "sync_1028w_1.md.done", "sync_1028x_1.md"]
 
 
+def test_prune_queue_keeps_recent_and_never_drops_pending(tmp_path, monkeypatch):
+    """只留最近 10 个**已完成**任务 ✓。
+
+    🔴 未完成的任务（没有 `.result.json`）**一律不删** ✗ —— 删了就永远不会执行 ✗。
+    """
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    for i in range(13):
+        tid = "t-202601%02d-0000-demo" % i
+        (tmp_path / (tid + ".json")).write_text("{}", encoding="utf-8")
+        (tmp_path / (tid + ".result.json")).write_text("{}", encoding="utf-8")
+    pend = "t-20251201-0000-pending"
+    (tmp_path / (pend + ".json")).write_text("{}", encoding="utf-8")
+
+    dropped = q._prune_queue(keep=10)
+    left = sorted(p.name for p in tmp_path.iterdir())
+    assert (pend + ".json") in left, "未完成的任务被删了 ✗"
+    assert len([n for n in left if n.endswith(".result.json")]) == 9, \
+        "应留 9 个已完成（10 - 1 个未完成）+ 1 个未完成 = 10 个任务 ✗"
+    assert len(dropped) == 8, "13 - 9 = 4 个任务 × 2 文件 = 8 ✗（实际 %d）" % len(dropped)
+
+
 def test_git_commit_warns_when_push_fails(monkeypatch, capsys):
     """推送失败必须**留痕** ✓。
 

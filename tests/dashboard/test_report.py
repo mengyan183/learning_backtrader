@@ -176,6 +176,17 @@ def test_sticky_header_and_style_floor():
     assert not bad, "注释符出现在行中间，会提前闭合注释并吞掉下一条规则：%r" % bad[:3]
 
 
+def test_index_gran_selector_defaults_to_week(tmp_path):
+    """历史采样四档（周/月/年/全部）✓，**默认周线** ✓。
+
+    2026-10-29：1765 个日点画在 330px 宽上，一个像素挤 5 个点，既看不清又拖慢首绘 ✗。
+    """
+    html = _render(tmp_path)
+    for g in ("week", "month", "year", "all"):
+        assert 'data-gran="%s"' % g in html, "缺 %s 档 ✗" % g
+    assert 'class="idxwin btn-xs on" data-gran="week"' in html, "默认档不是周线 ✗"
+
+
 def test_inline_json_rounds_floats_and_drops_factor_dates(tmp_path):
     """**守卫**：内联 JSON 必须收敛小数位 + 因子图不带日期 ✓。
 

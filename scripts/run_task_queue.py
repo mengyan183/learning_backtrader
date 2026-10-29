@@ -193,6 +193,42 @@ def _auto_clean():
         return None            # 自愈失败绝不能影响正常任务 ✓
 
 
+#: 队列里只留最近这么多个**已完成**任务 ✓（每个任务两个 json，不清理会无限涨 ✗）
+KEEP_TASKS = 10
+
+
+def _task_ids():
+    """`{id: [文件路径…]}` —— 一个任务是 `<id>.json` + `<id>.result.json` 两个文件 ✓。"""
+    out = {}
+    for p in glob.glob(os.path.join(QUEUE, "*.json")):
+        base = os.path.basename(p)
+        tid = (base[:-len(".result.json")] if base.endswith(".result.json")
+               else base[:-len(".json")])
+        out.setdefault(tid, []).append(p)
+    return out
+
+
+def _prune_queue(keep=KEEP_TASKS):
+    """只留最近 `keep` 个**已完成**任务 ✓，返回被删文件名列表。
+
+    🔴 未完成的任务（没有 `.result.json`）**一律不删** ✗ —— 删了就永远不会执行 ✗。
+    id 形如 `t-YYYYmmdd-HHMM-<action>` ⇒ 字典序即时间序 ✓。
+    """
+    ids = _task_ids()
+    pending = {t for t, ps in ids.items()
+               if not any(p.endswith(".result.json") for p in ps)}
+    done = sorted((t for t in ids if t not in pending), reverse=True)
+    dropped = []
+    for tid in done[max(0, keep - len(pending)):]:
+        for p in ids[tid]:
+            try:
+                os.remove(p)
+                dropped.append(os.path.basename(p))
+            except OSError:
+                pass
+    return dropped
+
+
 def run_once(commit=True):
     """跑一轮。返回 [(id, status), ...]。"""
     auto = _auto_clean()
@@ -228,6 +264,11 @@ def run_once(commit=True):
             done.append((spec["id"], "failed"))
 
     if done and commit:
+        # 2026-10-29：顺带瘦身 ✓ —— 每个任务两个 json 永不清理会无限涨 ✗
+        dropped = _prune_queue()
+        if dropped:
+            print("[prune] 清理 %d 个旧任务文件（只留最近 %d 个）"
+                  % (len(dropped), KEEP_TASKS))
         _git_commit(done)
     return done
 

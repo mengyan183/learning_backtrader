@@ -332,6 +332,9 @@ details.fold[open]>summary::before{content:"▾"}
 details.fold>summary:hover{color:var(--fg)}
 details.fold>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 details.fold[open]>summary{margin-bottom:10px}
+/* 历史采样四档（2026-10-29）：周/月/年/全部，默认周线 */
+.idx-gran{display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap}
+.idxwin.on{background:var(--accent-soft);border-color:var(--accent);color:var(--fg)}
 
 /* 美联储政策环境卡片 */
 .fed-card{background:var(--surface-3);border:1px solid var(--border);

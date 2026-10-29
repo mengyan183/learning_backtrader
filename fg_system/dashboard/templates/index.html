@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{{ title }}</title>
 {{ pwa_head }}
-<link rel="stylesheet" href="/static/style.css?v=20261028g"></head><body>
+<link rel="stylesheet" href="/static/style.css?v=20261029a"></head><body>
 <!-- 🔴 错误可见化（2026-10-27）✗：页面异常时只剩「渲染错乱 / tab 点不动」✗，
      而**运行时错误在手机上根本看不到** ✗（没有控制台）。
      ⇒ 本段**必须**是页面里**第一个** script 块 ✓ ——
@@ -103,7 +103,16 @@
 <div class="sec">{{ card }}</div>
 <details class="fold" id="chartIndexWrap">
 <summary>指数曲线与档位带</summary>
-<div class="sec"><div id="chartIndex" class="echart-main"></div></div>
+<div class="sec">
+<!-- 2026-10-29：历史采样四档 ✓ —— 1765 个日点画在 330px 上没信息量 ✗，默认周线 ✓ -->
+<div class="idx-gran">
+<button class="idxwin btn-xs on" data-gran="week" type="button">周线</button>
+<button class="idxwin btn-xs" data-gran="month" type="button">月线</button>
+<button class="idxwin btn-xs" data-gran="year" type="button">年线</button>
+<button class="idxwin btn-xs" data-gran="all" type="button">全部</button>
+</div>
+<div id="chartIndex" class="echart-main"></div>
+</div>
 </details>
 </div>
 
@@ -523,24 +532,38 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
   var ZONES = [[0,20,"#8b0000"],[20,40,"#d9534f"],[40,60,"#f0ad4e"],
                [60,80,"#5cb85c"],[80,100,"#006400"]];
 
-  function buildIndexChart() {
-    var el = document.getElementById("chartIndex");
-    if (!el) { return; }
-    var idx = echarts.init(el);
-    window.__charts.push(idx);
-    idx.setOption({
+  // 2026-10-29：历史采样四档（周/月/年/全部）✓ —— 1765 个日点画在 330px 宽上
+  // 一个像素挤 5 个点，既看不清又拖慢首绘 ✗。降采样在**前端**做 ⇒ 后端包体不变 ✓。
+  var IDX_GRAN = "week", idxChart = null;
+  function idxSample(gran) {
+    if (gran === "all") { return INDEX; }
+    function bucket(d) {
+      if (gran === "year") { return d.slice(0, 4); }
+      if (gran === "month") { return d.slice(0, 7); }
+      // 周：按「距 1970 的周序号」分桶 —— 只用于分组，不要求周号本身正确 ✓
+      return String(Math.floor(Date.parse(d + "T00:00:00Z") / 6048e5));
+    }
+    var out = [], last = null;
+    for (var i = 0; i < INDEX.length; i++) {
+      var k = bucket(INDEX[i][0]);
+      if (k !== last) { out.push(INDEX[i]); last = k; }   // 每桶取第一个点 ✓
+    }
+    return out;
+  }
+  function indexOption(pts) {
+    return {
       backgroundColor: "transparent",
       grid: { left: 6, right: 12, top: 30, bottom: 6, containLabel: true },
       tooltip: mrg({ trigger: "axis" }, tip),
       xAxis: { type: "category", boundaryGap: false,
-        data: INDEX.map(function (p) { return p[0]; }),
+        data: pts.map(function (p) { return p[0]; }),
         axisLine: { lineStyle: { color: BORDER } },
         axisLabel: { color: SUB, fontSize: 10 } },
       yAxis: { type: "value", min: 0, max: 100,
         axisLabel: { color: SUB, fontSize: 10 },
         splitLine: { lineStyle: { color: SPLIT } } },
       series: [{
-        type: "line", data: INDEX.map(function (p) { return p[1]; }),
+        type: "line", data: pts.map(function (p) { return p[1]; }),
         smooth: true, symbol: "none",
         lineStyle: { width: 2, color: "#58a6ff" },
         areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
@@ -552,7 +575,26 @@ function mrg() { var o = {}, i, k, a; for (i = 0; i < arguments.length; i++) { a
                     { yAxis: z[1] }];
           }) }
       }]
-    });
+    };
+  }
+  function buildIndexChart() {
+    var el = document.getElementById("chartIndex");
+    if (!el) { return; }
+    idxChart = echarts.init(el);
+    window.__charts.push(idxChart);
+    idxChart.setOption(indexOption(idxSample(IDX_GRAN)));
+    var bs = document.querySelectorAll(".idxwin");
+    for (var b = 0; b < bs.length; b++) {
+      (function (btn) {
+        btn.addEventListener("click", function () {
+          IDX_GRAN = btn.getAttribute("data-gran") || "week";
+          for (var j = 0; j < bs.length; j++) {
+            bs[j].className = "idxwin btn-xs" + (bs[j] === btn ? " on" : "");
+          }
+          idxChart.setOption(indexOption(idxSample(IDX_GRAN)));
+        });
+      })(bs[b]);
+    }
   }
 
   var FKEYS = ["vix", "term", "price", "breadth", "fed"];
