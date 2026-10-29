@@ -1,0 +1,10 @@
+{
+  "id": "t-20261029-1936-net_probe",
+  "action": "net_probe",
+  "params": {
+    "chat": "1",
+    "model": "mistralai/mistral-large-2-instruct"
+  },
+  "status": "pending",
+  "created_at": "2026-10-29T19:36:19"
+}diff --git a/docs/task-queue/t-20261029-193706-net_probe.json b/docs/task-queue/t-20261029-193706-net_probe.json

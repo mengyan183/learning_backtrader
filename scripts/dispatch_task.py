@@ -42,7 +42,15 @@ def main(argv=None):
     ap.add_argument("--no-pack", action="store_true", help="只写 json，不打包")
     args = ap.parse_args(argv)
 
-    tid = args.id or ("t-%s-%s" % (time.strftime("%Y%m%d-%H%M"), args.action))
+    # 🔴 2026-10-29 实测：原来只到**分钟** ⇒ 同一分钟下发两个同名 action，
+    # 第二个会**覆盖**第一个、任务静默丢失 ✗（一次下发两个模型探测时踩到 ✗）
+    # ⇒ 加秒，并保证不与已存在文件撞名 ✓（字典序仍等于时间序 ✓）
+    tid = args.id or ("t-%s-%s" % (time.strftime("%Y%m%d-%H%M%S"), args.action))
+    if not args.id:
+        base, n = tid, 2
+        while os.path.exists(os.path.join(QUEUE, tid + ".json")):
+            tid = "%s-%d" % (base, n)
+            n += 1
     params = {}
     for kv in args.param:
         if "=" not in kv:
