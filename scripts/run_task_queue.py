@@ -368,6 +368,15 @@ def _act_net_probe(params):
             status = r.status
             out["via_proxy"] = {"ok": True, "status": status, "method": method,
                                 "ms": int((time.time() - t0) * 1000)}
+            # `body_out=1` ⇒ 带回响应正文前 N 字 ✓
+            # 2026-10-29：要挑「NIM 上还有哪个模型能用」，必须先看到模型列表 ✗
+            if str(params.get("body_out") or "") in ("1", "true", "yes"):
+                try:
+                    n = max(100, min(int(params.get("body_len") or 1500), 4000))
+                    out["via_proxy"]["body"] = r.read(n).decode(
+                        "utf-8", "replace")
+                except Exception as exc:           # noqa: BLE001
+                    out["via_proxy"]["body"] = "读取失败：%s" % exc
     except urllib.error.HTTPError as exc:
         # 401/404 这类**也是有效情报** ✓ —— 说明链路通、只是鉴权/路径不对 ✓
         out["via_proxy"] = {"ok": False, "status": exc.code, "method": method,
