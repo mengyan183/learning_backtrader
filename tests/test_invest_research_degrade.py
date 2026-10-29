@@ -135,6 +135,23 @@ def test_preflight_skips_dead_stage(monkeypatch):
     assert took < 3, "预检没起作用（%.1fs）✗" % took
 
 
+def test_kb_threshold_is_060():
+    """知识库相关度阈值 = **0.6** ✓（2026-10-29 用户裁定 0.7 → 0.6）。
+
+    0.7 太严：实测当天命中全被过滤 ⇒ 整节变成空占位 ✗。
+    """
+    m = _load()
+    assert m.KB_MIN_SCORE == 0.6
+
+    def _hit(score):
+        return {"channel": "C%d" % int(score * 100), "title": "t", "date": "NA",
+                "score": score, "snippet": "x" * 60}
+
+    txt = m._kb_brief_text([_hit(0.55), _hit(0.62)])
+    assert "C62" in txt, "0.62 应该保留 ✓"
+    assert "C55" not in txt, "0.55 应该被过滤 ✗"
+
+
 def test_snapshot_lines_format_numbers():
     """简报里的数字必须**可读** ✓（2026-10-29 用户实测）。
 

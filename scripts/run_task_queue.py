@@ -225,6 +225,65 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_factor_diag(params):
+    """查六因子为什么缺 ✓ —— 只读，报各数据源的尾行日期与近 30 行非空数。
+
+    动机（2026-10-29）：简报里 `VIX — 数据缺失` / `TERM — 数据缺失` ✗，
+    但没人知道是 features 没算、还是原始 csv 没更新 ✗ ⇒ 只能上 Mac 查 ✓。
+    """
+    import pandas as pd
+
+    data = os.path.join(ROOT, "Data")
+    out = {}
+
+    def _tail(path):
+        try:
+            d = pd.read_csv(path, parse_dates=["date"])
+            if d.empty:
+                return "空文件"
+            return "%s（%d 行）" % (d["date"].iloc[-1].date(), len(d))
+        except Exception as exc:                   # noqa: BLE001
+            return "读不出：%s" % exc
+
+    out["raw/vix.csv"] = _tail(os.path.join(data, "raw", "vix.csv"))
+    out["raw/prices.csv"] = _tail(os.path.join(data, "raw", "prices.csv"))
+    out["features.csv"] = _tail(os.path.join(data, "features.csv"))
+
+    try:
+        f = pd.read_csv(os.path.join(data, "features.csv"), parse_dates=["date"])
+        last = f.iloc[-1]
+        out["features 尾行"] = {
+            c: (None if pd.isna(last.get(c)) else float(last[c]))
+            for c in ("fg_index", "vix", "term") if c in f.columns}
+        out["features 尾行"]["date"] = str(last["date"].date())
+        # 从哪一天开始断的：倒着数连续为空的长度
+        for c in ("vix", "term"):
+            if c not in f.columns:
+                continue
+            s = f[c]
+            n = 0
+            for v in reversed(list(s)):
+                if pd.isna(v):
+                    n += 1
+                else:
+                    break
+            out["%s 连续缺失" % c] = "%d 行" % n
+        out["近30行非空"] = {c: int(f[c].tail(30).notna().sum())
+                          for c in ("vix", "term") if c in f.columns}
+    except Exception as exc:                       # noqa: BLE001
+        out["features 尾行"] = "读不出：%s" % exc
+
+    try:
+        r = subprocess.run(
+            [sys.executable, os.path.join(ROOT, "scripts", "check_freshness.py")],
+            cwd=ROOT, capture_output=True, text=True, timeout=180)
+        out["check_freshness"] = {"rc": r.returncode,
+                                  "out": (r.stdout or "")[-800:]}
+    except (subprocess.SubprocessError, OSError) as exc:
+        out["check_freshness"] = "执行失败：%s" % exc
+    return {"ok": True, "result": out}
+
+
 def _act_net_probe(params):
     """探「本地代理端口」+「经代理取一次」✓ —— 只读、秒级。
 
@@ -233,6 +292,7 @@ def _act_net_probe(params):
     队列跑在 launchd 里，环境与登录 shell 不同 ✗ ⇒ 只能在 Mac 本地实测 ✓。
     """
     import socket
+    import urllib.error
     import urllib.parse
     import urllib.request
 
@@ -251,17 +311,43 @@ def _act_net_probe(params):
     except OSError as exc:
         out["proxy_port"] = {"ok": False, "reason": str(exc)}
 
-    # ② 经代理真取一次（10 秒）—— 只看到不到得了，不看状态码 ✓
+    # ② 经代理真取一次 ✓
+    # `method`/`body`/`auth`/`secs` 可调 —— 2026-10-29 实测 GET 521ms 通、
+    # POST chat 60 秒无响应 ✗ ⇒ 必须能**分别**验 GET 与 POST ✗
+    method = str(params.get("method") or "GET").upper()
+    body = params.get("body")
+    secs = int(params.get("secs") or 10)
+    headers = {}
+    if body is not None:
+        body = str(body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    if str(params.get("auth") or "") in ("1", "true", "yes"):
+        try:
+            if os.path.join(ROOT, "scripts") not in sys.path:
+                sys.path.insert(0, os.path.join(ROOT, "scripts"))
+            import invest_research as ir
+            headers["Authorization"] = "Bearer " + ir._read_nim_key()
+        except Exception as exc:                   # noqa: BLE001
+            out["auth"] = "读 key 失败：%s" % exc
+
     t0 = time.time()
+    status = None
     try:
         op = urllib.request.build_opener(
             urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
-        req = urllib.request.Request(url, method="GET")
-        with op.open(req, timeout=10) as r:
-            out["via_proxy"] = {"ok": True, "status": r.status,
+        req = urllib.request.Request(url, data=body, headers=headers,
+                                     method=method)
+        with op.open(req, timeout=secs) as r:
+            status = r.status
+            out["via_proxy"] = {"ok": True, "status": status, "method": method,
                                 "ms": int((time.time() - t0) * 1000)}
+    except urllib.error.HTTPError as exc:
+        # 401/404 这类**也是有效情报** ✓ —— 说明链路通、只是鉴权/路径不对 ✓
+        out["via_proxy"] = {"ok": False, "status": exc.code, "method": method,
+                            "ms": int((time.time() - t0) * 1000),
+                            "reason": "HTTP %s" % exc.code}
     except Exception as exc:                       # noqa: BLE001
-        out["via_proxy"] = {"ok": False,
+        out["via_proxy"] = {"ok": False, "status": status, "method": method,
                             "ms": int((time.time() - t0) * 1000),
                             "reason": "%s: %s" % (type(exc).__name__, exc)}
 
@@ -396,6 +482,7 @@ ACTIONS = {
     "install_daily_plist": _act_install_daily_plist,
     "eval_baa10y": _act_eval_baa10y,
     "net_probe": _act_net_probe,
+    "factor_diag": _act_factor_diag,
 }
 
 

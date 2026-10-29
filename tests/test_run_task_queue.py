@@ -160,6 +160,12 @@ def test_futu_preflight_is_registered():
     assert callable(q.ACTIONS["futu_preflight"])
 
 
+def test_factor_diag_is_registered():
+    """`factor_diag` 必须在白名单里 ✓ —— VIX/TERM 为什么缺只能上 Mac 查 ✗。"""
+    assert "factor_diag" in q.ACTIONS
+    assert callable(q.ACTIONS["factor_diag"])
+
+
 def test_net_probe_is_registered():
     """`net_probe` 必须在白名单里 ✓ —— 诊断代理只能从 Mac 本地探 ✗。"""
     assert "net_probe" in q.ACTIONS

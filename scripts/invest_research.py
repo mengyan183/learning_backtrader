@@ -35,7 +35,8 @@ NIM_MODEL = "deepseek-ai/deepseek-v4.1-flash"
 PROXY = os.environ.get("FG_LLM_PROXY", "http://127.0.0.1:7890")
 
 #: 知识库佐证的最低相关度 ✓ —— 低于它的命中与当天持仓基本无关，宁缺毋滥 ✗
-KB_MIN_SCORE = 0.7
+#: 2026-10-29 用户裁定 **0.7 → 0.6** ✓：0.7 把命中全过滤掉了，整节变成空占位 ✗
+KB_MIN_SCORE = 0.6
 
 #: 阶段日志的写锁 ✓ —— 三个线程并发 append 在 Windows 上会偶发丢行 ✗
 _LOG_LOCK = threading.Lock()
