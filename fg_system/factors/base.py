@@ -37,6 +37,37 @@ def pct_score(series, window=None, reverse=False):
     return 100.0 * (1.0 - pct) if reverse else 100.0 * pct
 
 
+def orthogonalize(y, x, window=None, min_periods=None):
+    """把 `y` 对 `x` 做**滚动回归取残差** ✓（剔除 `x` 解释掉的那部分）。
+
+    动机（2026-10-29 用户裁定）：C1_BAA10Y 与 `fed` 的 Spearman 相关 **+0.604**
+    偏高 ✗ —— 与美联储因子中度重复，直接进回测裁判可能得出「无增量贡献」✗。
+    先做正交化，再看 ICIR 是否仍然站得住 ✓。
+
+    🔴 **无前视** ✗：β 用 `shift(1)` 取 **t-1 及之前**的窗口 ✗ ——
+    若用含 t 的窗口，当天的 y 自己参与估参 ⇒ 残差被系统性压小 ⇒ IC 虚高 ✗
+    （这正是本仓库最怕的那类错误 ✓）。
+
+    :param y: 待正交化的序列（如因子分位）
+    :param x: 解释变量（如 `fed` 因子），按 `y.index` 对齐
+    :param window: 滚动窗口，默认 `config.RANK_WINDOW` ✓（不新设窗口 ✗）
+    :returns: 残差 Series（index 同 `y`，窗口不足处 NaN ✓）
+    """
+    window = window or config.RANK_WINDOW
+    min_periods = max(20, window // 4) if min_periods is None else min_periods
+    yy = pd.Series(y, dtype="float64")
+    xx = pd.Series(x, dtype="float64").reindex(yy.index)
+    df = pd.concat([yy.rename("y"), xx.rename("x")], axis=1).dropna()
+    if df.empty:
+        return pd.Series(float("nan"), index=yy.index, name="resid")
+    var = df["x"].rolling(window, min_periods=min_periods).var()
+    cov = df["y"].rolling(window, min_periods=min_periods).cov(df["x"])
+    # 🔴 shift(1)：β 只用 t-1 及之前的信息（无前视 ✓）
+    beta = (cov / var.replace(0.0, float("nan"))).shift(1)
+    resid = df["y"] - beta * df["x"]
+    return resid.rename("resid").reindex(yy.index)
+
+
 class Factor(ABC):
     """单一因子 → 0-100 情绪分（高分 = 贪婪）。纯函数，无副作用。"""
 
