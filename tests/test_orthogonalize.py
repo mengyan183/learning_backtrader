@@ -9,9 +9,13 @@
 当天的 y 自己参与估参 ⇒ 残差被系统性压小 ⇒ IC 虚高 ✗（正是本仓库最怕的 lookahead）。
 本模块的 β 一律 `shift(1)`，只用 **t-1 及之前** 的信息 ✓。
 """
+import importlib.util
+import os
+
 import numpy as np
 import pandas as pd
 
+from fg_system import config
 from fg_system.factors import base as fbase
 
 
@@ -78,6 +82,29 @@ def test_warmup_is_nan_not_zero():
 
     assert r.iloc[:20].isna().all(), "预热期没有 NaN ✗"
     assert r.iloc[-50:].notna().all(), "尾部仍有 NaN ✗"
+
+
+def _load_eval():
+    spec = importlib.util.spec_from_file_location(
+        "eval_baa10y", os.path.join(config.ROOT, "scripts", "eval_baa10y.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_eval_fmt_handles_none():
+    """**守卫**：样本不足时 `ic` 字段是 `None` ⇒ 打 `—` 而不是崩 ✓。
+
+    2026-10-29 Mac 实测：正交化后只剩 16 天 ⇒ `screen_report` 把
+    `rank_ic_mean/rank_icir/pearson_icir` 全给 `None` ✗ ⇒
+    `{v:+.3f}` 抛 `TypeError: unsupported format string passed to NoneType` ✗
+    ⇒ 整条评测崩掉，只剩一行「样本不足」，什么都没拿到 ✗。
+    """
+    ev = _load_eval()
+    assert ev._fmt(None) == "—"
+    assert ev._fmt(0.5) == "+0.500"
+    assert ev._fmt(None, "+.2f", 100) == "—"
+    assert ev._fmt(0.1234, "+.2f", 100) == "+12.34"
 
 
 def test_constant_x_gives_nan_not_crash():
