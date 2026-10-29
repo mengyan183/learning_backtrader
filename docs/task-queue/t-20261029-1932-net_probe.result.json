@@ -1,0 +1,15 @@
+{
+  "id": "t-20261029-1932-net_probe",
+  "action": "net_probe",
+  "params": {
+    "url": "https://integrate.api.nvidia.com/v1/models",
+    "body_out": "1",
+    "models_like": "instruct"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"result\": {\"proxy\": \"http://127.0.0.1:7890\", \"url\": \"https://integrate.api.nvidia.com/v1/models\", \"proxy_port\": {\"ok\": true, \"ms\": 2}, \"via_proxy\": {\"ok\": true, \"status\": 200, \"method\": \"GET\", \"ms\": 510, \"model_count\": 84, \"models\": [\"ai21labs/jamba-1.5-large-instruct\", \"aisingapore/sea-lion-7b-instruct\", \"databricks/dbrx-instruct\", \"deepseek-ai/deepseek-coder-6.7b-instruct\", \"ibm/granite-3.0-3b-a800m-instruct\", \"ibm/granite-3.0-8b-instruct\", \"ibm/granite-34b-code-instruct\", \"ibm/granite-8b-code-instruct\", \"meta/llama-3.2-11b-vision-instruct\", \"meta/llama-3.2-90b-vision-instruct\", \"microsoft/phi-3-vision-128k-instruct\", \"microsoft/phi-3.5-moe-instruct\", \"mistralai/codestral-22b-instruct-v0.1\", \"mistralai/mistral-7b-instruct-v0.3\", \"mistralai/mistral-large-2-instruct\", \"nv-mistralai/mistral-nemo-12b-instruct\", \"nvidia/llama-3.1-nemotron-51b-instruct\", \"nvidia/llama-3.1-nemotron-70b-instruct\", \"nvidia/mistral-nemo-minitron-8b-8k-instruct\", \"nvidia/nemotron-4-340b-instruct\", \"nvidia/riva-translate-4b-instruct\", \"nvidia/riva-translate-4b-instruct-v2\", \"zyphra/zamba2-7b-instruct\"]}}}",
+  "started_at": "2026-10-29T19:33:01",
+  "finished_at": "2026-10-29T19:33:02",
+  "duration_s": 0.55
+}
