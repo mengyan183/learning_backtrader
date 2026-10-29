@@ -160,6 +160,18 @@ def test_futu_preflight_is_registered():
     assert callable(q.ACTIONS["futu_preflight"])
 
 
+def test_run_invest_research_is_registered():
+    """`run_invest_research` 必须在白名单里 ✓（今天就能验证简报链路 ✗ 别干等明天）。"""
+    assert "run_invest_research" in q.ACTIONS
+    assert callable(q.ACTIONS["run_invest_research"])
+
+
+def test_tail_logs_include_evolve_verify():
+    """`evolve_verify` 日志必须在 tail 白名单里 ✓ —— 否则明天没法确认 `--quiet` 生效 ✗。"""
+    assert "evolve_verify" in q.TAIL_LOGS
+    assert q.TAIL_LOGS["evolve_verify"].endswith("evolve_verify.log")
+
+
 def test_install_evolve_tasks_reports_failure(monkeypatch):
     """定时器重装：脚本不存在 / 返回非 0 ⇒ `ok=False` ✓（不许静默成功 ✗）。"""
     monkeypatch.setattr(q, "ROOT", "/nonexistent-root")

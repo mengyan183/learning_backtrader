@@ -157,10 +157,35 @@ def _act_futu_preflight(params):
     return {"ok": bool(ok), "reason": why}
 
 
+def _act_run_invest_research(params):
+    """跑一次投研简报 ✓ —— 默认 `--dry-run`（不推飞书）✓。
+
+    动机（2026-10-29）：简报连停两天，改完需要**今天就能验证** ✗，
+    而不是干等明天 05:30 ✗。`--dry-run` 只写文件 + 打印开头 ⇒ 从结果里
+    就能确认「🔌 数据源健康」这节在不在 ✓。要真发：`--param push=1` ✓。
+    """
+    push = str(params.get("push") or "") in ("1", "true", "yes")
+    cmd = [sys.executable, os.path.join(ROOT, "scripts", "invest_research.py")]
+    if not push:
+        cmd.append("--dry-run")
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=600)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 600 秒未完成"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode, "push": push,
+            "stdout": (r.stdout or "")[-1500:], "stderr": (r.stderr or "")[-500:]}
+
+
 #: 允许 tail 的日志 —— **固定白名单** ✓（不接受任意路径 ✗，否则等于远程读文件 ✗）
+#: `evolve_verify` 是**仓库内** logs/ 下的日志（plist 的 StandardOutPath）✓ ——
+#: 2026-10-29 加：验证 06:10 那次复检有没有真的带上 `--quiet` ✓
 TAIL_LOGS = {
     "daily": "/tmp/fg_daily.log",
     "task_queue": "/tmp/fg_task_queue.log",
+    "evolve_verify": os.path.join(ROOT, "logs", "evolve_verify.log"),
 }
 
 
@@ -197,6 +222,7 @@ ACTIONS = {
     "daily_log_tail": _act_daily_log_tail,
     "install_evolve_tasks": _act_install_evolve_tasks,
     "futu_preflight": _act_futu_preflight,
+    "run_invest_research": _act_run_invest_research,
 }
 
 
