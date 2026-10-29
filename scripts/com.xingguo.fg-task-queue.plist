@@ -11,6 +11,18 @@
         </array>
         <key>WorkingDirectory</key>
         <string>/Users/xingguo/learning_backtrader</string>
+        <!-- 2026-10-29：launchd 的默认 PATH 只有 /usr/bin:/bin:/usr/sbin:/sbin ✗
+             ⇒ 凭据助手 `gh auth git-credential` 找不到 gh ✗ ⇒
+             `git push` 报 rc=128（gh: command not found / could not read Username）✗
+             任务结果提交了却推不上去，只能等别的进程捎带 ✗ -->
+        <key>EnvironmentVariables</key>
+        <dict>
+                <key>PATH</key>
+                <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+                <!-- 无凭据时**立刻失败**而不是卡在交互式用户名提示 ✗ -->
+                <key>GIT_TERMINAL_PROMPT</key>
+                <string>0</string>
+        </dict>
         <key>StartInterval</key>
         <integer>10</integer>
         <key>StandardErrorPath</key>

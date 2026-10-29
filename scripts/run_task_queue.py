@@ -157,6 +157,62 @@ def _act_futu_preflight(params):
     return {"ok": bool(ok), "reason": why}
 
 
+#: 需要「从仓库副本装到 LaunchAgents」的 plist ✓
+PLISTS = ["com.xingguo.fg-daily.plist", "com.xingguo.fg-task-queue.plist"]
+
+
+def _act_install_daily_plist(params):
+    """把仓库里的 plist 装到 `~/Library/LaunchAgents` 并重新 bootstrap ✓。
+
+    动机（2026-10-29）：plist 只改仓库副本**不生效** ✗ —— 真身是
+    `~/Library/LaunchAgents/*.plist`，launchd 读的是那份 ✗。
+    （每日链套 `run_guarded`、队列加 PATH 都靠这一步落地 ✓。）
+
+    🔴 `com.xingguo.fg-task-queue` **不能当场 bootout** ✗ —— 执行本任务的进程
+    正是它启动的 ✗，当场 bootout 会把自己杀掉、结果永远写不出来 ✗
+    ⇒ 用**延迟 8 秒的游离 shell** 去重装 ✓。
+    """
+    agent = os.path.expanduser("~/Library/LaunchAgents")
+    domain = "gui/%d" % os.getuid()
+    out = {}
+    for name in PLISTS:
+        src = os.path.join(ROOT, "scripts", name)
+        if not os.path.exists(src):
+            out[name] = "缺文件 %s" % src
+            continue
+        dst = os.path.join(agent, name)
+        label = name[:-len(".plist")]
+        try:
+            os.makedirs(agent, exist_ok=True)
+            shutil.copy2(src, dst)
+        except OSError as exc:
+            out[name] = "拷贝失败：%s" % exc
+            continue
+        if label.endswith("fg-task-queue"):
+            # 延迟重装：先让本任务把结果写完 ✓
+            subprocess.Popen(
+                ["/bin/sh", "-c",
+                 "sleep 8; launchctl bootout %s/%s 2>/dev/null; "
+                 "launchctl bootstrap %s %s; launchctl enable %s/%s"
+                 % (domain, label, domain, dst, domain, label)],
+                start_new_session=True,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            out[name] = "已拷贝（8 秒后重装）"
+            continue
+        try:
+            subprocess.run(["launchctl", "bootout", "%s/%s" % (domain, label)],
+                           capture_output=True, timeout=30)
+            r = subprocess.run(["launchctl", "bootstrap", domain, dst],
+                               capture_output=True, text=True, timeout=60)
+            subprocess.run(["launchctl", "enable", "%s/%s" % (domain, label)],
+                           capture_output=True, timeout=30)
+            out[name] = "ok" if r.returncode == 0 else (r.stderr or "")[-200:]
+        except (subprocess.SubprocessError, OSError) as exc:
+            out[name] = "launchctl 失败：%s" % exc
+    return {"ok": all(v.startswith("ok") or v.startswith("已拷贝")
+                      for v in out.values()), "result": out}
+
+
 def _act_run_invest_research(params):
     """跑一次投研简报 ✓ —— 默认 `--dry-run`（不推飞书）✓。
 
@@ -223,6 +279,7 @@ ACTIONS = {
     "install_evolve_tasks": _act_install_evolve_tasks,
     "futu_preflight": _act_futu_preflight,
     "run_invest_research": _act_run_invest_research,
+    "install_daily_plist": _act_install_daily_plist,
 }
 
 
@@ -323,8 +380,42 @@ def _prune_queue(keep=KEEP_TASKS):
     return dropped
 
 
+#: 补推节流：launchd 每 10s 一轮，失败时别把日志刷爆 ✗
+_PUSH_RETRY = {"ts": 0.0}
+
+
+def _try_push_pending(interval=300):
+    """有未推送提交就顺手补推一次 ✓ —— 上次推送失败后**自愈** ✓。
+
+    动机（2026-10-29 实测 ✗）：launchd 的 PATH 里没有 `/opt/homebrew/bin` ✗
+    ⇒ 凭据助手 `gh auth git-credential` 找不到 gh ✗ ⇒ `git push` rc=128 ✗
+    ⇒ 任务结果提交了却推不上去，只能等别的进程捎带 ✗（结果总是「晚到」✗）。
+    """
+    now = time.time()
+    if now - _PUSH_RETRY["ts"] < interval:
+        return
+    _PUSH_RETRY["ts"] = now
+    try:
+        r = subprocess.run(["git", "rev-list", "--count", "@{u}..HEAD"],
+                           cwd=ROOT, capture_output=True, text=True, timeout=30)
+        if r.returncode != 0:
+            return                      # 没有上游 / 不是仓库 ⇒ 静默跳过 ✓
+        if int((r.stdout or "0").strip() or 0) <= 0:
+            return                      # 没有待推提交 ✓
+        p = subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
+                           capture_output=True, text=True, timeout=180)
+        if p.returncode == 0:
+            print("[push] 补推成功（之前失败的提交已同步）")
+        else:
+            print("[warn] 补推仍失败（rc=%s）：%s"
+                  % (p.returncode, (p.stderr or "").strip()[-200:]))
+    except (subprocess.SubprocessError, OSError, ValueError):
+        pass
+
+
 def run_once(commit=True):
     """跑一轮。返回 [(id, status), ...]。"""
+    _try_push_pending()
     auto = _auto_clean()
     if auto and auto.get("moved"):
         print("[auto-clean] 已归档 %d 个插件层文件 -> %s"

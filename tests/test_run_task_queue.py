@@ -166,6 +166,57 @@ def test_run_invest_research_is_registered():
     assert callable(q.ACTIONS["run_invest_research"])
 
 
+def test_install_daily_plist_is_registered():
+    """`install_daily_plist` 必须在白名单里 ✓（plist 只改仓库副本不生效 ✗）。"""
+    assert "install_daily_plist" in q.ACTIONS
+    assert callable(q.ACTIONS["install_daily_plist"])
+
+
+def test_try_push_pending_is_silent_without_upstream(monkeypatch, capsys):
+    """没有上游 / 无待推提交 ⇒ **静默** ✓（launchd 每 10s 一轮，不能刷屏 ✗）。"""
+    class _R:
+        returncode = 1
+        stdout = ""
+        stderr = ""
+
+    class _SP:
+        SubprocessError = q.subprocess.SubprocessError
+
+        @staticmethod
+        def run(cmd, **kw):
+            return _R()
+
+    monkeypatch.setattr(q, "subprocess", _SP)
+    monkeypatch.setattr(q, "_PUSH_RETRY", {"ts": 0.0})
+    q._try_push_pending(interval=0)
+    assert capsys.readouterr().out == ""
+
+
+def test_try_push_pending_pushes_when_ahead(monkeypatch, capsys):
+    """有未推送提交就补推 ✓ —— 上次推送失败后自愈 ✓。"""
+    calls = []
+
+    class _R:
+        def __init__(self, rc, out=""):
+            self.returncode = rc
+            self.stdout = out
+            self.stderr = ""
+
+    class _SP:
+        SubprocessError = q.subprocess.SubprocessError
+
+        @staticmethod
+        def run(cmd, **kw):
+            calls.append(cmd)
+            return _R(0, "2\n") if "rev-list" in cmd else _R(0)
+
+    monkeypatch.setattr(q, "subprocess", _SP)
+    monkeypatch.setattr(q, "_PUSH_RETRY", {"ts": 0.0})
+    q._try_push_pending(interval=0)
+    assert any("push" in c for c in calls), "有 2 个待推提交却没推 ✗"
+    assert "补推成功" in capsys.readouterr().out
+
+
 def test_tail_logs_include_evolve_verify():
     """`evolve_verify` 日志必须在 tail 白名单里 ✓ —— 否则明天没法确认 `--quiet` 生效 ✗。"""
     assert "evolve_verify" in q.TAIL_LOGS
