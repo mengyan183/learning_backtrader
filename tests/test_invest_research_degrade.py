@@ -72,6 +72,7 @@ def test_stages_run_concurrently(monkeypatch):
     import time
 
     m = _load()
+    _no_preflight(m, monkeypatch)
     peak = {"now": 0, "max": 0}
     lock = threading.Lock()
 
@@ -97,6 +98,41 @@ def test_stages_run_concurrently(monkeypatch):
     # 只看**并发峰值**，不看墙钟 ✗ —— 墙钟断言（took<0.6）在负载高的机器上会假红，
     # 而「峰值==3」已经能确定性证明三个线程同时在跑 ✓
     assert peak["max"] == 3, "三个阶段没有真正并发（峰值 %d）✗" % peak["max"]
+
+
+def _no_preflight(m, monkeypatch):
+    """关掉端口预检 ✓ —— 测试机没有 Hermes/代理，否则阶段会被秒跳过 ✗。"""
+    monkeypatch.setattr(m, "HERMES_ADDR", None)
+    monkeypatch.setattr(m, "PROXY_ADDR", None)
+
+
+def test_preflight_skips_dead_stage(monkeypatch):
+    """服务端口不通 ⇒ **秒跳过**，不白等阶段超时 ✓（2026-10-29 实测教训）。
+
+    代理恢复后 net_probe 全绿，但简报两个阶段仍 240s 超时 ✗
+    ⇒ 「网络通」≠「服务在」✗ ⇒ 必须探端口。
+    """
+    import time as _t
+
+    m = _load()
+    monkeypatch.setattr(m, "HERMES_ADDR", ("127.0.0.1", 1))   # 必然连不上
+    monkeypatch.setattr(m, "PROXY_ADDR", None)
+    called = []
+    monkeypatch.setattr(m, "fetch_news", lambda snap: "n")
+    monkeypatch.setattr(m, "_read_hermes_key", lambda: "k")
+    monkeypatch.setattr(m, "_read_nim_key", lambda: "k")
+    monkeypatch.setattr(m, "stage_sentiment",
+                        lambda k, snap: called.append(1) or "s")
+    monkeypatch.setattr(m, "stage_attribution", lambda k, snap, kb=None: "a")
+
+    t0 = _t.time()
+    news, sent, attr = m._run_stages({"date": "2026-10-29"})
+    took = _t.time() - t0
+
+    assert not called, "端口不通却还去调 Hermes ✗"
+    assert sent is None, "跳过的阶段应返回 None ✗"
+    assert news == "n" and attr == "a", "正常阶段被连累了 ✗"
+    assert took < 3, "预检没起作用（%.1fs）✗" % took
 
 
 def test_snapshot_lines_format_numbers():
@@ -150,6 +186,7 @@ def test_hung_stage_degrades_instead_of_blocking(monkeypatch):
     import time as _t
 
     m = _load()
+    _no_preflight(m, monkeypatch)
     monkeypatch.setattr(m, "STAGE_TIMEOUT", 0.4)
     monkeypatch.setattr(m, "fetch_news", lambda snap: "news")
     monkeypatch.setattr(m, "_read_hermes_key", lambda: "k")
@@ -173,6 +210,7 @@ def test_stage_progress_is_logged(tmp_path, monkeypatch):
     ⇒ 只知道「超时」，不知道卡在新闻还是某个 LLM 阶段 ✗。
     """
     m = _load()
+    _no_preflight(m, monkeypatch)
     monkeypatch.setattr(m, "REPO", str(tmp_path))
     monkeypatch.setattr(m, "fetch_news", lambda snap: "n")
     monkeypatch.setattr(m, "_read_hermes_key", lambda: "k")
@@ -192,6 +230,7 @@ def test_stage_progress_is_logged(tmp_path, monkeypatch):
 def test_one_stage_failure_does_not_kill_others(monkeypatch):
     """一个阶段挂了只影响它自己 ✓ —— 与串行版的降级语义一致 ✓。"""
     m = _load()
+    _no_preflight(m, monkeypatch)
 
     def boom(*a, **k):
         raise RuntimeError("hermes down")

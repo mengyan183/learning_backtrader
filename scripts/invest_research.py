@@ -36,6 +36,46 @@ PROXY = os.environ.get("FG_LLM_PROXY", "http://127.0.0.1:7890")
 
 #: 知识库佐证的最低相关度 ✓ —— 低于它的命中与当天持仓基本无关，宁缺毋滥 ✗
 KB_MIN_SCORE = 0.7
+
+#: 阶段日志的写锁 ✓ —— 三个线程并发 append 在 Windows 上会偶发丢行 ✗
+_LOG_LOCK = threading.Lock()
+
+
+def _port_ok(host, port, timeout=1.5):
+    """本地端口能不能连 ✓ —— 服务没起就**秒跳过**，别白等 240 秒阶段超时 ✗。
+
+    2026-10-29 实测：代理恢复后 net_probe 全绿（200/641ms），但简报的两个阶段
+    仍 240s 超时 ✗ ⇒ 说明「网络通」≠「服务在」✗。
+    """
+    import socket
+    try:
+        s = socket.create_connection((host, int(port)), timeout=timeout)
+        s.close()
+        return True
+    except OSError:
+        return False
+
+
+def _url_addr(url):
+    """`http://host:port/...` ⇒ `(host, port)` ✓；解析不了返回 None。"""
+    if not url:
+        return None
+    import urllib.parse
+    try:
+        u = urllib.parse.urlsplit(url)
+    except ValueError:
+        return None
+    if not u.hostname:
+        return None
+    return (u.hostname, u.port or (443 if u.scheme == "https" else 80))
+
+
+#: 三个 LLM 阶段各自的「本机入口」✓ —— 预检用
+#:   Hermes        → 本地 127.0.0.1:8642（不走代理）✗
+#:   deepseek 归因 → NVIDIA NIM，经本地代理（预检代理端口）✓
+#:   OpenClaw 裁判 → 同 NIM 通道（同一代理）✓
+HERMES_ADDR = _url_addr(HERMES_URL)
+PROXY_ADDR = _url_addr(PROXY)
 FEISHU_OPEN_ID = "ou_c4f5cd25e5001a853309524e899dd6d2"
 OKX_TICKER_URL = "https://www.okx.com/api/v5/market/ticker?instId={sym}"
 # 公司电脑只跑静态数据时置 1，禁止任何外部行情 API（富途/OKX）
@@ -1214,13 +1254,18 @@ def _run_stages(snap, kb=None):
 
         2026-10-29 实测：队列动作 600 秒超时，`subprocess` 杀进程 ⇒ stdout 全丢 ✗
         ⇒ 只知道「超时」，不知道卡在新闻还是 LLM ✗。
+
+        🔴 必须**串行写** ✗ —— 三个线程同时 `open(..., "a")` 在 Windows 上会
+        偶发 sharing violation（PermissionError）⇒ 被 `except OSError` 吞掉
+        ⇒ 日志少一行 ✗（2026-10-29 测试实测：`done 新闻抓取` 时有时无 ✗）。
         """
         try:
             d = os.path.join(REPO, "Data", "health")
             os.makedirs(d, exist_ok=True)
-            with open(os.path.join(d, "invest_stages.log"), "a",
-                      encoding="utf-8") as fh:
-                fh.write("%s %s\n" % (time.strftime("%H:%M:%S"), line))
+            with _LOG_LOCK:
+                with open(os.path.join(d, "invest_stages.log"), "a",
+                          encoding="utf-8") as fh:
+                    fh.write("%s %s\n" % (time.strftime("%H:%M:%S"), line))
         except OSError:
             pass
 
@@ -1241,6 +1286,18 @@ def _run_stages(snap, kb=None):
         "attribution": ("NIM 阶段",
                         lambda: stage_attribution(_read_nim_key(), snap, kb=kb)),
     }
+    # 端口预检 ✓ —— 三个阶段各自的本机入口，服务没起就**秒跳过** ✗
+    # （2026-10-29：代理恢复后仍 240s 超时 ⇒ 「网络通」不等于「服务在」✗）
+    down = {}
+    if HERMES_ADDR and not _port_ok(*HERMES_ADDR):
+        down["sentiment"] = "Hermes %s:%d 未监听" % HERMES_ADDR
+    if PROXY_ADDR and not _port_ok(*PROXY_ADDR):
+        down["attribution"] = "代理 %s 未监听" % PROXY
+    for _k, _why in down.items():
+        _log("skip  %s: %s" % (_k, _why))
+        print("[preflight] %s ⇒ %s，跳过（不耗阶段超时）" % (_k, _why))
+    jobs = {k: v for k, v in jobs.items() if k not in down}
+
     # 🔴 2026-10-29 用户裁定：**单阶段卡住就降级跳过** ✗，不许拖死整条简报 ✗
     # 用 daemon 线程而不是 ThreadPoolExecutor ✗ —— 后者退出时会 join 所有
     # 未完成线程 ⇒ 一个挂死的 HTTP 调用照样把进程拖住 ✗（Python 无法杀线程 ✓，
@@ -1286,10 +1343,15 @@ def main():
     judge = None
     # 2026-10-29：三个独立阶段并发 ✓（串行时一次简报 478 秒 ✗）
     news, sentiment, attribution = _run_stages(snap, kb=args.kb)
-    try:
-        judge = stage_judge(_read_nim_key(), snap, sentiment or "（无）", attribution or "（无）")
-    except Exception as e:
-        print("OpenClaw 阶段失败:", e)
+    # 裁判也走 NIM 通道 ⇒ 代理端口没起就秒跳过 ✓（别白等 180 秒 ✗）
+    if PROXY_ADDR and not _port_ok(*PROXY_ADDR):
+        print("[preflight] 代理 %s 未监听 ⇒ 跳过裁判阶段" % PROXY)
+    else:
+        try:
+            judge = stage_judge(_read_nim_key(), snap,
+                                sentiment or "（无）", attribution or "（无）")
+        except Exception as e:
+            print("OpenClaw 阶段失败:", e)
 
     brief = build_brief(snap, sentiment, attribution, judge, news)
     brief_path.write_text(brief, encoding="utf-8")

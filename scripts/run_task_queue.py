@@ -264,8 +264,30 @@ def _act_net_probe(params):
         out["via_proxy"] = {"ok": False,
                             "ms": int((time.time() - t0) * 1000),
                             "reason": "%s: %s" % (type(exc).__name__, exc)}
-    return {"ok": out["proxy_port"].get("ok") and out["via_proxy"].get("ok"),
-            "result": out}
+
+    # ③ `chat=1` ⇒ 真打一次 chat/completions（max_tokens=8）✓
+    # 2026-10-29 实测：GET 模型列表 641ms 通，但简报的归因阶段仍 240s 超时 ✗
+    # ⇒ 必须区分「网络不通」和「**生成太慢**」✗，只有真打一次才知道 ✓
+    if str(params.get("chat") or "") in ("1", "true", "yes"):
+        t0 = time.time()
+        try:
+            if os.path.join(ROOT, "scripts") not in sys.path:
+                sys.path.insert(0, os.path.join(ROOT, "scripts"))
+            import invest_research as ir
+            reply = ir._chat(ir.NIM_URL, ir._read_nim_key(), ir.NIM_MODEL,
+                             "你是连通性探针。", "只回复 OK", max_tokens=8,
+                             proxy=ir.PROXY, timeout=60, retries=1)
+            out["chat"] = {"ok": True, "ms": int((time.time() - t0) * 1000),
+                           "reply": str(reply)[:40]}
+        except Exception as exc:                   # noqa: BLE001
+            out["chat"] = {"ok": False,
+                           "ms": int((time.time() - t0) * 1000),
+                           "reason": "%s: %s" % (type(exc).__name__, exc)}
+
+    ok = out["proxy_port"].get("ok") and out["via_proxy"].get("ok")
+    if "chat" in out:
+        ok = ok and out["chat"].get("ok")
+    return {"ok": ok, "result": out}
 
 
 def _act_eval_baa10y(params):
