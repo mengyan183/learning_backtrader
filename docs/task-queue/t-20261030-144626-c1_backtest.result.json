@@ -1,0 +1,11 @@
+{
+  "id": "t-20261030-144626-c1_backtest",
+  "action": "c1_backtest",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "ion/features_c1.csv\", \"rc\": 0, \"stdout\": \"# 已写出研究专用 features：/Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/features_c1.csv（含 baa10y_z，非空 1782 天）\\n# C1_BAA10Y 信用利差因子评测（MT-76 ④）\\n样本：2019-09-26 → 2026-10-29，n_days=1782\\n判定：通过 —— horizon [10] 达门槛且近窗无衰减（逆向）→ 具备入库资格，待回测裁判/人工审批\\n\\n| horizon | rank_ic_mean | rank_ICIR | pearson_ICIR | n | 近窗ICIR | 分层mono | top-bottom |\\n|---|---|---|---|---|---|---|---|\\n| 5 | +0.108 | +0.472 | +0.523 | 1718 | +0.186 | 1.000 | +0.42% |\\n| 10 | +0.172 | +0.546 | +0.565 | 1713 | +0.486 | 1.000 | +1.03% |\\n| 20 | +0.180 | +0.458 | +0.500 | 1703 | +0.729 | 1.000 | +2.44% |\\n| 40 | +0.196 | +0.406 | +0.419 | 1683 | +0.729 | 0.900 | +4.34% |\\n\\n## 与现有因子 Spearman 相关（正交性取证）\\n- baa10y_z ~ vix: -0.483（n=1776）\\n- baa10y_z ~ putcall: -0.078（n=1782）\\n- baa10y_z ~ fg_index: -0.449（n=1778）\\n- baa10y_z ~ term: -0.194（n=1777）\\n- baa10y_z ~ breadth: -0.090（n=1722）\\n- baa10y_z ~ fed: +0.625（n=207）  ⚠️ n=207 太少，此相关系数不可信\\n- baa10y_z ~ price: -0.334（n=1531）\\n\", \"stderr\": \"\"}, {\"cmd\": \"/Users/xingguo/learning_backtrader/scripts/factor_backtest_probe.py --factor baa10y_z --symbol TQQQ --direction positive --features evolution/experiments/factor-adoption/features_c1.csv\", \"rc\": 1, \"stdout\": \"# 回测裁判：baa10y_z（positive）→ TQQQ OOS\\n\\n- 生成：2026-10-30 14:47 · scripts/factor_backtest_probe.py\\n- 口径：因子 756 日滚动分位 → 仓位 0.2~1.0 线性映射（无参数先验）；T 信号 shift(1) → T+1 生效；换仓成本 0.0008/单位换手；OOS 起 2024-10-04（518 日）\\n- 判定：**FAIL（OOS 未优于 B0，不采纳候选入生产）**\\n\\n| 指标 | 策略（OOS） | B0 买入持有 | 样本内 |\\n|---|---|---|---|\\n| OOS 年化 | 37.40% | 39.85% | 17.73% |\\n| 最大回撤 | -45.2% | -58.3% | -65.2% |\\n| Sharpe | 0.76 | 0.62 | 0.34 |\\n| Calmar | 0.83 | 0.68 | 0.27 |\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/baa10y_z-TQQQ-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/baa10y_z-TQQQ-oos.json\\n\", \"stderr\": \"\"}]}",
+  "started_at": "2026-10-30T14:47:24",
+  "finished_at": "2026-10-30T14:47:27",
+  "duration_s": 3.63
+}
