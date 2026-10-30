@@ -233,6 +233,18 @@ def test_key_diag_missing_dir(tmp_path):
     assert q._act_key_diag({"dir": str(tmp_path / "nope")})["ok"] is False
 
 
+def test_task_output_dirs_are_explicit_allowlist():
+    """任务产物目录必须是**显式白名单** ✓ —— 绝不能用 `git add -A` ✗。
+
+    2026-10-30 实测教训：`factor_backtest_probe --json evolution/...` 写的
+    裁判产物没进 git ✗ ⇒ Windows 端只看到被 `output[-2000:]` 截断的 stdout ✗。
+    """
+    assert "evolution/experiments/factor-adoption" in q.TASK_OUTPUT_DIRS
+    for d in q.TASK_OUTPUT_DIRS:
+        assert isinstance(d, str) and d and not d.startswith("-")
+        assert ".." not in d, "白名单里不能出现上级目录 ✗"
+
+
 def test_c1_backtest_is_registered():
     """`c1_backtest` 必须在白名单里 ✓ —— 回测裁判要在 Mac 跑（数据在本地 ✗）。"""
     assert "c1_backtest" in q.ACTIONS

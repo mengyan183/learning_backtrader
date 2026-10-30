@@ -964,10 +964,20 @@ def run_once(commit=True):
     return done
 
 
+#: 任务会写出的**产物目录** ✓ —— 只提交这些，**绝不用 `git add -A`** ✗
+#: （Mac 上常年有测试产物/临时文件 ✗）
+#: 2026-10-30 实测教训：`factor_backtest_probe --json evolution/...` 写的裁判
+#: 产物**没进 git** ✗ ⇒ Windows 端只能看到被 `output[-2000:]` 截断的 stdout ✗
+TASK_OUTPUT_DIRS = ("evolution/experiments/factor-adoption",)
+
+
 def _git_commit(done):
-    """只提交 `docs/task-queue/` ✓ —— 不碰其他脏文件（Mac 上常年有测试产物 ✗）。"""
+    """提交 `docs/task-queue/` + **任务产物目录** ✓ —— 不碰其他脏文件 ✗。"""
     try:
-        subprocess.run(["git", "add", "docs/task-queue"], cwd=ROOT,
+        paths = ["docs/task-queue"] + [
+            d for d in TASK_OUTPUT_DIRS
+            if os.path.isdir(os.path.join(ROOT, d))]
+        subprocess.run(["git", "add", *paths], cwd=ROOT,
                        check=True, capture_output=True, timeout=60)
         msg = "task: %s" % "; ".join("%s=%s" % (i, s) for i, s in done)
         r = subprocess.run(["git", "commit", "-m", msg], cwd=ROOT,
