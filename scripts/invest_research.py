@@ -48,6 +48,20 @@ NIM_MODEL = os.environ.get(
 #: 现在可用 `FG_LLM_PROXY` 覆盖（空串 = 不用代理）✓
 PROXY = os.environ.get("FG_LLM_PROXY", "http://127.0.0.1:7890")
 
+#: 标的 → 知识库检索词 ✓（2026-10-30：**按标的匹配**，不再用泛化主题 ✗）
+#: 只用标的所属**行业/主题**，不写"outlook"这类空词（会被泛泛而谈命中 ✗）
+KB_SYMBOL_TERMS = {
+    "YINN": "china large cap stocks policy stimulus",
+    "GDXU": "gold miners real rates",
+    "CRCG": "circle stablecoin regulation",
+    "CONL": "coinbase crypto exchange earnings",
+    "AXTX": "semiconductor equipment orders",
+    "TQQQ": "nasdaq 100 technology earnings",
+    "SOXL": "semiconductor cycle",
+    "UPRO": "s&p 500 breadth",
+    "BTC": "bitcoin liquidity halving",
+}
+
 #: 知识库佐证的最低相关度 ✓ —— 低于它的命中与当天持仓基本无关，宁缺毋滥 ✗
 #: 2026-10-29 用户裁定 **0.7 → 0.6** ✓：0.7 把命中全过滤掉了，整节变成空占位 ✗
 KB_MIN_SCORE = 0.6
@@ -113,22 +127,24 @@ def _read_nim_key():
         return os.environ["FG_LLM_KEY"]
     import yaml
     cred = yaml.safe_load(open(Path.home() / ".dsh" / ".credentials.yaml"))
-    # 找 nvapi- 开头的 key（跨结构遍历）
+    # 2026-10-30：**优先 `sk-`（DeepSeek 官方）** ✓，其次 `nvapi-`（NVIDIA）✓
+    # —— 原来只认 nvapi- ✗，切到 DeepSeek 后读不到 key ⇒ 401 Unauthorized ✗
+    found = {"sk-": None, "nvapi-": None}
+
     def walk(d):
         if isinstance(d, dict):
             for v in d.values():
-                if isinstance(v, str) and v.startswith("nvapi-"):
-                    return v
-                r = walk(v)
-                if r:
-                    return r
+                if isinstance(v, str):
+                    for pre in found:
+                        if v.startswith(pre) and not found[pre]:
+                            found[pre] = v
+                walk(v)
         elif isinstance(d, list):
             for v in d:
-                r = walk(v)
-                if r:
-                    return r
-        return None
-    return walk(cred)
+                walk(v)
+
+    walk(cred)
+    return found["sk-"] or found["nvapi-"]
 
 
 def _read_feishu_creds():
@@ -1103,33 +1119,20 @@ def kb_evidence(snap, n=2):
     except Exception as e:
         print(f"[kb] 导入失败: {e}")
         return None
-    fg = snap.get("fg") or {}
+    # 🔴 2026-10-30 用户裁定：**按标的匹配** ✓ —— 原来用泛化主题
+    # （"market sentiment psychology" / "leveraged etf risk decay"）✗
+    # ⇒ 命中的全是 RaynerTeo / ChatWithTraders 的泛泛交易心理 ✗，
+    #   与当天持仓毫无关系 ✗（实测 0.607/0.644 两条纯噪音 ✗）。
     queries = []
-    # 档位：zone 数字 → 英文档位词（0极度恐惧~4极度贪婪）
-    z = fg.get("zone")
-    if isinstance(z, (int, float)):
-        zname = {0: "extremely fearful", 1: "fearful", 2: "neutral",
-                 3: "greedy", 4: "extremely greedy"}.get(int(z), "")
-        if zname:
-            queries.append(f"{zname} market sentiment psychology")
-    # 因子：features.csv 最新有效行（vix/term/price/breadth/fed）
-    try:
-        import pandas as pd
-        feat = pd.read_csv(DATA / "features.csv")
-        valid = feat.dropna(subset=["fg_index"])
-        row = valid.iloc[-1]
-        for key, q in _KB_THEMES.items():
-            if key in row.index and pd.notna(row[key]):
-                queries.append(q)
-    except Exception:
-        pass
-    # 持仓主题（首个有名字的标的，如 YINN/TQQQ 杠杆ETF）
-    for r in snap.get("positions", []):
-        name = (r.get("name") or "").lower()
-        sym = (r.get("symbol") or "").upper()
-        if "leveraged" in name or sym in ("YINN", "TQQQ", "CONL", "GDXU"):
-            queries.append("leveraged etf risk decay")
-            break
+    pos = [r for r in (snap.get("positions") or []) if r.get("mv")]
+    for r in sorted(pos, key=lambda x: -(x.get("mv") or 0))[:3]:
+        sym0 = str(r.get("symbol") or "").upper().replace("-USDT", "")
+        term = KB_SYMBOL_TERMS.get(sym0)
+        if term:
+            queries.append(term)
+    # 全都没命中 ⇒ 回退到「杠杆 ETF 风险」这一条（保底，仍与持仓相关 ✓）
+    if not queries and pos:
+        queries.append("leveraged etf volatility decay risk")
     seen, hits = set(), []
     skip_titles = ("react to", "tiktok", "challenge", "try not to")
     for q in queries[:3]:

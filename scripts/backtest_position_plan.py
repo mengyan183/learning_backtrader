@@ -225,6 +225,29 @@ def main(argv=None):
     print("区间: %s → %s（样本外从 %s 起）\n"
           % (str(d0.date()), str(d1.date()), str(cut.date())))
 
+    # 🔴 2026-10-30 实测教训：第一次跑出来「10 年区间只交易 5 次、平均持仓 0.2%」✗
+    # —— 原因是 `shoutu_fng.csv` 的**历史覆盖很短**（只有近几十天）✗，
+    # 而脚本当时**没有报覆盖**⇒ 结论看着像「规则很保守」✗ 实际是「几乎没数据」✗
+    # ⇒ 必须先把覆盖打出来，覆盖不足就**明确警告** ✓。
+    print("## 守猪待兔数据覆盖（决定回测是否有效 ✗）")
+    cov = {}
+    for s in SYMBOLS:
+        c = _coef(st, s)
+        cov[s] = len(c)
+        if c.empty:
+            print("  %-6s **无系数** ✗（该标的永远不会触发建仓 ✓）" % s)
+        else:
+            print("  %-6s %5d 天（%s → %s）"
+                  % (s, len(c), str(c.index[0].date()), str(c.index[-1].date())))
+    thin = [s for s, n in cov.items() if 0 < n < 250]
+    if thin:
+        print("\n⚠️ **覆盖不足 250 天的标的：%s** —— 这些标的的结论不可信 ✗"
+              % "、".join(thin))
+    if all(n < 250 for n in cov.values()):
+        print("\n🔴 **全部标的覆盖都不足 250 天 ⇒ 本次回测不构成参数依据** ✗")
+        print("   （要真验证，得先把守猪待兔历史补齐 —— 见 docs/position-plan.md）\n")
+    print()
+
     out = {"range": [str(d0.date()), str(d1.date())],
            "oos_from": str(cut.date()), "symbols": SYMBOLS, "runs": {}}
     for name, v in VARIANTS.items():
