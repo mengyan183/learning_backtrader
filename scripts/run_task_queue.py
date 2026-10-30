@@ -225,6 +225,30 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_backtest_plan(params):
+    """在 Mac 上跑**建仓/加仓计划回测** ✓（`shoutu_fng.csv` 只在 Mac 本地 ✗）。
+
+    `symbols` 非空 ⇒ 覆盖默认 6 个标的 ✓；`json` 非空 ⇒ 完整结果落盘 ✓。
+    """
+    cmd = [sys.executable,
+           os.path.join(ROOT, "scripts", "backtest_position_plan.py")]
+    syms = str(params.get("symbols") or "").strip()
+    if syms:
+        cmd += ["--symbols", syms]
+    out = str(params.get("json") or "").strip()
+    if out:
+        cmd += ["--json", out if os.path.isabs(out) else os.path.join(ROOT, out)]
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=900)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 900 秒未完成"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": (r.stdout or "")[-3000:], "stderr": (r.stderr or "")[-500:]}
+
+
 def _act_key_diag(params):
     """找本机 API key ✓ —— **只回前缀与长度，绝不回明文** ✗。
 
@@ -579,6 +603,7 @@ ACTIONS = {
     "factor_diag": _act_factor_diag,
     "run_pipeline": _act_run_pipeline,
     "key_diag": _act_key_diag,
+    "backtest_plan": _act_backtest_plan,
 }
 
 

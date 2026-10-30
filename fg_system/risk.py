@@ -68,6 +68,57 @@ def atr_pct(prices_df, sym, price, n=20, stop_mult=2.0, floor=0.03, fallback=0.0
     return fallback
 
 
+def atr_pct_underlying(prices_df, sym, n=20, stop_mult=2.0,
+                       floor=0.03, fallback=None):
+    """**底层（正股）**的 ATR%，无映射/取不到 ⇒ `fallback`（默认 None，不猜 ✗）。
+
+    用于建仓间距：`position_plan.gap_pct()` 自己会乘杠杆 ✓
+    ⇒ 这里**必须**给未加杠杆的底层值，否则杠杆被乘两次 ✗。
+    """
+    from fg_system import config as _cfg
+
+    und = _cfg.SIGNAL_UNDERLYING_MAP.get(str(sym or ""))
+    if not und or str(und).endswith("_UND"):
+        return fallback
+    rows = _sym_rows(prices_df, und)
+    if len(rows) < n + 1:
+        return fallback
+    return atr_pct(prices_df, und, float(rows["close"].iloc[-1]), n=n,
+                   stop_mult=stop_mult, floor=floor,
+                   fallback=fallback if fallback is not None else 0.06)
+
+
+def atr_pct_effective(prices_df, sym, price=None, n=20, stop_mult=2.0,
+                      floor=0.03, fallback=0.06):
+    """杠杆 ETF 的**有效**止损距离：**底层 ATR × 杠杆倍数** ✓（纪律 4C.4）。
+
+    为什么不用 ETF 自身 ATR ✗：
+      含 vol decay / 费用 / 融资 / 跟踪误差噪声 ✗ —— 纪律 4C.4 明令禁止 ✗。
+    为什么也不直接用底层 ATR ✗：
+      3x 标的的实际敞口是底层的 3 倍，直接用会**低估风险 3 倍** ✗
+      （上限被放宽 3 倍 ⇒ 悄悄放松风控 ✗）。
+    ⇒ 底层 ATR × L：保留真实波动幅度、去掉噪声 ✓。
+
+    非杠杆标的 / 无底层映射 / 底层取不到价 ⇒ 回落到自身 ATR ✓（不猜 ✗）。
+    """
+    from fg_system import config as _cfg
+    from fg_system import position_plan as _pp
+
+    lev = _pp.leverage_of(sym)
+    und = _cfg.SIGNAL_UNDERLYING_MAP.get(str(sym or ""))
+    if lev <= 1 or not und or str(und).endswith("_UND"):
+        return atr_pct(prices_df, sym, price, n=n, stop_mult=stop_mult,
+                       floor=floor, fallback=fallback)
+    rows = _sym_rows(prices_df, und)
+    if len(rows) < n + 1:
+        return atr_pct(prices_df, sym, price, n=n, stop_mult=stop_mult,
+                       floor=floor, fallback=fallback)
+    und_px = float(rows["close"].iloc[-1])
+    base = atr_pct(prices_df, und, und_px, n=n, stop_mult=stop_mult,
+                   floor=floor, fallback=fallback)
+    return base * lev
+
+
 def position_limit(net_value, mv, atr_pct_val, risk_pct=0.01):
     """1% 风险规则的仓位上限：建议市值上限 = 净值×风险% / 止损距离%。
 

@@ -261,10 +261,15 @@ def build_snapshot():
         px_now = r.get("last_close")
         mv0 = r["mv"]
         if stock_net and px_now and mv0:
-            atrp = risk_mod.atr_pct(px, sym0, px_now)
+            # 2026-10-30：1% 规则改用**底层 ATR × 杠杆**（纪律 4C.4 ✓）——
+            # 原来用杠杆 ETF 自身 ATR，含 vol decay/费用噪声 ✗
+            atrp = risk_mod.atr_pct_effective(px, sym0, px_now)
             lim, _ratio = risk_mod.position_limit(stock_net, mv0, atrp)
             r["risk_limit"] = round(lim, 2) if lim else None
-            r["atr_pct"] = atrp          # 建仓计划要用（2026-10-30）✓
+            r["atr_pct"] = atrp
+            # 建仓间距要的是**正股** ATR（`position_plan` 自己再乘杠杆 ✓），
+            # 不能传上面的有效值 —— 否则杠杆被乘两次 ✗
+            r["atr_pct_und"] = risk_mod.atr_pct_underlying(px, sym0)
             r["risk_over"] = bool(lim and mv0 > lim)
         else:
             r["risk_limit"] = None
@@ -716,7 +721,7 @@ def position_plan_brief(snap):
     for r in pos:
         sym0 = str(r.get("symbol") or "").replace("-USDT", "")
         plan = pp.build_plan(
-            net, sym0, r.get("atr_pct"),
+            net, sym0, r.get("atr_pct_und"),   # 正股 ATR ✓（gap_pct 内部再乘杠杆）
             (snap.get("shoutu") or {}).get(sym0),
             held_value=float(r.get("mv") or 0),
             pnl_pct=r.get("pnl_pct"),

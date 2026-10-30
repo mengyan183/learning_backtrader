@@ -67,3 +67,29 @@
 `config.SHOUTU_LINES_1X` 原来包含 `AXTX`（2倍做多 AXTI）与 `CRCG`（2倍做多 CRCL）✗
 —— 名称里就写着「2倍」。用 1x 的宽松买入线（-50）去抄 2x 的底，
 是「杠杆亏太多」的一个来源 ✗ ⇒ 2026-10-30 移入 `SHOUTU_LINES_2X`（买入线 -65，更严）✓。
+
+## 2026-10-30 追加：1% 规则的 ATR 口径改为「底层 ATR × 杠杆」
+
+**改前**：`position_limit` 用**杠杆 ETF 自身**的 ATR20 ✗ ——
+违反纪律 4C.4「波动率用无杠杆底层算，ETF 自身波动含损耗噪声」✗。
+后果：YINN 自身日波动 ≈ 3×FXI ⇒ ATR 被放大 ⇒ 上限被压到 $1,253（市值 $3,344，永远超限 ✗）。
+
+**改后**：`risk.atr_pct_effective()` = `ATR20(底层) × 杠杆倍数` ✓
+
+| 做法 | 问题 |
+|---|---|
+| 用 ETF 自身 ATR ✗ | 含 vol decay / 费用 / 跟踪误差噪声（违反 4C.4） |
+| 直接用底层 ATR ✗ | 低估风险 3 倍 ⇒ 上限被放宽 3 倍 ⇒ **悄悄放松风控** ✗ |
+| **底层 ATR × L** ✓ | 保留真实波动幅度、去掉噪声 ✓ |
+
+实现：`fg_system/risk.py::atr_pct_effective` / `atr_pct_underlying`，
+调用点：`scripts/invest_research.py`（简报）与 `fg_system/dashboard/report.py`（看板）。
+
+⚠️ 建仓间距用的是**未乘杠杆**的底层 ATR（`atr_pct_underlying`）——
+`position_plan.gap_pct()` 内部自己会乘杠杆 ✓，传有效值会导致杠杆被乘两次 ✗。
+
+## 回测
+
+`scripts/backtest_position_plan.py`（2026-10-30）—— 对现有 6 个标的跑 4 组参数
+（A 初版 / B 保守 / C 激进 / D 对照），输出全样本 + 样本外（70/30 切分）的
+收益 / 回撤 / 最差标的 / 操作次数。**参数定版前必须先跑它** ✓。

@@ -308,7 +308,8 @@ def _holdings_block(features, shoutu=None, prices=None, acts=None, expo=None):
         # 基准净值必须**该行所属账户**（富途 stock / OKX crypto 量级不同 ✓）。
         risk_adv = None
         if _rnet and mv is not None and price:
-            _atr_p = risk_mod.atr_pct(prices, sym, price)
+            # 2026-10-30：与简报同口径 —— 底层 ATR × 杠杆（纪律 4C.4 ✓）
+            _atr_p = risk_mod.atr_pct_effective(prices, sym, price)
             _lim, _ratio = risk_mod.position_limit(_rnet, mv, _atr_p)
             if _lim is not None and _lim > 0:
                 _pct_now = mv / _rnet * 100.0

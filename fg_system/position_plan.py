@@ -131,7 +131,12 @@ def brief_line(plan):
     sym = plan["symbol"]
     cap = "上限 $%.0f" % plan["single_cap"]
     if plan["blocked"]:
-        return "· %s ×%d | %s | %s" % (sym, plan["leverage"], plan["blocked"], cap)
+        # 🔴 2026-10-30 实测：`blocked` 里已经带了「上限 $N」⇒ 再追加一次会重复 ✗
+        # （简报里出现「已到单标的上限 $1253 | 上限 $1253」✗）
+        blk = str(plan["blocked"])
+        if "上限" in blk:
+            return "· %s ×%d | %s" % (sym, plan["leverage"], blk)
+        return "· %s ×%d | %s | %s" % (sym, plan["leverage"], blk, cap)
     if plan["mode"] == "建仓":
         lad = "、".join(
             "+$%.0f（正股再跌 %.1f%%）" % (x["amount"], x["after_gap_pct"])

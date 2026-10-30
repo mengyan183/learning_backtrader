@@ -197,6 +197,12 @@ def test_futu_preflight_is_registered():
     assert callable(q.ACTIONS["futu_preflight"])
 
 
+def test_backtest_plan_is_registered():
+    """`backtest_plan` 必须在白名单里 ✓（shoutu_fng.csv 只在 Mac 本地 ✗）。"""
+    assert "backtest_plan" in q.ACTIONS
+    assert callable(q.ACTIONS["backtest_plan"])
+
+
 def test_key_diag_never_leaks_plaintext(tmp_path, monkeypatch):
     """`key_diag` **只回前缀与长度** ✓ —— 绝不回明文 ✗（结果会进 git ✗）。"""
     monkeypatch.setattr(q.os.path, "expanduser", lambda p: str(tmp_path))
