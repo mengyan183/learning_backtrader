@@ -1,9 +1,0 @@
-{
-  "id": "t-20261030-095756-backtest_plan",
-  "action": "backtest_plan",
-  "params": {
-    "json": "evolution/plan-backtest.json"
-  },
-  "status": "pending",
-  "created_at": "2026-10-30T09:57:56"
-}
