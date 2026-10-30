@@ -1,0 +1,10 @@
+{
+  "id": "t-20261030-153203-c1_backtest",
+  "action": "c1_backtest",
+  "params": {
+    "symbols": "TQQQ,SPY",
+    "directions": "positive,negative"
+  },
+  "status": "pending",
+  "created_at": "2026-10-30T15:32:03"
+}
