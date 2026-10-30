@@ -203,3 +203,14 @@ GET /api/invest/stock_emotion/history?code=US.YINN
 2. **停止继续深挖** ✗ —— 边际收益已经很低
 3. 回测继续用现有数据（2024-04 → 2026-10-14，6 标的各 560~642 天）✓
 4. C 参数长期标注「回测样本太少、待丰富」，**不得据此认为策略已验证** ✗
+
+### 守猪待兔历史：**不加每周自动重试**（2026-10-30 用户裁定）
+
+曾考虑加「每周自动探一次，通了就自动补历史」的定时任务，**用户明确否决** ✗。
+理由（按裁定记录）：服务端返回 `data:[]` 是对方行为，我方定时轮询只会制造
+无效任务与噪音 ✗。要恢复时**手动跑一次**即可：
+
+```bash
+python scripts/fetch_shoutu_history.py            # 全量
+python scripts/fetch_shoutu_history.py --symbols YINN --ids YINN=875 --debug
+```
