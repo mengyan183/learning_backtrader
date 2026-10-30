@@ -1427,6 +1427,14 @@ function loadTasks() {
           var mm = mid.textContent.match(/成本 ([\d.]+)/);
           if (mm) {
             var pct = (rt.price / parseFloat(mm[1]) - 1) * 100;
+            // 🔴 2026-10-30 实测：每轮 poll 都 appendChild 一个新的 .rt-pct，
+            //   但**从不清理旧的** ✗ ⇒ 轮询 30 次就堆出 30 个「实时 -19.9%」✗
+            //   （用户截图：一整排重复的「实时 -19.9%」）
+            //   ⇒ append 前先移除本卡已有的 .rt-pct ✓（只留最新一个 ✓）
+            var olds = mid.querySelectorAll(".rt-pct");
+            for (var j = 0; j < olds.length; j++) {
+              olds[j].parentNode.removeChild(olds[j]);
+            }
             var rp = document.createElement("span");
             rp.className = "rt-pct";
             rp.textContent = "实时 " + (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
