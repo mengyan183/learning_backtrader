@@ -1026,7 +1026,13 @@ TASK_OUTPUT_DIRS = ("evolution/experiments/factor-adoption",)
 #: （2026-10-30 实测：`sync_1028dn` 因 `evolution/hypotheses.md` 冲突入库失败 ✗）
 TASK_OUTPUT_FILES = ("evolution/hypotheses.md",
                      "evolution/factors.md",
-                     "evolution/hypothesis_results.md")
+                     "evolution/hypothesis_results.md",
+                     # 2026-10-30：C2 的三个数据源由任务抓取 ⇒ 必须入库 ✓
+                     # （否则数据只躺在 Mac 本地 ✗，Windows 侧既看不到也没法开发因子 ✗）
+                     # 体量：PE/CAPE 各 ~1870 行、DGS10 16191 行，都在 200KB 内 ✓
+                     "Data/raw/sp500_pe.csv",
+                     "Data/raw/sp500_cape.csv",
+                     "Data/raw/fred_DGS10.csv")
 
 
 def _git_commit(done):
