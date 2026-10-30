@@ -75,6 +75,15 @@ def run(raw_dir=None, write=True, shift_inputs=0):
     config.validate()   # 入口守卫：非法参数立刻崩，禁止静默跑出错误结果（WT-16）
     wide = load_wide(raw_dir, shift_inputs=shift_inputs)
 
+    # 2026-10-30：C1（F-016）**研究列** ✓ —— `variants.py` 是纯计算（不读文件 ✗），
+    # 研究因子必须先进 features 才能被变体消费 ✓。
+    # ⚠️ **不进 `WEIGHTS`** ✗ —— 只作变体输入，不改合成分 ✓
+    try:
+        from fg_system.factors import credit_spread as _cs
+        _baa = _cs.baa10y_zscore(target_index=wide.index)   # 0~1 滚动分位 ✓
+    except Exception:                       # noqa: BLE001 —— 缺文件不该拖死链 ✓
+        _baa = None
+
     scores = index_mod.factor_scores(wide)
     fg_index = index_mod.smooth(index_mod.combine(scores))
     dd = drawdown_series(wide)
@@ -111,6 +120,9 @@ def run(raw_dir=None, write=True, shift_inputs=0):
             "circuit_breaker": state.circuit_breaker,
             "extreme": extreme,
             "note": cb_reason or fear_reason,
+            # 研究列（不进合成权重 ✗）：C1 信用利差分位 ✓
+            "baa10y_pct": (float(_baa.get(dt, np.nan))
+                           if _baa is not None else np.nan),
             **{k: scores[k].get(dt, np.nan) for k in scores.columns},
         })
 

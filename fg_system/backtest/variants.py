@@ -120,6 +120,14 @@ VARIANTS = {
         "factor": 0.5,
         "basis": "2026-10-12 趋势接线提案选项 ii：核心仓随趋势打折、弹药（极端恐惧加仓）豁免，保留越恐惧越买逆势逻辑；与生产接线选项 i（target×trend 全打折）并列对比",
     },
+    # 2026-10-30：C1（F-016）**Z 观察**变体 ✓ —— 用户审批降 Z 后纳入长期观察
+    "V-BAA": {
+        "label": "信用利差分位缩放仓位（baa10y_pct 高=利差宽=恐惧 ⇒ 满仓，低 ⇒ 20%）",
+        "floor": 0.2,
+        "basis": "F-016 降 Z：评测通过（H10 ICIR +0.546、分层单调 1.000）但"
+                 "M2.2 回测裁判四组合全 FAIL（TQQQ 37.40% vs B0 39.85% 等）"
+                 "⇒ 不进生产权重，仅长期观察 ✓",
+    },
     # B2：组合级 vol targeting（消费 portfolio_features.basket_ret 的组合状态源）
     "V-PVOL": {
         "label": "组合级波动率目标（min(1.0, vol_target/σ_组合)，三标的同一因子）",
@@ -267,6 +275,18 @@ def apply_variant(features, portfolio_features, variant):
         below = (out["close"] < ma).fillna(False)
         out.loc[below, "target_position"] = (
             out.loc[below, "target_position"] * spec["factor"])
+        return out
+
+    if variant == "V-BAA":
+        # 2026-10-30：`baa10y_pct` 是 0~1 滚动分位 ✓
+        # 高分位 = 利差宽 = 融资紧 = **恐惧** ⇒ 逆向 ⇒ 仓位放大 ✓
+        # factor = floor + (1-floor) × pct ⇒ 恐惧满仓、贪婪 floor ✓
+        # 缺列（数据未接/预热段）⇒ 保守返回原样 ✗（不加规则 ✓）
+        if "baa10y_pct" not in out.columns:
+            return out
+        pct = out["baa10y_pct"].astype(float).clip(0.0, 1.0)
+        factor = spec["floor"] + (1.0 - spec["floor"]) * pct
+        out["target_position"] = out["target_position"] * factor.fillna(1.0)
         return out
 
     if variant == "V-TREND-AMMO":

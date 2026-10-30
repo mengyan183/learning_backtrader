@@ -260,3 +260,32 @@ def test_trend_ammo_no_ammo_col_falls_back():
     exp.loc[idx] = exp.loc[idx] * 0.5
     assert np.allclose(out["target_position"].values, exp.values,
                        rtol=1e-12, atol=1e-12)
+
+
+def test_baa_variant_scales_by_percentile():
+    """V-BAA（F-016 降 Z 后的观察变体）：按 `baa10y_pct` 分位缩放仓位 ✓。
+
+    语义：高分位 = 利差宽 = 融资紧 = **恐惧** ⇒ 逆向 ⇒ 仓位放大；
+    `factor = floor + (1-floor) × pct` ⇒ pct=1 不缩放、pct=0 缩到 floor ✓
+    """
+    f = _mk_features(20)
+    f["baa10y_pct"] = np.linspace(0.0, 1.0, len(f))
+
+    out = vmod.apply_variant(f, _mk_portfolio(len(f)), "V-BAA")
+
+    floor = vmod.VARIANTS["V-BAA"]["floor"]
+    exp = f["target_position"].values * (floor + (1 - floor) * f["baa10y_pct"].values)
+    assert np.allclose(out["target_position"].values, exp, rtol=1e-12)
+    # 两端点：pct=0 ⇒ ×floor；pct=1 ⇒ ×1（不缩放）
+    assert abs(out["target_position"].iloc[0]
+               - f["target_position"].iloc[0] * floor) < 1e-12
+    assert abs(out["target_position"].iloc[-1]
+               - f["target_position"].iloc[-1]) < 1e-12
+
+
+def test_baa_variant_missing_col_returns_unchanged():
+    """缺 `baa10y_pct` 列 ⇒ **原样返回** ✓（不加规则，保守）。"""
+    f = _mk_features(20)
+    out = vmod.apply_variant(f, _mk_portfolio(len(f)), "V-BAA")
+    assert np.allclose(out["target_position"].values,
+                       f["target_position"].values, rtol=1e-12)
