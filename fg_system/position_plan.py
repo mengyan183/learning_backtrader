@@ -38,10 +38,33 @@ PLAN = {
 
 #: **无守猪待兔服务端历史**的标的 ⇒ 单标的敞口打回 12% ✓（2026-10-30 用户裁定）
 #: 理由：15% 是**回测验证过**的参数（YINN/GDXU/CONL 有 560~640 天历史）；
-#: AXTX/CRCG 服务端返回 `data: []` ✗ ⇒ 15% 对它们是**未验证**的 ✗
-#: ⇒ 未验证的标的用更保守的上限（12% = 第一轮回测里 A 变体的口径 ✓）。
-NO_HISTORY_SYMBOLS = {"AXTX", "CRCG"}
+#: 无历史 ⇒ 15% 对它们是**未验证**的 ✗ ⇒ 用更保守的上限 ✓。
+#: 🔴 2026-10-30 用户裁定：**不写死名单** ✗ —— 改成**实时查 `shoutu_history.csv`** ✓
+#: ⇒ 服务端哪天补了历史，自动解除 12% 限制，不用改代码 ✓。
+HIST_MIN_DAYS = 250          # 至少这么多天才算「有历史」（够跑 1 年滚动 ✓）
 NO_HISTORY_CAP = 0.12
+
+_HIST_CACHE = None
+
+
+def history_days(symbol):
+    """该标的在 `shoutu_history.csv` 里的**有效天数** ✓；读不到 ⇒ 0（保守 ✓）。"""
+    global _HIST_CACHE
+    if _HIST_CACHE is None:
+        counts = {}
+        try:
+            import pandas as pd
+            df = pd.read_csv(config.SHOUTU_HISTORY_PATH)
+            counts = df.groupby("symbol").size().to_dict()
+        except Exception:                  # noqa: BLE001 —— 文件缺/坏 ⇒ 全按无历史 ✓
+            counts = {}
+        _HIST_CACHE = counts
+    return int(_HIST_CACHE.get(str(symbol or "").upper(), 0))
+
+
+def has_history(symbol, min_days=None):
+    """是否有足够的守猪待兔历史 ✓（决定给 15% 还是 12%）。"""
+    return history_days(symbol) >= (min_days or HIST_MIN_DAYS)
 
 #: 杠杆倍数分组（复用 config 的守猪待兔分组，避免两处口径打架 ✗）
 LEVERAGE = {}
@@ -85,8 +108,8 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
     """
     lev = leverage_of(symbol)
     # 无守猪待兔历史的标的 ⇒ 敞口打回 12% ✓（15% 对它们未经验证 ✗）
-    cap_ratio = (NO_HISTORY_CAP if str(symbol).upper() in NO_HISTORY_SYMBOLS
-                 else PLAN["single_cap"])
+    # 实时查历史天数 ⇒ 服务端补了历史就自动解除 ✓（不写死名单 ✗）
+    cap_ratio = PLAN["single_cap"] if has_history(symbol) else NO_HISTORY_CAP
     single = float(net_value or 0) * cap_ratio
     if risk_limit:
         single = min(single, float(risk_limit))       # 1% 规则更严 ⇒ 以它为准 ✓

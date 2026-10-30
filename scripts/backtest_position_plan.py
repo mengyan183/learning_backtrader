@@ -35,8 +35,9 @@ from fg_system import risk as risk_mod  # noqa: E402
 #: 理由：守猪待兔服务端对这两个返回 `data: []`（无历史）✗，
 #: 本地只有 13 天样本 ⇒ 结论是噪声 ✗。
 #: BTC 也没有守猪待兔系数 ✗（现货，不在该体系内）⇒ 一并排除。
-#: 要扩样本可加同类：`--symbols YINN,GDXU,CONL,TQQQ,SOXL,UPRO`（后三个也有 600 天 ✓）
-SYMBOLS = ["YINN", "GDXU", "CONL"]
+#: 2026-10-30 用户裁定「样本太少 ⇒ 用更多标的」✓ —— 扩到**所有有历史的 6 个** ✓
+#: （持仓 3 个 + 同类 3 个；AXTX/CRCG 无历史、BTC 无系数 ⇒ 排除 ✗）
+SYMBOLS = ["YINN", "GDXU", "CONL", "TQQQ", "SOXL", "UPRO"]
 
 #: 净值基准（归一化，只影响绝对金额不影响收益率 ✓）
 NET = 10000.0
@@ -244,9 +245,13 @@ def main(argv=None):
         SYMBOLS = [s.strip() for s in args.symbols.split(",") if s.strip()]
 
     px, st = _load()
-    dates = sorted(set(px["date"]))
+    # 🔴 2026-10-30：区间必须取**价格 ∩ 系数**的交集 ✗ ——
+    # 按价格全历史（2016 起）切段会让「前半段」落在系数数据之前 ✗
+    # ⇒ 前半段收益恒为 0（实测 ✗），分段稳健性检查形同虚设 ✗。
+    st_dates = set(pd.to_datetime(st["date"]))
+    dates = sorted(d for d in set(pd.to_datetime(px["date"])) if d in st_dates)
     if not dates:
-        sys.exit("✗ prices.csv 为空")
+        sys.exit("✗ 价格与守猪待兔系数没有重叠日期 ⇒ 无法回测")
     d0, d1 = dates[0], dates[-1]
     cut = dates[int(len(dates) * 0.7)]
 
@@ -278,15 +283,23 @@ def main(argv=None):
         print("   （要真验证，得先把守猪待兔历史补齐 —— 见 docs/position-plan.md）\n")
     print()
 
+    # 2026-10-30：样本只有 2.5 年 ⇒ 除了 70/30 样本外，再加**前后两半**对照 ✓
+    # （两半结论一致才说明不是某段行情碰巧 ✓；这比单纯延长样本更能说明稳健性 ✓）
+    mid = dates[len(dates) // 2]
+
     out = {"range": [str(d0.date()), str(d1.date())],
-           "oos_from": str(cut.date()), "symbols": SYMBOLS, "runs": {}}
+           "oos_from": str(cut.date()), "mid": str(mid.date()),
+           "symbols": SYMBOLS, "runs": {}}
     for name, v in VARIANTS.items():
         full = _run(px, st, v, label=name)
         oos = _run(px, st, v, start=cut, label=name)
+        h1 = _run(px, st, v, end=mid, label=name)
+        h2 = _run(px, st, v, start=mid, label=name)
         if not full:
             print("✗ %s：无有效样本" % name)
             continue
-        out["runs"][name] = {"full": full, "oos": oos}
+        out["runs"][name] = {"full": full, "oos": oos,
+                             "h1": h1, "h2": h2}
         print("## %s" % name)
         print("  全样本: 收益 %+6.2f%% | 最差标的 %s %+.2f%% | 回撤 %.2f%% | "
               "操作 %d 次 | 平均持仓 %.1f%%"
@@ -297,6 +310,13 @@ def main(argv=None):
             print("  样本外: 收益 %+6.2f%% | 最差标的 %s %+.2f%% | 回撤 %.2f%%"
                   % (oos["return_pct"], oos["worst_symbol"],
                      oos["worst_return_pct"], oos["mdd_pct"]))
+        if h1 and h2:
+            sign = "一致 ✓" if (h1["return_pct"] >= 0) == (h2["return_pct"] >= 0) \
+                else "**不一致** ✗"
+            print("  前半段: 收益 %+6.2f%% | 回撤 %.2f%%    后半段: 收益 %+6.2f%% "
+                  "| 回撤 %.2f%%    ⇒ 方向%s"
+                  % (h1["return_pct"], h1["mdd_pct"],
+                     h2["return_pct"], h2["mdd_pct"], sign))
         print()
 
     print("## 逐标的（全样本）")

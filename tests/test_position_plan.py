@@ -62,10 +62,25 @@ def test_no_history_symbols_get_conservative_cap():
     服务端对 AXTX/CRCG 返回 `data: []` ✗ ⇒ 15% 对它们**未经验证** ✗
     ⇒ 用更保守的上限 ✓（2026-10-30 用户裁定）。
     """
-    a = pp.build_plan(10000, "YINN", 0.015, -85)
-    b = pp.build_plan(10000, "AXTX", 0.08, -85)
+    # 2026-10-30：改成**实时查** shoutu_history.csv（不写死名单 ✓）
+    orig = pp.has_history
+    try:
+        pp.has_history = lambda s, min_days=None: s == "YINN"
+        a = pp.build_plan(10000, "YINN", 0.015, -85)
+        b = pp.build_plan(10000, "AXTX", 0.08, -85)
+    finally:
+        pp.has_history = orig
     assert a["single_cap"] == 1500, "有历史的标的应是 15% ✗"
     assert b["single_cap"] == 1200, "无历史的标的应打回 12% ✗"
+
+
+def test_history_unlock_is_automatic(monkeypatch):
+    """服务端补了历史 ⇒ **自动解除 12% 限制** ✓（不写死名单 ✗）。"""
+    monkeypatch.setattr(pp, "_HIST_CACHE", {"AXTX": 300, "CRCG": 10})
+    assert pp.has_history("AXTX") is True
+    assert pp.has_history("CRCG") is False
+    assert pp.history_days("AXTX") == 300
+    assert pp.history_days("不认识的") == 0
 
 
 def test_risk_limit_is_the_tighter_constraint():
