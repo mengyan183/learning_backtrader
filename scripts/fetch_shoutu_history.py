@@ -69,7 +69,7 @@ HOOK = (
 )
 
 
-def _goto(symbol):
+def _goto(symbol, stock_id=None):
     """SPA 内切路由到该标的的详情页（**不整页重载** ⇒ 挂钩不会被冲掉）。
 
     必须**先离开再回来**：直接改 hash 到同一路由（只换 query）不会让组件重挂载，
@@ -80,10 +80,18 @@ def _goto(symbol):
     而原来只带 `code` ✗ ⇒ 实测 8 个标的全部 `data: []` ✗，
     很可能是页面**没切到历史 tab** ⇒ 压根没请求 `stock_emotion/history` ✗。
     """
+    # 🔴 2026-10-30 实测（记录所有 URL 后）：
+    #   页面发出 `license_like?stock_id=undefined` ✗ ⇒ **组件拿不到 stock_id** ✗
+    #   ⇒ 只发了一个降级的 `?code=US.YINN`（返回 data:[]）✗
+    # 用户给的真实 URL 是 `#/stock_detail?id=875&tab=-1&name=...&code=US.YINN`
+    # ⇒ **`id` 才是主键**，`code` 只是附加 ✗
+    q = "tab=-1&code=US.%s" % symbol
+    if stock_id not in (None, ""):
+        q = "id=%s&%s" % (stock_id, q)
     return ("(async()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));"
             "location.hash='#/mine';await w(1200);"
-            "location.hash='#/stock_detail?tab=-1&code=US.%s';"
-            "return 'OK';})()" % symbol)
+            "location.hash='#/stock_detail?%s';"
+            "return 'OK';})()" % q)
 
 
 def _urls():
@@ -121,7 +129,9 @@ def _now_stamp(now=None):
         ts.strftime("%Y-%m-%d %H:%M:%S"), ts.astimezone().strftime("%z"))
 
 
-def fetch_history(symbols, debug=False):
+def fetch_history(symbols, debug=False, ids=None):
+    """`ids`：`{symbol: stock_id}` ✓ —— 页面详情页以 `id` 为主键 ✗（2026-10-30 实测）。"""
+    ids = ids or {}
     """逐个标的取历史并落盘，返回 `{symbol: 写入行数}`（0 = 服务端无该标的的历史）。
 
     **任一标的失败即抛错，不静默跳过**（与 `fetch_scan_scores` 同一约定）：
@@ -147,7 +157,7 @@ def fetch_history(symbols, debug=False):
             #    上面 HOOK 的 `!= "OK"` 能生效正因为它同步。给 `_goto` 照抄那个检查
             #    会**每次都误抛**。要真校验导航，先实测 bsk 对 Promise 的取值。
             fs.bsk_eval(HOOK, session)            # 清空缓冲（挂钩只装一次）
-            fs.bsk_eval(_goto(sym), session)
+            fs.bsk_eval(_goto(sym, ids.get(sym)), session)
             time.sleep(5)
             if debug:
                 # 只打 URL（不含响应体）✓ —— 用来确认页面到底请求了哪个端点 ✗
@@ -193,13 +203,21 @@ def main():
                     help="逗号分隔；省略则取 config.SHOUTU_SYMBOLS 全部")
     ap.add_argument("--debug", action="store_true",
                     help="打印每个标的捕获到的 URL（不含响应体 ✓）—— 端点改版时用")
+    ap.add_argument("--ids", default=None,
+                    help="symbol=stock_id 逗号分隔（如 YINN=875）—— 详情页以 id 为主键")
     args = ap.parse_args()
+
+    ids = {}
+    for kv in (args.ids or "").split(","):
+        if "=" in kv:
+            k, v = kv.split("=", 1)
+            ids[k.strip().upper()] = v.strip()
 
     symbols = ([s.strip().upper() for s in args.symbols.split(",") if s.strip()]
                if args.symbols else list(config.SHOUTU_SYMBOLS))
     print(_now_stamp())                      # 抓取时刻（spec §12 风险 6）
     print("抓取守猪待兔历史：%s" % " / ".join(symbols))
-    counts = fetch_history(symbols, debug=args.debug)
+    counts = fetch_history(symbols, debug=args.debug, ids=ids)
     print("已写入：%s" % config.SHOUTU_HISTORY_PATH)
     missing = [s for s, n in counts.items() if not n]
     if missing:
