@@ -54,8 +54,13 @@ CAPE_FILE = "sp500_cape.csv"
 #: 10Y（日频，FRED 列名是 observation_date ✗ 不是 date）
 DGS10_FILE = "fred_DGS10.csv"
 
-#: 估值因子的分位窗口：10 年交易日 ✓（**不用** config.RANK_WINDOW=756 ✗）
-ERP_WINDOW = 2520
+#: 估值因子的分位窗口：**120 个月 = 10 年** ✓
+#: 🔴 2026-10-30 实测踩坑：`rolling_pct` 的 window 单位是**行数** ✗ ——
+#: 而 ERP 是**月度**序列（779 行总共）⇒ 传「2520 交易日」会 > 总行数
+#: ⇒ 分位**全 NaN** ✗（实测 2520/1260 都是 0 个有效点 ✗）。
+#: ⇒ 月度序列必须按月计：10 年 = 120 个月 ✓
+#: （交易日口径的 2520 只适用于**日频**序列，别混用 ✗）
+ERP_WINDOW = 120
 #: CAPE 分歧标记的初值 ✓（最终按分布取 P90，见 docs/erp-factor.md）
 CAPE_DIV_THRESHOLD = 25.0
 

@@ -69,10 +69,24 @@ def test_available_date_backfilled_when_missing(tmp_path):
         "2026-02-01", "2026-03-01"]
 
 
-def test_default_window_is_ten_years():
-    """分位窗口必须是 **2520**（10 年）✗ 不是 756 ✓。"""
-    assert erp.ERP_WINDOW == 2520
-    assert erp.ERP_WINDOW != 756
+def test_default_window_is_ten_years_in_months():
+    """分位窗口必须是 **120 个月（10 年）** ✓。
+
+    🔴 2026-10-30 实测踩坑：`rolling_pct` 的 window 单位是**行数** ✗，
+    而 ERP 是月度序列（779 行）⇒ 传「2520 交易日」> 总行数 ⇒ **分位全 NaN** ✗。
+    ⇒ 月度序列必须按月计：10 年 = 120 ✓，不是 2520、也不是 756 ✗。
+    """
+    assert erp.ERP_WINDOW == 120
+    assert erp.ERP_WINDOW not in (756, 2520)
+
+
+def test_window_larger_than_series_yields_all_nan():
+    """窗口 > 序列长度 ⇒ 全 NaN ✓（这是上面那个 bug 的可复现形式）。
+
+    锁住「窗口单位是行数」这一事实 ⇒ 以后谁再传交易日数就会立刻发现 ✗。
+    """
+    pct = erp.erp_pct(pe=_pe(24), dgs10=_dgs10(24), window=2520)
+    assert pct.dropna().empty, "窗口 2520 用在 24 行月度序列上竟然有值 ✗"
 
 
 def test_erp_pct_range_and_monotonic():
