@@ -135,6 +135,37 @@ def test_preflight_skips_dead_stage(monkeypatch):
     assert took < 3, "预检没起作用（%.1fs）✗" % took
 
 
+def test_llm_endpoints_are_env_configurable(monkeypatch):
+    """LLM 地址 / 模型 / key 必须能从环境变量覆盖 ✓。
+
+    2026-10-30：Mac 上三个 agent 已统一走 DeepSeek，而脚本里还硬编码 NIM ✗
+    ⇒ 换供应商要改代码 ✗ ⇒ 改成读配置，且**不设 env 时行为不变** ✓。
+    """
+    monkeypatch.setenv("FG_LLM_URL", "https://api.deepseek.com/v1/chat/completions")
+    monkeypatch.setenv("FG_LLM_MODEL", "deepseek/deepseek-flash")
+    monkeypatch.setenv("FG_LLM_KEY", "sk-unit-test")
+
+    m = _load()
+
+    assert m.NIM_URL == "https://api.deepseek.com/v1/chat/completions"
+    assert m.NIM_MODEL == "deepseek/deepseek-flash"
+    assert m._read_nim_key() == "sk-unit-test", "FG_LLM_KEY 没被优先采用 ✗"
+    assert m._read_hermes_key() == "sk-unit-test"
+
+
+def test_llm_defaults_unchanged_without_env(monkeypatch):
+    """不设环境变量时**行为完全不变** ✓ —— 不能静默改掉生产链路 ✗。"""
+    for k in ("FG_LLM_URL", "FG_LLM_MODEL", "FG_LLM_KEY",
+              "FG_HERMES_URL", "FG_HERMES_MODEL"):
+        monkeypatch.delenv(k, raising=False)
+
+    m = _load()
+
+    assert "integrate.api.nvidia.com" in m.NIM_URL
+    assert m.NIM_MODEL == "deepseek-ai/deepseek-v4.1-flash"
+    assert "127.0.0.1:8642" in m.HERMES_URL
+
+
 def test_kb_threshold_is_060():
     """知识库相关度阈值 = **0.6** ✓（2026-10-29 用户裁定 0.7 → 0.6）。
 

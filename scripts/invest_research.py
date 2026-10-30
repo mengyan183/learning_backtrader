@@ -26,9 +26,23 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 DATA = REPO / "Data"
 
-HERMES_URL = "http://127.0.0.1:8642/v1/chat/completions"
-NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-NIM_MODEL = "deepseek-ai/deepseek-v4.1-flash"
+# ── LLM 通道（2026-10-30 改成**读配置** ✓，全部可用环境变量覆盖）──────────
+# 背景：Mac 上 openclaw / hermes / deepseek-harness 三个 agent 已统一走
+# DeepSeek 的 API ✗，而这里还硬编码 NVIDIA NIM 的地址与模型 ✗ ⇒ 换一次改一次代码 ✗。
+#
+# 切换方式（Mac 上设环境变量，不用改代码）：
+#   export FG_LLM_URL="https://api.deepseek.com/v1/chat/completions"
+#   export FG_LLM_MODEL="deepseek/deepseek-flash"
+#   export FG_LLM_KEY="sk-..."          # 不设则回落到 ~/.dsh/.credentials.yaml
+#   export FG_LLM_PROXY=""              # 官方 API 国内直连，不用代理
+# 默认值**保持原样** ✓ —— 不设环境变量时行为完全不变（避免静默改变生产链路 ✗）。
+HERMES_URL = os.environ.get(
+    "FG_HERMES_URL", "http://127.0.0.1:8642/v1/chat/completions")
+HERMES_MODEL = os.environ.get("FG_HERMES_MODEL", "hermes-agent")
+NIM_URL = os.environ.get(
+    "FG_LLM_URL", "https://integrate.api.nvidia.com/v1/chat/completions")
+NIM_MODEL = os.environ.get(
+    "FG_LLM_MODEL", "deepseek-ai/deepseek-v4.1-flash")
 #: LLM 调用走的本地代理（Mac 上是 Clash 默认端口）✓
 #: 🔴 2026-10-29：原来**硬编码** ✗ —— Clash 换端口就得改代码 ✗；
 #: 现在可用 `FG_LLM_PROXY` 覆盖（空串 = 不用代理）✓
@@ -85,12 +99,18 @@ STATIC_ONLY = os.environ.get("FG_STATIC_ONLY", "0") == "1"
 
 # ---------------------------------------------------------------- 凭据读取
 def _read_hermes_key():
+    # 2026-10-30：优先环境变量 ✓（统一走 DeepSeek 后，两处可以用同一个 key ✓）
+    if os.environ.get("FG_LLM_KEY"):
+        return os.environ["FG_LLM_KEY"]
     import yaml
     cfg = yaml.safe_load(open(Path.home() / ".hermes" / "config.yaml"))
     return cfg.get("platforms", {}).get("api_server", {}).get("key")
 
 
 def _read_nim_key():
+    # 2026-10-30：`FG_LLM_KEY` 优先 ✓ —— 换供应商时只改环境变量，不动代码 ✓
+    if os.environ.get("FG_LLM_KEY"):
+        return os.environ["FG_LLM_KEY"]
     import yaml
     cred = yaml.safe_load(open(Path.home() / ".dsh" / ".credentials.yaml"))
     # 找 nvapi- 开头的 key（跨结构遍历）
@@ -336,7 +356,8 @@ def stage_sentiment(hermes_key, snap):
     """Hermes(GLM) 情绪/新闻面分析"""
     system = "你是资深美股情绪分析师。基于给定的市场数据快照，用中文输出≤500字的情绪面分析：市场整体情绪定性、仓位拥挤度、需要关注的新闻催化方向。只做分析，不给交易指令。"
     user = f"以下是今日市场快照：\n{snapshot_text(snap)}\n\n请输出情绪面分析。"
-    return _chat(HERMES_URL, hermes_key, "hermes-agent", system, user, max_tokens=800)
+    return _chat(HERMES_URL, hermes_key, HERMES_MODEL, system, user,
+                 max_tokens=800)
 
 
 # ---------------------------------------------------------------- LLM 输出校验与降级（2026-10-07 修复）
