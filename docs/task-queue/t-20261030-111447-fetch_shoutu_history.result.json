@@ -1,0 +1,13 @@
+{
+  "id": "t-20261030-111447-fetch_shoutu_history",
+  "action": "fetch_shoutu_history",
+  "params": {
+    "debug": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"stdout\": \"抓取时刻：2026-10-30 11:15:47（本机 +0800）\\n抓取守猪待兔历史：CONL / YINN / GDXU / AXTX / CRCG / TQQQ / SOXL / UPRO\\n    [debug] 捕获 URL：\\nhttps://szdt.tech/api/invest/stock_emotion/history?code=US.CONL\\n  CONL  ⚠️ 服务端无历史（data: []）—— 跳过\\n    [debug] 捕获 URL：\\nhttps://szdt.tech/api/invest/stock_emotion/history?code=US.YINN\\n  YINN  ⚠️ 服务端无历史（data: []）—— 跳过\\n    [debug] 捕获 URL：\\nhttps://szdt.tech/api/invest/stock_emotion/history?code=US.GDXU\\n  GDXU  ⚠️ 服务端无历史（data: []）—— 跳过\\n    [debug] 捕获 URL：\\nhttps://szdt.tech/api/invest/stock_emotion/history?code=US.AXTX\\n  AXTX  ⚠️ 服务端无历史（data: []）—— 跳过\\n    [debug] 捕获 URL：\\nhttps://szdt.tech/api/invest/stock_emotion/history?code=US.CRCG\\n  CRCG  ⚠️ 服务端无历史（data: []）—— 跳过\\n    [debug] 捕获 URL：\\nhttps://szdt.tech/api/invest/stock_emotion/history?code=US.TQQQ\\n  TQQQ  ⚠️ 服务端无历史（data: []）—— 跳过\\n    [debug] 捕获 URL：\\nhttps://szdt.tech/api/invest/stock_emotion/history?code=US.SOXL\\n  SOXL  ⚠️ 服务端无历史（data: []）—— 跳过\\n    [debug] 捕获 URL：\\nhttps://szdt.tech/api/invest/stock_emotion/history?code=US.UPRO\\n  UPRO  ⚠️ 服务端无历史（data: []）—— 跳过\\n已写入：/Users/xingguo/learning_backtrader/Data/raw/shoutu_history.csv\\n⚠️ 服务端无历史的标的：CONL / YINN / GDXU / AXTX / CRCG / TQQQ / SOXL / UPRO\\n合计：CONL 0 / YINN 0 / GDXU 0 / AXTX 0 / CRCG 0 / TQQQ 0 / SOXL 0 / UPRO 0\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-10-30T11:15:46",
+  "finished_at": "2026-10-30T11:16:46",
+  "duration_s": 59.79
+}
