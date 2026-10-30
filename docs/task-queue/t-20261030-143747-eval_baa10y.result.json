@@ -1,0 +1,13 @@
+{
+  "id": "t-20261030-143747-eval_baa10y",
+  "action": "eval_baa10y",
+  "params": {
+    "json": "evolution/baa10y-eval-corr.json"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"orth\": null, \"stdout\": \"# C1_BAA10Y 信用利差因子评测（MT-76 ④）\\n样本：2019-09-26 → 2026-10-29，n_days=1782\\n判定：通过 —— horizon [10] 达门槛且近窗无衰减（逆向）→ 具备入库资格，待回测裁判/人工审批\\n\\n| horizon | rank_ic_mean | rank_ICIR | pearson_ICIR | n | 近窗ICIR | 分层mono | top-bottom |\\n|---|---|---|---|---|---|---|---|\\n| 5 | +0.108 | +0.472 | +0.523 | 1718 | +0.186 | 1.000 | +0.42% |\\n| 10 | +0.172 | +0.546 | +0.565 | 1713 | +0.486 | 1.000 | +1.03% |\\n| 20 | +0.180 | +0.458 | +0.500 | 1703 | +0.729 | 1.000 | +2.44% |\\n| 40 | +0.196 | +0.406 | +0.419 | 1683 | +0.729 | 0.900 | +4.34% |\\n\\n## 与现有因子 Spearman 相关（正交性取证）\\n- baa10y_z ~ vix: -0.483（n=1776）\\n- baa10y_z ~ putcall: -0.078（n=1782）\\n- baa10y_z ~ fg_index: -0.449（n=1778）\\n- baa10y_z ~ term: -0.194（n=1777）\\n- baa10y_z ~ breadth: -0.090（n=1722）\\n- baa10y_z ~ fed: +0.625（n=207）  ⚠️ n=207 太少，此相关系数不可信\\n- baa10y_z ~ price: -0.334（n=1531）\\n\\n[已写 /Users/xingguo/learning_backtrader/evolution/baa10y-eval-corr.json]\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-10-30T14:38:48",
+  "finished_at": "2026-10-30T14:38:51",
+  "duration_s": 2.51
+}
