@@ -234,6 +234,11 @@ def _act_fetch_pe_ratio(params):
     cmd = [sys.executable, os.path.join(ROOT, "scripts", "fetch_pe_ratio.py")]
     if str(params.get("dry_run") or "") in ("1", "true", "yes"):
         cmd.append("--dry-run")
+    # 2026-10-30：默认抓 PE + CAPE 两条 ✓（CAPE 作对照，判断「当期 PE 是否被
+    # 一次性高盈利压低」✗）；可用 `series=pe|cape` 只抓一条 ✓
+    ser = str(params.get("series") or "").strip()
+    if ser in ("pe", "cape", "both"):
+        cmd += ["--series", ser]
     try:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                            timeout=180)
