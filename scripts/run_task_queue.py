@@ -225,6 +225,26 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_fetch_pe_ratio(params):
+    """抓 S&P500 PE 月度历史 ✓ —— C2「ERP 估值锚」的数据源（`Data/raw/sp500_pe.csv`）。
+
+    2026-10-30：FRED 没有 PE 系列 ✗，仓库也没有任何 PE 历史 ✗
+    ⇒ 先解决数据源，再谈 C2 因子 ✓。
+    """
+    cmd = [sys.executable, os.path.join(ROOT, "scripts", "fetch_pe_ratio.py")]
+    if str(params.get("dry_run") or "") in ("1", "true", "yes"):
+        cmd.append("--dry-run")
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=180)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 180 秒未完成"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": (r.stdout or "")[-1500:], "stderr": (r.stderr or "")[-600:]}
+
+
 def _act_c1_backtest(params):
     """C1 回测裁判（M2.2）✓ —— 两步：把 `baa10y_z` 并入研究 features → 跑 probe。
 
@@ -687,6 +707,7 @@ ACTIONS = {
     "factor_diag": _act_factor_diag,
     "run_pipeline": _act_run_pipeline,
     "c1_backtest": _act_c1_backtest,
+    "fetch_pe_ratio": _act_fetch_pe_ratio,
     "key_diag": _act_key_diag,
     "backtest_plan": _act_backtest_plan,
     "fetch_shoutu_history": _act_fetch_shoutu_history,

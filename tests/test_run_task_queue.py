@@ -258,6 +258,12 @@ def test_task_output_dirs_are_explicit_allowlist():
         assert ".." not in d, "白名单里不能出现上级目录 ✗"
 
 
+def test_fetch_pe_ratio_is_registered():
+    """`fetch_pe_ratio` 必须在白名单里 ✓ —— C2 的 PE 源只能从 Mac 抓 ✗。"""
+    assert "fetch_pe_ratio" in q.ACTIONS
+    assert callable(q.ACTIONS["fetch_pe_ratio"])
+
+
 def test_c1_backtest_is_registered():
     """`c1_backtest` 必须在白名单里 ✓ —— 回测裁判要在 Mac 跑（数据在本地 ✗）。"""
     assert "c1_backtest" in q.ACTIONS
