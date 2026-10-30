@@ -170,3 +170,36 @@ https://szdt.tech/api/invest/stock_emotion/history?code=US.YINN   → data: []
 `NO_HISTORY_SYMBOLS` 写死名单 → 改为**实时查** `shoutu_history.csv` 的
 `history_days(symbol) >= HIST_MIN_DAYS(250)` ⇒ 服务端哪天补了历史，
 自动按 15% 处理，不用改代码 ✓。
+
+## 2026-10-30 守猪待兔历史抓取排查：**结论是服务端没数据，停止深挖**
+
+四轮排查（每轮都在 Mac 上实测）：
+
+| 轮次 | 假设 | 实测结果 |
+|---|---|---|
+| 1 | 没切到历史 tab | 补 `tab=-1` 后仍 `data: []` ✗ |
+| 2 | 页面发两次请求、取错了 | 只捕获到 1 个 history 请求 ✗ |
+| 3 | 缺 `id`（详情页以 id 为主键） | `license_like?stock_id=875` 说明 **id 已生效** ✓，history 仍空 ✗ |
+| 4 | 要点「历史」页签 + 抓响应体 | 点到了 `OK:历史贪恐指数` ✓，点击后**无新请求** ✗ |
+
+第 4 轮抓到的原始响应：
+
+```
+GET /api/invest/license_like?stock_id=875
+    → {"status":1,"msg":"成功","data":{"status":0}}
+GET /api/invest/stock_emotion/history?code=US.YINN
+    → {"status":1,"msg":"成功","data":[]}          ← 服务端明确说「成功」但数据为空
+```
+
+**结论**：端点正确、鉴权正常、请求成功（`status:1`），但**服务端对该 code 返回空数组** ✗
+⇒ **不是抓法问题，是服务端没有数据** ✓
+
+旁证：`Data/raw/shoutu_history.csv` 最新只到 **2026-10-14**，而排查当天是 10-30
+⇒ 16 天前还有数据、之后就没有 ⇒ 大概率是服务端在 10 月中改了接口或清了历史 ✗
+
+**处置**：
+1. `scripts/fetch_shoutu_history.py` 的 `--ids` / `--click-tab` / `--capture-all` 全部保留 ✓
+   （服务端哪天恢复，直接跑即可，无需再改代码）
+2. **停止继续深挖** ✗ —— 边际收益已经很低
+3. 回测继续用现有数据（2024-04 → 2026-10-14，6 标的各 560~642 天）✓
+4. C 参数长期标注「回测样本太少、待丰富」，**不得据此认为策略已验证** ✗
