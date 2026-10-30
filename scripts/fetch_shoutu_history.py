@@ -70,11 +70,21 @@ def _goto(symbol):
 
     必须**先离开再回来**：直接改 hash 到同一路由（只换 query）不会让组件重挂载，
     也就不会触发新请求（实测）。
+
+    🔴 2026-10-30 修正：补 `tab=-1` ✗ —— 用户给的真实详情页 URL 是
+    `#/stock_detail?id=875&tab=-1&name=三倍中国&code=US.YINN` ✗，
+    而原来只带 `code` ✗ ⇒ 实测 8 个标的全部 `data: []` ✗，
+    很可能是页面**没切到历史 tab** ⇒ 压根没请求 `stock_emotion/history` ✗。
     """
     return ("(async()=>{const w=ms=>new Promise(r=>setTimeout(r,ms));"
             "location.hash='#/mine';await w(1200);"
-            "location.hash='#/stock_detail?code=US.%s';"
+            "location.hash='#/stock_detail?tab=-1&code=US.%s';"
             "return 'OK';})()" % symbol)
+
+
+def _urls():
+    """取回缓冲里**所有**被捕获的 URL ✓（只 URL，不含响应体 —— 安全 ✓）。"""
+    return "(()=>{const a=window.__shoutu_cap||[];return a.map(x=>x.u).join('\\n');})()"
 
 
 def _take(symbol):
@@ -101,7 +111,7 @@ def _now_stamp(now=None):
         ts.strftime("%Y-%m-%d %H:%M:%S"), ts.astimezone().strftime("%z"))
 
 
-def fetch_history(symbols):
+def fetch_history(symbols, debug=False):
     """逐个标的取历史并落盘，返回 `{symbol: 写入行数}`（0 = 服务端无该标的的历史）。
 
     **任一标的失败即抛错，不静默跳过**（与 `fetch_scan_scores` 同一约定）：
@@ -129,6 +139,10 @@ def fetch_history(symbols):
             fs.bsk_eval(HOOK, session)            # 清空缓冲（挂钩只装一次）
             fs.bsk_eval(_goto(sym), session)
             time.sleep(5)
+            if debug:
+                # 只打 URL（不含响应体）✓ —— 用来确认页面到底请求了哪个端点 ✗
+                got = fs.bsk_eval(_urls(), session) or ""
+                print("    [debug] 捕获 URL：\n%s" % (got.strip() or "（空）"))
             raw = fs.bsk_eval(_take(sym), session)
             if not raw:
                 raise RuntimeError(
@@ -153,13 +167,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--symbols", default=None,
                     help="逗号分隔；省略则取 config.SHOUTU_SYMBOLS 全部")
+    ap.add_argument("--debug", action="store_true",
+                    help="打印每个标的捕获到的 URL（不含响应体 ✓）—— 端点改版时用")
     args = ap.parse_args()
 
     symbols = ([s.strip().upper() for s in args.symbols.split(",") if s.strip()]
                if args.symbols else list(config.SHOUTU_SYMBOLS))
     print(_now_stamp())                      # 抓取时刻（spec §12 风险 6）
     print("抓取守猪待兔历史：%s" % " / ".join(symbols))
-    counts = fetch_history(symbols)
+    counts = fetch_history(symbols, debug=args.debug)
     print("已写入：%s" % config.SHOUTU_HISTORY_PATH)
     missing = [s for s, n in counts.items() if not n]
     if missing:

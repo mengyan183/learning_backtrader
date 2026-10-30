@@ -238,6 +238,8 @@ def _act_fetch_shoutu_history(params):
     syms = str(params.get("symbols") or "").strip()
     if syms:
         cmd += ["--symbols", syms]
+    if str(params.get("debug") or "") in ("1", "true", "yes"):
+        cmd.append("--debug")
     try:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                            timeout=900)
