@@ -88,11 +88,17 @@ def _urls():
 
 
 def _take(symbol):
-    """取回缓冲里**该标的的最后一个**响应体（没有则返回 null）。"""
+    """取回缓冲里**所有** history 响应体（JSON 数组字符串，没有则返回空串）。
+
+    🔴 2026-10-30 实测：页面会发**不止一次** `stock_emotion/history` ——
+    其中 `?code=US.YINN`（不带 id）返回 **`data: []`** ✗，而带 `id` 的那次才有数据 ✓。
+    原来只按 `code=US.<sym>` 过滤并取最后一个 ✗ ⇒ 正好拿到空的那次 ✗
+    ⇒ 8 个标的全部「服务端无历史」✗。现在改成**全收 + 由调用方挑非空的** ✓。
+    """
     return ("(()=>{const a=window.__shoutu_cap||[];"
-            "const m=a.filter(x=>String(x.u).indexOf('code=US.%s')>=0);"
+            "const m=a.filter(x=>String(x.u).indexOf('stock_emotion/history')>=0);"
             "window.__shoutu_cap=[];"
-            "return m.length?m[m.length-1].b:null;})()" % symbol)
+            "return JSON.stringify(m.map(x=>x.b));})()")
 
 
 def _now_stamp(now=None):
@@ -147,7 +153,21 @@ def fetch_history(symbols, debug=False):
             if not raw:
                 raise RuntimeError(
                     "[%s] 未捕获到历史响应 —— 页面可能改版、未登录，或该标的详情页打不开" % sym)
-            df = shoutu.parse_history_payload(json.loads(raw), sym)
+            # 2026-10-30：可能有多条 history 响应 ⇒ **挑第一条非空的** ✓
+            bodies = json.loads(raw)
+            df = None
+            for b in bodies:
+                try:
+                    cand = shoutu.parse_history_payload(json.loads(b), sym)
+                except Exception:              # noqa: BLE001 —— 坏的那条跳过 ✓
+                    continue
+                if not cand.empty:
+                    df = cand
+                    break
+            if df is None:
+                # 全部为空 ⇒ 服务端确实没有该标的的历史（保留原语义 ✓）
+                df = shoutu.parse_history_payload(
+                    json.loads(bodies[-1] if bodies else "{}"), sym)
             if df.empty:
                 # `data: []` ⇒ 服务端**确实没有**该标的的历史（实测 AXTX / CRCG）
                 print("  %-5s ⚠️ 服务端无历史（data: []）—— 跳过" % sym)

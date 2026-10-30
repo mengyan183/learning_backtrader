@@ -23,8 +23,9 @@ def test_leverage_comes_from_config_groups():
 
 def test_gap_uses_underlying_atr_times_leverage():
     """间距 = 1.5 × ATR20(**正股**) × 杠杆 ✓（纪律 4C.4 口径）。"""
-    assert round(pp.gap_pct("YINN", 0.015), 2) == 6.75     # 3x
-    assert round(pp.gap_pct("AXTX", 0.08), 2) == 24.0      # 2x
+    # 2026-10-30 定版 C：atr_k = 1.2
+    assert round(pp.gap_pct("YINN", 0.015), 2) == 5.4      # 1.2×1.5%×3
+    assert round(pp.gap_pct("AXTX", 0.08), 2) == 19.2      # 1.2×8%×2
     assert pp.gap_pct("YINN", None) is None, "ATR 缺失要返回 None，不能猜 ✗"
 
 
@@ -49,8 +50,22 @@ def test_first_plus_ladder_fills_single_cap_exactly():
     p = pp.build_plan(10000, "YINN", 0.015, -85)
     total = p["first"] + sum(x["amount"] for x in p["ladder"])
     assert abs(total - p["single_cap"]) <= 1, (total, p["single_cap"])
-    assert p["single_cap"] == 1200        # 10000 × 12%
-    assert p["first"] == 600              # 10000 × 6%
+    # 2026-10-30 定版 C：单标的 15% / 首建 8% / 加仓 4%+3%
+    assert p["single_cap"] == 1500        # 10000 × 15%
+    assert p["first"] == 800              # 10000 × 8%
+
+
+def test_no_history_symbols_get_conservative_cap():
+    """无守猪待兔历史的标的（AXTX/CRCG）敞口打回 **12%** ✓。
+
+    15% 是在 YINN/GDXU/CONL（有 560~640 天历史）上回测验证的 ✓；
+    服务端对 AXTX/CRCG 返回 `data: []` ✗ ⇒ 15% 对它们**未经验证** ✗
+    ⇒ 用更保守的上限 ✓（2026-10-30 用户裁定）。
+    """
+    a = pp.build_plan(10000, "YINN", 0.015, -85)
+    b = pp.build_plan(10000, "AXTX", 0.08, -85)
+    assert a["single_cap"] == 1500, "有历史的标的应是 15% ✗"
+    assert b["single_cap"] == 1200, "无历史的标的应打回 12% ✗"
 
 
 def test_risk_limit_is_the_tighter_constraint():
@@ -71,5 +86,5 @@ def test_brief_line_is_readable():
     p = pp.build_plan(10000, "YINN", 0.015, -85)
     ln = pp.brief_line(p)
     assert "YINN ×3" in ln
-    assert "首建 $600" in ln
-    assert "6.8%" in ln or "6.75" in ln
+    assert "首建 $800" in ln
+    assert "5.4%" in ln, ln

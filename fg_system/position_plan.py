@@ -20,17 +20,28 @@
 """
 from fg_system import config
 
-#: 建仓/加仓参数（**待回测确认**，见模块 docstring）
+#: 建仓/加仓参数 —— **2026-10-30 定版「C_激进」** ✓（用户裁定：资金量小、偏激进）。
+#: 依据：第二轮回测（YINN/GDXU/CONL，2024-04~2026-10）
+#:   A 12%/-80 +6.07%/-6.87%（比值 0.88）· E 12%/-75 +5.83%/-6.67%（0.87）
+#:   **C 15%/-75 +7.63%/-8.58%（比值 0.89，最高）** · D 现状 20%/-70 +8.00%/-12.20%（0.66）
+#: ⇒ C 的风险调整后收益最好，且单笔敞口更大（小资金更需要绝对收益 ✓）。
 PLAN = {
-    "single_cap": 0.12,      # 单标的上限：净值 12%
-    "total_cap": 0.20,       # 杠杆 ETF 总敞口：净值 20%
-    "first": 0.06,           # 首建：净值 6%
-    "adds": (0.03, 0.03),    # 2 档加仓，各 3% ⇒ 6+3+3 = 12% 正好打满
-    "atr_k": 1.5,            # 间距 = 1.5 × ATR20(正股) × 杠杆倍数
+    "single_cap": 0.15,      # 单标的上限：净值 15%
+    "total_cap": 0.20,       # 杠杆 ETF 总敞口：净值 20%（⇒ 满配 1 个 + 半配 1 个 ✓）
+    "first": 0.08,           # 首建：净值 8%
+    "adds": (0.04, 0.03),    # 2 档加仓 ⇒ 8+4+3 = 15% 正好打满
+    "atr_k": 1.2,            # 间距 = 1.2 × ATR20(正股) × 杠杆倍数
     "min_gap_days": 5,       # 纪律 5.1
-    "entry_coef": -80.0,     # 守猪待兔系数建仓/加仓线
-    "hard_stop": -0.50,      # 浮亏超过 50% ⇒ 禁止加仓（**不清仓** ✓ 用户裁定）
+    "entry_coef": -75.0,     # 守猪待兔系数建仓/加仓线
+    "hard_stop": -0.60,      # 浮亏超过 60% ⇒ 禁止加仓（**不清仓** ✓ 用户裁定）
 }
+
+#: **无守猪待兔服务端历史**的标的 ⇒ 单标的敞口打回 12% ✓（2026-10-30 用户裁定）
+#: 理由：15% 是**回测验证过**的参数（YINN/GDXU/CONL 有 560~640 天历史）；
+#: AXTX/CRCG 服务端返回 `data: []` ✗ ⇒ 15% 对它们是**未验证**的 ✗
+#: ⇒ 未验证的标的用更保守的上限（12% = 第一轮回测里 A 变体的口径 ✓）。
+NO_HISTORY_SYMBOLS = {"AXTX", "CRCG"}
+NO_HISTORY_CAP = 0.12
 
 #: 杠杆倍数分组（复用 config 的守猪待兔分组，避免两处口径打架 ✗）
 LEVERAGE = {}
@@ -73,7 +84,10 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
     :returns: dict（`ok` 表示「现在能不能动手」，`blocked` 给原因）
     """
     lev = leverage_of(symbol)
-    single = float(net_value or 0) * PLAN["single_cap"]
+    # 无守猪待兔历史的标的 ⇒ 敞口打回 12% ✓（15% 对它们未经验证 ✗）
+    cap_ratio = (NO_HISTORY_CAP if str(symbol).upper() in NO_HISTORY_SYMBOLS
+                 else PLAN["single_cap"])
+    single = float(net_value or 0) * cap_ratio
     if risk_limit:
         single = min(single, float(risk_limit))       # 1% 规则更严 ⇒ 以它为准 ✓
     total = float(net_value or 0) * PLAN["total_cap"]
