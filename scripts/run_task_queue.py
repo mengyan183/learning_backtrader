@@ -235,16 +235,27 @@ def _act_c1_backtest(params):
     """
     feat = str(params.get("features")
                or "evolution/experiments/factor-adoption/features_c1.csv")
-    sym = str(params.get("symbol") or "TQQQ")
+    # 2026-10-30：支持**多组合扫描** ✓（`symbols`/`directions` 逗号分隔）——
+    # ⚠️ 这是**多重检验** ✗：同一份数据反复试直到通过 = 过拟合 ✓
+    # ⇒ 结果只作**探索性分析**，**不作为采纳依据** ✗（提案里必须写明）
+    syms = [x.strip() for x in str(params.get("symbols")
+                                   or params.get("symbol") or "TQQQ").split(",")
+            if x.strip()]
+    dirs = [x.strip() for x in str(params.get("directions")
+                                   or params.get("direction") or "positive").split(",")
+            if x.strip()]
+    sym = syms[0]
     # C1 是**逆向**因子：信用利差高（z 高）= 恐慌 = 看多 ⇒ direction=positive ✓
-    direc = str(params.get("direction") or "positive")
-    steps = [
-        [sys.executable, os.path.join(ROOT, "scripts", "eval_baa10y.py"),
-         "--dump-features", feat],
-        [sys.executable, os.path.join(ROOT, "scripts", "factor_backtest_probe.py"),
-         "--factor", "baa10y_z", "--symbol", sym,
-         "--direction", direc, "--features", feat],
-    ]
+    direc = dirs[0]
+    steps = [[sys.executable, os.path.join(ROOT, "scripts", "eval_baa10y.py"),
+              "--dump-features", feat]]
+    for s in syms:
+        for d in dirs:
+            steps.append(
+                [sys.executable,
+                 os.path.join(ROOT, "scripts", "factor_backtest_probe.py"),
+                 "--factor", "baa10y_z", "--symbol", s,
+                 "--direction", d, "--features", feat])
     out = []
     for cmd in steps:
         try:
@@ -253,13 +264,16 @@ def _act_c1_backtest(params):
         except subprocess.TimeoutExpired:
             out.append({"cmd": " ".join(cmd[1:]), "rc": -1,
                         "stdout": "", "stderr": "超过 1800 秒"})
-            break
+            continue
+        # 🔴 probe 判 FAIL 时 **exit 1** ✗ —— 那是**结论**不是崩溃 ✓
+        # ⇒ 不能因为 rc!=0 就 break，否则后面的组合全被跳过 ✗
         out.append({"cmd": " ".join(cmd[1:]), "rc": r.returncode,
                     "stdout": (r.stdout or "")[-1800:],
                     "stderr": (r.stderr or "")[-400:]})
-        if r.returncode != 0:
-            break
-    return {"ok": bool(out) and all(x["rc"] == 0 for x in out), "steps": out}
+    return {"ok": all(x["rc"] == 0 for x in out),
+            "combos": len(syms) * len(dirs),
+            "warning": "⚠️ 多组合扫描 = 多重检验 ⇒ 仅作探索，不作为采纳依据 ✗",
+            "steps": out}
 
 
 def _act_fetch_shoutu_history(params):
