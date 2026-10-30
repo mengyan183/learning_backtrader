@@ -1,0 +1,11 @@
+{
+  "id": "t-20261030-163816-fetch_pe_ratio",
+  "action": "fetch_pe_ratio",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"stdout\": \"抓取 PE：https://www.multpl.com/s-p-500-pe-ratio/table/by-month（代理=http://127.0.0.1:7890）\\n  页面 149570 字符\\n  解析出 1871 行：1871-01-01 → 2026-10-29\\n  最新 PE = 26.33（数据日 2026-10-29，可用日 2026-11-29）\\n  已写入：/Users/xingguo/learning_backtrader/Data/raw/sp500_pe.csv\\n抓取 CAPE：https://www.multpl.com/shiller-pe-cape-ratio/table/by-month（代理=http://127.0.0.1:7890）\\n\", \"stderr\": \"nse = meth(req, response)\\n  File \\\"/Users/xingguo/anaconda3/lib/python3.10/urllib/request.py\\\", line 634, in http_response\\n    response = self.parent.error(\\n  File \\\"/Users/xingguo/anaconda3/lib/python3.10/urllib/request.py\\\", line 563, in error\\n    return self._call_chain(*args)\\n  File \\\"/Users/xingguo/anaconda3/lib/python3.10/urllib/request.py\\\", line 496, in _call_chain\\n    result = func(*args)\\n  File \\\"/Users/xingguo/anaconda3/lib/python3.10/urllib/request.py\\\", line 643, in http_error_default\\n    raise HTTPError(req.full_url, code, msg, hdrs, fp)\\nurllib.error.HTTPError: HTTP Error 404: Not Found\\n\"}",
+  "started_at": "2026-10-30T16:39:14",
+  "finished_at": "2026-10-30T16:39:17",
+  "duration_s": 2.87
+}
