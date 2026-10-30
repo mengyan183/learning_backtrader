@@ -55,6 +55,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", metavar="PATH", help="把完整报告写到 JSON")
     ap.add_argument("--lag-days", type=int, default=0, help="额外保守滞后（默认0）")
+    ap.add_argument("--dump-features", metavar="PATH", default=None,
+                    help="把 baa10y_z 并入 features 后另存（供 factor_backtest_probe "
+                         "--features 用）✓")
     ap.add_argument("--orthogonalize", metavar="COL", default=None,
                     help="先剔除 features.csv 该列（如 fed）再评测 ✓ 滚动 β、shift(1) 无前视")
     args = ap.parse_args(argv)
@@ -88,6 +91,20 @@ def main(argv=None):
                   "    或不做正交化、直接看原始相关性 ✓\n" % (n_orth, MIN_ORTH, col))
             return 2
         print()
+
+    # 2026-10-30：把 baa10y_z 并入 features 另存 ✓ ——
+    # `factor_backtest_probe.py` 只认 features 里的**列** ✗，
+    # 而 baa10y 来自 `Data/raw/fred_baa10y_avail.csv`（不在 features 里）✗
+    if args.dump_features:
+        out = (feat.copy() if feat is not None else pd.DataFrame())
+        out["baa10y_z"] = z.reindex(out.index)
+        p = Path(args.dump_features)
+        if not p.is_absolute():
+            p = REPO / p
+        p.parent.mkdir(parents=True, exist_ok=True)
+        out.reset_index().to_csv(p, index=False, encoding="utf-8")
+        print("# 已写出研究专用 features：%s（含 baa10y_z，非空 %d 天）"
+              % (p, int(out["baa10y_z"].notna().sum())))
 
     rep = fproto.screen_report(
         z, spy, factor_id=fid, target="SPY", direction="逆向",

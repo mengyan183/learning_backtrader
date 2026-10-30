@@ -225,6 +225,43 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_c1_backtest(params):
+    """C1 回测裁判（M2.2）✓ —— 两步：把 `baa10y_z` 并入研究 features → 跑 probe。
+
+    2026-10-30：相关性复核**通过**（无 `|ρ|>0.5 且 n≥250` 的列 ⇒ 跳过正交化）✓
+    ⇒ 直接进回测裁判 ✓。
+    `factor_backtest_probe.py` 只认 features 里的**列** ✗，而 baa10y 在
+    `Data/raw/fred_baa10y_avail.csv` ⇒ 先 dump 一份研究专用 features ✓。
+    """
+    feat = str(params.get("features")
+               or "evolution/experiments/factor-adoption/features_c1.csv")
+    sym = str(params.get("symbol") or "TQQQ")
+    # C1 是**逆向**因子：信用利差高（z 高）= 恐慌 = 看多 ⇒ direction=positive ✓
+    direc = str(params.get("direction") or "positive")
+    steps = [
+        [sys.executable, os.path.join(ROOT, "scripts", "eval_baa10y.py"),
+         "--dump-features", feat],
+        [sys.executable, os.path.join(ROOT, "scripts", "factor_backtest_probe.py"),
+         "--factor", "baa10y_z", "--symbol", sym,
+         "--direction", direc, "--features", feat],
+    ]
+    out = []
+    for cmd in steps:
+        try:
+            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                               timeout=1800)
+        except subprocess.TimeoutExpired:
+            out.append({"cmd": " ".join(cmd[1:]), "rc": -1,
+                        "stdout": "", "stderr": "超过 1800 秒"})
+            break
+        out.append({"cmd": " ".join(cmd[1:]), "rc": r.returncode,
+                    "stdout": (r.stdout or "")[-1800:],
+                    "stderr": (r.stderr or "")[-400:]})
+        if r.returncode != 0:
+            break
+    return {"ok": bool(out) and all(x["rc"] == 0 for x in out), "steps": out}
+
+
 def _act_fetch_shoutu_history(params):
     """抓守猪待兔**服务端历史** ✓ —— 写 `Data/raw/shoutu_history.csv`。
 
@@ -635,6 +672,7 @@ ACTIONS = {
     "net_probe": _act_net_probe,
     "factor_diag": _act_factor_diag,
     "run_pipeline": _act_run_pipeline,
+    "c1_backtest": _act_c1_backtest,
     "key_diag": _act_key_diag,
     "backtest_plan": _act_backtest_plan,
     "fetch_shoutu_history": _act_fetch_shoutu_history,

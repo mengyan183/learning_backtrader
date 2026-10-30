@@ -233,6 +233,12 @@ def test_key_diag_missing_dir(tmp_path):
     assert q._act_key_diag({"dir": str(tmp_path / "nope")})["ok"] is False
 
 
+def test_c1_backtest_is_registered():
+    """`c1_backtest` 必须在白名单里 ✓ —— 回测裁判要在 Mac 跑（数据在本地 ✗）。"""
+    assert "c1_backtest" in q.ACTIONS
+    assert callable(q.ACTIONS["c1_backtest"])
+
+
 def test_run_pipeline_is_registered():
     """`run_pipeline` 必须在白名单里 ✓（features 尾行缺因子时要能重算）。"""
     assert "run_pipeline" in q.ACTIONS
