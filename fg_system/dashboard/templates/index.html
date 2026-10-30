@@ -298,15 +298,8 @@
   </div>
   <p id="syncWarn" class="sync-warn" hidden></p>
 
-  <!-- 事实：标签 + 值（两列，窄屏单列） -->
-  <div id="syncDetail" class="kv-list"></div>
-
-  <!-- 最近任务 -->
-  <div id="queueList" class="task-list"></div>
-
-  <div id="deployMsg" class="msg"></div>
-
-  <!-- 动作：先「看」，再「动」；危险动作单独一段 -->
+  <!-- 动作：**放在顶部** ✓（2026-10-30 用户要求）——
+       原来在最底部，手机要滚过整张卡才看得到按钮 ✗ -->
   <div class="sync-actions">
     <button id="syncBtn" class="btn-sm" type="button" title="只重新拉取这张卡的数据，不重算整页">刷新体检</button>
     <button id="freshBtn" class="btn-xs" type="button">强制重算整页</button>
@@ -318,6 +311,14 @@
     <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
     <button id="restartBtn" class="btn-xs" type="button">重启服务</button>
   </div>
+
+  <!-- 事实：标签 + 值（两列，窄屏单列） -->
+  <div id="syncDetail" class="kv-list"></div>
+
+  <!-- 最近任务 -->
+  <div id="queueList" class="task-list"></div>
+
+  <div id="deployMsg" class="msg"></div>
 
   <details class="fold">
     <summary>这些数字怎么来的</summary>

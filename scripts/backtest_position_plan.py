@@ -57,13 +57,35 @@ VARIANTS = {
 
 
 def _load():
-    """读价格（长表）/ 守猪待兔 / 交易日历 ✓。"""
+    """读价格（长表）+ 守猪待兔系数 ✓。
+
+    🔴 2026-10-30 修正（第一次回测跑空的根因 ✗）：
+    原来只读 `shoutu_fng.csv`（**本地 06:30 采样**，只有近期几十天 ✗）
+    ⇒ 10 年区间只交易 5 次、平均持仓 0.2% ✗，结论无效 ✗。
+    正解：优先 `shoutu_history.csv`（**服务端权威日值**，2024-04 起、
+    每只 ~600 天 ✓，由 `scripts/fetch_shoutu_history.py` 抓）
+    + `shoutu_fng.csv` 覆盖更新的日期（同 `(date,symbol)` 以 fng 为准 ✓）。
+    """
     px = pd.read_csv(os.path.join(REPO, "Data", "raw", "prices.csv"),
                      parse_dates=["date"])
-    st_path = os.path.join(REPO, "Data", "raw", "shoutu_fng.csv")
-    if not os.path.exists(st_path):
-        sys.exit("✗ 缺 Data/raw/shoutu_fng.csv ⇒ 无法回测（该文件只在 Mac 本地 ✗）")
-    st = pd.read_csv(st_path, parse_dates=["date"])
+    frames = []
+    hist_p = os.path.join(REPO, "Data", "raw", "shoutu_history.csv")
+    fng_p = os.path.join(REPO, "Data", "raw", "shoutu_fng.csv")
+    if os.path.exists(hist_p):
+        h = pd.read_csv(hist_p, parse_dates=["date"])
+        h = h.rename(columns={"score": "value"})[["date", "symbol", "value"]]
+        frames.append(h)
+    if os.path.exists(fng_p):
+        f = pd.read_csv(fng_p, parse_dates=["date"])[["date", "symbol", "value"]]
+        frames.append(f)
+    if not frames:
+        sys.exit("✗ 缺 shoutu_history.csv / shoutu_fng.csv ⇒ 无法回测"
+                 "（这两个文件只在 Mac 本地 ✗）")
+    st = pd.concat(frames, ignore_index=True)
+    st["symbol"] = st["symbol"].astype(str).str.replace("-USDT", "", regex=False)
+    # 同 (date, symbol) 以**后出现的为准** ⇒ fng（更近的采样）覆盖 history ✓
+    st = st.dropna(subset=["value"]).drop_duplicates(
+        subset=["date", "symbol"], keep="last")
     return px, st
 
 

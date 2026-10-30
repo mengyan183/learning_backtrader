@@ -197,6 +197,12 @@ def test_futu_preflight_is_registered():
     assert callable(q.ACTIONS["futu_preflight"])
 
 
+def test_fetch_shoutu_history_is_registered():
+    """`fetch_shoutu_history` 必须在白名单里 ✓ —— 回测依赖它的产物 ✗。"""
+    assert "fetch_shoutu_history" in q.ACTIONS
+    assert callable(q.ACTIONS["fetch_shoutu_history"])
+
+
 def test_backtest_plan_is_registered():
     """`backtest_plan` 必须在白名单里 ✓（shoutu_fng.csv 只在 Mac 本地 ✗）。"""
     assert "backtest_plan" in q.ACTIONS

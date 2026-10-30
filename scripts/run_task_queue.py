@@ -225,6 +225,30 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_fetch_shoutu_history(params):
+    """抓守猪待兔**服务端历史** ✓ —— 写 `Data/raw/shoutu_history.csv`。
+
+    动机（2026-10-30）：建仓计划回测第一次跑空 ✗ —— 因为它读的是
+    `shoutu_fng.csv`（**本地 06:30 采样**，只有近期几十天 ✗）。
+    服务端历史（`stock_emotion/history`）才是权威日值 ✓，
+    2024-04 起、每只 ~600 天 ✓（AXTX/CRCG 服务端没有 ⇒ 返回空表，不报错 ✓）。
+    """
+    cmd = [sys.executable,
+           os.path.join(ROOT, "scripts", "fetch_shoutu_history.py")]
+    syms = str(params.get("symbols") or "").strip()
+    if syms:
+        cmd += ["--symbols", syms]
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=900)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 900 秒未完成"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": (r.stdout or "")[-2000:], "stderr": (r.stderr or "")[-500:]}
+
+
 def _act_backtest_plan(params):
     """在 Mac 上跑**建仓/加仓计划回测** ✓（`shoutu_fng.csv` 只在 Mac 本地 ✗）。
 
@@ -604,6 +628,7 @@ ACTIONS = {
     "run_pipeline": _act_run_pipeline,
     "key_diag": _act_key_diag,
     "backtest_plan": _act_backtest_plan,
+    "fetch_shoutu_history": _act_fetch_shoutu_history,
 }
 
 
