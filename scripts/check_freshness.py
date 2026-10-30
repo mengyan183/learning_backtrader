@@ -28,10 +28,22 @@ EXTRA_FRESH = [
     ("组合特征", os.path.join(REPO, "Data", "portfolio_features.csv")),
 ]
 # 参考产物：**只报尾行日期**，不判 issue（快照/历史类，滞后属正常但必须可见）。
+#: 元组可以是 `(label, path)` 或 `(label, path, 日期列名)` ✓
+#: （FRED 系列用的是 `observation_date` 而不是 `date` ✗）
 REF_PRODUCTS = [
     ("守猪待兔", os.path.join(REPO, "Data", "raw", "shoutu_history.csv")),
     ("持仓快照", os.path.join(REPO, "Data", "positions.csv")),
     ("账户快照", os.path.join(REPO, "Data", "accounts.csv")),
+    # 🔴 2026-10-30：DGS10（10Y 国债）**从来没落盘过** ✗ ——
+    # 每日链跑 `fetch_fred --series DFF,DGS10,T10Y2Y`，但 `Data/raw/fred_DGS10.csv`
+    # 至今不存在 ✗；因为 `fed` 因子用的是 DFF，缺失一直无人发现 ✗。
+    # C2（ERP 估值锚）依赖它 ⇒ 至少要让「有没有、到哪天」**在护栏里可见** ✓。
+    # ⚠️ 只进 REF_PRODUCTS（不判 issue）✗ —— C2 尚未进生产，
+    # 不能因为一个非生产依赖把每日链判失败 ✓。
+    ("10Y国债", os.path.join(REPO, "Data", "raw", "fred_DGS10.csv"),
+     "observation_date"),
+    ("S&P500 PE", os.path.join(REPO, "Data", "raw", "sp500_pe.csv")),
+    ("S&P500 CAPE", os.path.join(REPO, "Data", "raw", "sp500_cape.csv")),
 ]
 
 
@@ -47,7 +59,9 @@ def _rel(path):
 def _last_date(path, col="date"):
     if not os.path.exists(path):
         return None
-    with open(path, newline="") as f:
+    # 显式 UTF-8 ✓ —— 不写编码时 Windows 会用 GBK ⇒ 读 UTF-8 的 csv 直接崩 ✗
+    # （`utf-8-sig` 兼容带 BOM 的文件 ✓）
+    with open(path, newline="", encoding="utf-8-sig") as f:
         rows = list(csv.DictReader(f))
     return rows[-1][col] if rows else None
 
@@ -83,8 +97,10 @@ def main():
                 issues.append("%s（%s）尾行 %s，距今 %d 天（容忍 %d）"
                               % (label, _rel(path), ld, lag, MAX_LAG_DAYS))
     refs = []
-    for label, path in REF_PRODUCTS:
-        ld = _last_date(path)
+    for item in REF_PRODUCTS:
+        label, path = item[0], item[1]
+        col = item[2] if len(item) > 2 else "date"
+        ld = _last_date(path, col=col)
         refs.append("%s=%s" % (label, ld or "缺失"))
     if refs:
         print("参考产物尾行：" + " · ".join(refs))

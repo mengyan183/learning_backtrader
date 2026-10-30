@@ -75,12 +75,19 @@ def test_value_column_name_is_series_specific():
 
 
 def test_series_registry_has_both():
-    """两条序列都要登记 ✓（PE + CAPE 对照）。"""
+    """两条序列都要登记 ✓（PE + CAPE 对照），且 URL 是**候选列表** ✓。
+
+    2026-10-30 实测：`/shiller-pe-cape-ratio/table/by-month` 404 ✗
+    ⇒ 必须支持多个候选、按顺序试到通为止 ✓。
+    """
     mod = _load()
     assert set(mod.SERIES) == {"pe", "cape"}
     assert mod.SERIES["pe"][1] == "sp500_pe.csv"
     assert mod.SERIES["cape"][1] == "sp500_cape.csv"
-    assert "shiller" in mod.SERIES["cape"][0].lower(), "CAPE 的 URL 不对 ✗"
+    for k, (urls, _f) in mod.SERIES.items():
+        assert isinstance(urls, list) and urls, "%s 的 URL 应该是非空列表 ✗" % k
+        assert all(u.startswith("http") for u in urls)
+    assert any("shiller" in u.lower() for u in mod.SERIES["cape"][0])
 
 
 def test_raises_when_structure_changed():

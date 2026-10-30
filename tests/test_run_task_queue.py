@@ -258,6 +258,12 @@ def test_task_output_dirs_are_explicit_allowlist():
         assert ".." not in d, "白名单里不能出现上级目录 ✗"
 
 
+def test_fetch_fred_is_registered():
+    """`fetch_fred` 必须在白名单里 ✓ —— DGS10 至今从未落盘，要能补 ✗。"""
+    assert "fetch_fred" in q.ACTIONS
+    assert callable(q.ACTIONS["fetch_fred"])
+
+
 def test_fetch_pe_ratio_is_registered():
     """`fetch_pe_ratio` 必须在白名单里 ✓ —— C2 的 PE 源只能从 Mac 抓 ✗。"""
     assert "fetch_pe_ratio" in q.ACTIONS

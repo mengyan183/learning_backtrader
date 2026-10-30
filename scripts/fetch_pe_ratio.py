@@ -41,11 +41,14 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fg_system import config                     # noqa: E402
 
-#: 序列定义：`key -> (页面 URL, 输出文件名)` ✓
+#: 序列定义：`key -> (候选 URL 列表, 输出文件名)` ✓
+#: 🔴 2026-10-30 实测：`/shiller-pe-cape-ratio/table/by-month` **404** ✗
+#: ⇒ 改成**候选列表**，按顺序试到第一个能通的 ✓（页面路径靠猜不可靠 ✗）
 SERIES = {
-    "pe": ("https://www.multpl.com/s-p-500-pe-ratio/table/by-month",
+    "pe": (["https://www.multpl.com/s-p-500-pe-ratio/table/by-month"],
            "sp500_pe.csv"),
-    "cape": ("https://www.multpl.com/shiller-pe-cape-ratio/table/by-month",
+    "cape": (["https://www.multpl.com/shiller-pe/table/by-month",
+              "https://www.multpl.com/shiller-pe-cape-ratio/table/by-month"],
              "sp500_cape.csv"),
 }
 #: 抓取走本地代理（Mac 上 Clash 7890）✓ —— 空串 = 直连 ✓
@@ -115,13 +118,28 @@ def parse_multpl(html, value_col="value"):
 
 
 def fetch_one(key, dry_run=False, url=None):
-    """抓一条序列并落盘 ✓，返回 `(DataFrame, 输出路径)`。"""
-    u, fname = SERIES[key]
-    u = url or u
+    """抓一条序列并落盘 ✓，返回 `(DataFrame, 输出路径)`。
+
+    候选 URL **按顺序试** ✓ —— 第一个通了就用它 ✓（页面路径靠猜不可靠 ✗）；
+    全部失败 ⇒ 抛错并带上每个 URL 的失败原因 ✓（不静默 ✗）。
+    """
+    urls, fname = SERIES[key]
+    urls = [url] if url else list(urls)
     out = os.path.join(config.RAW_DIR, fname)
-    print("抓取 %s：%s（代理=%s）" % (key.upper(), u, PROXY or "直连"))
-    html = _get(u)
-    print("  页面 %d 字符" % len(html))
+    html, last_err, used = None, None, None
+    for u in urls:
+        print("抓取 %s：%s（代理=%s）" % (key.upper(), u, PROXY or "直连"))
+        try:
+            html = _get(u)
+            used = u
+            break
+        except Exception as exc:               # noqa: BLE001 —— 逐个试 ✓
+            last_err = "%s → %s: %s" % (u, type(exc).__name__, exc)
+            print("  ✗ 失败：%s" % last_err)
+    if html is None:
+        raise RuntimeError("所有候选 URL 都失败 ✗\n  " + "\n  ".join(
+            [last_err or "未知"]))
+    print("  页面 %d 字符（来源 %s）" % (len(html), used))
 
     df = parse_multpl(html, value_col=key)
     print("  解析出 %d 行：%s → %s"

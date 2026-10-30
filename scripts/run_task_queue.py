@@ -225,6 +225,30 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_fetch_fred(params):
+    """抓 FRED 系列 ✓（默认补 **DGS10** —— 它至今从未落盘 ✗）。
+
+    2026-10-30：每日链跑 `fetch_fred --series DFF,DGS10,T10Y2Y`，
+    但 `Data/raw/fred_DGS10.csv` **不存在** ✗；因为 `fed` 因子用的是 DFF，
+    缺失一直无人发现 ✗。C2（ERP 估值锚）依赖它 ⇒ 需要先补齐 ✓。
+    """
+    cmd = [sys.executable, os.path.join(ROOT, "scripts", "fetch_fred.py")]
+    ser = str(params.get("series") or "DGS10").strip()
+    if ser:
+        cmd += ["--series", ser]
+    if str(params.get("debug") or "") in ("1", "true", "yes"):
+        cmd.append("--debug")
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=900)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 900 秒未完成"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": (r.stdout or "")[-1500:], "stderr": (r.stderr or "")[-600:]}
+
+
 def _act_fetch_pe_ratio(params):
     """抓 S&P500 PE 月度历史 ✓ —— C2「ERP 估值锚」的数据源（`Data/raw/sp500_pe.csv`）。
 
@@ -713,6 +737,7 @@ ACTIONS = {
     "run_pipeline": _act_run_pipeline,
     "c1_backtest": _act_c1_backtest,
     "fetch_pe_ratio": _act_fetch_pe_ratio,
+    "fetch_fred": _act_fetch_fred,
     "key_diag": _act_key_diag,
     "backtest_plan": _act_backtest_plan,
     "fetch_shoutu_history": _act_fetch_shoutu_history,
