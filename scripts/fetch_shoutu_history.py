@@ -46,11 +46,13 @@ HISTORY_MARK = "stock_emotion/history"
 HOOK = (
     "(()=>{"
     "const MARK='" + HISTORY_MARK + "';"
-    "window.__shoutu_cap=[];window.__shoutu_all=[];"
+    "window.__shoutu_cap=[];window.__shoutu_all=[];window.__shoutu_all_b=[];"
     "const rec=(u,b)=>{const s=String(u);"
-    # 2026-10-30：**所有** URL 都记一份（只 URL，不含响应体 ✓）——
+    # 2026-10-30：**所有** URL 都记一份 ✓（默认只 URL，不含响应体 ✓）——
     # 用来确认「页面到底用哪个端点取历史」✗（实测只发一次 `?code=US.X` 且返回空 ✗）
-    "try{window.__shoutu_all.push(s)}catch(e){}"
+    "try{window.__shoutu_all.push(s);"
+    # `--capture-all` 时用：响应体**截断到 2000 字**再存 ✓（防内存爆 ✗）
+    "window.__shoutu_all_b.push({u:s,b:String(b||'').slice(0,2000)})}catch(e){}"
     "if(s.indexOf(MARK)<0)return;"
     "try{window.__shoutu_cap.push({u:s,b:String(b||'')})}catch(e){}};"
     "if(!window.__shoutu_hooked){window.__shoutu_hooked=1;"
@@ -99,6 +101,17 @@ def _urls():
     return "(()=>{const a=window.__shoutu_all||[];return a.join('\\n');})()"
 
 
+def _bodies(limit=200):
+    """取回**所有**响应的 URL + 响应体前 `limit` 字 ✓（`--capture-all` 专用）。
+
+    ⚠️ 会包含页面上的非公开数据 ✗ —— 只在调试时用，且**截断**输出 ✓
+    （2026-10-30 用户明确允许「抓所有响应体」才加的）。
+    """
+    return ("(()=>{const a=window.__shoutu_all_b||[];"
+            "return a.map(x=>x.u+'\\n'+String(x.b||'').slice(0,%d))"
+            ".join('\\n---\\n');})()" % int(limit))
+
+
 def _click_tab():
     """点一下页面上的「历史」页签 ✓ —— 返回 'OK' / 'NO'。
 
@@ -109,12 +122,15 @@ def _click_tab():
     """
     return (
         "(()=>{"
-        "const hit=(e)=>{const t=(e.textContent||'').trim();"
-        "return t && t.length<=8 && /^(历史|历史数据|走势|History)$/i.test(t)};"
+        # 2026-10-30：原来要求**完全等于**「历史」⇒ 实测 NO ✗（页签文案可能带别的字 ✗）
+        # ⇒ 改成「包含 + 长度 ≤ 12」并**回报命中的文案** ✓
         "const cands=[...document.querySelectorAll('a,button,li,span,div')]"
-        ".filter(e=>e.children.length===0 && hit(e));"
-        "if(!cands.length) return 'NO';"
-        "cands[0].click(); return 'OK';})()")
+        ".filter(e=>e.children.length===0);"
+        "const hit=cands.filter(e=>{const t=(e.textContent||'').trim();"
+        "return t && t.length<=12 && /历史|走势|History/i.test(t)});"
+        "if(!hit.length) return 'NO:'+cands.map(e=>(e.textContent||'').trim())"
+        ".filter(t=>t&&t.length<=8).slice(0,20).join('/');"
+        "hit[0].click(); return 'OK:'+(hit[0].textContent||'').trim();})()")
 
 
 def _take(symbol):
@@ -147,7 +163,8 @@ def _now_stamp(now=None):
         ts.strftime("%Y-%m-%d %H:%M:%S"), ts.astimezone().strftime("%z"))
 
 
-def fetch_history(symbols, debug=False, ids=None, click_tab=False):
+def fetch_history(symbols, debug=False, ids=None, click_tab=False,
+                  capture_all=False):
     """`ids`：`{symbol: stock_id}` ✓ —— 页面详情页以 `id` 为主键 ✗（2026-10-30 实测）。
 
     `click_tab`：导航后再点一下「历史」页签 ✓（只改 hash 不触发取数 ✗）。
@@ -189,6 +206,11 @@ def fetch_history(symbols, debug=False, ids=None, click_tab=False):
                 # 只打 URL（不含响应体）✓ —— 用来确认页面到底请求了哪个端点 ✗
                 got = fs.bsk_eval(_urls(), session) or ""
                 print("    [debug] 捕获 URL：\n%s" % (got.strip() or "（空）"))
+            if capture_all:
+                # ⚠️ 含响应体前 200 字 ✗ —— 用户 2026-10-30 明确允许后才开 ✓
+                got = fs.bsk_eval(_bodies(200), session) or ""
+                print("    [capture] URL + 响应体前 200 字：\n%s"
+                      % (got.strip() or "（空）"))
             raw = fs.bsk_eval(_take(sym), session)
             if not raw:
                 raise RuntimeError(
@@ -233,6 +255,8 @@ def main():
                     help="symbol=stock_id 逗号分隔（如 YINN=875）—— 详情页以 id 为主键")
     ap.add_argument("--click-tab", action="store_true",
                     help="导航后点一下「历史」页签（只改 hash 不触发取数）")
+    ap.add_argument("--capture-all", action="store_true",
+                    help="打印所有响应的 URL + 前 200 字（含非公开数据，仅调试）")
     args = ap.parse_args()
 
     ids = {}
@@ -246,7 +270,8 @@ def main():
     print(_now_stamp())                      # 抓取时刻（spec §12 风险 6）
     print("抓取守猪待兔历史：%s" % " / ".join(symbols))
     counts = fetch_history(symbols, debug=args.debug, ids=ids,
-                           click_tab=args.click_tab)
+                           click_tab=args.click_tab,
+                           capture_all=args.capture_all)
     print("已写入：%s" % config.SHOUTU_HISTORY_PATH)
     missing = [s for s, n in counts.items() if not n]
     if missing:
