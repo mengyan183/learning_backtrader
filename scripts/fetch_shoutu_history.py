@@ -46,8 +46,12 @@ HISTORY_MARK = "stock_emotion/history"
 HOOK = (
     "(()=>{"
     "const MARK='" + HISTORY_MARK + "';"
-    "window.__shoutu_cap=[];"
-    "const rec=(u,b)=>{const s=String(u);if(s.indexOf(MARK)<0)return;"
+    "window.__shoutu_cap=[];window.__shoutu_all=[];"
+    "const rec=(u,b)=>{const s=String(u);"
+    # 2026-10-30：**所有** URL 都记一份（只 URL，不含响应体 ✓）——
+    # 用来确认「页面到底用哪个端点取历史」✗（实测只发一次 `?code=US.X` 且返回空 ✗）
+    "try{window.__shoutu_all.push(s)}catch(e){}"
+    "if(s.indexOf(MARK)<0)return;"
     "try{window.__shoutu_cap.push({u:s,b:String(b||'')})}catch(e){}};"
     "if(!window.__shoutu_hooked){window.__shoutu_hooked=1;"
     "const OO=XMLHttpRequest.prototype.open,OS=XMLHttpRequest.prototype.send;"
@@ -83,8 +87,8 @@ def _goto(symbol):
 
 
 def _urls():
-    """取回缓冲里**所有**被捕获的 URL ✓（只 URL，不含响应体 —— 安全 ✓）。"""
-    return "(()=>{const a=window.__shoutu_cap||[];return a.map(x=>x.u).join('\\n');})()"
+    """取回页面发过的**所有** XHR/fetch URL ✓（只 URL，不含响应体 —— 安全 ✓）。"""
+    return "(()=>{const a=window.__shoutu_all||[];return a.join('\\n');})()"
 
 
 def _take(symbol):
