@@ -1,0 +1,10 @@
+{
+  "id": "t-20261030-113742-fetch_shoutu_history",
+  "action": "fetch_shoutu_history",
+  "params": {
+    "debug": "1",
+    "symbols": "YINN"
+  },
+  "status": "pending",
+  "created_at": "2026-10-30T11:37:42"
+}
