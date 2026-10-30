@@ -31,8 +31,12 @@ from fg_system import config  # noqa: E402
 from fg_system import position_plan as pp  # noqa: E402
 from fg_system import risk as risk_mod  # noqa: E402
 
-#: 回测标的（用户 2026-10-30 裁定：**先用现有 6 个** ✓）
-SYMBOLS = ["YINN", "GDXU", "CRCG", "CONL", "AXTX", "BTC"]
+#: 回测标的 —— **排除 AXTX / CRCG** ✓（用户 2026-10-30 裁定）。
+#: 理由：守猪待兔服务端对这两个返回 `data: []`（无历史）✗，
+#: 本地只有 13 天样本 ⇒ 结论是噪声 ✗。
+#: BTC 也没有守猪待兔系数 ✗（现货，不在该体系内）⇒ 一并排除。
+#: 要扩样本可加同类：`--symbols YINN,GDXU,CONL,TQQQ,SOXL,UPRO`（后三个也有 600 天 ✓）
+SYMBOLS = ["YINN", "GDXU", "CONL"]
 
 #: 净值基准（归一化，只影响绝对金额不影响收益率 ✓）
 NET = 10000.0
@@ -47,6 +51,10 @@ VARIANTS = {
                "gap_mode": "atr"},
     "C_激进": {"single_cap": 0.15, "first": 0.08, "adds": (0.04, 0.03),
                "entry": -75.0, "hard_stop": -0.60, "atr_k": 1.2,
+               "gap_mode": "atr"},
+    # 2026-10-30 第一轮回测后的候选 ✓ —— C 的入场线（-75）+ A 的敞口（12%）
+    "E_候选": {"single_cap": 0.12, "first": 0.06, "adds": (0.03, 0.03),
+               "entry": -75.0, "hard_stop": -0.50, "atr_k": 1.5,
                "gap_mode": "atr"},
     # 对照组：复现「越跌越买、不止损、等额加仓」（用户 2026-10-30 反思的做法 ✗）
     "D_对照": {"single_cap": 0.20, "first": 0.06,

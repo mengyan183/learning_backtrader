@@ -317,13 +317,54 @@ def update_prices(path=None, symbols=None, sleep=1.0):
     return merged, added
 
 
+def fetch_vix_live(days=10):
+    """用 yfinance 取 `^VIX` / `^VIX3M` 的**最近几天** ✓（收盘即有，不等 CBOE ✗）。
+
+    2026-10-30 用户裁定「换源」：实测每日链 05:30 跑时
+    `raw/vix.csv` 停在 T-1、而 `raw/prices.csv` 已是 T ✓
+    ⇒ features 尾行 `vix`/`term` 必然 NaN ✗。根因是 **CBOE 官方 CSV
+    在美股收盘后数小时才更新** ✗，而 yfinance 收盘后 1~2 小时就有 ✓。
+
+    返回 `{name: DataFrame(date, open, high, low, close)}`；
+    yfinance 未安装 / 网络失败 ⇒ 返回 `{}`（**不抛错** ✓，调用方回落 CBOE ✓）。
+    """
+    try:
+        import yfinance as yf
+    except ImportError:
+        return {}
+    out = {}
+    for name, tick in (("VIX", "^VIX"), ("VIX3M", "^VIX3M")):
+        try:
+            h = yf.Ticker(tick).history(period="%dd" % days, auto_adjust=False)
+            if h is None or len(h) == 0:
+                continue
+            idx = [d.tz_localize(None) if getattr(d, "tz", None) is not None else d
+                   for d in h.index]
+            out[name] = pd.DataFrame({
+                "date": [d.normalize() for d in idx],
+                "open": h["Open"].to_numpy(), "high": h["High"].to_numpy(),
+                "low": h["Low"].to_numpy(), "close": h["Close"].to_numpy(),
+            })
+        except Exception:                      # noqa: BLE001 —— 换源失败不该拖死链 ✗
+            continue
+    return out
+
+
 def update_indices(raw_dir=None):
-    """增量更新 vix.csv / vix3m.csv。"""
+    """增量更新 vix.csv / vix3m.csv（CBOE 历史 + yfinance 补最新 ✓）。"""
     raw_dir = raw_dir or config.RAW_DIR
     os.makedirs(raw_dir, exist_ok=True)
+    live = fetch_vix_live()
     out = {}
     for name, fname in [("VIX", "vix.csv"), ("VIX3M", "vix3m.csv")]:
         df = fetch_cboe_index(name)
+        # 2026-10-30：CBOE 只有 T-1 时，用 yfinance 的 T 值补齐 ✓
+        # 同一天以 **live 为准**（CBOE 后续修订会覆盖回去，无妨 ✓）
+        add = live.get(name)
+        if add is not None and len(add):
+            df = (pd.concat([df, add], ignore_index=True)
+                  .drop_duplicates(subset=["date"], keep="last")
+                  .sort_values("date"))
         df.to_csv(os.path.join(raw_dir, fname), index=False, encoding="utf-8")
         out[name] = len(df)
     return out

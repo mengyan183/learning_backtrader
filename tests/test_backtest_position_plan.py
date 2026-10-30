@@ -98,6 +98,8 @@ def test_gap_controls_add_spacing():
 def test_variants_are_defined():
     """四个变体必须齐全 ✓ —— A 初版 / B 保守 / C 激进 / D 对照。"""
     bt = _load_bt()
-    assert set(bt.VARIANTS) == {"A_初版", "B_保守", "C_激进", "D_对照"}
+    assert set(bt.VARIANTS) == {"A_初版", "B_保守", "C_激进", "E_候选", "D_对照"}
+    # 2026-10-30：AXTX / CRCG 无服务端历史 ⇒ 默认排除 ✓
+    assert "AXTX" not in bt.SYMBOLS and "CRCG" not in bt.SYMBOLS
     for v in bt.VARIANTS.values():
         assert "single_cap" in v and "first" in v and "entry" in v
