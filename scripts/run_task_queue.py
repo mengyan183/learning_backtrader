@@ -243,6 +243,8 @@ def _act_fetch_shoutu_history(params):
     ids = str(params.get("ids") or "").strip()
     if ids:
         cmd += ["--ids", ids]
+    if str(params.get("click_tab") or "") in ("1", "true", "yes"):
+        cmd.append("--click-tab")
     try:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                            timeout=900)

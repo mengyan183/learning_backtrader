@@ -99,6 +99,24 @@ def _urls():
     return "(()=>{const a=window.__shoutu_all||[];return a.join('\\n');})()"
 
 
+def _click_tab():
+    """点一下页面上的「历史」页签 ✓ —— 返回 'OK' / 'NO'。
+
+    🔴 2026-10-30 实测：`--ids YINN=875` 后 `license_like?stock_id=875` 说明
+    **id 已经生效** ✓，但 `stock_emotion/history?code=US.YINN` **仍返回 `data: []`** ✗
+    ⇒ 不是 id 的问题 ✗ ⇒ 怀疑 SPA 的 `tab=-1` 只是路由参数，
+    **历史 tab 需要真实点击**才会触发取数 ✗。
+    """
+    return (
+        "(()=>{"
+        "const hit=(e)=>{const t=(e.textContent||'').trim();"
+        "return t && t.length<=8 && /^(历史|历史数据|走势|History)$/i.test(t)};"
+        "const cands=[...document.querySelectorAll('a,button,li,span,div')]"
+        ".filter(e=>e.children.length===0 && hit(e));"
+        "if(!cands.length) return 'NO';"
+        "cands[0].click(); return 'OK';})()")
+
+
 def _take(symbol):
     """取回缓冲里**所有** history 响应体（JSON 数组字符串，没有则返回空串）。
 
@@ -129,8 +147,11 @@ def _now_stamp(now=None):
         ts.strftime("%Y-%m-%d %H:%M:%S"), ts.astimezone().strftime("%z"))
 
 
-def fetch_history(symbols, debug=False, ids=None):
-    """`ids`：`{symbol: stock_id}` ✓ —— 页面详情页以 `id` 为主键 ✗（2026-10-30 实测）。"""
+def fetch_history(symbols, debug=False, ids=None, click_tab=False):
+    """`ids`：`{symbol: stock_id}` ✓ —— 页面详情页以 `id` 为主键 ✗（2026-10-30 实测）。
+
+    `click_tab`：导航后再点一下「历史」页签 ✓（只改 hash 不触发取数 ✗）。
+    """
     ids = ids or {}
     """逐个标的取历史并落盘，返回 `{symbol: 写入行数}`（0 = 服务端无该标的的历史）。
 
@@ -159,6 +180,11 @@ def fetch_history(symbols, debug=False, ids=None):
             fs.bsk_eval(HOOK, session)            # 清空缓冲（挂钩只装一次）
             fs.bsk_eval(_goto(sym, ids.get(sym)), session)
             time.sleep(5)
+            if click_tab:
+                # 点「历史」页签 ⇒ 触发取数 ✓（只改 hash 不够 ✗，2026-10-30 实测）
+                hit = fs.bsk_eval(_click_tab(), session)
+                print("    [click] 历史页签：%s" % hit)
+                time.sleep(4)
             if debug:
                 # 只打 URL（不含响应体）✓ —— 用来确认页面到底请求了哪个端点 ✗
                 got = fs.bsk_eval(_urls(), session) or ""
@@ -205,6 +231,8 @@ def main():
                     help="打印每个标的捕获到的 URL（不含响应体 ✓）—— 端点改版时用")
     ap.add_argument("--ids", default=None,
                     help="symbol=stock_id 逗号分隔（如 YINN=875）—— 详情页以 id 为主键")
+    ap.add_argument("--click-tab", action="store_true",
+                    help="导航后点一下「历史」页签（只改 hash 不触发取数）")
     args = ap.parse_args()
 
     ids = {}
@@ -217,7 +245,8 @@ def main():
                if args.symbols else list(config.SHOUTU_SYMBOLS))
     print(_now_stamp())                      # 抓取时刻（spec §12 风险 6）
     print("抓取守猪待兔历史：%s" % " / ".join(symbols))
-    counts = fetch_history(symbols, debug=args.debug, ids=ids)
+    counts = fetch_history(symbols, debug=args.debug, ids=ids,
+                           click_tab=args.click_tab)
     print("已写入：%s" % config.SHOUTU_HISTORY_PATH)
     missing = [s for s, n in counts.items() if not n]
     if missing:
