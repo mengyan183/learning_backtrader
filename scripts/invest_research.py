@@ -264,6 +264,7 @@ def build_snapshot():
             atrp = risk_mod.atr_pct(px, sym0, px_now)
             lim, _ratio = risk_mod.position_limit(stock_net, mv0, atrp)
             r["risk_limit"] = round(lim, 2) if lim else None
+            r["atr_pct"] = atrp          # 建仓计划要用（2026-10-30）✓
             r["risk_over"] = bool(lim and mv0 > lim)
         else:
             r["risk_limit"] = None
@@ -697,6 +698,46 @@ def action_brief_text(snap):
     return head + "\n" + "\n".join(out)
 
 
+def position_plan_brief(snap):
+    """📐 建仓/加仓计划 ✓ —— 按 `fg_system.position_plan` 的口径逐标的给结论。
+
+    2026-10-30 用户裁定：杠杆 ETF「越跌越买」是负期望（3x 从 -50% 回本要 +100%）
+    ⇒ 必须把首建/加仓/上限写成可执行规则 ✗，且**超限时冻结加仓** ✓
+    （否则与「减仓至上限」互相打架 ✗）。
+    """
+    from fg_system import position_plan as pp
+    net = (snap.get("accounts") or {}).get("stock")
+    if not net:
+        return None
+    pos = snap.get("positions") or []
+    lev_total = sum(float(r.get("mv") or 0) for r in pos
+                    if pp.leverage_of(r.get("symbol")) > 1)
+    lines = []
+    for r in pos:
+        sym0 = str(r.get("symbol") or "").replace("-USDT", "")
+        plan = pp.build_plan(
+            net, sym0, r.get("atr_pct"),
+            (snap.get("shoutu") or {}).get(sym0),
+            held_value=float(r.get("mv") or 0),
+            pnl_pct=r.get("pnl_pct"),
+            leveraged_value=lev_total,
+            risk_limit=r.get("risk_limit"))
+        ln = pp.brief_line(plan)
+        if ln:
+            lines.append(ln)
+    if not lines:
+        return None
+    head = ("规则（2026-10-30 初版，**待回测确认**）：单标的 ≤%.0f%% 净值、"
+            "杠杆总敞口 ≤%.0f%%、首建 %.0f%%、加仓 %.0f%%×%d、"
+            "间距 = %.1f×ATR20(正股)×杠杆、相邻 ≥%d 交易日；"
+            "浮亏 >%.0f%% 只禁加仓、不清仓。🟡 研究参考，实盘需人工确认。"
+            % (pp.PLAN["single_cap"] * 100, pp.PLAN["total_cap"] * 100,
+               pp.PLAN["first"] * 100, pp.PLAN["adds"][0] * 100,
+               len(pp.PLAN["adds"]), pp.PLAN["atr_k"],
+               pp.PLAN["min_gap_days"], abs(pp.PLAN["hard_stop"]) * 100))
+    return head + "\n" + "\n".join(lines)
+
+
 def _zone_int(fg):
     """fg_index → 档位整数 0极度恐惧~4极度贪婪（不依赖 features 的 zone 文本列）。"""
     if fg is None:
@@ -956,6 +997,10 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     if _act_sec:
         secs.append(("📉 减仓操作（双引擎：价格风控 × 贪恐系数）", _act_sec))
         secs.append("hr")
+    _plan_sec = position_plan_brief(snap)
+    if _plan_sec:
+        secs.append(("📐 建仓/加仓计划", _plan_sec))
+        secs.append("hr")
     _bc = behavior_checklist(snap)
     if _bc:
         _bc = _bc + "\n" + _PERSPECTIVE_PROMPTS
@@ -1189,6 +1234,9 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
     _act_sec = action_brief_text(snap)
     if _act_sec:
         lines += ["## 📉 减仓操作（双引擎：价格风控 × 贪恐系数）【研究参考】", _act_sec, ""]
+    _plan_sec = position_plan_brief(snap)
+    if _plan_sec:
+        lines += ["## 📐 建仓/加仓计划【研究参考】", _plan_sec, ""]
     _bc = behavior_checklist(snap)
     if _bc:
         _bc = _bc + "\n" + _PERSPECTIVE_PROMPTS

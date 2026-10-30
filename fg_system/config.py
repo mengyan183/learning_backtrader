@@ -427,8 +427,11 @@ SHOUTU_GREED_LINE, SHOUTU_FEAR_LINE = 60.0, -60.0
 #   1x/现货组（AXTX/CRCG/BTC）         ：买入 ≤-50 / 卖出 ≥+70
 # 未配置标的回退全局 ±60。60 交易日后可升级为标的自身历史分位数（<20%=恐慌、>80%=贪婪）。
 SHOUTU_LINES_3X = {"TQQQ", "SOXL", "UPRO", "YINN", "GDXU"}
-SHOUTU_LINES_2X = {"CONL", "BITX", "BITU", "MSTX", "MSTU"}
-SHOUTU_LINES_1X = {"AXTX", "CRCG", "BTC"}
+#: 🔴 2026-10-30 修正：AXTX（2倍做多 AXTI）/ CRCG（2倍做多 CRCL）原来登记在
+#: `_1X` 里 ✗ —— 名称里就写着「2倍」，用 1x 的宽松买入线（-50）去抄 2x 的底，
+#: 是「杠杆亏太多」的一个来源 ✗ ⇒ 移入 `_2X`（买入线 -65，更严）✓
+SHOUTU_LINES_2X = {"CONL", "BITX", "BITU", "MSTX", "MSTU", "AXTX", "CRCG"}
+SHOUTU_LINES_1X = {"BTC"}
 
 def shoutu_lines(sym):
     """标的的守猪待兔个性化 (buy_line, sell_line)；未配置回退全局 ±60。"""
