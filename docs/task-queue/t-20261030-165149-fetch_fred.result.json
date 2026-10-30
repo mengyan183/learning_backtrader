@@ -1,0 +1,13 @@
+{
+  "id": "t-20261030-165149-fetch_fred",
+  "action": "fetch_fred",
+  "params": {
+    "series": "DGS10"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"stdout\": \"✅ fred_DGS10.csv：16191 个观测日（来源 api-key，10Y 国债收益率(%)，1962-至今，H-065 归因控制量（利率驱动检验））\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-10-30T16:52:53",
+  "finished_at": "2026-10-30T16:52:55",
+  "duration_s": 2.59
+}
