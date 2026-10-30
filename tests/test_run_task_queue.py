@@ -233,6 +233,19 @@ def test_key_diag_missing_dir(tmp_path):
     assert q._act_key_diag({"dir": str(tmp_path / "nope")})["ok"] is False
 
 
+def test_evolution_registries_are_committed():
+    """`evolve_*` 改写的登记表必须纳入提交 ✓。
+
+    2026-10-30 实测：`sync_1028dn` 因 Mac 上 `evolution/hypotheses.md`
+    **有未提交修改** ⇒ 入库中止（冲突不覆盖）✗。
+    根因是队列只提交 `docs/task-queue/`，而每日链的 `evolve_*` 会改写登记表 ✗。
+    """
+    assert "evolution/hypotheses.md" in q.TASK_OUTPUT_FILES
+    assert "evolution/factors.md" in q.TASK_OUTPUT_FILES
+    for f in q.TASK_OUTPUT_FILES:
+        assert not f.startswith("/") and ".." not in f
+
+
 def test_task_output_dirs_are_explicit_allowlist():
     """任务产物目录必须是**显式白名单** ✓ —— 绝不能用 `git add -A` ✗。
 

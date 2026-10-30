@@ -970,13 +970,22 @@ def run_once(commit=True):
 #: 产物**没进 git** ✗ ⇒ Windows 端只能看到被 `output[-2000:]` 截断的 stdout ✗
 TASK_OUTPUT_DIRS = ("evolution/experiments/factor-adoption",)
 
+#: 🔴 每日链的 `evolve_*` 会**改写**这些登记表 ✗ —— 队列不提交就会让 Mac 侧
+#: 永远留一份「未提交修改」⇒ 之后任何对它们的 patch 都报**冲突中止** ✗
+#: （2026-10-30 实测：`sync_1028dn` 因 `evolution/hypotheses.md` 冲突入库失败 ✗）
+TASK_OUTPUT_FILES = ("evolution/hypotheses.md",
+                     "evolution/factors.md",
+                     "evolution/hypothesis_results.md")
+
 
 def _git_commit(done):
     """提交 `docs/task-queue/` + **任务产物目录** ✓ —— 不碰其他脏文件 ✗。"""
     try:
         paths = ["docs/task-queue"] + [
             d for d in TASK_OUTPUT_DIRS
-            if os.path.isdir(os.path.join(ROOT, d))]
+            if os.path.isdir(os.path.join(ROOT, d))] + [
+            f for f in TASK_OUTPUT_FILES
+            if os.path.isfile(os.path.join(ROOT, f))]
         subprocess.run(["git", "add", *paths], cwd=ROOT,
                        check=True, capture_output=True, timeout=60)
         msg = "task: %s" % "; ".join("%s=%s" % (i, s) for i, s in done)
