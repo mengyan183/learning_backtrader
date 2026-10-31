@@ -1,0 +1,13 @@
+{
+  "id": "t-20261031-110529-run_invest_research",
+  "action": "run_invest_research",
+  "params": {
+    "push": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"push\": true, \"stdout\": \"[warn] GDXU 合成：2/2538 天因腿缺失被剔除（腿 = GDX / GDXJ）\\n2026-10-31 11:06:33,049 | 5357 | 123145358917632 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7522131873307925525(1) context=<futu.quote.open_quote_context.OpenQuoteContext object at 0x7fd427bb0c40>\\n2026-10-31 11:06:33,743 | 5357 | 123145427148800 | [open_context_base.py:521] on_disconnect: Disconnected: conn=0(1) reason=CallClose\\nHermes 阶段失败: 调用失败(2次): HTTP Error 401: Authorization Required\\n简报已写入: /Users/xingguo/learning_backtrader/Data/invest_brief_2026-10-30.md\\n[verify] 简报检查: 通过 (fail=0 warn=0)\\n[decision-log] 已追加: /Users/xingguo/learning_backtrader/docs/decision-log.md\\n[archive] 归档 0 份，工作区活跃 4 份，索引 /Users/xingguo/learning_backtrader/Data/briefs/index.md\\n飞书富文本推送: 成功\\n\", \"stderr\": \"[stage_attribution] 归因失败（按无数据处理）: 调用失败(2次): HTTP Error 401: Authorization Required\\n\"}",
+  "started_at": "2026-10-31T11:06:30",
+  "finished_at": "2026-10-31T11:06:58",
+  "duration_s": 28.21
+}
