@@ -68,6 +68,12 @@ def _close(prices, sym):
     return fene.close_series(prices, sym)
 
 
+def _fwd(close, h_all=HORIZONS):
+    """前瞻收益（复用于 IC 自相关计算）✓。"""
+    from fg_system.factors.eval import forward_returns
+    return forward_returns(close, h_all)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", metavar="PATH", help="把完整报告写到 JSON")
@@ -105,13 +111,31 @@ def main(argv=None):
         print("样本 %s → %s（%d 天）"
               % (rep["sample_start"], rep["sample_end"], rep["n_days"]))
         print("判定：%s" % (v.get("status") or "—"))
-        print("| h | rank_ic_mean | rank_ICIR | n |")
-        print("|---|---|---|---|")
+        print("| h | rank_ic_mean | rank_ICIR | n | IC自相关 |")
+        print("|---|---|---|---|---|")
+        # 🔴 2026-10-31：**必须报 IC 自相关** ✗ ——
+        # ENE 的 |ICIR| 到 1.48，远高于正常因子（0.3~1.0）✗
+        # 主因是 5/10/20/40 日 forward return **高度重叠** ⇒ IC 序列自相关
+        # ⇒ ICIR 被系统性高估 ✗。lag-1 自相关 > 0.8 ⇒ 这个 ICIR 不能直信 ✓
+        fwd = _fwd(target, h_all=HORIZONS)
         for h in HORIZONS:
             ic = (rep.get("ic") or {}).get(h) or {}
-            print("| %d | %s | %s | %s |"
+            ac1 = None
+            try:
+                ser = fproto.ic_spearman(sig, fwd["fwd_%d" % h], window=WINDOW)
+                ac1 = float(ser.autocorr(1))
+            except Exception:              # noqa: BLE001 —— 算不出就不报 ✓
+                ac1 = None
+            note = ""
+            if ac1 is not None and ac1 > 0.8:
+                # 有效样本数：n_eff ≈ n × (1-ρ)/(1+ρ) ✓
+                # ρ=0.99 ⇒ n_eff ≈ n × 0.005 ⇒ 2400 天只有 **12 个**独立观测 ✗
+                n_eff = (ic.get("n") or 0) * (1 - ac1) / (1 + ac1)
+                note = " ⚠️虚高（n_eff≈%.0f）" % n_eff
+            print("| %d | %s | %s | %s | %s%s |"
                   % (h, _fmt(ic.get("rank_ic_mean")),
-                     _fmt(ic.get("rank_icir")), ic.get("n") or 0))
+                     _fmt(ic.get("rank_icir")), ic.get("n") or 0,
+                     _fmt(ac1, ".2f"), note))
 
     if args.json:
         p = Path(args.json)
