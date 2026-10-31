@@ -950,6 +950,27 @@ def _judge_ok(judge):
     return bool(judge) and not str(judge).startswith(_JUDGE_FAIL_PREFIXES)
 
 
+def _prev_factor_value(df, col, max_lookback=10):
+    """该因子列**最近一个非空值** ⇒ `(value, 差几天)` ✓；找不到返回 `(None, 0)`。
+
+    2026-10-31：vix/term 缺失是**数据源时滞**（CBOE 的 T 日数据在 05:30 还没发布 ✗），
+    ⇒ 简报回退显示 `T-n` 的值并明确标注 ✓ —— 比「数据缺失」有用且不编造 ✓。
+    """
+    if col not in df.columns:
+        return (None, 0)
+    s = df[col].tail(max_lookback + 1)
+    if s.isna().all():
+        return (None, 0)
+    idx = s.last_valid_index()
+    if idx is None:
+        return (None, 0)
+    lag = int(len(s) - list(s.index).index(idx) - 1)
+    try:
+        return (float(s.loc[idx]), lag)
+    except (TypeError, ValueError):
+        return (None, 0)
+
+
 def _missing_factor_count():
     """六因子里有几个算不出来 ✓（读不到就返回 0，别让健康块自己崩 ✗）。"""
     try:
@@ -992,7 +1013,10 @@ def _data_health_block(snap, sentiment=None, attribution=None, judge=None):
         lines.append("AI 三阶段：**缺 %s** ✗（对应小节为占位）" % "、".join(miss))
     n_miss = _missing_factor_count()
     if n_miss:
-        lines.append("六因子：**缺 %d 个** ✗（见下方分项）" % n_miss)
+        # 2026-10-31：缺失多半是**数据源时滞**（CBOE T 日数据 05:30 还没发布 ✗）
+        # ⇒ 分项里会用 T-1 值并标注，这里说清「不是没有，是滞后」✓
+        lines.append("六因子：**缺 %d 个**（源数据滞后，分项用 T-n 值 ✓）"
+                     % n_miss)
     # 全都正常时压成**一行** ✓ —— 每天铺三行「正常」纯属占版面 ✗
     if not lines or all(ln.startswith("富途 OpenD：正常") for ln in lines):
         return "全部正常 ✓（富途 OpenD / AI 三阶段 / 六因子）"
@@ -1078,9 +1102,20 @@ def _factor_breakdown():
                   "breadth": "BREADTH", "fed": "FED", "putcall": "PUT-CALL"}
         date = row.get("date")
         lines = [f"〔数据日 {date}；档位边界 20/40/60/80；权重为合成权重〕"]
+        # 🔴 2026-10-31 实测：vix/term 缺失多半是**数据源时滞** ✗ ——
+        # CBOE 的 T 日数据在每日链 05:30 跑时还没发布；10:22 补抓就有 10-30 ✓
+        # ⇒ 回退用**最近一个非空值**并标注 `T-n` ✓
+        # 比「数据缺失」有用，且**不编造**（标了差几天 ✓）
+        whole = pd.read_csv(path)
         for k, s in summary.items():
             if s["score"] is None:
-                lines.append(f"{labels[k]:8s}  —  数据缺失")
+                prev, lag = _prev_factor_value(whole, k)
+                if prev is None:
+                    lines.append(f"{labels[k]:8s}  —  数据缺失")
+                else:
+                    lines.append(
+                        f"{labels[k]:8s}  {prev:6.2f}  ←  "
+                        f"**T-{lag}**（源数据未更新，非当日值 ✗）")
                 continue
             arrow = "→" if s["direction"] == "贪婪向" else "↓"
             lines.append(f"{labels[k]:8s}  {s['score']:6.2f}  {arrow}  "

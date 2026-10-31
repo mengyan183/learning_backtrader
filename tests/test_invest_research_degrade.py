@@ -325,3 +325,25 @@ def test_brief_is_pushed_even_when_a_stage_fails(monkeypatch, tmp_path):
 
     assert sent, "某阶段缺失时又把整条简报扣下了 ✗（用户会再次静默收不到）"
     assert "2026-10-29" in sent[0], "推送标题里必须带简报日期 ✗"
+
+
+def test_prev_factor_value_falls_back_to_last_valid():
+    """vix/term 缺失时回退到**最近一个非空值**并给出 T-n ✓。
+
+    2026-10-31 实测：VIX 缺失是**数据源时滞**（CBOE 的 T 日数据在每日链
+    05:30 跑时还没发布 ✗，10:22 补抓就有 ✓）
+    ⇒ 简报显示 `T-1` 的值并标注，比「数据缺失」有用且不编造 ✓。
+    """
+    import pandas as pd
+
+    m = _load()
+    df = pd.DataFrame({
+        "date": ["2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30"],
+        "vix": [40.0, 42.0, 41.0, None],
+        "term": [None, None, None, None],
+    })
+
+    assert m._prev_factor_value(df, "vix") == (41.0, 1)
+    assert m._prev_factor_value(df, "term") == (None, 0), \
+        "全空时不能瞎给值 ✗"
+    assert m._prev_factor_value(df, "不存在") == (None, 0)
