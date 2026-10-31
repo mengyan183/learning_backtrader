@@ -357,7 +357,23 @@ def update_indices(raw_dir=None):
     live = fetch_vix_live()
     out = {}
     for name, fname in [("VIX", "vix.csv"), ("VIX3M", "vix3m.csv")]:
-        df = fetch_cboe_index(name)
+        path = os.path.join(raw_dir, fname)
+        try:
+            df = fetch_cboe_index(name)
+        except Exception as exc:            # noqa: BLE001
+            # 🔴 2026-10-31 实测风险：CBOE 抓取一失败就**整个函数抛错** ✗
+            # ⇒ `fetch_vix_live()` 的补数也白搭 ✗ ⇒ vix.csv 停在旧日期 ✗
+            # （这就是「VIX/TERM 缺失」反复复发的一个可能根因 ✓）
+            # ⇒ 降级：用**本地已有文件** + live 补最新 ✓，别把整条链拖死 ✓
+            print("[warn] CBOE %s 抓取失败（%s: %s）⇒ 用本地文件 + "
+                  "yfinance 兜底" % (name, type(exc).__name__, exc))
+            if os.path.exists(path):
+                df = pd.read_csv(path, parse_dates=["date"])
+            elif name in live:
+                df = live[name]
+            else:
+                print("[warn] %s 既无本地文件也无 live 数据 ⇒ 跳过 ✗" % name)
+                continue
         # 2026-10-30：CBOE 只有 T-1 时，用 yfinance 的 T 值补齐 ✓
         # 同一天以 **live 为准**（CBOE 后续修订会覆盖回去，无妨 ✓）
         add = live.get(name)

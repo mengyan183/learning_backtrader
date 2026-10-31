@@ -74,3 +74,43 @@ def test_merge_incremental_handles_empty_new():
                         "close": [1.0], "volume": [1.0]})
     merged = fetch.merge_incremental(old, pd.DataFrame())
     assert len(merged) == 1
+
+
+def test_update_indices_survives_cboe_failure(tmp_path, monkeypatch):
+    """CBOE 抓取失败时**不能**把整步拖死 ✓。
+
+    2026-10-31 实测风险：`fetch_cboe_index` 一抛错，`update_indices` 整个失败 ✗
+    ⇒ `fetch_vix_live()` 用 yfinance 补的最新值也白搭 ✗
+    ⇒ `vix.csv` 停在旧日期 ⇒ 简报「VIX/TERM 缺失」反复复发 ✗
+
+    正确行为：降级为「本地文件 + live 补最新」✓，并打一行 warn ✓。
+    """
+    import pandas as pd
+
+    from fg_system.data import fetch as f
+
+    # 本地已有历史（2026-10-01 起 3 天）
+    old = pd.DataFrame({
+        "date": pd.to_datetime(["2026-10-01", "2026-10-02", "2026-10-03"]),
+        "open": 20.0, "high": 21.0, "low": 19.0, "close": 20.5,
+    })
+    (tmp_path / "vix.csv").write_text(old.to_csv(index=False), encoding="utf-8")
+
+    def _boom(name):
+        raise OSError("CBOE 连不上")
+
+    live = {"VIX": pd.DataFrame({
+        "date": pd.to_datetime(["2026-10-04"]),
+        "open": 22.0, "high": 23.0, "low": 21.0, "close": 22.5,
+    })}
+
+    monkeypatch.setattr(f, "fetch_cboe_index", _boom)
+    monkeypatch.setattr(f, "fetch_vix_live", lambda days=10: live)
+
+    out = f.update_indices(raw_dir=str(tmp_path))
+
+    assert "VIX" in out, "CBOE 失败后连本地+live 都没写 ✗"
+    got = pd.read_csv(tmp_path / "vix.csv", parse_dates=["date"])
+    assert len(got) == 4, "live 补数没生效（应 3 旧 + 1 新）✗"
+    assert got["date"].max() == pd.Timestamp("2026-10-04")
+    assert "VIX3M" not in out, "无本地文件也无 live ⇒ 应跳过而不是写空 ✗"
