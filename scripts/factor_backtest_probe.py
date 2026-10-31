@@ -90,10 +90,19 @@ def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_STA
         "metrics": {
             "strategy_oos": strat, "buyhold_oos": bh, "strategy_is": in_sample,
         },
-        "verdict": "PASS（OOS 年化 > B0 且回撤不劣化）" if (
-            strat["annual_return"] > bh["annual_return"] and
-            strat["max_drawdown"] >= bh["max_drawdown"])
-        else "FAIL（OOS 未优于 B0，不采纳候选入生产）",
+        # 🔴 2026-10-31 用户裁定：判定标准加「**策略 Sharpe > 0**」✗
+        # 实测（C5 ENE 六标的）：AXTX 策略年化 -65.83%、CRCG -33.92%、
+        # YINN -9.85%，却都因为「B0 亏得更多」被判 **PASS** ✗
+        # ⇒ 原标准在亏损标的上退化成「比烂」✗
+        # 新标准三条全满足才算 PASS：① 跑赢 B0 ② 回撤不劣化 ③ **自己得赚钱** ✓
+        "verdict": (
+            "PASS（OOS 年化 > B0、回撤不劣化、且 Sharpe > 0）"
+            if (strat["annual_return"] > bh["annual_return"]
+                and strat["max_drawdown"] >= bh["max_drawdown"]
+                and strat["sharpe"] > 0)
+            else ("FAIL（OOS 亏钱：Sharpe ≤ 0，只是「比买入持有少亏」✗）"
+                  if strat["sharpe"] <= 0
+                  else "FAIL（OOS 未优于 B0，不采纳候选入生产）")),
     }
     return out
 
