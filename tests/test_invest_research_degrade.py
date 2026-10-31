@@ -347,3 +347,31 @@ def test_prev_factor_value_falls_back_to_last_valid():
     assert m._prev_factor_value(df, "term") == (None, 0), \
         "全空时不能瞎给值 ✗"
     assert m._prev_factor_value(df, "不存在") == (None, 0)
+
+
+def test_every_symbol_term_has_entity_filter():
+    """每个标的检索词都必须配**实体词** ✓。
+
+    2026-10-31 实测：0.602 的 RaynerTeo《Trading Results》讲比特币减半，
+    分数过了 0.6 但与当天持仓无关 ✗ —— 语义相似 ≠ 讲的是同一个东西 ✗
+    ⇒ 靠 `KB_QUERY_ENTITIES` 要求片段提到核心实体 ✓。
+    漏配的检索词会**静默不过滤** ✗ ⇒ 这里锁住覆盖完整 ✓。
+    """
+    m = _load()
+    missing = [t for t in m.KB_SYMBOL_TERMS.values()
+               if t not in m.KB_QUERY_ENTITIES]
+    assert not missing, "这些检索词没配实体词 ✗：%s" % missing
+    for term, ents in m.KB_QUERY_ENTITIES.items():
+        assert ents, "%r 的实体词列表为空 ✗" % term
+
+
+def test_btc_term_is_thesis_specific():
+    """BTC 的检索词不能是「halving」这种话题词 ✗。
+
+    「比特币减半」是科普话题，会命中一堆讲原理的视频 ✗；
+    仓位逻辑是「借 USDT 买入」⇒ 该看 ETF 资金流 / 机构需求 ✓。
+    """
+    m = _load()
+    t = m.KB_SYMBOL_TERMS["BTC"]
+    assert "halving" not in t, "又退回话题词了 ✗"
+    assert "etf" in t or "institutional" in t

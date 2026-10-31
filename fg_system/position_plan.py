@@ -112,9 +112,14 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
     # 无守猪待兔历史的标的 ⇒ 敞口打回 12% ✓（15% 对它们未经验证 ✗）
     # 实时查历史天数 ⇒ 服务端补了历史就自动解除 ✓（不写死名单 ✗）
     cap_ratio = PLAN["single_cap"] if has_history(symbol) else NO_HISTORY_CAP
-    single = float(net_value or 0) * cap_ratio
+    cap_rule = float(net_value or 0) * cap_ratio      # 规则口径（15% / 12%）
+    single = cap_rule
     if risk_limit:
         single = min(single, float(risk_limit))       # 1% 规则更严 ⇒ 以它为准 ✓
+    # 🔴 2026-10-31 实测：简报里显示「上限 $1065」，但那是 **1% 规则**的限额 ✗
+    # 而规则本身写的是 15%（$1437）✗ ⇒ 看起来像「15% 就是 $1065」✗ 误导 ✗
+    # ⇒ 两个值都留着，简报里说明哪个更严 ✓
+    cap_risk = round(float(risk_limit), 0) if risk_limit else None
     total = float(net_value or 0) * PLAN["total_cap"]
 
     held = float(held_value or 0)
@@ -144,6 +149,7 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
         return {"ok": blocked is None, "blocked": blocked, "symbol": symbol,
                 "leverage": lev, "mode": "建仓", "first": round(first, 0),
                 "ladder": ladder, "single_cap": round(single, 0),
+                "cap_rule": round(cap_rule, 0), "cap_risk": cap_risk,
                 "total_cap": round(total, 0), "gap_pct": None if gap is None else round(gap, 2),
                 "min_gap_days": PLAN["min_gap_days"], "room": round(room, 0)}
 
@@ -158,7 +164,9 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
         left -= amt
     return {"ok": blocked is None, "blocked": blocked, "symbol": symbol,
             "leverage": lev, "mode": "加仓", "first": 0.0, "ladder": ladder,
-            "single_cap": round(single, 0), "total_cap": round(total, 0),
+            "single_cap": round(single, 0),
+            "cap_rule": round(cap_rule, 0), "cap_risk": cap_risk,
+            "total_cap": round(total, 0),
             "gap_pct": None if gap is None else round(gap, 2),
             "min_gap_days": PLAN["min_gap_days"], "room": round(room, 0)}
 
@@ -168,7 +176,16 @@ def brief_line(plan):
     if not plan:
         return None
     sym = plan["symbol"]
+    # 🔴 2026-10-31：没有守猪待兔系数 ⇒ **不显示** ✗ ——
+    # 它永远触发不了建仓（没有 -75 那根线可比 ✗），列出来只会让人困惑 ✗
+    # （简报里曾出现「BTC ×1 | 无守猪待兔系数 | 上限 $1150」✗）
+    if plan["blocked"] and "无守猪待兔系数" in str(plan["blocked"]):
+        return None
     cap = "上限 $%.0f" % plan["single_cap"]
+    # 1% 规则比规则口径更严时**说清楚** ✓（否则会被读成「15% 就是 $1065」✗）
+    cr, cru = plan.get("cap_risk"), plan.get("cap_rule")
+    if cr is not None and cru is not None and cr < cru - 1:
+        cap = "上限 $%.0f（1%% 规则更严，规则口径 $%.0f）" % (cr, cru)
     if plan["blocked"]:
         # 🔴 2026-10-30 实测：`blocked` 里已经带了「上限 $N」⇒ 再追加一次会重复 ✗
         # （简报里出现「已到单标的上限 $1253 | 上限 $1253」✗）

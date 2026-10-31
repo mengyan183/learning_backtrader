@@ -59,12 +59,35 @@ KB_SYMBOL_TERMS = {
     "TQQQ": "nasdaq 100 technology earnings",
     "SOXL": "semiconductor cycle",
     "UPRO": "s&p 500 breadth",
-    "BTC": "bitcoin liquidity halving",
+    "BTC": "bitcoin etf institutional flows",
 }
 
 #: 知识库佐证的最低相关度 ✓ —— 低于它的命中与当天持仓基本无关，宁缺毋滥 ✗
 #: 2026-10-29 用户裁定 **0.7 → 0.6** ✓：0.7 把命中全过滤掉了，整节变成空占位 ✗
+#: 知识库佐证最低相关度 ✓ —— 保持 **0.6** ✗（2026-10-29 用户裁定 0.7 太严：
+#: 命中全被过滤 ⇒ 整节变空占位 ✗）。
+#: 2026-10-31 起改用**实体词过滤**治噪音 ✓（见 `KB_QUERY_ENTITIES`）——
+#: 光提阈值会把「相关但分数不高」的也砍掉 ✗，砍不到「分数高但跑题」的 ✗。
 KB_MIN_SCORE = 0.6
+
+#: 检索词 → **片段里必须出现的实体词** ✓（2026-10-31）
+#: 动机：0.602 的 RaynerTeo《Trading Results》讲比特币减半，
+#: 分数过了 0.6 但与当天持仓无关 ✗ —— 问题是**语义相似 ≠ 讲的是同一个东西** ✗
+#: ⇒ 片段必须提到该主题的核心实体，否则丢弃 ✓
+KB_QUERY_ENTITIES = {
+    "china large cap stocks policy stimulus": ("china", "chinese", "yuan", "beijing"),
+    "gold miners real rates": ("gold", "miner", "bullion"),
+    "circle stablecoin regulation": ("circle", "stablecoin", "usdc"),
+    "coinbase crypto exchange earnings": ("coinbase", "crypto", "exchange"),
+    "semiconductor equipment orders": ("semiconductor", "chip", "wafer", "axti"),
+    "nasdaq 100 technology earnings": ("nasdaq", "tech", "earnings"),
+    "semiconductor cycle": ("semiconductor", "chip", "cycle"),
+    "s&p 500 breadth": ("s&p", "breadth", "500"),
+    # 🔴 BTC 的检索词原来是 "bitcoin liquidity halving" ✗ ——
+    # 「halving」是个**话题词**不是持仓逻辑，会命中一堆讲减半原理的科普 ✗
+    # ⇒ 改成与「借 USDT 买入 BTC」这个仓位直接相关的：ETF 资金流 + 机构需求 ✓
+    "bitcoin etf institutional flows": ("bitcoin", "etf", "institutional", "btc"),
+}
 
 #: 阶段日志的写锁 ✓ —— 三个线程并发 append 在 Windows 上会偶发丢行 ✗
 _LOG_LOCK = threading.Lock()
@@ -1175,12 +1198,20 @@ def kb_evidence(snap, n=2):
     seen, hits = set(), []
     skip_titles = ("react to", "tiktok", "challenge", "try not to")
     for q in queries[:3]:
+        # 2026-10-31：片段必须提到该主题的**实体词** ✓
+        # （0.602 的「比特币减半科普」语义相似但不是讲持仓逻辑 ✗）
+        ents = KB_QUERY_ENTITIES.get(q) or ()
         for r in search_results(q, n=4):
             key = r["title"]
             if key in seen or r["score"] < 0.45:
                 continue
             if any(s in key.lower() for s in skip_titles):
                 continue
+            if ents:
+                blob = ((r.get("snippet") or "") + " "
+                        + (r.get("title") or "")).lower()
+                if not any(e in blob for e in ents):
+                    continue
             seen.add(key)
             hits.append(r)
     hits.sort(key=lambda x: x["score"], reverse=True)
