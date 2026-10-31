@@ -1418,6 +1418,16 @@ function loadTasks() {
         if (stale(rt.ts)) { continue; }   // 陈旧行情不覆盖收盘价
         var mid = cards[i].querySelector(".h-mid");
         if (mid) {
+          // 🔴 2026-10-31 实测：**卡片一直在变宽** ✗ —— 根因就在下面这行 ✗
+          //   `/现价[^<]*/` 只吃到 `<` 之前 ⇒ **上一轮插进去的
+          //   `<span class='rt-dot'>●</span>` 永远不会被消费掉** ✗
+          //   ⇒ 每轮 poll 都在前面再插一个 ● ⇒ 轮询 N 次就是 N 个圆点 ✗
+          //   ⇒ 卡片被撑宽（用户实测：卡片持续变宽 ✗）
+          //   修法：替换前**先清掉本卡所有 .rt-dot** ✓（结构回到初始态再插一个 ✓）
+          var dots = mid.querySelectorAll(".rt-dot");
+          for (var k = 0; k < dots.length; k++) {
+            dots[k].parentNode.removeChild(dots[k]);
+          }
           mid.innerHTML = mid.innerHTML.replace(/现价[^<]*/,
             "现价 " + rt.price.toFixed(2) + " <span class='rt-dot'>●</span>");
           // 🔴 2026-10-27：不再改写 .h-pnl ✗ —— 它是持仓快照的浮盈，
@@ -1427,10 +1437,12 @@ function loadTasks() {
           var mm = mid.textContent.match(/成本 ([\d.]+)/);
           if (mm) {
             var pct = (rt.price / parseFloat(mm[1]) - 1) * 100;
-            // 🔴 2026-10-30 实测：每轮 poll 都 appendChild 一个新的 .rt-pct，
-            //   但**从不清理旧的** ✗ ⇒ 轮询 30 次就堆出 30 个「实时 -19.9%」✗
-            //   （用户截图：一整排重复的「实时 -19.9%」）
-            //   ⇒ append 前先移除本卡已有的 .rt-pct ✓（只留最新一个 ✓）
+            // 注（2026-10-31 更正）：`.rt-pct` 其实**不会**堆积 ✗ ——
+            // 上面那句 `mid.innerHTML = ...` 每次都会**重建全部子节点** ✗
+            // ⇒ 旧的 `.rt-pct` 在下一轮开头就被销毁了 ✓。
+            // 真正堆积的是 `.rt-dot`（见上方注释）✗
+            // 这里保留清理是**防御性**的：万一以后改成不重建 innerHTML，
+            // 也不会重新长出重复标签 ✓。
             var olds = mid.querySelectorAll(".rt-pct");
             for (var j = 0; j < olds.length; j++) {
               olds[j].parentNode.removeChild(olds[j]);
