@@ -375,3 +375,40 @@ def test_btc_term_is_thesis_specific():
     t = m.KB_SYMBOL_TERMS["BTC"]
     assert "halving" not in t, "又退回话题词了 ✗"
     assert "etf" in t or "institutional" in t
+
+
+def test_llm_tag_follows_runtime_config():
+    """简报小节标题必须**跟着运行时配置走** ✓ —— 硬编码会过期 ✗。
+
+    2026-10-31 实测：三个通道全部切到 DeepSeek 后，简报标题仍写着
+    「Hermes(GLM)」「DeepSeek(NVIDIA NIM)」「OpenClaw云端(NVIDIA NIM)」✗
+    ⇒ 读者会以为还在用 GLM / NIM ✗。
+    """
+    m = _load()
+
+    assert "DeepSeek" in m._llm_tag(
+        "https://api.deepseek.com/v1/chat/completions", "deepseek/deepseek-flash")
+    assert "deepseek-flash" in m._llm_tag(
+        "https://api.deepseek.com/v1/chat/completions", "deepseek/deepseek-flash")
+    assert "NVIDIA" in m._llm_tag(
+        "https://integrate.api.nvidia.com/v1/chat/completions",
+        "deepseek-ai/deepseek-v4.1-flash")
+    assert "本地" in m._llm_tag("http://127.0.0.1:8642/v1/chat/completions",
+                                "hermes-agent")
+    assert m._llm_tag("", "") == "未知模型"
+
+
+def test_no_hardcoded_vendor_labels_left():
+    """源码里不能再有硬编码的供应商标题 ✗（会随切换过期 ✗）。"""
+    import io
+    import os
+
+    from fg_system import config
+    p = os.path.join(config.ROOT, "scripts", "invest_research.py")
+    src = io.open(p, encoding="utf-8").read()
+    # 只查**会被渲染出去**的完整标签 ✗ —— 别误伤解释性注释 ✓
+    for bad in ('("📰 情绪面 · Hermes(GLM)"',
+                '("🔍 深度归因 · DeepSeek(NVIDIA NIM)"',
+                '"## 情绪面分析（Hermes / GLM）"',
+                '"## 深度归因（Harness 后端'):
+        assert bad not in src, "硬编码标题又回来了 ✗：%r" % bad

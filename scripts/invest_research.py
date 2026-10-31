@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 """多智能体投研流水线原型 (E1)
-Hermes(GLM 云端) 情绪/新闻分析 → NVIDIA NIM(deepseek-v4.1-flash) 深度归因
-→ 裁判裁决(NVIDIA NIM 云端；弃用本地小模型——3b 倾向输出 tool_call JSON) → 简报推送飞书
+
+三段 AI：**情绪面 → 深度归因 → 裁判裁决**，最后推送飞书。
+
+🔴 2026-10-31：**通道全部改读环境变量** ✓ —— 不再硬编码供应商 ✗
+   `FG_HERMES_URL` / `FG_HERMES_MODEL`（情绪面）
+   `FG_LLM_URL`    / `FG_LLM_MODEL`   （归因 + 裁判，同通道）
+   `FG_LLM_KEY`（不设则从 `~/.dsh/.credentials.yaml` 读，优先 `sk-` ✓）
+   `FG_LLM_PROXY`（空串 = 直连 ✓）
+   ⇒ 简报里的**小节标题也从运行时配置推导**（`_llm_tag`）✓ ——
+     硬编码「Hermes(GLM)」「NVIDIA NIM」会过期 ✗（曾长期误导 ✗）。
+
 BTC 持仓现价回退源：OKX REST(走 7890 代理)；FG_STATIC_ONLY=1 时跳过外部行情。
 
 用法:
   .venv/bin/python scripts/invest_research.py          # 全流程 + 推送飞书
   .venv/bin/python scripts/invest_research.py --dry-run  # 只产出简报不推送
 说明:
-  - 密钥全部从本机配置文件读取，源码树不出现任何密钥
-  - NVIDIA NIM 走本地代理 7890（海外 API）
-  - 任一阶段失败自动降级：缺 Hermes → 跳过情绪节；缺 NIM → 跳过归因节；缺 OpenClaw → 用本地快照替代
+  - 密钥全部从本机配置文件/环境变量读取，源码树不出现任何密钥
+  - 任一阶段失败自动降级：情绪面失败 → 跳过该节；归因失败 → 跳过该节；
+    裁判失败 → 以归因/风控结论为准 ✓
 """
 import argparse
 import json
@@ -1090,13 +1099,17 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     secs.append("hr")
     secs.append(("📰 市场快讯", news_text(news) if news else "（新闻源不可用）"))
     secs.append("hr")
-    secs.append(("📰 情绪面 · Hermes(GLM)", (sentiment or "（不可用）").strip()[:1200]))
+    # 2026-10-31：标题从**运行时配置**推导 ✓（硬编码会过期 ✗）
+    _sent_tag = _llm_tag(HERMES_URL, HERMES_MODEL)
+    _attr_tag = _llm_tag(NIM_URL, NIM_MODEL)
+    secs.append(("📰 情绪面 · %s" % _sent_tag,
+                 (sentiment or "（不可用）").strip()[:1200]))
     secs.append("hr")
     _mc = _major_contradiction()
     _attr_txt = (_mc + "\n\n" if _mc else "") + (attribution or "（归因生成失败，已降级跳过）").strip()[:2600]
-    secs.append(("🔍 深度归因 · DeepSeek(NVIDIA NIM)", _attr_txt))
+    secs.append(("🔍 深度归因 · %s" % _attr_tag, _attr_txt))
     secs.append("hr")
-    secs.append(("⚖️ 裁判裁决 · OpenClaw云端(NVIDIA NIM)【研究参考】",
+    secs.append(("⚖️ 裁判裁决 · %s【研究参考】" % _attr_tag,
                  (judge or "（裁判未生成，已降级；以风控/归因结论为准）").strip()[:1200]))
     secs.append("hr")
     secs.append(("🧠 知识库观点佐证 · YouTube 9频道【研究参考】", _kb_brief_text(kb_evidence(snap))))
@@ -1241,6 +1254,26 @@ def kb_note(query, n=1, max_len=100):
     return ""
 
 
+def _llm_tag(url, model):
+    """把「URL + 模型」压成一句**人能读的通道名** ✓（2026-10-31）。
+
+    🔴 硬编码标签会过期 ✗ —— 简报里曾长期写「Hermes(GLM)」
+    「DeepSeek(NVIDIA NIM)」「OpenClaw云端(NVIDIA NIM)」，
+    而实际三个通道**全部已切到 DeepSeek** ✗ ⇒ 标题误导读者 ✗。
+    ⇒ 改成从**运行时配置**推导 ✓：换供应商只改环境变量，标题自动跟着变 ✓。
+    """
+    u = str(url or "")
+    m = str(model or "")
+    short = m.split("/")[-1] if m else "未知模型"
+    if "deepseek.com" in u:
+        return "DeepSeek（%s）" % short
+    if "nvidia" in u.lower() or "nim" in u.lower():
+        return "NVIDIA NIM（%s）" % short
+    if "127.0.0.1" in u or "localhost" in u:
+        return "本地（%s）" % short
+    return short
+
+
 def _kb_brief_text(hits):
     """佐证节正文（飞书富文本/Markdown 共用，压缩单条 ≤110 字）。
     片段跳过开头寒暄，从首个完整句子后取信息量部分。"""
@@ -1326,14 +1359,15 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         "## 市场快讯",
         news_text(news) if news else "（新闻源不可用）",
         "",
-        "## 情绪面分析（Hermes / GLM）",
+        "## 情绪面分析（%s）" % _llm_tag(HERMES_URL, HERMES_MODEL),
         (sentiment or "（跳过：Hermes 不可用）").strip()[:1500],
         "",
-        "## 深度归因（Harness 后端 deepseek-v4.1-flash / NVIDIA NIM）",
+        "## 深度归因（%s）" % _llm_tag(NIM_URL, NIM_MODEL),
         ((_major_contradiction() or "") + "\n\n" if _major_contradiction() else "")
         + (attribution or "（跳过：NIM 不可用）").strip()[:3000],
         "",
-        "## 裁判裁决（OpenClaw 云端裁判 / NVIDIA NIM）【研究参考，非实盘指令】",
+        "## 裁判裁决（%s）【研究参考，非实盘指令】"
+        % _llm_tag(NIM_URL, NIM_MODEL),
         (judge or "（跳过：裁判不可用）").strip()[:1200],
         "",
         "## 🧠 知识库观点佐证（YouTube 9频道）【研究参考，非实盘指令】",
