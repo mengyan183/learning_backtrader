@@ -448,3 +448,45 @@ def test_judge_error_message_is_not_hardcoded():
                   encoding="utf-8").read()
     assert "裁判调用失败（NIM）" not in src
     assert "（跳过：NIM 不可用）" not in src
+
+
+def test_reduce_order_is_written():
+    """「减仓操作」必须给出**减仓顺序** ✓（2026-10-31 用户裁定）。
+
+    排序 = 浮亏深度 × 杠杆倍数（越大越先减）✓ 依据：
+      ① 浮亏深 ⇒ 回本数学指数级恶化（-83% 要 +488%）
+      ② 杠杆高 ⇒ 日重置损耗更快
+      ③ 盈利仓 ⇒ 不减 ✓
+
+    ⚠️ 不排序的话，照「逐标的减到上限」平均减会先砍 YINN
+    （方向最对、亏得最少）而留着 AXTX（已废）⇒ **减反了** ✗
+    """
+    m = _load()
+    snap = {
+        "accounts": {"stock": 9584.6},
+        "positions": [
+            {"symbol": "YINN", "mv": 3531, "pnl_pct": -16.14,
+             "risk_limit": 1065, "risk_over": True},
+            {"symbol": "GDXU", "mv": 2692, "pnl_pct": -42.35,
+             "risk_limit": 315, "risk_over": True},
+            {"symbol": "CRCG", "mv": 1570, "pnl_pct": -53.67,
+             "risk_limit": 331, "risk_over": True},
+            {"symbol": "CONL", "mv": 1939, "pnl_pct": -40.78,
+             "risk_limit": 350, "risk_over": True},
+            {"symbol": "AXTX", "mv": 733, "pnl_pct": -82.75,
+             "risk_limit": 209, "risk_over": True},
+            {"symbol": "BTC-USDT", "mv": 2319, "pnl_pct": 23.78,
+             "risk_limit": 1597, "risk_over": True},
+        ],
+        "shoutu": {"YINN": -81, "GDXU": -100, "CRCG": -96,
+                   "CONL": -89, "AXTX": -90},
+    }
+
+    txt = m.action_brief_text(snap)
+
+    assert "减仓顺序" in txt, "没写减仓顺序 ✗"
+    # AXTX（83%×2x=166）必须排第一；YINN（16%×3x=48）排最后
+    order_line = [ln for ln in txt.splitlines() if "减仓顺序" in ln][0]
+    assert order_line.index("AXTX") < order_line.index("YINN"), \
+        "AXTX 应该排在 YINN 前面 ✗（实际顺序反了）"
+    assert "BTC" not in order_line, "盈利仓不该进减仓顺序 ✗"

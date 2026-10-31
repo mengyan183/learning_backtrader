@@ -602,6 +602,11 @@ def fetch_news(snap):
             ret, data = q.get_search_news(kw, max_count=2)
             if ret == 0 and len(data):
                 out[sym] = [str(t).strip() for t in data["title"].tolist()[:2]]
+            else:
+                # 🔴 2026-10-31：富途返回空也要**留痕** ✗ ——
+                # 原来静默跳过，简报里少几组新闻没人知道为什么 ✗
+                print("[news] 富途无结果：%s（kw=%s, ret=%s, n=%s）"
+                      % (sym, kw, ret, 0 if data is None else len(data)))
         q.close()
     except Exception as e:
         print("富途新闻源不可用:", e)
@@ -626,6 +631,16 @@ def fetch_news(snap):
     else:
         for k, v in gnews.items():
             out.setdefault(k, v)
+    # 🔴 2026-10-31 实测：某天简报的「市场快讯」从 6 组缩到 3 组 ✗
+    # （CRCG/CONL/AXTX/BTC 全没了），但**没有任何提示** ✗
+    # ⇒ 打一行覆盖情况 ✓ —— 让「缩水」在日志里可见，不用靠数行数发现 ✗
+    want = [str(r.get("symbol") or "").replace("-USDT", "")
+            for r in (snap.get("positions") or [])]
+    miss = [s for s in want if s and s not in out]
+    print("[news] 覆盖 %d/%d 标的%s；大盘%s"
+          % (len(want) - len(miss), len(want),
+             ("，缺 " + "、".join(miss)) if miss else "",
+             "有" if out.get("_market") else "**无** ✗"))
     return out
 
 
@@ -769,6 +784,28 @@ def action_brief_text(snap):
     # —— 原来 6 条各带一遍同样的后缀 ✗
     if any("减仓至上限" in ln for ln in out):
         head += ("\n标注「减仓至上限」= 仅价格风控触发（系数非贪婪）⇒ 只降敞口、不追方向。")
+    # 🔴 2026-10-31 用户裁定：**减仓顺序要写进简报** ✗
+    # 排序 = 浮亏深度 × 杠杆倍数（越大越先减）✓ 依据：
+    #   ① 浮亏深 ⇒ 回本数学**指数级**恶化（-83% 要 +488%，几乎不可能）
+    #   ② 杠杆高 ⇒ 日重置损耗更快（震荡市纯亏）
+    #   ③ 盈利仓（BTC）⇒ 不减，不列入 ✓
+    # ⚠️ 不排序的话，照「逐标的减到上限」平均减会先砍 YINN（方向最对、
+    #    亏得最少）而留着 AXTX（已废）⇒ **减反了** ✗
+    from fg_system import position_plan as _pp
+    ranked = []
+    for r in snap.get("positions", []):
+        pnl = r.get("pnl_pct")
+        if pnl is None or float(pnl) >= 0:
+            continue
+        lev = _pp.leverage_of(r.get("symbol"))
+        ranked.append((abs(float(pnl)) * lev, str(r.get("symbol")),
+                       float(pnl), lev))
+    ranked.sort(reverse=True)
+    if len(ranked) >= 2:
+        head += ("\n**减仓顺序**（浮亏深度×杠杆倍数，越大越先减；"
+                 "盈利仓不减）：%s"
+                 % " > ".join("%s（%.0f%%×%dx）" % (s, p, l)
+                              for _sc, s, p, l in ranked))
     return head + "\n" + "\n".join(out)
 
 
