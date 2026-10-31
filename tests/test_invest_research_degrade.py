@@ -555,3 +555,66 @@ def test_attribution_prompt_forbids_linear_scaling():
                   encoding="utf-8").read()
     assert "禁止用「ETF 跌幅 ÷ 杠杆倍数」反推标的跌幅" in src
     assert "系统性低估" in src
+
+
+def test_brief_body_shows_account_detail():
+    """简报**正文**要给出「证券 / 现金」拆分 ✓（2026-10-31 用户裁定）。
+
+    原来只在 `snapshot_text`（喂 LLM 的）里给，正文看不到 ✗
+    ⇒「加密净值 2,742 vs BTC 市值 2,318，差 425」一直没解释 ✗
+    """
+    m = _load()
+    snap = {
+        "date": "2026-10-30", "positions": [], "accounts": {
+            "stock": 9584.6, "crypto": 2742.3},
+        "accounts_detail": {
+            "stock": {"net_value": 9584.6, "securities_mv": 10465.0,
+                      "cash": -880.4, "date": "2026-10-30"},
+            "crypto": {"net_value": 2742.3, "securities_mv": 2318.0,
+                       "cash": 424.3, "date": "2026-10-30"},
+        },
+    }
+
+    txt = m.build_snapshot_lines(snap)
+
+    assert "账户明细" in txt, txt
+    assert "现金424" in txt, "加密现金没露出来 ✗：%s" % txt
+    assert "现金-880" in txt, "股票融资没露出来 ✗"
+
+
+def test_brief_body_shows_effective_exposure():
+    """正文要给**有效名义敞口** ✓ —— 名义仓位会被杠杆掩盖 ✗。"""
+    m = _load()
+    snap = {
+        "date": "2026-10-30", "positions": [],
+        "accounts": {"stock": 9584.6},
+        "eff_exposure": "29473（净值 12327 的 **2.39 倍**）",
+    }
+    txt = m.build_snapshot_lines(snap)
+    assert "有效敞口" in txt and "2.39" in txt, txt
+
+
+def test_prompt_forbids_inferring_reductions():
+    """prompt 必须禁止「推断是否减过仓」✗（2026-10-31 实测的因果倒置）。
+
+    模型说「YINN 占 33.7% 却只贡献 7.3% 亏损 ⇒ 是减仓后的残余仓位」✗
+    真相：权重从成本口径 21.3% 涨到市值口径 33.7%，因为它**跌得最少** ✓
+    """
+    import io
+    import os
+
+    from fg_system import config
+    src = io.open(os.path.join(config.ROOT, "scripts", "invest_research.py"),
+                  encoding="utf-8").read()
+    assert "禁止推断" in src and "残余仓位" in src
+    assert "没有买卖流水" in src
+    # 必须要求用有效敞口，不是只报名义仓位
+    assert "有效名义敞口" in src
+
+
+def test_snapshot_text_carries_no_trade_disclaimer():
+    """喂 LLM 的快照里要写明「无买卖流水」✗ —— 否则模型会硬猜。"""
+    m = _load()
+    snap = {"positions": [], "accounts": {"stock": 1000.0}}
+    txt = m.snapshot_text(snap)
+    assert "禁止推断" in txt, txt

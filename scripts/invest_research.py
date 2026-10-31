@@ -324,6 +324,27 @@ def build_snapshot():
     # 两者不同源、经常差一天 ✗（持仓同步失败那天，指数已经算到新日期 ✗）
     snap["index_date"] = (snap["fg"] or {}).get("date")
 
+    # 🔴 2026-10-31 用户裁定：**有效名义敞口进快照** ✓ ——
+    # 名义仓位会被杠杆倍数掩盖 ✗：5 只 2~3 倍 ETF 的「市值 10,465」
+    # 实际对应 **29,473** 的市场敞口（净值的 2.39 倍）✗
+    # 而 AI 只能看到名义仓位 ⇒ 一直报「超配 1.8 倍」，低估了 2.8 倍 ✗
+    # ⚠️ 必须在 `snap["fg"]` 之后算 ✗ —— 目标仓位来自那里 ✓
+    try:
+        from fg_system import position_plan as _pp
+        _total_net = sum(float(v or 0) for v in snap["accounts"].values())
+        _eff = sum(float(r.get("mv") or 0) * _pp.leverage_of(r.get("symbol"))
+                   for r in rows)
+        _tgt = (snap.get("fg") or {}).get("target_position")
+        if _total_net > 0 and _eff > 0:
+            snap["eff_exposure"] = (
+                "%.0f（净值 %.0f 的 **%.2f 倍**）%s"
+                % (_eff, _total_net, _eff / _total_net,
+                   ("· 目标仓位 %.1f%% ⇒ 超配 **%.1f 倍**"
+                    % (float(_tgt) * 100, _eff / (_total_net * float(_tgt))))
+                   if _tgt else ""))
+    except Exception as _e:                # noqa: BLE001 —— 算不出就不给 ✓
+        print("[warn] 有效敞口计算失败：%s" % _e)
+
     # 守猪待兔最新（各标的）
     st = pd.read_csv(DATA / "raw" / "shoutu_fng.csv", parse_dates=["date"])
     st_latest = st[st["date"] == st["date"].max()]
@@ -422,6 +443,15 @@ def snapshot_text(snap):
             "%s 净值%.0f（证券%.0f / 现金%.0f，%s）"
             % (k, v["net_value"], v["securities_mv"] or 0, v["cash"] or 0,
                v["date"]) for k, v in ad.items()))
+    # 🔴 2026-10-31：**有效名义敞口**必须显式给出 ✗ ——
+    # 名义仓位（84.9%）会被杠杆倍数掩盖 ✗，真实敞口是净值的 2.39 倍 ✓
+    # 不给这个数，模型只会说「超配 1.8 倍」，低估 2.8 倍 ✗
+    eff = snap.get("eff_exposure")
+    if eff:
+        lines.append("有效名义敞口（含杠杆倍数，**直接引用**）: %s" % eff)
+    # 无交易记录 ⇒ 禁止推断「是否减过仓」✗（2026-10-31 实测的错误归因）
+    lines.append("持仓变动: 快照**只有当前持仓**，无买卖流水 ⇒ "
+                 "**禁止推断某标的「是否减过仓/是残余仓位」** ✗")
     return "\n".join(lines)
 
 
@@ -542,6 +572,16 @@ def stage_attribution(nim_key, snap, kb=None):
         # 震荡市里 ETF 跌幅 **大于** 标的跌幅×L（volatility decay）
         # ⇒ 用「ETF跌幅 ÷ 杠杆倍数」反推标的跌幅会**系统性低估** ✗
         # （实测：AXTX -82.75% 被折算成「标的仅跌41.4%」✗ 实际更深）
+        # 🔴 2026-10-31 用户裁定：把「无流水不得推断减仓」写死 ✗
+        # 实测错误：模型说「YINN 占股票端 33.7% 却只贡献 7.3% 亏损，
+        # 说明它是**减仓后的残余仓位**」✗ —— 因果倒置 ✗
+        # 真相：YINN 权重从成本口径 21.3% 涨到市值口径 33.7%，
+        # 是因为它**跌得最少**（-16% vs AXTX -83%），不是被减过 ✗
+        "【硬性约束】快照**只有当前持仓，没有买卖流水** ✗ ⇒ "
+        "**禁止推断**某标的「是否减过仓 / 是减仓后的残余仓位 / 曾经加过仓」✗。"
+        "权重占比的变化只能归因于**涨跌幅差异**（跌得少的标的占比自然上升）✓。\n"
+        "【硬性约束】谈仓位超配时必须用「**有效名义敞口**」（已含杠杆倍数），"
+        "不要只用名义仓位 —— 名义仓位会被 2~3 倍杠杆掩盖 ✗。\n"
         "【硬性约束】禁止用「ETF 跌幅 ÷ 杠杆倍数」反推标的跌幅 ✗。"
         "杠杆 ETF 是逐日复利，震荡市有 volatility decay ⇒ 该折算会"
         "**系统性低估**标的真实跌幅。需要描述标的时，只说"
@@ -737,6 +777,24 @@ def build_snapshot_lines(snap):
         flag = "🔺" if (r["pnl"] or 0) > 0 else ("🔻" if (r["pnl"] or 0) < 0 else "▪️")
         out.append(f"{flag} {r['symbol']} {r['name']} · 成本 {r['cost']} · 现价 {r['last_close'] or '—'} · 浮盈亏 {pnl}")
     out.append(f"账户净值: " + " / ".join(f"{k} {v}" for k, v in (snap.get('accounts') or {}).items()))
+    # 🔴 2026-10-31 用户裁定：**账户明细进简报正文** ✓ ——
+    # 原来只在 `snapshot_text`（喂 LLM 的）里给，正文看不到 ✗
+    # ⇒ 「加密净值 2,742 vs BTC 市值 2,318，差 425」一直没解释 ✗
+    # 现在正文直接给「证券 / 现金」拆分，差额一眼可见 ✓
+    ad = snap.get("accounts_detail") or {}
+    if ad:
+        parts = []
+        for k, v in ad.items():
+            seg = "%s 净值%.0f" % (k, v["net_value"])
+            if v.get("securities_mv") is not None:
+                seg += "（证券%.0f / 现金%.0f）" % (v["securities_mv"],
+                                                   v.get("cash") or 0)
+            parts.append(seg)
+        out.append("账户明细: " + " · ".join(parts))
+    # 有效名义敞口（含杠杆）✓ —— 名义仓位会被杠杆倍数掩盖 ✗
+    eff = snap.get("eff_exposure")
+    if eff:
+        out.append("有效敞口: %s" % eff)
     return "\n".join(out)
 
 
