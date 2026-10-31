@@ -741,13 +741,14 @@ def news_text(news):
     lines = []
     if news.get("_market"):
         lines.append("大盘快讯:")
-        for t in news["_market"][:3]:
+        for t in news["_market"][:2]:      # 2026-10-31 精简：3 → 2 条 ✓
             lines.append(f"· {t[:150]}")
     for sym, titles in news.items():
         if sym == "_market":
             continue
         lines.append(f"{sym}:")
-        for t in titles[:2]:
+        # 2026-10-31 精简：每标的 2 → **1** 条 ✓（6 个标的就省 6 行）
+        for t in titles[:1]:
             lines.append(f"· {t[:120]}")
     return "\n".join(lines)
 
@@ -958,6 +959,21 @@ def position_plan_brief(snap):
                pp.PLAN["first"] * 100, pp.PLAN["adds"][0] * 100,
                len(pp.PLAN["adds"]), pp.PLAN["atr_k"],
                pp.PLAN["min_gap_days"], abs(pp.PLAN["hard_stop"]) * 100))
+    # 🔴 2026-10-31 精简：**全部不可操作** ⇒ 压成一行 ✓
+    # 原来 5 行全是「已到单标的上限」/「禁止加仓」，占 5 行但零信息量 ✗
+    # （用户实测：简报太长，且这三节在重复列同一批标的 ✗）
+    if all(("已到单标的上限" in ln) or ("禁止加仓" in ln)
+           or ("已满" in ln) or ("已无额度" in ln) for ln in lines):
+        n_cap = sum(1 for ln in lines if "已到单标的上限" in ln)
+        n_stop = sum(1 for ln in lines if "禁止加仓" in ln)
+        why = []
+        if n_cap:
+            why.append("%d 个已到单标的上限" % n_cap)
+        if n_stop:
+            why.append("%d 个浮亏过 %.0f%% 线禁加仓"
+                       % (n_stop, abs(pp.PLAN["hard_stop"]) * 100))
+        lines = ["· **无可操作项**：%s ⇒ 当前没有建仓/加仓空间 ✓"
+                 % "、".join(why)]
     return head + "\n" + "\n".join(lines)
 
 
@@ -1064,9 +1080,12 @@ def _human30_brief():
     levels = rec.get("levels") or {}
     phases = rec.get("phases") or {}
     out = ["· " + ln for ln in _rd.quadrant_lines(levels, phases)]
-    out.append("· %s 核心问题：%s"
-               % (_rd.AI_PREFIX,
-                  _mt.deterministic_metatype(levels).get("metatype") or "未判定"))
+    # 🔴 2026-10-31 精简：去掉重复的 `AI_PREFIX` ✗ ——
+    # 下面 `_h30_review()` 自己已经带一次「AI 复盘（🟡 研究参考…）」✗
+    # ⇒ 简报里出现两遍同样标记，用户实测觉得冗余 ✓
+    out.append("· 核心问题：%s"
+               % (_mt.deterministic_metatype(levels).get("metatype")
+                  or "未判定"))
     gap = _h30.days_since_last()
     if gap is not None and gap >= 1:
         out.append("⏰ 已断档多日未打卡（上次 %s）——记录断档，极端档位归因将缺样本"
@@ -1272,7 +1291,11 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
                  (sentiment or "（不可用）").strip()[:1200]))
     secs.append("hr")
     _mc = _major_contradiction()
-    _attr_txt = (_mc + "\n\n" if _mc else "") + (attribution or "（归因生成失败，已降级跳过）").strip()[:2600]
+    # 🔴 2026-10-31 精简：2600 → **1200** 字 ✗ ——
+    # prompt 要求 ≤800 字，模型实际写 1500+ ✗ ⇒ 简报被归因吃掉 25 行 ✗
+    # 截断后仍保留「逐标的 + 风险点 + 仓位合理性」三段主干 ✓
+    _attr_txt = ((_mc + "\n\n" if _mc else "")
+                 + (attribution or "（归因生成失败，已降级跳过）").strip()[:1200])
     secs.append(("🔍 深度归因 · %s" % _attr_tag, _attr_txt))
     secs.append("hr")
     secs.append(("⚖️ 裁判裁决 · %s【研究参考】" % _attr_tag,
