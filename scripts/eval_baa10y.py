@@ -127,6 +127,28 @@ def main(argv=None):
             f"{_fmt(lay.get('monotonic_spearman'), '.3f')} | "
             f"{_fmt(lay.get('top_minus_bottom'), '+.2f', 100)}% |")
 
+    # 🔴 2026-10-31：**必须报 IC 自相关** ✗ —— 滚动窗（相邻 IC 共享 59 天）
+    # + 重叠 forward return + 慢变因子 ⇒ ICIR 结构性虚高 ✗
+    # 实测（C5 ENE）自相关 0.99 ⇒ n_eff 仅名义的约 0.5% ⇒ 1.48 是假象 ✗
+    try:
+        from fg_system.factors.eval import forward_returns as _fwd
+        print("\n## IC 自相关与有效样本（ICIR 可信度 ✓）")
+        print("| horizon | IC自相关 | n_eff | 判读 |")
+        print("|---|---|---|---|")
+        for h in HORIZONS:
+            try:
+                tgt = _fwd(spy, (h,))["fwd_%d" % h]
+                ac1, n_eff = fproto.ic_autocorr(z, tgt, window=WINDOW)
+            except Exception:              # noqa: BLE001
+                ac1 = n_eff = None
+            judge = ("—" if ac1 is None else
+                     ("⚠️ 虚高（ICIR 不可直信）" if ac1 > 0.8 else "✓ 可参考"))
+            print("| %d | %s | %s | %s |"
+                  % (h, "—" if ac1 is None else "%.2f" % ac1,
+                     "—" if n_eff is None else "%.0f" % n_eff, judge))
+    except Exception as _e:                # noqa: BLE001 —— 算不出不阻塞 ✓
+        print("\n[warn] IC 自相关计算失败：%s" % _e)
+
     # 与现有情绪/宏观因子的相关性（正交性取证，Spearman，z 非空区间）
     # 正交化后这里应该看到目标列的相关系数**掉到 0 附近** ✓（正交化是否生效的活证据）
     # 🔴 2026-10-29：**必须打印每列的 n** ✗ —— 之前只打相关系数，

@@ -55,6 +55,48 @@ def ic_stats(ic_series: pd.Series) -> dict | None:
     return icir(ic_series)
 
 
+def ic_autocorr(signal: pd.Series, target: pd.Series,
+                window: int = DEFAULT_WINDOW):
+    """IC 序列的 **lag-1 自相关** 与**有效样本数** ✓（2026-10-31）。
+
+    🔴 为什么必须报：`rolling_ic(window=60)` 让相邻两天的 IC **共享 59 天**数据 ✗，
+    叠加「重叠 forward return」与「慢变因子」⇒ IC 序列几乎平滑 ✗
+    实测（C5 ENE）自相关 **0.99** ⇒ 名义 2400 天的 |ICIR| 1.48，
+    实际只由 **7~10 个**独立观测撑起 ✗
+
+    有效样本数：`n_eff ≈ n × (1−ρ)/(1+ρ)` ✓
+
+    :returns: `(ac1, n_eff)`；算不出 ⇒ `(None, None)`（不编造 ✓）
+    """
+    try:
+        # 用 **Pearson** 滚动 IC ✓ —— `ic_spearman` 走 `rolling_ic`，
+        # 实测在本仓库对长序列返回全 NaN ✗（`autocorr` 拿不到值 ✗）；
+        # 自相关是「IC 序列的平滑程度」，两种口径结论一致 ✓
+        # 🔴 2026-10-31 实测两个坑：
+        #   ① `Series.autocorr(1)` 在**日期索引**上返回 NaN ✗
+        #   ② 滚动相关在「窗口内某侧方差为 0」时产出 **inf** ✗
+        #      （`dropna()` 不滤 inf ✗ ⇒ 后面 std 变 NaN ⇒ 全链路失效 ✗）
+        ser = ic_pearson(signal, target, window=window)
+        ser = ser.replace([np.inf, -np.inf], np.nan).dropna()
+        if len(ser) < 10:
+            return None, None
+        # 手动按位置错位算 Pearson ✓（等价于 lag-1 自相关 ✓）
+        v = ser.to_numpy(dtype=float)
+        v = v[np.isfinite(v)]
+        if len(v) < 10:
+            return None, None
+        a, b = v[:-1], v[1:]
+        if a.std() == 0 or b.std() == 0:
+            return None, None
+        ac1 = float(np.corrcoef(a, b)[0, 1])
+    except Exception:                       # noqa: BLE001 —— 算不出就不报 ✓
+        return None, None
+    if ac1 is None or pd.isna(ac1):
+        return None, None
+    n_eff = len(ser) * (1.0 - ac1) / (1.0 + ac1) if ac1 < 1 else 0.0
+    return ac1, n_eff
+
+
 def recent_stats(ic_series: pd.Series, recent: int = GATE_RECENT) -> dict | None:
     """近窗（默认最近 120 个 IC 值）统计，用于衰减判定。"""
     ic = ic_series.dropna()
@@ -159,6 +201,12 @@ def long_short_nav(buckets: pd.Series, fwd: pd.Series, horizon: int,
 def verdict(stats_by_h: dict, recent_by_h: dict, direction: str = "逆向") -> dict:
     """门槛判定（factor-engine.md §4.4/4.5）：|ICIR| ≥ 0.5 且 n ≥ 60 且近窗无衰减。
 
+    🔴 **2026-10-31 起：ICIR 门槛降级为「参考」** ✗ ——
+    实测 IC 自相关高达 0.99 ⇒ 有效样本仅为名义的约 0.5% ✗
+    ⇒ 「通过」只代表「**IC 层面方向一致**」，**不代表可以采纳** ✓
+    ⇒ 采纳判据是**回测裁判**（`factor_backtest_probe`：实际收益 vs B0）✓
+    
+
     stats_by_h = {h: ic_stats|None}（Spearman RankIC 口径做判据）；
     recent_by_h = {h: recent_stats|None}。
     返回 {"status": "通过|accumulating|未达门槛", "detail": str, "best_horizon": int|None}。
@@ -177,9 +225,21 @@ def verdict(stats_by_h: dict, recent_by_h: dict, direction: str = "逆向") -> d
         if st["n"] < GATE_MIN_N:
             accumulating = accumulating or h
     if passed:
+        # 🔴 2026-10-31 用户裁定：**ICIR 门槛正式降级为参考** ✗
+        # 实测（C5 ENE）：IC 自相关 **0.99** ⇒ 有效样本 n_eff ≈ n×0.005
+        #   ⇒ 名义 2400 天的 |ICIR| 1.48，实际只由 **7~10 个**独立观测撑起 ✗
+        # 成因是三重叠加：滚动窗（相邻 IC 共享 59 天）+ 重叠 forward return
+        #   + 慢变因子 ⇒ IC 序列几乎平滑 ✗
+        # ⇒ status 仍叫「通过」（向后兼容 ✓），但 detail 必须说清
+        #   「**仅 IC 层面**，采纳一律由回测裁判决定」✓
         status = "通过"
-        detail = f"horizon {passed} 达门槛且近窗无衰减（{direction}）→ 具备入库资格，待回测裁判/人工审批"
-        return {"status": status, "detail": detail, "best_horizon": max(passed), "passed": passed}
+        detail = (f"horizon {passed} 的 |ICIR| ≥ {GATE_ICIR} 且近窗无衰减"
+                  f"（{direction}）—— ⚠️ **ICIR 仅作方向参考，不作采纳依据** ✗："
+                  "滚动窗 + 重叠收益 + 慢变因子会让 ICIR **结构性虚高**"
+                  "（实测 IC 自相关 0.99 ⇒ 有效样本仅为名义的约 0.5%）"
+                  "⇒ **采纳与否一律由回测裁判（实际收益 vs B0）决定** ✓")
+        return {"status": status, "detail": detail, "best_horizon": max(passed),
+                "passed": passed, "ic_reference_only": True}
     if accumulating is not None:
         return {"status": "accumulating", "detail": f"样本不足（n<{GATE_MIN_N}，horizon {accumulating}）→ 继续积累",
                 "best_horizon": None, "passed": []}

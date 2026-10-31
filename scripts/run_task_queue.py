@@ -246,6 +246,45 @@ def _act_fetch_indices(params):
             "stderr": (r.stderr or "")[-800:]}
 
 
+def _act_c5_backtest(params):
+    """C5 ENE 回测裁判 ✓ —— 两步：dump `ene_pos` 进研究 features → 跑 probe。
+
+    2026-10-31 用户裁定：**C5b（自身 ENE）进裁判** ✓
+    理由：三变体 ICIR 差距在噪声内（YINN 差 0.044、GDXU 杠杆反而更好 ✗）
+    ⇒ 选**最简**的（不需要正股映射表维护 ✓）。
+    ⚠️ 且 ICIR 已证实**结构性虚高**（IC 自相关 0.99 ⇒ n_eff 仅 5~15）
+    ⇒ **只有裁判结果算数** ✗
+    """
+    feat = str(params.get("features")
+               or "evolution/experiments/factor-adoption/features_c5.csv")
+    sym = str(params.get("symbol") or "YINN")
+    mode = str(params.get("mode") or "self_ene")
+    # `ene_pos` 高 = 超买 ⇒ 未来收益低 ⇒ direction=**negative** ✓
+    direc = str(params.get("direction") or "negative")
+    steps = [
+        [sys.executable, os.path.join(ROOT, "scripts", "eval_ene.py"),
+         "--dump-features", feat, "--dump-symbol", sym, "--dump-mode", mode],
+        [sys.executable, os.path.join(ROOT, "scripts", "factor_backtest_probe.py"),
+         "--factor", "ene_pos", "--symbol", sym,
+         "--direction", direc, "--features", feat],
+    ]
+    out = []
+    for cmd in steps:
+        try:
+            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                               timeout=1800)
+        except subprocess.TimeoutExpired:
+            out.append({"cmd": " ".join(cmd[1:]), "rc": -1,
+                        "stdout": "", "stderr": "超过 1800 秒"})
+            continue
+        out.append({"cmd": " ".join(cmd[1:]), "rc": r.returncode,
+                    "stdout": (r.stdout or "")[-2000:],
+                    "stderr": (r.stderr or "")[-400:]})
+    return {"ok": all(x["rc"] == 0 for x in out),
+            "note": "⚠️ 裁判 FAIL 时 probe 会 exit 1 —— 那是**结论**不是崩溃 ✓",
+            "steps": out}
+
+
 def _act_fetch_fred(params):
     """抓 FRED 系列 ✓（默认补 **DGS10** —— 它至今从未落盘 ✗）。
 
@@ -757,6 +796,7 @@ ACTIONS = {
     "factor_diag": _act_factor_diag,
     "run_pipeline": _act_run_pipeline,
     "c1_backtest": _act_c1_backtest,
+    "c5_backtest": _act_c5_backtest,
     "fetch_pe_ratio": _act_fetch_pe_ratio,
     "fetch_fred": _act_fetch_fred,
     "fetch_indices": _act_fetch_indices,

@@ -77,7 +77,33 @@ def _fwd(close, h_all=HORIZONS):
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", metavar="PATH", help="把完整报告写到 JSON")
+    ap.add_argument("--dump-features", metavar="PATH", default=None,
+                    help="把 ene_pos 并入 features 另存（供 factor_backtest_probe "
+                         "--features 用）✓")
+    ap.add_argument("--dump-symbol", default="YINN",
+                    help="dump-features 时用哪个标的的信号（默认 YINN）")
+    ap.add_argument("--dump-mode", default="self_ene",
+                    help="dump-features 的信号模式（默认 self_ene = C5b）")
     args = ap.parse_args(argv)
+
+    # 2026-10-31：C5b 进裁判前先 dump 研究专用 features ✓
+    # （`factor_backtest_probe` 只认 features 里的**列** ✗）
+    if args.dump_features:
+        prices0 = _load_prices()
+        sig0 = fene.signal_for(prices0, args.dump_symbol, mode=args.dump_mode)
+        feat_p0 = DATA / "features.csv"
+        out0 = pd.read_csv(feat_p0, parse_dates=["date"]) if feat_p0.exists() \
+            else pd.DataFrame({"date": sig0.index})
+        out0 = out0.set_index("date")
+        out0["ene_pos"] = sig0.reindex(out0.index)
+        p0 = Path(args.dump_features)
+        if not p0.is_absolute():
+            p0 = REPO / p0
+        p0.parent.mkdir(parents=True, exist_ok=True)
+        out0.reset_index().to_csv(p0, index=False, encoding="utf-8")
+        print("# 已写出研究专用 features：%s（ene_pos 非空 %d 天，标的 %s / 模式 %s）"
+              % (p0, int(out0["ene_pos"].notna().sum()),
+                 args.dump_symbol, args.dump_mode))
 
     prices = _load_prices()
     out = {}

@@ -72,20 +72,33 @@ def _corr_table(sig, feat):
     return out
 
 
-def _print_report(rep, label, horizons):
+def _print_report(rep, label, horizons, sig=None, close=None):
     print("\n## %s（%s）" % (label, "/".join(str(h) for h in horizons)))
     v = rep.get("verdict") or {}
     print("判定：%s —— %s"
           % (v.get("status") or "—", v.get("detail") or "—"))
     if v.get("passed"):
         print("  达标 horizon：%s" % v["passed"])
-    print("| horizon | rank_ic_mean | rank_ICIR | pearson_ICIR | n |")
-    print("|---|---|---|---|---|")
+    # 🔴 2026-10-31：**必须报 IC 自相关** ✗ —— 滚动窗 + 重叠收益 + 慢变因子
+    # 会让 ICIR 结构性虚高（实测 C5 ENE 自相关 0.99 ⇒ n_eff 仅名义的 0.5%）
+    print("| horizon | rank_ic_mean | rank_ICIR | pearson_ICIR | n | IC自相关 | n_eff |")
+    print("|---|---|---|---|---|---|---|")
     for h in horizons:
         ic = (rep.get("ic") or {}).get(h) or {}
-        print("| %d | %s | %s | %s | %s |"
+        ac1 = n_eff = None
+        if sig is not None and close is not None:
+            from fg_system.factors.eval import forward_returns as _fwd
+            try:
+                tgt = _fwd(close, (h,))["fwd_%d" % h]
+                ac1, n_eff = fproto.ic_autocorr(sig, tgt, window=WINDOW)
+            except Exception:              # noqa: BLE001
+                ac1 = n_eff = None
+        warn = " ⚠️虚高" if (ac1 is not None and ac1 > 0.8) else ""
+        print("| %d | %s | %s | %s | %s | %s%s | %s |"
               % (h, _fmt(ic.get("rank_ic_mean")), _fmt(ic.get("rank_icir")),
-                 _fmt(ic.get("pearson_icir")), ic.get("n") or 0))
+                 _fmt(ic.get("pearson_icir")), ic.get("n") or 0,
+                 _fmt(ac1, ".2f"), warn,
+                 "—" if n_eff is None else "%.0f" % n_eff))
 
 
 def main(argv=None):
@@ -122,8 +135,10 @@ def main(argv=None):
     print("样本：%s → %s，n_days=%s"
           % (rep_d["sample_start"], rep_d["sample_end"], rep_d["n_days"]))
 
-    _print_report(rep_d, "日频（现有唯一标准 ✓）", HORIZONS_DAILY)
-    _print_report(rep_m, "月频（**仅对照**，不作采纳依据 ✗）", HORIZONS_MONTHLY)
+    _print_report(rep_d, "日频（现有唯一标准 ✓）", HORIZONS_DAILY,
+                  sig=sig, close=spy)
+    _print_report(rep_m, "月频（**仅对照**，不作采纳依据 ✗）", HORIZONS_MONTHLY,
+                  sig=sig, close=spy)
 
     # CAPE 分歧分布（回答「阈值该定多少」✓）
     div = ferp.cape_divergence(window=args.window).dropna()
