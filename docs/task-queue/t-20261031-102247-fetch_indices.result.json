@@ -1,0 +1,11 @@
+{
+  "id": "t-20261031-102247-fetch_indices",
+  "action": "fetch_indices",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"stdout\": \"[warn] yfinance ^VIX 失败：YFRateLimitError: Too Many Requests. Rate limited. Try after a while.\\n[warn] yfinance ^VIX3M 失败：YFRateLimitError: Too Many Requests. Rate limited. Try after a while.\\n[warn] yfinance 未取到任何 VIX 数据 ⇒ 只能用 CBOE ✗\\n[vix] vix.csv → 9306 行，尾行 2026-10-30（live 补 0 行）\\n[vix] vix3m.csv → 4306 行，尾行 2026-10-30（live 补 0 行）\\n{'VIX': 9306, 'VIX3M': 4306}\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-10-31T10:26:15",
+  "finished_at": "2026-10-31T10:26:34",
+  "duration_s": 19.11
+}
