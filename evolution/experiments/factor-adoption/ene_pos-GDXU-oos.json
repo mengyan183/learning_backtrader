@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-10-31 16:22",
+  "factor": "ene_pos",
+  "symbol": "GDXU",
+  "direction": "negative",
+  "oos_start": "2024-10-04",
+  "oos_days": 519,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": 1.105685049996724,
+      "annual_return": 0.43556675266555733,
+      "max_drawdown": -0.6685832573436481,
+      "annual_vol": 0.8234773002400781,
+      "sharpe": 0.5289359555370516,
+      "calmar": 0.6514772062885781
+    },
+    "buyhold_oos": {
+      "total_return": 0.3911351351351353,
+      "annual_return": 0.17385066079511002,
+      "max_drawdown": -0.8774476190476191,
+      "annual_vol": 1.3299142976132907,
+      "sharpe": 0.130723206079601,
+      "calmar": 0.19813223834809351
+    },
+    "strategy_is": {
+      "total_return": -0.4936460377897869,
+      "annual_return": -0.17437112497756624,
+      "max_drawdown": -0.79295891442771,
+      "annual_vol": 0.6146609378198129,
+      "sharpe": -0.2836866868359266,
+      "calmar": -0.21989931862158635
+    }
+  },
+  "verdict": "PASS（OOS 年化 > B0 且回撤不劣化）"
+}

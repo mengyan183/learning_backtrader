@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-10-31 16:23",
+  "factor": "ene_pos",
+  "symbol": "SPY",
+  "direction": "negative",
+  "oos_start": "2024-10-04",
+  "oos_days": 519,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": 0.21670092358517135,
+      "annual_return": 0.09991959373721016,
+      "max_drawdown": -0.1564910894927195,
+      "annual_vol": 0.12927371092007095,
+      "sharpe": 0.7729304978255769,
+      "calmar": 0.6385002114887746
+    },
+    "buyhold_oos": {
+      "total_return": 0.3309147264978345,
+      "annual_return": 0.14889684492580035,
+      "max_drawdown": -0.18998906889856915,
+      "annual_vol": 0.16398703973192105,
+      "sharpe": 0.9079793450092793,
+      "calmar": 0.7837126935197151
+    },
+    "strategy_is": {
+      "total_return": 0.47946077176528035,
+      "annual_return": 0.05191972841532633,
+      "max_drawdown": -0.3242029044290259,
+      "annual_vol": 0.1466314319002246,
+      "sharpe": 0.35408321219051536,
+      "calmar": 0.16014578434072152
+    }
+  },
+  "verdict": "FAIL（OOS 未优于 B0，不采纳候选入生产）"
+}

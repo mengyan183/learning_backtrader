@@ -1,0 +1,13 @@
+{
+  "id": "t-20261031-162146-c5_backtest",
+  "action": "c5_backtest",
+  "params": {
+    "symbols": "YINN,GDXU,CONL,CRCG,AXTX,SPY"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "0（2520 天）\\n判定：通过\\n| h | rank_ic_mean | rank_ICIR | n | IC自相关 |\\n|---|---|---|---|---|\\n| 5 | -0.147 | -0.646 | 2456 | 0.99 ⚠️虚高（n_eff≈8） |\\n| 10 | -0.199 | -0.790 | 2451 | 0.99 ⚠️虚高（n_eff≈7） |\\n| 20 | -0.244 | -0.976 | 2441 | 0.99 ⚠️虚高（n_eff≈7） |\\n| 40 | -0.334 | -1.486 | 2421 | 0.99 ⚠️虚高（n_eff≈12） |\\n\\n## C5a · GDX 信号 → 交易 GDXU\\n样本 2020-12-03 → 2026-10-30（1483 天）\\n判定：通过\\n| h | rank_ic_mean | rank_ICIR | n | IC自相关 |\\n|---|---|---|---|---|\\n| 5 | -0.101 | -0.500 | 1419 | 0.99 ⚠️虚高（n_eff≈6） |\\n| 10 | -0.155 | -0.611 | 1414 | 0.99 ⚠️虚高（n_eff≈5） |\\n| 20 | -0.263 | -0.966 | 1404 | 0.99 ⚠️虚高（n_eff≈4） |\\n| 40 | -0.311 | -1.252 | 1384 | 0.99 ⚠️虚高（n_eff≈6） |\\n\\n## C5b · GDXU 自身 ENE\\n样本 2020-12-16 → 2026-10-30（1474 天）\\n判定：通过\\n| h | rank_ic_mean | rank_ICIR | n | IC自相关 |\\n|---|---|---|---|---|\\n| 5 | -0.094 | -0.479 | 1410 | 0.99 ⚠️虚高（n_eff≈7） |\\n| 10 | -0.154 | -0.618 | 1405 | 0.99 ⚠️虚高（n_eff≈5） |\\n| 20 | -0.261 | -1.001 | 1395 | 0.99 ⚠️虚高（n_eff≈5） |\\n| 40 | -0.315 | -1.293 | 1375 | 0.99 ⚠️虚高（n_eff≈6） |\\n\", \"stderr\": \"\"}, {\"cmd\": \"/Users/xingguo/learning_backtrader/scripts/factor_backtest_probe.py --factor ene_pos --symbol SPY --direction negative --features evolution/experiments/factor-adoption/features_c5_SPY.csv\", \"rc\": 1, \"stdout\": \"# 回测裁判：ene_pos（negative）→ SPY OOS\\n\\n- 生成：2026-10-31 16:23 · scripts/factor_backtest_probe.py\\n- 口径：因子 756 日滚动分位 → 仓位 0.2~1.0 线性映射（无参数先验）；T 信号 shift(1) → T+1 生效；换仓成本 0.0008/单位换手；OOS 起 2024-10-04（519 日）\\n- 判定：**FAIL（OOS 未优于 B0，不采纳候选入生产）**\\n\\n| 指标 | 策略（OOS） | B0 买入持有 | 样本内 |\\n|---|---|---|---|\\n| OOS 年化 | 9.99% | 14.89% | 5.19% |\\n| 最大回撤 | -15.6% | -19.0% | -32.4% |\\n| Sharpe | 0.77 | 0.91 | 0.35 |\\n| Calmar | 0.64 | 0.78 | 0.16 |\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/ene_pos-SPY-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/ene_pos-SPY-oos.json\\n\", \"stderr\": \"\"}]}",
+  "started_at": "2026-10-31T16:22:45",
+  "finished_at": "2026-10-31T16:23:07",
+  "duration_s": 21.38
+}

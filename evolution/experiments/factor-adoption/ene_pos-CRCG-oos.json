@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-10-31 16:22",
+  "factor": "ene_pos",
+  "symbol": "CRCG",
+  "direction": "negative",
+  "oos_start": "2024-10-04",
+  "oos_days": 240,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": -0.3249445836189656,
+      "annual_return": -0.339220389654445,
+      "max_drawdown": -0.58401963143183,
+      "annual_vol": 0.9778007286875009,
+      "sharpe": -0.3469218008354111,
+      "calmar": -0.5808373064836617
+    },
+    "buyhold_oos": {
+      "total_return": -0.7185064935064934,
+      "annual_return": -0.73726184464632,
+      "max_drawdown": -0.8707317073170733,
+      "annual_vol": 1.9269219499533519,
+      "sharpe": -0.3826111611132813,
+      "calmar": -0.8467152837674823
+    },
+    "strategy_is": {
+      "total_return": NaN,
+      "annual_return": NaN,
+      "max_drawdown": NaN,
+      "annual_vol": NaN,
+      "sharpe": NaN,
+      "calmar": NaN
+    }
+  },
+  "verdict": "PASS（OOS 年化 > B0 且回撤不劣化）"
+}

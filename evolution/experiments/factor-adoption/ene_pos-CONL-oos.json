@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-10-31 16:22",
+  "factor": "ene_pos",
+  "symbol": "CONL",
+  "direction": "negative",
+  "oos_start": "2024-10-04",
+  "oos_days": 498,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": 0.08758528685532507,
+      "annual_return": 0.04340117252954778,
+      "max_drawdown": -0.7889833718482951,
+      "annual_vol": 0.9453377089650272,
+      "sharpe": 0.04591075984588002,
+      "calmar": 0.05500898254404899
+    },
+    "buyhold_oos": {
+      "total_return": -0.7136627906976745,
+      "annual_return": -0.4689112848416215,
+      "max_drawdown": -0.9445541760722348,
+      "annual_vol": 1.5728819646722112,
+      "sharpe": -0.2981223609740752,
+      "calmar": -0.4964366223984187
+    },
+    "strategy_is": {
+      "total_return": -0.3485060514257836,
+      "annual_return": -0.5873154838020835,
+      "max_drawdown": -0.5525280171879938,
+      "annual_vol": 0.9176644162500949,
+      "sharpe": -0.6400111777266735,
+      "calmar": -1.0629605477585284
+    }
+  },
+  "verdict": "PASS（OOS 年化 > B0 且回撤不劣化）"
+}

@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-10-31 16:22",
+  "factor": "ene_pos",
+  "symbol": "YINN",
+  "direction": "negative",
+  "oos_start": "2024-10-04",
+  "oos_days": 519,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": -0.19226420984957648,
+      "annual_return": -0.09848137828041792,
+      "max_drawdown": -0.46656403988398165,
+      "annual_vol": 0.47856944628743514,
+      "sharpe": -0.20578283683674345,
+      "calmar": -0.21107794399436963
+    },
+    "buyhold_oos": {
+      "total_return": -0.5166880616174588,
+      "annual_return": -0.2974504700956785,
+      "max_drawdown": -0.6402595185248424,
+      "annual_vol": 0.7715167986373895,
+      "sharpe": -0.3855398490622876,
+      "calmar": -0.4645779742267701
+    },
+    "strategy_is": {
+      "total_return": -0.5542181138024288,
+      "annual_return": -0.09914307762624763,
+      "max_drawdown": -0.8745442656136195,
+      "annual_vol": 0.5645781823792542,
+      "sharpe": -0.17560557726201415,
+      "calmar": -0.11336541959563864
+    }
+  },
+  "verdict": "PASS（OOS 年化 > B0 且回撤不劣化）"
+}

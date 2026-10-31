@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-10-31 16:23",
+  "factor": "ene_pos",
+  "symbol": "AXTX",
+  "direction": "negative",
+  "oos_start": "2024-10-04",
+  "oos_days": 64,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": -0.23541580842918242,
+      "annual_return": -0.658255717447491,
+      "max_drawdown": -0.45086984464395186,
+      "annual_vol": 0.9762426259950661,
+      "sharpe": -0.6742747140103037,
+      "calmar": -1.459968381711822
+    },
+    "buyhold_oos": {
+      "total_return": -0.5909827213822897,
+      "annual_return": -0.9720123380703816,
+      "max_drawdown": -0.7869003690036902,
+      "annual_vol": 2.4881356243529207,
+      "sharpe": -0.39065890482684956,
+      "calmar": -1.2352419395876828
+    },
+    "strategy_is": {
+      "total_return": NaN,
+      "annual_return": NaN,
+      "max_drawdown": NaN,
+      "annual_vol": NaN,
+      "sharpe": NaN,
+      "calmar": NaN
+    }
+  },
+  "verdict": "PASS（OOS 年化 > B0 且回撤不劣化）"
+}
