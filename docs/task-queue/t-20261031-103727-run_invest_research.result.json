@@ -1,0 +1,13 @@
+{
+  "id": "t-20261031-103727-run_invest_research",
+  "action": "run_invest_research",
+  "params": {
+    "push": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"push\": true, \"stdout\": \"[warn] GDXU 合成：2/2538 天因腿缺失被剔除（腿 = GDX / GDXJ）\\n2026-10-31 10:38:37,952 | 909 | 123145566289920 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7522124847436592072(1) context=<futu.quote.open_quote_context.OpenQuoteContext object at 0x7fabac1a5cf0>\\n2026-10-31 10:38:38,253 | 909 | 123145634521088 | [open_context_base.py:521] on_disconnect: Disconnected: conn=0(1) reason=CallClose\\n简报已写入: /Users/xingguo/learning_backtrader/Data/invest_brief_2026-10-30.md\\n[verify] 简报检查: 通过 (fail=0 warn=0)\\n[decision-log] 已追加: /Users/xingguo/learning_backtrader/docs/decision-log.md\\n[archive] 归档 0 份，工作区活跃 4 份，索引 /Users/xingguo/learning_backtrader/Data/briefs/index.md\\n飞书富文本推送: 成功\\n\", \"stderr\": \"[stage_attribution] 归因失败（按无数据处理）: 调用失败(2次): HTTP Error 401: Unauthorized\\n\"}",
+  "started_at": "2026-10-31T10:38:35",
+  "finished_at": "2026-10-31T10:39:20",
+  "duration_s": 45.05
+}
