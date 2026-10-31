@@ -7,13 +7,13 @@
 		<key>FG_HERMES_MODEL</key>
 		<string>deepseek/deepseek-flash</string>
 		<key>FG_HERMES_URL</key>
-		<string>https://api.deepseek.com/v1/chat/completions</string>
+		<string>http://127.0.0.1:8642/v1/chat/completions</string>
 		<key>FG_LLM_MODEL</key>
 		<string>deepseek/deepseek-flash</string>
 		<key>FG_LLM_PROXY</key>
 		<string></string>
 		<key>FG_LLM_URL</key>
-		<string>https://api.deepseek.com/v1/chat/completions</string>
+		<string>http://127.0.0.1:8642/v1/chat/completions</string>
 	</dict>
 	<key>Label</key>
 	<string>com.xingguo.fg-daily</string>

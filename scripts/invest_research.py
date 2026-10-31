@@ -179,6 +179,25 @@ def _read_nim_key():
     return found["sk-"] or found["nvapi-"]
 
 
+def _read_llm_key():
+    """归因 / 裁判用的 key ✓ —— **按 URL 决定从哪读** ✗（2026-10-31）。
+
+    🔴 实测教训：plist 里把 `FG_LLM_URL` 指到 `api.deepseek.com` 后，
+    情绪面（本地 Hermes 8642）**从成功变成失败** ✗，归因/裁判仍是 401 ✗
+    ⇒ **直连 DeepSeek 这条路在 Mac 上不通** ✗（key 不在 `~/.dsh`，或网络受限 ✗）。
+    而本地 Hermes 服务**内部已经配好 DeepSeek** ✓（10:37 那次情绪面成功即为证 ✓）
+    ⇒ 正确做法：**统一走本地 Hermes**，key 也用它自己的 ✓。
+    """
+    if os.environ.get("FG_LLM_KEY"):
+        return os.environ["FG_LLM_KEY"]
+    if "127.0.0.1" in str(NIM_URL) or "localhost" in str(NIM_URL):
+        try:
+            return _read_hermes_key()
+        except Exception:                  # noqa: BLE001 —— 读不到就回落 ✓
+            pass
+    return _read_nim_key()
+
+
 def _read_feishu_creds():
     cfg = json.load(open(Path.home() / ".openclaw" / "openclaw.json"))
     f = cfg.get("channels", {}).get("feishu", {})
@@ -533,7 +552,9 @@ def stage_judge(nim_key, snap, sentiment, attribution):
             return "（裁判未按三行格式输出，本次以归因/风控结论为准。）"
         return v
     except Exception as e:
-        return f"裁判调用失败（NIM）：{e}，本次以归因结论为准。"
+        # 2026-10-31：不再硬编码「NIM」✗ —— 通道可能已换成 DeepSeek / 本地 ✓
+        return (f"裁判调用失败（{_llm_tag(NIM_URL, NIM_MODEL)}）：{e}，"
+                "本次以归因结论为准。")
 
 
 # ---------------------------------------------------------------- 新闻抓取（Google News RSS，免 key）
@@ -1364,7 +1385,8 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         "",
         "## 深度归因（%s）" % _llm_tag(NIM_URL, NIM_MODEL),
         ((_major_contradiction() or "") + "\n\n" if _major_contradiction() else "")
-        + (attribution or "（跳过：NIM 不可用）").strip()[:3000],
+        + (attribution or "（跳过：%s 不可用）"
+           % _llm_tag(NIM_URL, NIM_MODEL)).strip()[:3000],
         "",
         "## 裁判裁决（%s）【研究参考，非实盘指令】"
         % _llm_tag(NIM_URL, NIM_MODEL),
@@ -1478,7 +1500,7 @@ def _run_stages(snap, kb=None):
         "news": ("新闻抓取", lambda: fetch_news(snap)),
         "sentiment": ("Hermes 阶段", lambda: stage_sentiment(_read_hermes_key(), snap)),
         "attribution": ("NIM 阶段",
-                        lambda: stage_attribution(_read_nim_key(), snap, kb=kb)),
+                        lambda: stage_attribution(_read_llm_key(), snap, kb=kb)),
     }
     # 端口预检 ✓ —— 三个阶段各自的本机入口，服务没起就**秒跳过** ✗
     # （2026-10-29：代理恢复后仍 240s 超时 ⇒ 「网络通」不等于「服务在」✗）
@@ -1542,7 +1564,7 @@ def main():
         print("[preflight] 代理 %s 未监听 ⇒ 跳过裁判阶段" % PROXY)
     else:
         try:
-            judge = stage_judge(_read_nim_key(), snap,
+            judge = stage_judge(_read_llm_key(), snap,
                                 sentiment or "（无）", attribution or "（无）")
         except Exception as e:
             print("OpenClaw 阶段失败:", e)

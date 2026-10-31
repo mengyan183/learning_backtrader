@@ -412,3 +412,39 @@ def test_no_hardcoded_vendor_labels_left():
                 '"## 情绪面分析（Hermes / GLM）"',
                 '"## 深度归因（Harness 后端'):
         assert bad not in src, "硬编码标题又回来了 ✗：%r" % bad
+
+
+def test_llm_key_follows_url_not_vendor(monkeypatch):
+    """归因/裁判的 key 按 **URL** 选，不是按供应商 ✗（2026-10-31）。
+
+    实测教训：plist 把 URL 指到 `api.deepseek.com` 后，
+    情绪面（本地 Hermes）**从成功变失败** ✗、归因/裁判 401 ✗
+    ⇒ 本地 Hermes 内部已配好 DeepSeek，脚本不该自己拿 key 直连 ✗
+    ⇒ URL 是本机时用 Hermes 的 key ✓。
+    """
+    m = _load()
+    monkeypatch.delenv("FG_LLM_KEY", raising=False)
+    monkeypatch.setattr(m, "_read_hermes_key", lambda: "hermes-key")
+    monkeypatch.setattr(m, "_read_nim_key", lambda: "nim-key")
+
+    monkeypatch.setattr(m, "NIM_URL", "http://127.0.0.1:8642/v1/chat/completions")
+    assert m._read_llm_key() == "hermes-key", "本地 URL 应该用 Hermes 的 key ✗"
+
+    monkeypatch.setattr(m, "NIM_URL",
+                        "https://integrate.api.nvidia.com/v1/chat/completions")
+    assert m._read_llm_key() == "nim-key", "远端 URL 应该用 NIM 的 key ✗"
+
+    monkeypatch.setenv("FG_LLM_KEY", "explicit-key")
+    assert m._read_llm_key() == "explicit-key", "显式环境变量优先级最高 ✗"
+
+
+def test_judge_error_message_is_not_hardcoded():
+    """裁判失败文案不能写死「NIM」✗（通道可能已换 ✗）。"""
+    import io
+    import os
+
+    from fg_system import config
+    src = io.open(os.path.join(config.ROOT, "scripts", "invest_research.py"),
+                  encoding="utf-8").read()
+    assert "裁判调用失败（NIM）" not in src
+    assert "（跳过：NIM 不可用）" not in src
