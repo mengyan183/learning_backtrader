@@ -59,8 +59,14 @@ def _ledger_path(pkg):
     return os.path.join(TEXT_DIR, "%s.sent" % pkg)
 
 
-def _ledger_add(name, index, total):
+def _ledger_add(name, index, total, ok=True):
     """**发送成功即落台账** ✓ —— 与 stdout 无关。
+
+    🔴 2026-10-31 加 `ok` 参数 ✗：原来**只在成功时写** ✗ ⇒
+    失败时台账里**一片空白** ⇒ `--sent-status` 只报「无记录」✗，
+    看不出「试过但失败」还是「从没试过」✗ —— 这就是
+    `sync_1028er` 连试 4 次都像「无记录」的原因 ✓。
+    ⇒ 失败也写一行 `FAIL` ✓，让重试历史可见 ✓。
 
     动机（2026-10-19，WT-46）：本机 hook 会在 5s 截断 stdout ✗ ⇒ 只能从日志数
     「已发」行 ✗ ⇒ 数不到就误判「缺片」✗ ⇒ 盲补（当晚 5 次 ✗）。
@@ -71,9 +77,10 @@ def _ledger_add(name, index, total):
         return
     try:
         with open(_ledger_path(pkg), "a", encoding="utf-8") as fh:
-            fh.write("%d/%d\t%s\t%s\n"
+            fh.write("%d/%d\t%s\t%s\t%s\n"
                      % (index, total, name,
-                        time.strftime("%Y-%m-%dT%H:%M:%S")))
+                        time.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "OK" if ok else "FAIL"))
     except OSError as exc:          # 台账失败**不得**影响发送 ✓
         print("  [warn] 台账写入失败：%s" % exc)
 
@@ -81,7 +88,7 @@ def _ledger_add(name, index, total):
 def sent_status(pkg):
     """打印某包已发/缺片（补发前必查 ✓）。返回缺片序号列表。"""
     path = _ledger_path(pkg)
-    done = {}
+    done, fails = {}, {}
     if os.path.exists(path):
         with open(path, encoding="utf-8") as fh:
             for ln in fh:
@@ -89,17 +96,37 @@ def sent_status(pkg):
                 if len(parts) >= 2 and "/" in parts[0]:
                     idx, tot = parts[0].split("/", 1)
                     try:
-                        done[int(idx)] = int(tot)
+                        i, t = int(idx), int(tot)
                     except ValueError:
                         continue
+                    # 旧格式没有第 4 列 ⇒ 视为 OK ✓（向后兼容）
+                    st = parts[3] if len(parts) >= 4 else "OK"
+                    if st == "OK":
+                        done[i] = t
+                    else:
+                        fails[i] = fails.get(i, 0) + 1
     if not done:
-        print("%s：台账**无记录** ✗ ⇒ 一片都未确认发出"
-              "（不要盲目补发 ✓，先看发送日志）" % pkg)
+        if fails:
+            # 🔴 2026-10-31：失败也要看得见 ✗ —— 原来失败不写台账 ⇒
+            # 连试 4 次都显示「无记录」，看不出「试过但失败」✗
+            print("%s：**全部失败** ✗（试过 %d 次：%s）"
+                  "⇒ 建议**换个包名重新打包**再发 ✓（同一包名重试常常无效 ✗）"
+                  % (pkg, sum(fails.values()),
+                     "、".join("第%d片×%d" % (k, v)
+                               for k, v in sorted(fails.items()))))
+        else:
+            print("%s：台账**无记录** ✗ ⇒ 一片都未确认发出"
+                  "（不要盲目补发 ✓，先看发送日志）" % pkg)
         return list(range(1, 1000))
     total = max(done.values())
     missing = [i for i in range(1, total + 1) if i not in done]
-    print("%s：已发 **%d/%d** 片；缺片 %s"
-          % (pkg, len(done), total, missing if missing else "**无** ✓"))
+    extra = ""
+    if fails:
+        extra = "；另有失败记录 %s" % "、".join(
+            "第%d片×%d" % (k, v) for k, v in sorted(fails.items()))
+    print("%s：已发 **%d/%d** 片；缺片 %s%s"
+          % (pkg, len(done), total,
+             missing if missing else "**无** ✓", extra))
     return missing
 def _lock_path():
     return os.path.join(TEXT_DIR, ".feishu_send.lock")
@@ -407,12 +434,27 @@ def main():
             #    「真发出」和「只填进了输入框」（用户当场报告输入框里残留着那串文本）。
             #    判据 = **输入框已被清空**（发送成功的强信号；消息列表里的同文本不算，
             #    见 `_box_has_text`）。
-            time.sleep(0.4)
-            vom3 = bsk.observe()
-            if _box_has_text(vom3, text[:20]):
+            # 🔴 2026-10-31 实测：固定 `sleep(0.4)` 太短 ✗ ——
+            # 飞书清空输入框有延迟，早判会误报「填进了但没发出去」✗
+            # （`sync_1028er` 连试 4 次都卡在这一步，换包名就成功 ✗
+            #   ⇒ 说明是**时序抖动**而不是内容问题 ✓）
+            # ⇒ 轮询最多 3 秒等清空 ✓；仍不清空才判失败并写 FAIL 台账 ✓
+            cleared = False
+            vom3 = ""
+            for _ in range(10):
+                time.sleep(0.3)
+                vom3 = bsk.observe()
+                if not _box_has_text(vom3, text[:20]):
+                    cleared = True
+                    break
+            if not cleared:
+                _ledger_add(name, i, len(chunks), ok=False)
                 raise SystemExit(
-                    "❌ 第 %d 条（%s）填进了输入框但**没有发出去**（输入框仍含该文本）。\n"
-                    "   已发 %d 条；用 --start %d 续发。"
+                    "❌ 第 %d 条（%s）填进了输入框但**没有发出去**"
+                    "（等了 3 秒输入框仍含该文本）。\n"
+                    "   已发 %d 条；用 --start %d 续发 ✓\n"
+                    "   ⚠️ 若连续多次失败 ⇒ **换个包名重新打包**再发"
+                    "（同一包名重试常常无效 ✗）"
                     % (i, name, sent, i))
             sent += 1
             _ledger_add(name, i, len(chunks))   # 台账先落盘 ✓ 再打印（stdout 可能被截断 ✗）
