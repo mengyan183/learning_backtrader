@@ -1,0 +1,9 @@
+{
+  "id": "t-20261031-162146-c5_backtest",
+  "action": "c5_backtest",
+  "params": {
+    "symbols": "YINN,GDXU,CONL,CRCG,AXTX,SPY"
+  },
+  "status": "pending",
+  "created_at": "2026-10-31T16:21:46"
+}
