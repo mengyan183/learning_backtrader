@@ -331,12 +331,16 @@ def fetch_vix_live(days=10):
     try:
         import yfinance as yf
     except ImportError:
+        # 🔴 2026-10-31 实测：这里原来**静默返回 {}** ✗ ⇒ 补数没生效也无人知 ✗
+        # （`vix.csv` 仍停在 T-1，只能从 `factor_diag` 反推 ✗）
+        print("[warn] yfinance 未安装 ⇒ 只能用 CBOE（可能停在 T-1）✗")
         return {}
     out = {}
     for name, tick in (("VIX", "^VIX"), ("VIX3M", "^VIX3M")):
         try:
             h = yf.Ticker(tick).history(period="%dd" % days, auto_adjust=False)
             if h is None or len(h) == 0:
+                print("[warn] yfinance %s 返回空 ✗" % tick)
                 continue
             idx = [d.tz_localize(None) if getattr(d, "tz", None) is not None else d
                    for d in h.index]
@@ -345,8 +349,12 @@ def fetch_vix_live(days=10):
                 "open": h["Open"].to_numpy(), "high": h["High"].to_numpy(),
                 "low": h["Low"].to_numpy(), "close": h["Close"].to_numpy(),
             })
-        except Exception:                      # noqa: BLE001 —— 换源失败不该拖死链 ✗
+        except Exception as exc:               # noqa: BLE001 —— 换源失败不该拖死链 ✗
+            print("[warn] yfinance %s 失败：%s: %s"
+                  % (tick, type(exc).__name__, exc))
             continue
+    if not out:
+        print("[warn] yfinance 未取到任何 VIX 数据 ⇒ 只能用 CBOE ✗")
     return out
 
 
@@ -383,6 +391,14 @@ def update_indices(raw_dir=None):
                   .sort_values("date"))
         df.to_csv(os.path.join(raw_dir, fname), index=False, encoding="utf-8")
         out[name] = len(df)
+        # 🔴 必须打出**尾行日期** ✓ —— 只有行数看不出是否停在 T-1 ✗
+        try:
+            tail = pd.to_datetime(df["date"]).max().date()
+            print("[vix] %s → %d 行，尾行 %s（live 补 %s 行）"
+                  % (fname, len(df), tail,
+                     len(add) if add is not None else 0))
+        except Exception:                       # noqa: BLE001
+            pass
     return out
 
 
