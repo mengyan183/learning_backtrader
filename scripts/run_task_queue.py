@@ -255,19 +255,28 @@ def _act_c5_backtest(params):
     ⚠️ 且 ICIR 已证实**结构性虚高**（IC 自相关 0.99 ⇒ n_eff 仅 5~15）
     ⇒ **只有裁判结果算数** ✗
     """
-    feat = str(params.get("features")
+    base = str(params.get("features")
                or "evolution/experiments/factor-adoption/features_c5.csv")
-    sym = str(params.get("symbol") or "YINN")
+    # 2026-10-31 用户裁定：**跑多个标的** ✓（单标的不够代表性）
+    # 每个标的必须**各自 dump 一份 features** ✗ —— `ene_pos` 是单列，
+    # 不同标的的信号不能塞进同一份文件（会互相覆盖 ✗）
+    syms = [x.strip() for x in str(
+        params.get("symbols") or params.get("symbol") or "YINN").split(",")
+        if x.strip()]
     mode = str(params.get("mode") or "self_ene")
     # `ene_pos` 高 = 超买 ⇒ 未来收益低 ⇒ direction=**negative** ✓
     direc = str(params.get("direction") or "negative")
-    steps = [
-        [sys.executable, os.path.join(ROOT, "scripts", "eval_ene.py"),
-         "--dump-features", feat, "--dump-symbol", sym, "--dump-mode", mode],
-        [sys.executable, os.path.join(ROOT, "scripts", "factor_backtest_probe.py"),
-         "--factor", "ene_pos", "--symbol", sym,
-         "--direction", direc, "--features", feat],
-    ]
+    steps, feat_of = [], {}
+    for s in syms:
+        f = base[:-4] + "_%s.csv" % s if base.endswith(".csv") else base + "_" + s
+        feat_of[s] = f
+        steps.append([sys.executable, os.path.join(ROOT, "scripts", "eval_ene.py"),
+                      "--dump-features", f, "--dump-symbol", s,
+                      "--dump-mode", mode])
+        steps.append([sys.executable,
+                      os.path.join(ROOT, "scripts", "factor_backtest_probe.py"),
+                      "--factor", "ene_pos", "--symbol", s,
+                      "--direction", direc, "--features", f])
     out = []
     for cmd in steps:
         try:
@@ -277,10 +286,13 @@ def _act_c5_backtest(params):
             out.append({"cmd": " ".join(cmd[1:]), "rc": -1,
                         "stdout": "", "stderr": "超过 1800 秒"})
             continue
+        # 🔴 probe 判 FAIL 时 **exit 1** ✗ —— 那是**结论**不是崩溃 ✓
+        # ⇒ 不能 break，否则后面的标的全被跳过 ✗
         out.append({"cmd": " ".join(cmd[1:]), "rc": r.returncode,
                     "stdout": (r.stdout or "")[-2000:],
                     "stderr": (r.stderr or "")[-400:]})
     return {"ok": all(x["rc"] == 0 for x in out),
+            "symbols": syms, "features": feat_of,
             "note": "⚠️ 裁判 FAIL 时 probe 会 exit 1 —— 那是**结论**不是崩溃 ✓",
             "steps": out}
 

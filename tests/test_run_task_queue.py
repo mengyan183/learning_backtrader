@@ -488,3 +488,34 @@ def test_clean_sync_partial_rejects_bad_pkg():
     for bad in ("", "..", "a/b", "a b", "*"):
         r = q._act_clean_sync_partial({"pkg": bad})
         assert r["ok"] is False, "非法包名 %r 被放行了 ✗" % bad
+
+
+def test_c5_backtest_dumps_per_symbol_features(monkeypatch, tmp_path):
+    """多标的裁判必须**每个标的各 dump 一份 features** ✓。
+
+    🔴 2026-10-31：`ene_pos` 是**单列** ✗ —— 不同标的的信号塞进同一份
+    features 会互相覆盖 ✗ ⇒ 后面的标的实际用的是前一个的信号 ✗
+    """
+    calls = []
+
+    class _R:
+        returncode = 0
+        stdout = "ok"
+        stderr = ""
+
+    def _fake_run(cmd, **kw):
+        calls.append(cmd)
+        return _R()
+
+    monkeypatch.setattr(q.subprocess, "run", _fake_run)
+
+    res = q.ACTIONS["c5_backtest"]({"symbols": "YINN,GDXU,SPY",
+                                    "features": "evolution/x/features_c5.csv"})
+
+    assert res["symbols"] == ["YINN", "GDXU", "SPY"]
+    # 三份 features 文件名必须**互不相同** ✓
+    feats = list(res["features"].values())
+    assert len(set(feats)) == 3, "features 文件重名 ⇒ 信号会互相覆盖 ✗：%s" % feats
+    assert all(s in f for s, f in res["features"].items())
+    # 每个标的 2 步（dump + probe）⇒ 共 6 次调用
+    assert len(calls) == 6, calls
