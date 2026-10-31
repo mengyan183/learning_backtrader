@@ -258,6 +258,12 @@ def test_task_output_dirs_are_explicit_allowlist():
         assert ".." not in d, "白名单里不能出现上级目录 ✗"
 
 
+def test_fetch_indices_is_registered():
+    """`fetch_indices` 必须在白名单里 ✓ —— 发现 VIX 缺失要能立刻补 ✗。"""
+    assert "fetch_indices" in q.ACTIONS
+    assert callable(q.ACTIONS["fetch_indices"])
+
+
 def test_fetch_fred_is_registered():
     """`fetch_fred` 必须在白名单里 ✓ —— DGS10 至今从未落盘，要能补 ✗。"""
     assert "fetch_fred" in q.ACTIONS

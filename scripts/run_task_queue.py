@@ -225,6 +225,27 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_fetch_indices(params):
+    """补抓 VIX / VIX3M（`fetch.update_indices()`）✓。
+
+    2026-10-31：每日链每天跑这一步，但它**失败就整步抛错** ✗ ——
+    `factor_diag` 只能看到结果，没法触发重抓 ✗
+    ⇒ 加这个动作，用于「发现缺失 → 立刻补 → 再复核」的闭环 ✓。
+    """
+    code = ("from fg_system.data import fetch;"
+            "print(fetch.update_indices())")
+    try:
+        r = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
+                           capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 600 秒未完成"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": (r.stdout or "")[-1200:],
+            "stderr": (r.stderr or "")[-800:]}
+
+
 def _act_fetch_fred(params):
     """抓 FRED 系列 ✓（默认补 **DGS10** —— 它至今从未落盘 ✗）。
 
@@ -738,6 +759,7 @@ ACTIONS = {
     "c1_backtest": _act_c1_backtest,
     "fetch_pe_ratio": _act_fetch_pe_ratio,
     "fetch_fred": _act_fetch_fred,
+    "fetch_indices": _act_fetch_indices,
     "key_diag": _act_key_diag,
     "backtest_plan": _act_backtest_plan,
     "fetch_shoutu_history": _act_fetch_shoutu_history,
