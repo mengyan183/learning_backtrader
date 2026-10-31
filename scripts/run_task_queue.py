@@ -291,10 +291,25 @@ def _act_c5_backtest(params):
         out.append({"cmd": " ".join(cmd[1:]), "rc": r.returncode,
                     "stdout": (r.stdout or "")[-2000:],
                     "stderr": (r.stderr or "")[-400:]})
-    return {"ok": all(x["rc"] == 0 for x in out),
-            "symbols": syms, "features": feat_of,
+    # 🔴 2026-10-31 实测：`ok` 用 `rc == 0` 判会让**整个任务显示 failed** ✗
+    # 而 probe 判 FAIL 时 `exit 1` 是**结论**不是崩溃 ✗
+    # ⇒ 只把「执行异常」（rc not in 0/1）算失败 ✓
+    # 并从 stdout 里抽出每个标的的判定，避免被 2000 字截断看不到 ✓
+    import re as _re
+    verdicts = {}
+    for st in out:
+        m = _re.search(r"symbol (\w+) --direction", str(st.get("cmd")))
+        if not m:
+            continue
+        v = _re.search(r"判定：\*\*(PASS|FAIL)", str(st.get("stdout") or ""))
+        verdicts[m.group(1)] = v.group(1) if v else "?"
+    bad = [x for x in out if x.get("rc") not in (0, 1)]
+    return {"ok": not bad,
+            "symbols": syms, "features": feat_of, "verdicts": verdicts,
+            "n_pass": sum(1 for v in verdicts.values() if v == "PASS"),
+            "n_fail": sum(1 for v in verdicts.values() if v == "FAIL"),
             "note": "⚠️ 裁判 FAIL 时 probe 会 exit 1 —— 那是**结论**不是崩溃 ✓",
-            "steps": out}
+            "errors": bad}
 
 
 def _act_fetch_fred(params):

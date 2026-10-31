@@ -104,6 +104,10 @@ def main(argv=None):
         print("# 已写出研究专用 features：%s（ene_pos 非空 %d 天，标的 %s / 模式 %s）"
               % (p0, int(out0["ene_pos"].notna().sum()),
                  args.dump_symbol, args.dump_mode))
+        # 🔴 2026-10-31：dump 完**直接返回** ✗ ——
+        # 原来 dump 后还会跑完整三变体评测（6 标的 = 多跑 6 遍）✗
+        # ⇒ 任务耗时翻倍、stdout 被截断到 2000 字 ⇒ 结果看不到 ✗
+        return 0
 
     prices = _load_prices()
     out = {}
