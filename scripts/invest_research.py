@@ -295,6 +295,18 @@ def build_snapshot():
     acc = pd.read_csv(DATA / "accounts.csv", parse_dates=["date"])
     acc_latest = acc[acc["date"] == acc["date"].max()]
     snap["accounts"] = {r["account"]: float(r["net_value"]) for _, r in acc_latest.iterrows()}
+    # 🔴 2026-10-31：**现金明细** ✗ —— 简报里「加密净值 2,742 vs BTC 市值 2,318，
+    # 差 425」一直没人能解释（是闲置 USDT？还是借币利息？✗）
+    # `accounts.csv` 本来就有 `securities_mv` / `cash` 两列 ✓ ⇒ 直接给出来 ✓
+    detail = {}
+    for _, r in acc_latest.iterrows():
+        detail[str(r["account"])] = {
+            "net_value": float(r["net_value"]),
+            "securities_mv": float(r["securities_mv"]) if pd.notna(r.get("securities_mv")) else None,
+            "cash": float(r["cash"]) if pd.notna(r.get("cash")) else None,
+            "date": str(r["date"].date()),
+        }
+    snap["accounts_detail"] = detail
 
     # 系统贪恐指数（features.csv 最新有效行）
     feat = pd.read_csv(DATA / "features.csv", parse_dates=["date"])
@@ -388,6 +400,28 @@ def snapshot_text(snap):
         pnl = f"浮盈亏{r['pnl']} ({r['pnl_pct']}%)" if r["pnl"] is not None else "无行情"
         lines.append(f"  {r['symbol']} {r['name']} qty={r['qty']} 成本={r['cost']} 现价={r['last_close']} {pnl} 市值={r['mv']}")
     lines.append(f"账户净值: {snap.get('accounts')}")
+    # 🔴 2026-10-31：把**仓位口径**显式给出 ✗ —— 原来只给净值 dict ⇒
+    # AI 自己挑分母 ✗ ⇒ 两份简报一个算 103.7%（股票净值做分母）、
+    # 一个算 84.9%（总净值）✗ 同一持仓两个数 ✗
+    acc = snap.get("accounts") or {}
+    stock_net = float(acc.get("stock") or 0)
+    total_net = sum(float(v or 0) for v in acc.values())
+    stock_mv = sum(float(r.get("mv") or 0) for r in snap.get("positions", [])
+                   if str(r.get("account")) == "stock")
+    if total_net > 0:
+        lines.append(
+            "仓位口径（**直接引用，不要自己重算**）: "
+            "名义仓位 %.1f%%（分母=总净值 %.0f）· "
+            "股票端仓位 %.1f%%（分母=股票净值 %.0f）"
+            % (stock_mv / total_net * 100, total_net,
+               (stock_mv / stock_net * 100) if stock_net else 0.0, stock_net))
+    # 现金明细（回答「净值比币值多出来的钱是什么」✗）
+    ad = snap.get("accounts_detail") or {}
+    if ad:
+        lines.append("账户明细: " + " · ".join(
+            "%s 净值%.0f（证券%.0f / 现金%.0f，%s）"
+            % (k, v["net_value"], v["securities_mv"] or 0, v["cash"] or 0,
+               v["date"]) for k, v in ad.items()))
     return "\n".join(lines)
 
 
@@ -497,7 +531,23 @@ def stage_attribution(nim_key, snap, kb=None):
 
     kb: 可选检索问题（L3.5）——注入知识库观点作参考上下文，不改判决链。
     """
-    system = "你是量化交易系统的深度归因分析师。基于持仓与盈亏数据，用中文输出结构化归因（≤800字）：逐标的归因（为什么涨/跌、驱动因素）、组合风险点、仓位合理性。只做归因分析，不给交易指令。直接输出最终分析正文，不要输出思考过程。"
+    system = (
+        "你是量化交易系统的深度归因分析师。基于持仓与盈亏数据，"
+        "用中文输出结构化归因（≤800字）：逐标的归因（为什么涨/跌、驱动因素）、"
+        "组合风险点、仓位合理性。只做归因分析，不给交易指令。"
+        "直接输出最终分析正文，不要输出思考过程。\n\n"
+        # 🔴 2026-10-31 用户裁定：**禁止线性折算** ✗
+        # 杠杆 ETF 的累计收益是**逐日复利**的：
+        #   ETF累计 = ∏(1 + L×r_i)  ≠  1 + L×Σr_i
+        # 震荡市里 ETF 跌幅 **大于** 标的跌幅×L（volatility decay）
+        # ⇒ 用「ETF跌幅 ÷ 杠杆倍数」反推标的跌幅会**系统性低估** ✗
+        # （实测：AXTX -82.75% 被折算成「标的仅跌41.4%」✗ 实际更深）
+        "【硬性约束】禁止用「ETF 跌幅 ÷ 杠杆倍数」反推标的跌幅 ✗。"
+        "杠杆 ETF 是逐日复利，震荡市有 volatility decay ⇒ 该折算会"
+        "**系统性低估**标的真实跌幅。需要描述标的时，只说"
+        "「标的期间下跌，杠杆放大且叠加复利损耗」，**不要给出具体折算数字**。"
+        "同理禁止把「ETF 累计涨幅 ÷ 杠杆」当作标的涨幅。"
+    )
     kb_txt = _kb_context(kb) if kb else ""
     user = f"{kb_txt}以下是今日持仓快照：\n{snapshot_text(snap)}\n\n请输出深度归因分析。"
     try:

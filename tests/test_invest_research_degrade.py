@@ -490,3 +490,68 @@ def test_reduce_order_is_written():
     assert order_line.index("AXTX") < order_line.index("YINN"), \
         "AXTX 应该排在 YINN 前面 ✗（实际顺序反了）"
     assert "BTC" not in order_line, "盈利仓不该进减仓顺序 ✗"
+
+
+def test_snapshot_gives_explicit_position_ratio():
+    """快照必须**显式给出仓位口径** ✓ —— 否则 AI 自己挑分母 ✗。
+
+    2026-10-31 实测：同一份持仓，两份简报一个算「名义仓位 103.7%」
+    （分母=股票净值）、一个算「84.9%」（分母=总净值）✗ 数字对不上 ✗
+    """
+    m = _load()
+    snap = {
+        "positions": [
+            {"symbol": "YINN", "account": "stock", "mv": 3531.0,
+             "name": "x", "qty": 1, "cost": 26.82, "last_close": 22.49,
+             "pnl": -679.81, "pnl_pct": -16.14},
+        ],
+        "accounts": {"stock": 9584.6, "crypto": 2742.3},
+    }
+
+    txt = m.snapshot_text(snap)
+
+    assert "仓位口径" in txt, "没给仓位口径 ✗"
+    # 名义仓位 = 3531 / (9584.6+2742.3) = 28.6%
+    assert "28.6%" in txt, txt
+    # 股票端 = 3531 / 9584.6 = 36.8%
+    assert "36.8%" in txt, txt
+
+
+def test_snapshot_shows_cash_detail():
+    """快照要给出**现金明细** ✓ —— 解释「净值比币值多出来的钱」✗。
+
+    2026-10-31：加密净值 2,742 vs BTC 市值 2,318，差 425 一直没人能解释 ✗
+    `accounts.csv` 本来就有 `securities_mv` / `cash` 两列 ✓。
+    """
+    m = _load()
+    snap = {
+        "positions": [],
+        "accounts": {"stock": 9584.6, "crypto": 2742.3},
+        "accounts_detail": {
+            "crypto": {"net_value": 2742.3, "securities_mv": 2318.0,
+                       "cash": 424.3, "date": "2026-10-30"},
+        },
+    }
+
+    txt = m.snapshot_text(snap)
+
+    assert "账户明细" in txt
+    assert "现金424" in txt, txt
+    assert "证券2318" in txt, txt
+
+
+def test_attribution_prompt_forbids_linear_scaling():
+    """归因 prompt 必须**禁止线性折算** ✓（2026-10-31 用户裁定）。
+
+    杠杆 ETF 是逐日复利：ETF累计 = ∏(1+L×r_i) ≠ 1 + L×Σr_i
+    震荡市有 volatility decay ⇒ 「ETF跌幅÷杠杆」会**系统性低估**标的跌幅 ✗
+    （实测：AXTX -82.75% 被折算成「标的仅跌41.4%」✗）
+    """
+    import io
+    import os
+
+    from fg_system import config
+    src = io.open(os.path.join(config.ROOT, "scripts", "invest_research.py"),
+                  encoding="utf-8").read()
+    assert "禁止用「ETF 跌幅 ÷ 杠杆倍数」反推标的跌幅" in src
+    assert "系统性低估" in src
