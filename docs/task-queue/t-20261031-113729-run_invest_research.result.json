@@ -1,0 +1,13 @@
+{
+  "id": "t-20261031-113729-run_invest_research",
+  "action": "run_invest_research",
+  "params": {
+    "push": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"push\": true, \"stdout\": \"[warn] GDXU 合成：2/2538 天因腿缺失被剔除（腿 = GDX / GDXJ）\\n2026-10-31 14:45:37,376 | 34522 | 123145534906368 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7522187004512061832(1) context=<futu.quote.open_quote_context.OpenQuoteContext object at 0x7fe14794af20>\\n[news] 覆盖 6/6 标的；大盘有\\n2026-10-31 14:45:38,060 | 34522 | 123145603137536 | [open_context_base.py:521] on_disconnect: Disconnected: conn=0(1) reason=CallClose\\n简报已写入: /Users/xingguo/learning_backtrader/Data/invest_brief_2026-10-30.md\\n[verify] 简报检查: 通过 (fail=0 warn=0)\\n[decision-log] 已追加: /Users/xingguo/learning_backtrader/docs/decision-log.md\\n[archive] 归档 0 份，工作区活跃 4 份，索引 /Users/xingguo/learning_backtrader/Data/briefs/index.md\\n飞书富文本推送: 成功\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-10-31T14:45:35",
+  "finished_at": "2026-10-31T14:46:51",
+  "duration_s": 76.2
+}
