@@ -89,11 +89,34 @@ def _metrics(ret, pos):
     }
 
 
-def _run(close, pos, ratio):
-    """按 `仓位 = 1 − pos×ratio` 回测 ✓。"""
+def _run(close, pos, ratio, trend_filter=False, ma_n=200):
+    """按 `仓位 = 1 − pos×ratio` 回测 ✓。
+
+    :param trend_filter: **趋势过滤** ✓（2026-11-02 用户裁定）
+        🔴 为什么需要：F-018 / F-020 都只在「标的本身在跌」时有效 ✗
+           （YINN -23.56%→-11.43% ✓、CONL -44.03%→-23.35% ✓）
+           而在盈利标的上减仓是净损失 ✗
+           （SPY +13.75%→+7.76%、GDXU +54.09%→+32.38% ✗）
+        ⇒ 加一层「**只在均线之下才允许减仓**」的门 ✓
+           均线之上 ⇒ 强制满仓（不因因子信号减仓）✓
+           均线之下 ⇒ 按因子信号减仓 ✓
+        ⇒ 这样「上涨时不少赚、下跌时才减仓」✓
+    """
     p = pos.reindex(close.index).ffill()
     r = close.pct_change()
-    w = (1.0 - p * ratio).clip(0.0, 1.0).shift(1)     # T → T+1 ✓
+    w = (1.0 - p * ratio).clip(0.0, 1.0)
+    if trend_filter:
+        ma = close.rolling(ma_n, min_periods=ma_n).mean()
+        # 均线之上 ⇒ 仓位强制 1.0（不减仓）✓；之下 ⇒ 用因子仓位 ✓
+        above = (close > ma).reindex(close.index).fillna(False)
+        # 🔴 2026-11-02 踩坑：`w.where(~above, 1.0)` 会把**原本 NaN** 的仓位
+        # 也填成 1.0 ✗ —— `where` 只按条件选值，不管原值是否缺失 ✗
+        # 实测 GDXU：无过滤 n_days=695，有过滤 **796**（多 101 天 ✗）
+        # ⇒ 那 101 天是 `pos` 的 252 日分位窗预热期（本无信号 ✗）
+        # ⇒ 被当成「满仓」计入年化 ⇒ B0 从 +54.09% 掉到 +7.86% ✗ 假象 ✗
+        # ⇒ 用 `mask(above & w.notna(), 1.0)`：**只在有信号处**强制满仓 ✓
+        w = w.mask(above & w.notna(), 1.0)
+    w = w.shift(1)                                    # T → T+1 ✓
     turn = w.diff().abs().fillna(0.0)
     ret = w * r - turn * COST
     return _metrics(ret, w)
@@ -104,16 +127,24 @@ def _signal(prices, sym, factor):
     if factor == "ene":
         from fg_system.factors import ene as fene
         return fene.ene_pos(prices, sym)
-    if factor == "f020":
-        # `P/C > 1.2` ⇒ 极恐 ⇒ **危险**（该减仓）✓
-        # ⚠️ 注意：作为「择时信号」它是逆向（极恐→看多）✗
-        #    但作为「减仓触发」它是**正向**（极恐→减仓保命）✓
-        #    这两个用途方向相反，别混 ✗
+    if factor in ("f020", "f020_pct"):
+        # ⚠️ 两个用途方向相反，别混 ✗：
+        #   ① 作「择时信号」：P/C 高 = 极恐 = 逆向看多 ✗
+        #   ② 作「减仓触发」：P/C 高 = 极恐 = **该减仓保命** ✓
+        # 本脚本是 ② ⇒ 返回「危险度」（1 = 最危险 = 最该减仓）✓
         d = pd.read_csv(DATA / "raw" / "putcall.csv", parse_dates=["date"])
         s = d.set_index("date")["total_ratio"].astype(float)
         s = s[~s.index.duplicated(keep="last")].sort_index()
-        return (s > 1.2).astype(float)
-    raise SystemExit("未知 factor：%s（支持 ene / f020）" % factor)
+        if factor == "f020":
+            # 二进制：`P/C > 1.2` ✗ 触发仅 1.7% ⇒ 平均仓位 99% ⇒ 无效 ✗
+            return (s > 1.2).astype(float)
+        # 🔴 2026-11-02 用户裁定：改**连续信号** ✓ —— P/C 的滚动分位
+        # 理由：二进制信号太稀疏（1.7%）⇒ 减仓触发几乎不改变仓位 ✗
+        #      而 F-018 ENE 之所以有效，正因为 `pos` 是**连续 0~1** ✓
+        # 分位窗 252 日（约 1 年）✓ —— P/C 无长期漂移，1 年足够 ✓
+        return s.rolling(252, min_periods=120).apply(
+            lambda x: (x.iloc[-1] >= x).mean(), raw=False)
+    raise SystemExit("未知 factor：%s（支持 ene / f020 / f020_pct）" % factor)
 
 
 def main(argv=None):
@@ -121,6 +152,8 @@ def main(argv=None):
     ap.add_argument("--factor", default="ene", help="ene / f020")
     ap.add_argument("--symbols", default=",".join(DEFAULT_SYMBOLS))
     ap.add_argument("--json", metavar="PATH", help="把结果写到 JSON")
+    ap.add_argument("--trend-filter", action="store_true",
+                    help="只在 MA200 之下才允许减仓（均线之上强制满仓）✓")
     args = ap.parse_args(argv)
 
     syms = [x.strip() for x in args.symbols.split(",") if x.strip()]
@@ -148,13 +181,14 @@ def main(argv=None):
             print("## %s —— 无信号，跳过" % sym)
             continue
 
-        print("## %s（%s → %s，%d 天）"
-              % (sym, close.index[0].date(), close.index[-1].date(), len(close)))
+        print("## %s（%s → %s，%d 天）%s"
+              % (sym, close.index[0].date(), close.index[-1].date(), len(close),
+                 "  [趋势过滤 MA200]" if args.trend_filter else ""))
         print("| ratio | 年化 | 回撤 | Sharpe | Calmar | 平均仓位 |")
         print("|---|---|---|---|---|---|")
         out[sym] = {}
         for ratio in RATIOS:
-            m = _run(close, sig, ratio)
+            m = _run(close, sig, ratio, trend_filter=args.trend_filter)
             if not m:
                 continue
             tag = "B0" if ratio == 0 else "减仓%.0f%%" % (ratio * 100)
