@@ -28,8 +28,9 @@ from fg_system.factors import report as frep  # noqa: E402
 from fg_system.factors import credit_spread as cs  # noqa: E402
 
 DATA = REPO / "Data"
-HORIZONS = (5, 10, 20, 40)
-WINDOW = 60
+#: 统一取自 `fg_system.factors.report` ✓（2026-11-02 工程加固）
+HORIZONS = frep.HORIZONS_DAILY
+WINDOW = frep.WINDOW
 AVAIL_CSV = "Data/raw/fred_baa10y_avail.csv"
 #: 正交化后至少要剩这么多天才值得评测 ✓（screen 要求每个 horizon n≥60，
 #: 再留点余量给滚动 IC 窗）✗

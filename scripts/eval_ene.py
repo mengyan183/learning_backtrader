@@ -41,8 +41,9 @@ from fg_system.factors import protocol as fproto
 from fg_system.factors import report as frep    # noqa: E402
 
 DATA = REPO / "Data"
-HORIZONS = (5, 10, 20, 40)
-WINDOW = 60
+#: 统一取自 `fg_system.factors.report` ✓（2026-11-02 工程加固）
+HORIZONS = frep.HORIZONS_DAILY
+WINDOW = frep.WINDOW
 
 #: 评测组合：`(交易标的, 变体 mode, 说明)` ✓
 COMBOS = (

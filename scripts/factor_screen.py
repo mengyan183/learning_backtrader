@@ -42,9 +42,11 @@ EVO = REPO / "evolution"
 
 from fg_system import config  # noqa: E402
 from fg_system.factors import eval as feval  # noqa: E402
-from fg_system.factors import protocol as fproto  # noqa: E402
+from fg_system.factors import protocol as fproto
+from fg_system.factors import report as frep  # noqa: E402
 
-HORIZONS = (5, 10, 20, 40)
+#: 统一取自 `fg_system.factors.report` ✓（2026-11-02 工程加固）
+HORIZONS = frep.HORIZONS_DAILY
 WINDOW = 60
 N_BUCKETS = 5
 FEE = fproto.DEFAULT_FEE
