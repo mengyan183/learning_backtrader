@@ -24,6 +24,7 @@ BTC 持仓现价回退源：OKX REST(走 7890 代理)；FG_STATIC_ONLY=1 时跳�
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -683,16 +684,33 @@ def fetch_news(snap):
     try:
         from futu import OpenQuoteContext
         q = OpenQuoteContext(host="127.0.0.1", port=11111)
-        mkt_ret, mkt = q.get_search_news("US stock market", max_count=3)
+        # 🔴 2026-11-02 实测：`"US stock market"` 返回的是**港股**新闻 ✗
+        # （富途是中文源，英文检索词会落到港股板块 ✗）
+        # ⇒ 改中文检索词 + **实体过滤**（标题须含美股相关词）✓
+        mkt_ret, mkt = q.get_search_news("美股", max_count=6)
         if mkt_ret == 0 and len(mkt):
-            out["_market"] = [str(t).strip() for t in mkt["title"].tolist()[:3]]
+            _MKT_ENTS = ("美股", "标普", "S&P", "纳斯达克", "纳指", "道指",
+                         "三大股", "费半", "美国", "美债")
+            out["_market"] = [
+                str(t).strip() for t in mkt["title"].tolist()
+                if any(e in str(t) for e in _MKT_ENTS)][:3]
         for r in snap["positions"]:
             sym = r["symbol"].replace("-USDT", "")
             kw = {"BTC": "比特币", "ETH": "以太坊"}.get(sym, sym)
-            ret, data = q.get_search_news(kw, max_count=2)
+            ret, data = q.get_search_news(kw, max_count=4)
             if ret == 0 and len(data):
-                out[sym] = [str(t).strip() for t in data["title"].tolist()[:2]]
-            else:
+                # 🔴 2026-11-02 实测：`CONL` 会匹配到 `ONL`（Orion Office
+                # REIT）✗ —— 富途是**模糊检索**，子串命中就算 ✓
+                # ⇒ 标题必须含**该标的代码**（词边界）✓
+                _pat = re.compile(r"\b%s\b" % re.escape(sym), re.I)
+                _kept = [str(t).strip() for t in data["title"].tolist()
+                         if _pat.search(str(t))]
+                if _kept:
+                    out[sym] = _kept[:2]
+                else:
+                    print("[news] %s 检索结果全部不含代码，已过滤 ✗（原 %d 条）"
+                          % (sym, len(data)))
+            if sym not in out:
                 # 🔴 2026-10-31：富途返回空也要**留痕** ✗ ——
                 # 原来静默跳过，简报里少几组新闻没人知道为什么 ✗
                 print("[news] 富途无结果：%s（kw=%s, ret=%s, n=%s）"
@@ -787,9 +805,16 @@ def build_snapshot_lines(snap):
         parts = []
         for k, v in ad.items():
             seg = "%s 净值%.0f" % (k, v["net_value"])
-            if v.get("securities_mv") is not None:
-                seg += "（证券%.0f / 现金%.0f）" % (v["securities_mv"],
-                                                   v.get("cash") or 0)
+            # 🔴 2026-11-02 实测：crypto 账户的 `securities_mv` 是**空** ✗
+            # （`accounts.csv` 里该列留空，只有 `cash` 有值 ✗）
+            # 原逻辑「securities_mv 非空才显示」⇒ **整段明细被跳过** ✗
+            # （简报只出现 `crypto 净值2792`，看不到现金 ✗）
+            # ⇒ 改成「任一项有值就显示」，缺的那项打 `—` ✓
+            _mv, _cash = v.get("securities_mv"), v.get("cash")
+            if _mv is not None or _cash is not None:
+                seg += "（证券%s / 现金%s）" % (
+                    "—" if _mv is None else "%.0f" % _mv,
+                    "—" if _cash is None else "%.0f" % _cash)
             parts.append(seg)
         out.append("账户明细: " + " · ".join(parts))
     # 有效名义敞口（含杠杆）✓ —— 名义仓位会被杠杆倍数掩盖 ✗
