@@ -925,10 +925,12 @@ def action_brief_text(snap):
     #   （年化 13.76% → 7.46% ✗）⇒ 非杠杆标的**不参与** ✓
     # ⚠️ 只显示**触发中**的标的（pos>0.8 超买 / pos<0.2 超卖）✓
     #   中间区不显示，避免 6 行噪音 ✗
+    # ⚠️ 必须放在**逐标的行之后** ✗ ——
+    # 2026-11-02 实测：塞进 `head` 会让 ENE 段跑到逐标的行**前面** ✗
+    # （`head + "\n" + out` 的顺序决定的 ✗）
     ene_line = _ene_reduce_line(snap)
-    if ene_line:
-        head += "\n" + ene_line
-    return head + "\n" + "\n".join(out)
+    tail = ("\n" + ene_line) if ene_line else ""
+    return head + "\n" + "\n".join(out) + tail
 
 
 #: ENE 减仓比例 ✓ —— 2026-11-02 扫描 + 分段验证后的选定值

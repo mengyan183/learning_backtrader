@@ -653,3 +653,26 @@ def test_ene_reduce_line_formula():
     assert abs((1.0 - 0.8 * m.ENE_RATIO) - 0.36) < 1e-9
     # 中间区（0.5）不应触发
     assert not (0.5 >= m.ENE_HIGH or 0.5 <= m.ENE_LOW)
+
+
+def test_ene_line_is_after_per_symbol_rows():
+    """ENE 段必须在**逐标的行之后** ✓（2026-11-02 实测的显示顺序问题）。
+
+    原实现把 `ene_line` 拼进 `head`，而返回是 `head + "\n" + out`
+    ⇒ ENE 段跑到逐标的行**前面** ✗ —— 读起来像「ENE 结论 → 逐标的」✗
+    正确顺序：说明 → 逐标的 → 减仓顺序 → **ENE 触发** ✓
+    """
+    m = _load()
+    snap = {
+        "accounts": {"stock": 9584.6},
+        "positions": [{"symbol": "CONL", "mv": 1939, "pnl_pct": -40.78,
+                       "risk_limit": 350, "risk_over": True}],
+        "shoutu": {"CONL": -89},
+    }
+    txt = m.action_brief_text(snap) or ""
+    if "ENE 减仓触发" not in txt:
+        pytest.skip("当前数据下 CONL 未触发 ENE（pos 在中间区）")
+
+    i_ene = txt.index("ENE 减仓触发")
+    i_row = txt.index("· CONL 市值")
+    assert i_row < i_ene, "ENE 段跑到了逐标的行前面 ✗"
