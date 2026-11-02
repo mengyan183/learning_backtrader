@@ -1,0 +1,14 @@
+{
+  "id": "t-20261102-191203-f_factor_backtest",
+  "action": "f_factor_backtest",
+  "params": {
+    "factor": "f012_term",
+    "direction": "positive"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"factor\": \"f012_term\", \"direction\": \"positive\", \"symbol\": \"SPY\", \"note\": \"⚠️ 裁判 FAIL 时 probe 会 exit 1 —— 那是**结论**不是崩溃 ✓\", \"steps\": [{\"cmd\": \"/Users/xingguo/learning_backtrader/scripts/eval_f020.py --dump-features evolution/experiments/factor-adoption/features_f012f020.csv\", \"rc\": 0, \"stdout\": \"# 已写出研究专用 features：/Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/features_f012f020.csv\\n   f012_term 非空 2538 天\\n   f020_pc 非空 2538 天\\n\", \"stderr\": \"\"}, {\"cmd\": \"/Users/xingguo/learning_backtrader/scripts/factor_backtest_probe.py --factor f012_term --symbol SPY --direction positive --features evolution/experiments/factor-adoption/features_f012f020.csv\", \"rc\": 1, \"stdout\": \"# 回测裁判：f012_term（positive）→ SPY OOS\\n\\n- 生成：2026-11-02 19:13 · scripts/factor_backtest_probe.py\\n- 口径：因子 756 日滚动分位 → 仓位 0.2~1.0 线性映射（无参数先验）；T 信号 shift(1) → T+1 生效；换仓成本 0.0008/单位换手；OOS 起 2024-10-04（519 日）\\n- 判定：**FAIL（OOS 未优于 B0，不采纳候选入生产）**\\n\\n| 指标 | 策略（OOS） | B0 买入持有 | 样本内 |\\n|---|---|---|---|\\n| OOS 年化 | 7.09% | 14.89% | 4.58% |\\n| 最大回撤 | -17.8% | -19.0% | -21.3% |\\n| Sharpe | 0.54 | 0.91 | 0.36 |\\n| Calmar | 0.40 | 0.78 | 0.22 |\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/f012_term-SPY-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/f012_term-SPY-oos.json\\n\", \"stderr\": \"\"}]}",
+  "started_at": "2026-11-02T19:13:25",
+  "finished_at": "2026-11-02T19:13:27",
+  "duration_s": 2.18
+}
