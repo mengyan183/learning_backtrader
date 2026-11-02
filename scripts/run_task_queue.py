@@ -846,8 +846,12 @@ NEEDS_TID = {"install_daily_plist"}
 #:   ② 而**行为开关**（`FG_SYNC_MODE`）又因为没在 plist 里而丢失 ✗
 #:      ⇒ `sync_positions` 跑成 static、什么都没验证 ✗
 #: ⇒ 改成「**白名单 + 每动作声明**」✓
+#: ⚠️ 只放**无害**的基础项 ✗ —— 绝不放密钥/凭据 ✓
+#: （2026-11-02：`HOME` 缺失让富途 SDK 崩过 ✗ ⇒ 一次补全常见项，
+#:   避免「报一个补一个」的往返 ✗）
 _BASE_ENV = ("PATH", "HOME", "LANG", "LC_ALL", "TZ", "TMPDIR", "PYTHONPATH",
-             "SYSTEMROOT", "TEMP", "TMP", "USERPROFILE")
+             "SYSTEMROOT", "TEMP", "TMP", "USERPROFILE",
+             "USER", "LOGNAME", "SHELL", "TERM", "SSH_AUTH_SOCK")
 
 #: 每个动作**额外**可见的环境变量 ✓
 #: 值可以是 `set`（按名取 `os.environ`）或 `dict`（显式注入/覆盖）✓
