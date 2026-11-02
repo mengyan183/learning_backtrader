@@ -252,34 +252,37 @@ def test_patch_falls_back_when_base_missing(monkeypatch, tmp_path, repo_file, ca
 
 # ------------------------------------------------- 4) 新增文件 → 走「新增文件 diff」（不回落）
 
-def test_patch_new_file_in_mixed_package(monkeypatch, tmp_path, repo_file):
-    """改一个文件 + 加一个文件 ⇒ **都是 patch**（新文件用 `new file mode` ✓），不回落 ✗。
+def test_patch_new_file_falls_back_to_whole_file(monkeypatch, tmp_path,
+                                                repo_file):
+    """改一个文件 + 加一个文件 ⇒ **必须回落整文件** ✓（2026-11-02 用户裁定）。
 
-    2026-10-19 修：原来「基准里没有 ⇒ 回落整文件」✗ ⇒ 只要带一个新文件，
-    整包就退化成整文件（实测 40 片 ✗）⇒ 改为生成 git 的 `--- /dev/null` 形式 ✓。
+    🔴 事故背景（`sync_1028gv` / `sync_1028gw`）：
+       旧实现对新文件生成 `new file mode 100644` 的 diff ✓ 看似正确，
+       但 **Mac 端 apply 不认** ✗ ⇒ `gv` 静默失败（新增的
+       `scripts/factor_reduce_probe.py` 没落地 ✗），
+       接着 `gw` 的 patch 找不到目标文件 ⇒ **连带失败** ✗
+       ⇒ 裁定：新文件一律走整文件模式 ✓（代价是片数变多 ✗ 但能入库 ✓）
+
+    （旧测试名 `test_patch_new_file_in_mixed_package`，断言「不回落 ✗」，
+      已作废 ✗）
     """
     rel_new = repo_file("dist/_tmp_packmany_new.txt", "brand new\n")
     rel_old = repo_file("dist/_tmp_packmany_old.txt", "old base\n")
 
     def fake_base(r, ref):
         if r == rel_old:
-            return "old base（旧）\n"      # 与工作区内容不同 ⇒ 有真实 hunk ✓
-        return None          # 新增文件：基准里没有
+            return "old base（旧）\n"      # 与工作区不同 ⇒ 有真实 hunk ✓
+        return None                        # 新增文件：基准里没有
 
     monkeypatch.setattr(pm, "_base_text", fake_base)
     monkeypatch.setattr(pm, "_in_base", lambda r, ref: r == rel_old)
 
-    # 直接断言 payload（不走 main：小文件会被「diff 是否更小」闸门回落 ✗，与本测无关 ✓）
     payload, reasons = pm._patch_payload([rel_old, rel_new], "origin/main")
-    assert reasons == []
-    diff = payload.decode("utf-8")
-    assert "new file mode 100644" in diff
-    assert "--- /dev/null" in diff and "+++ b/%s" % rel_new in diff
-    assert "+brand new" in diff
-    assert "--- a/%s" % rel_old in diff      # 改动的文件仍是普通 hunk ✓
+    assert payload is None, "有新文件 ⇒ 必须回落整文件 ✗"
+    assert any("新文件" in r for r in reasons), \
+        "回落原因里必须**明确**写「新文件」✗（别静默 ✗）"
 
 
-# ---------------------------------------------------------------- 5) 回落时不得静默
 
 def test_fallback_never_silent(monkeypatch, tmp_path, repo_file, capsys):
     """硬约束②：回落**绝不静默** —— 必须打印原因（此处断言 markers 齐全）。"""
@@ -291,19 +294,6 @@ def test_fallback_never_silent(monkeypatch, tmp_path, repo_file, capsys):
     assert "⚠️" in out and "已回落为整文件打包" in out
 
 
-def test_patch_new_file_uses_dev_null(tmp_path, repo_file):
-    """基准里没有的文件 ⇒ 生成 `new file mode` + `--- /dev/null` ✓，且**不回落** ✗。"""
-    rel = repo_file("dist/_tmp_packmany_new.md", "新文件第一行\n第二行\n")
-    payload, reasons = pm._patch_payload([rel], "origin/main")
-    assert reasons == []
-    diff = payload.decode("utf-8")
-    assert diff.startswith("diff --git a/%s b/%s\nnew file mode 100644\n"
-                           % (rel, rel))
-    assert "\n--- /dev/null\n+++ b/%s\n" % rel in diff
-    assert "+新文件第一行" in diff
-
-
-# ------------------- 6) `+N/-M` 统计 + 「删除行」告警（2026-10-19，护栏）
 
 def test_patch_prints_add_del_counts(monkeypatch, capsys, repo_file):
     """护栏①：`--patch` 必须逐文件打印 `+N/-M`（打包前可核对本地是否旧于 origin）。

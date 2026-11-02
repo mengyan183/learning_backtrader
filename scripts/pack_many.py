@@ -218,15 +218,15 @@ def _patch_payload(srcs, base_ref):
                    encoding="utf-8", errors="replace").read()
         base = _base_text(rel, base_ref)
         if base is None and not _in_base(rel, base_ref):
-            # **新文件**（基准里没有）⇒ 生成 git 的「新增文件」diff ✓
-            # 不回落 ✗：新文件本来就无基准 ✓，回落会让整包退化成整文件（片数暴涨 ✗）
-            diff = "".join(difflib.unified_diff(
-                [], cur.splitlines(True), fromfile="/dev/null", tofile="b/" + rel))
-            header = "diff --git a/%s b/%s\nnew file mode 100644\n" % (rel, rel)
-            new = _git_hash_blob(cur.encode("utf-8"))
-            if new:
-                header += "index 0000000..%s\n" % new
-            chunks.append(header + diff)
+            # 🔴 2026-11-02 实测事故（`sync_1028gv` / `sync_1028gw`）：
+            #   新文件生成 `new file mode 100644` 的 diff 看似正确 ✓
+            #   但 **Mac 端 apply 不认** ✗ —— `gv` 静默失败（新增
+            #   `scripts/factor_reduce_probe.py` 没落地 ✗），
+            #   接着 `gw` 的 patch 找不到目标文件 ⇒ 连带失败 ✗
+            #   ⇒ 用户裁定：**新文件一律走整文件模式** ✓
+            #   代价是片数变多 ✗（整文件比 diff 大），但**能入库**才是第一位的 ✓
+            reasons.append("%s：**新文件**（%s 里没有）⇒ 必须走整文件模式 ✓"
+                           % (rel, base_ref))
             continue
         if base is None:
             reasons.append("%s：拿不到基准（%s 不存在 / 非 git 仓库 / 无代理）"
