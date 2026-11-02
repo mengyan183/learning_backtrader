@@ -789,3 +789,19 @@ def test_news_entity_filter_handles_cjk():
     conl = mk(("CONL",))
     assert not conl.search("猎户座办公 REIT 亏损 ONL"), "ONL 被误匹配 ✗"
     assert conl.search("每周ETF变动者中有SOXS、CONL和NVDX"), "正样本被误杀 ✗"
+
+
+def test_judge_must_cover_all_losers():
+    """裁判 prompt 必须要求**点名全部浮亏持仓** ✓（2026-11-02 实测）。
+
+    问题：裁判说「优先砍 GDXU、CRCG 和 CONL」✗
+    而 AXTX 浮亏 -82%、占亏损 40.5%、按「浮亏×杠杆」排第一 ✗
+    ⇒ 它因为「AXTX 权重已缩到 6%」就跳过了 ✗
+
+    ⇒ prompt 必须禁止「因权重小跳过」✗
+    """
+    src = _src()
+    assert "必须点名全部浮亏持仓" in src
+    assert "禁止" in src and "权重已经很小" in src
+    # 必须说明「权重小是深亏的结果」
+    assert "权重小恰恰是深亏的结果" in src

@@ -313,6 +313,31 @@ def _okx_request(creds, path):
     return json.loads(r.stdout or "{}")
 
 
+def _okx_split_equity(data):
+    """OKX `/account/balance` 的 `data[0]` ⇒ `(证券市值, 现金)` ✓（2026-11-02）。
+
+    `totalEq` 只是一个总数 ✗ —— 简报里「加密净值 vs BTC 市值差 448」
+    之所以解释不了，就是因为没拆开 ✗
+    `details[]` 有每个币种的 `eq` ✓
+    ⇒ 证券市值 = 非 USDT 币种 eq 之和；现金 = USDT 的 eq ✓
+
+    :returns: `(sec_mv, cash)`；解析不出 ⇒ `(nan, None)`（调用方保留原值 ✓）
+    """
+    try:
+        det = data.get("details") or []
+        usdt_eq = None
+        others = 0.0
+        for d in det:
+            eq = _f(d.get("eq"), 0.0)
+            if str(d.get("ccy") or "").upper() == "USDT":
+                usdt_eq = eq
+            else:
+                others += eq
+        return round(others, 2), (None if usdt_eq is None else round(usdt_eq, 2))
+    except Exception:                       # noqa: BLE001 —— 解析失败不拖死链 ✓
+        return float("nan"), None
+
+
 def sync_okx(accounts, positions, date):
     """OKX REST → 加密账户快照行。凭据缺失/网络失败时打印提示并跳过。"""
     creds = _okx_creds()
@@ -338,8 +363,18 @@ def sync_okx(accounts, positions, date):
         return accounts, positions
     cash_raw = data.get("cash")
     cash = _f(cash_raw, None) if cash_raw not in (None, "") else float("nan")
-    accounts.loc[len(accounts)] = [date, "crypto", round(total_eq, 2), "", round(cash, 2),
-                                   "", "", "USDT", _tag_date_basis("OKX 动态同步", date)]
+    # 🔴 2026-11-02：`securities_mv` 原来写死**空串** ✗、`cash` 常为 **NaN** ✗
+    # ⇒ 简报里「加密净值 2,792 vs BTC 市值 2,344，差 448」永远解释不了 ✗
+    # OKX `/account/balance` 的 `details[]` 里有每个币种的 `eq` ✓
+    # ⇒ 证券市值 = 非 USDT 币种 eq 之和；现金 = USDT 的 eq ✓
+    sec_mv, cash_from_details = _okx_split_equity(data)
+    if cash_from_details is not None:
+        cash = cash_from_details
+    accounts.loc[len(accounts)] = [
+        date, "crypto", round(total_eq, 2),
+        ("" if sec_mv != sec_mv else round(sec_mv, 2)),
+        round(cash, 2),
+        "", "", "USDT", _tag_date_basis("OKX 动态同步", date)]
 
     try:
         poss = _okx_request(creds, "/api/v5/account/positions")
