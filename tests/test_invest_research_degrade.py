@@ -12,13 +12,22 @@
 守卫把已有的降级能力废掉了 ✗，而且只 print 一行到日志 ⇒ 用户完全无感 ✗。
 """
 import importlib.util
+import io
 import os
 import sys
 import types
 
+import pytest
+
 from fg_system import config
 
 _SPEC = os.path.join(config.ROOT, "scripts", "invest_research.py")
+
+
+def _src():
+    """读 `scripts/invest_research.py` 源码 ✓（断言文案/分支用）。"""
+    return io.open(os.path.join(config.ROOT, "scripts", "invest_research.py"),
+                   encoding="utf-8").read()
 
 
 def _load():
@@ -644,15 +653,35 @@ def test_ene_reduce_line_skips_non_leveraged(monkeypatch):
     assert m._ene_reduce_line(snap) is None, "非杠杆标的被误纳入了 ✗"
 
 
-def test_ene_reduce_line_formula():
-    """触发时仓位 = `1 − pos × 0.8` ✓；未触发（中间区）不显示 ✓。"""
+def test_ene_line_only_shows_overbought():
+    """ENE 段**只显示超买** ✓，超卖一律不显示 ✗（2026-11-02 用户裁定）。
+
+    原因：超卖时的「可持有」与 1% 风控「减仓至上限」**直接相反** ✗
+    且无增量信息 ⇒ 整段会变成「劝你别减」✗ 最危险 ✗
+    """
     m = _load()
-    # pos=1.0 ⇒ 1 − 0.8 = 20%
-    assert abs((1.0 - 1.0 * m.ENE_RATIO) - 0.2) < 1e-9
-    # pos=0.8 ⇒ 1 − 0.64 = 36%
-    assert abs((1.0 - 0.8 * m.ENE_RATIO) - 0.36) < 1e-9
-    # 中间区（0.5）不应触发
-    assert not (0.5 >= m.ENE_HIGH or 0.5 <= m.ENE_LOW)
+    assert m.ENE_HIGH == 0.8
+    assert "超卖 ⇒ 均值回归视角可持有" not in _src(), \
+        "「超卖可持有」分支又回来了 ✗（会与 1% 风控打架）"
+
+
+def test_ene_line_has_no_position_percent():
+    """ENE 段**不给具体仓位百分比** ✓（2026-11-02 用户裁定）。
+
+    原来给「建议减至 32% 仓位」，与 1% 规则的「减至上限 338」是两个不同的
+    数 ✗ 放一起让人不知道听谁 ✗ ⇒ 改成只给方向 ✓
+    """
+    src = _src()
+    assert "建议减至" not in src, "又给出具体仓位百分比了 ✗"
+    assert "支持减仓" in src, "缺少「支持减仓」的方向提示 ✗"
+
+
+def test_ene_line_summarizes_when_all_overbought():
+    """3 个及以上超买 ⇒ **压成一行汇总** ✓（2026-11-02 用户裁定）。
+
+    否则 5 个标的全超买会变成 5 行同义重复 ✗
+    """
+    assert "全部超买" in _src(), "缺少全超买汇总分支 ✗"
 
 
 def test_ene_line_is_after_per_symbol_rows():
@@ -676,3 +705,50 @@ def test_ene_line_is_after_per_symbol_rows():
     i_ene = txt.index("ENE 减仓触发")
     i_row = txt.index("· CONL 市值")
     assert i_row < i_ene, "ENE 段跑到了逐标的行前面 ✗"
+
+
+def test_ene_line_behaviour(monkeypatch):
+    """ENE 段三种场景（2026-11-02 用户裁定）✓：
+
+    ① 3+ 超买 ⇒ **压成一行汇总**（否则 5 行同义重复 ✗）
+    ② 1~2 超买 ⇒ 逐条
+    ③ 0 超买 ⇒ **整段不显示**（超卖一律不提 ✗ 会与 1% 风控打架）
+    """
+    import pandas as pd
+
+    from fg_system.factors import ene as real_ene
+
+    m = _load()
+    pos = {}
+
+    def _fake(_p, sym, **_kw):
+        return pd.Series([pos.get(sym, 0.5)] * 5,
+                         index=pd.date_range("2026-01-01", periods=5))
+
+    monkeypatch.setattr(real_ene, "ene_pos", _fake)
+    snap = {"positions": [{"symbol": s} for s in
+                          ("YINN", "GDXU", "CRCG", "CONL", "AXTX")]}
+
+    # ① 3 个超买 ⇒ 汇总
+    pos.update({"YINN": 0.91, "GDXU": 0.88, "CRCG": 0.95,
+                "CONL": 0.1, "AXTX": 0.1})
+    txt = m._ene_reduce_line(snap) or ""
+    assert "全部超买" in txt, txt
+    assert txt.count("支持减仓") == 1, "汇总行里出现了多次「支持减仓」✗"
+
+    # ② 1 个超买 ⇒ 逐条
+    pos.update({"YINN": 0.85, "GDXU": 0.1, "CRCG": 0.1})
+    txt = m._ene_reduce_line(snap) or ""
+    assert "全部超买" not in txt and "YINN 通道位置" in txt, txt
+
+    # ③ 0 个超买 ⇒ 不显示
+    pos.update({"YINN": 0.1})
+    assert m._ene_reduce_line(snap) is None, "没有超买却显示了 ENE 段 ✗"
+
+
+def test_ene_line_escapes_percent_literal():
+    """`1% 规则` 里的 `%` 必须转义 ✓ —— 否则 `%` 格式化直接抛 TypeError ✗。
+
+    2026-11-02 实测：`TypeError: not enough arguments for format string`
+    """
+    assert "1%% 规则" in _src(), "字面量 `1%` 没转义 ✗"

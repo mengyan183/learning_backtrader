@@ -967,9 +967,21 @@ ENE_HIGH, ENE_LOW = 0.8, 0.2
 
 
 def _ene_reduce_line(snap):
-    """ENE 减仓触发提示 ✓（只列触发中的标的，2026-11-02）。
+    """ENE **减仓确认**提示 ✓（2026-11-02 改版）。
 
-    仓位建议 = `1 − pos × ENE_RATIO` ✓
+    🔴 为什么从「仓位建议」降级为「方向确认」✗：
+      原实现给 `1 − pos×ratio` 的具体百分比，并同时显示超买/超卖两种
+      状态 ✗ ⇒ 与 1% 风控**直接冲突**：
+        · 1% 规则说「减仓至上限 338」（硬敞口约束）
+        · ENE 说「超卖 ⇒ 可持有」（统计倾向）
+      同一个标的两个相反结论 ✗ 而实测当前 5 个标的**全部超卖**
+      ⇒ 整段都在劝「别减」✗ 最危险 ✗
+
+    ⇒ 三条改法（用户裁定 2026-11-02）：
+      ① **删掉「超卖 ⇒ 可持有」** —— 与风控相反且无增量信息 ✗
+      ② **只留「超买 ⇒ 支持减仓」** —— 与风控**同向**，是加强信号 ✓
+      ③ **不给具体仓位百分比** —— 避免和 1% 规则的限额打架 ✗
+
     ⚠️ 仅对**杠杆 ETF** 生效 ✗ —— SPY 等无杠杆标的实测减仓是负收益
        （年化 13.76% → 7.46% ✗），不进建议 ✓
     """
@@ -993,17 +1005,21 @@ def _ene_reduce_line(snap):
         if pos is None or pos.dropna().empty:
             continue
         v = float(pos.dropna().iloc[-1])
-        if v >= ENE_HIGH:
-            tgt = max(0.0, 1.0 - v * ENE_RATIO)
-            hits.append("· %s 通道位置 **%.2f 超买** ⇒ 建议减至 **%.0f%%** 仓位"
-                        % (sym, v, tgt * 100))
-        elif v <= ENE_LOW:
-            hits.append("· %s 通道位置 **%.2f 超卖** ⇒ 均值回归视角可持有 ✓"
-                        % (sym, v))
+        if v >= ENE_HIGH:                 # 只留超买 ✓
+            hits.append((sym, v))
     if not hits:
         return None
-    return ("**ENE 减仓触发**（ratio=%.1f；仅杠杆 ETF ✓，实测 6/6 回撤改善）：\n%s"
-            % (ENE_RATIO, "\n".join(hits)))
+    # 全部超买 ⇒ 压成一行汇总 ✓（否则 5 行同义重复 ✗）
+    # ⚠️ `1%%` 必须转义 ✗ —— 字面量 `1%` 后跟空格会被当成格式符 ✗
+    # （2026-11-02 实测：`TypeError: not enough arguments for format string`）
+    if len(hits) >= 3:
+        body = "· %s 全部超买（%s）⇒ **支持减仓** ✓（与 1%% 规则同向）" % (
+            " / ".join(s for s, _v in hits),
+            " / ".join("%.2f" % v for _s, v in hits))
+    else:
+        body = "\n".join("· %s 通道位置 **%.2f 超买** ⇒ **支持减仓** ✓"
+                         % (s, v) for s, v in hits)
+    return ("**ENE 减仓确认**（仅杠杆 ETF ✓，与 1%% 规则同向）：\n%s" % body)
 
 
 def position_plan_brief(snap):
