@@ -94,3 +94,67 @@ def test_unknown_factor_raises():
     with pytest.raises(SystemExit):
         P._signal(pd.DataFrame({"symbol": [], "date": [], "close": []}),
                   "SPY", "not_a_factor")
+
+
+def test_turnover_cost_is_charged():
+    """换手成本必须扣 ✓ —— `COST=0.0008/单位换手`。
+
+    做法：构造一个**每天在 0/1 之间跳变**的信号 ⇒ 换手极大 ⇒ 净值明显低于
+    同样平均仓位但**不跳变**的信号 ✓。
+    """
+    close = _fake_close(n=400, drift=0.0)        # 价格不动 ⇒ 收益全来自成本 ✓
+    # ① 每天跳变
+    flip = pd.Series([1.0 if i % 2 else 0.0 for i in range(len(close))],
+                     index=close.index)
+    m_flip = P._run(close, flip, 1.0)
+    # ② 恒定半仓（换手只在首日）
+    steady = pd.Series(0.5, index=close.index)
+    m_steady = P._run(close, steady, 1.0)
+    assert m_flip["annual_return"] < m_steady["annual_return"], \
+        "每天跳变应被成本吃掉更多 ✗"
+    assert m_flip["annual_return"] < 0, "跳变信号应亏钱（全是成本）✗"
+
+
+def test_signal_f020_is_binary_and_dense_enough():
+    """`f020`（P/C>1.2）返回 **0/1 二进制** ✓ 且**很稀疏** ✗。
+
+    这解释了它为什么做减仓触发无效（平均仓位 99% ✗）。
+    """
+    prices = P._prices()
+    sig = P._signal(prices, "SPY", "f020").dropna()
+    assert set(sig.unique()) <= {0.0, 1.0}, "f020 必须是二进制 ✗"
+    # 触发占比应很低（历史约 1.7% ✗）
+    assert sig.mean() < 0.10, "f020 触发占比不该超过 10% ✗"
+
+
+def test_signal_f020_pct_is_continuous():
+    """`f020_pct`（P/C 252 日分位）返回 **连续 0~1** ✓ 且**不稀疏** ✗。
+
+    这是它比二进制版有效的原因（平均仓位 42~77% ✓ 而非 99% ✗）。
+    """
+    prices = P._prices()
+    sig = P._signal(prices, "SPY", "f020_pct").dropna()
+    assert sig.min() >= 0.0 and sig.max() <= 1.0, "分位必须在 [0,1] ✗"
+    assert sig.nunique() > 10, "分位应是连续的（唯一值 > 10）✗"
+    # 分位均值应接近 0.5（均匀分布 ✓）
+    assert 0.35 < sig.mean() < 0.65
+
+
+def test_close_series_dedups_and_sorts():
+    """`_close` 必须**去重 + 排序 + 去空** ✓（原始 csv 可能乱序 ✗）。"""
+    prices = pd.DataFrame({
+        "symbol": ["SPY"] * 5 + ["QQQ"],
+        "date": pd.to_datetime(["2026-01-03", "2026-01-01", "2026-01-02",
+                                "2026-01-02", "2026-01-04", "2026-01-01"]),
+        "close": [3.0, 1.0, 2.0, 2.5, 4.0, 9.0],   # 01-02 重复 ⇒ 取后者 2.5 ✓
+    })
+    s = P._close(prices, "SPY")
+    assert list(s.index) == sorted(s.index), "必须排序 ✗"
+    assert len(s) == 4, "重复日期必须去重 ✗"
+    assert s.loc[pd.Timestamp("2026-01-02")] == 2.5, "重复时取最后一个 ✗"
+
+
+def test_metrics_returns_none_for_short_sample():
+    """样本 < 30 天 ⇒ 返回 `None` ✓（不产出不可信指标 ✗）。"""
+    ret = pd.Series([0.01] * 10, index=pd.bdate_range("2026-01-01", periods=10))
+    assert P._metrics(ret, pd.Series(1.0, index=ret.index)) is None

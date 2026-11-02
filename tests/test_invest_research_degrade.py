@@ -633,16 +633,25 @@ def test_snapshot_text_carries_no_trade_disclaimer():
     assert "禁止推断" in txt, txt
 
 
-def test_ene_ratio_is_08():
-    """ENE 减仓比例必须是 **0.8** ✓（2026-11-02 扫描 + 分段验证的选定值）。
+def test_ene_ratio_is_10():
+    """ENE 减仓比例必须是 **1.0** ✓（2026-11-02 用户裁定）。
 
-    `sweep_ene_ratio.py`：粗扫 0~1 步长 0.1 ⇒ 0.8 是 Calmar **第一个转正**的点
-    （+0.007）；分段验证显示它在上涨段略优于 1.0
-    （2020 反弹 +199.93% vs +199.64%、2023-24 +39.26% vs +38.30%）
-    且保留 63% 平均仓位 ✓。
+    🔴 两轮证据，别只看第一轮 ✗：
+      ① `sweep_ene_ratio.py`（**平均 Calmar**）：0.8 是第一个转正点 ⇒ 曾定 0.8 ✗
+      ② `factor_reduce_probe.py`（**逐标的 Calmar**）：
+         | 标的 | B0 | r=0.7 | r=1.0 |
+         | SPY  | 0.40 | 0.34 | 0.30 |
+         | YINN | -0.25 | -0.13 | **-0.11** |
+         | GDXU | -0.15 | +0.04 | **+0.05** |
+         | CONL | -0.41 | +0.04 | **+0.18** |
+         | QQQ  | 0.57 | 0.61 | **0.65** |
+         ⇒ **r=1.0 在 4/5 标的上最优且单调递增** ✓ ⇒ 改 1.0 ✓
+      ③ 代价（已接受 ✗）：SPY -6.3pp、QQQ -8.2pp 少赚；
+         换来 YINN +14.9pp、GDXU +17.7pp、CONL **+54.2pp** ✓
+         ⇒ 目标是「**优先降回撤**」而非「最大化收益」✓
     """
     m = _load()
-    assert m.ENE_RATIO == 0.8
+    assert m.ENE_RATIO == 1.0
     assert m.ENE_HIGH == 0.8 and m.ENE_LOW == 0.2
 
 
