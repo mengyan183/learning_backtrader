@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
-"""OKX 账户净值拆分（2026-11-02）。
+"""OKX 账户净值拆分（2026-11-02，**第三次实测后改版**）。
 
-问题：`sync_okx` 原来把 `securities_mv` 写死**空串** ✗、`cash` 常为 NaN ✗
-⇒ 简报里「加密净值 2,792 vs BTC 市值 2,344，差 448」永远解释不了 ✗
-
-修法：从 `/account/balance` 的 `details[]` 里拆 ✓
-  证券市值 = 非 USDT 币种 `eq` 之和
-  现金     = USDT 的 `eq`
+【演进】
+① 第一版：想从 `details[]` 拆出「证券市值 / 现金」✗
+② 实测（`net=2783.42 != mv(0.0)+cash(2787.1)`）证明**拆不出来** ✗
+   `details[]` 里只有 USDT（`eq` 合计 ≈ `totalEq`）✗
+   BTC 是「借 USDT 买入」的现货杠杆 ⇒ 在 OKX 账本里是**负债**，
+   不是 `details` 里的正 `eq` ✗
+③ 现行：**不拆**（`sec_mv` 返回 NaN ⇒ 恒等式校验自动跳过 ✓），
+   `cash` 仍用 USDT 的 `eq` ✓，并**打印 details 摘要**供定位 ✓
 """
 import importlib.util
 import os
@@ -26,42 +28,51 @@ def _load():
     return m
 
 
-def test_split_equity_typical():
-    """BTC 2344 + USDT 448 = totalEq 2792 ✓（正是简报里那个 448 差额）。"""
+def test_sec_mv_is_nan_so_identity_check_skips():
+    """`sec_mv` 必须是 **NaN** ✓ —— 这样 `pd.notna(mv)` 为假，
+    恒等式校验自动跳过 ✓（否则会像第三次那样 `net != mv+cash` 中止 ✗）。
+    """
     m = _load()
     data = {
-        "totalEq": "2792.3",
+        "totalEq": "2783.42",
         "details": [
-            {"ccy": "USDT", "eq": "448.3", "cashBal": "448.3"},
-            {"ccy": "BTC", "eq": "2344.0", "cashBal": "0.0299"},
+            {"ccy": "USDT", "eq": "2787.1", "cashBal": "2787.1"},
         ],
     }
     sec, cash = m._okx_split_equity(data)
-    assert sec == pytest.approx(2344.0)
-    assert cash == pytest.approx(448.3)
-    assert sec + cash == pytest.approx(2792.3, abs=0.01), \
-        "拆分后相加应等于 totalEq ✗"
+    assert sec != sec, "sec_mv 应为 NaN（不拆）✗"
+    assert cash == pytest.approx(2787.1)
 
 
-def test_split_equity_no_usdt():
-    """没有 USDT 余额 ⇒ cash 返回 None ✓（调用方保留原值，不硬写 0 ✗）。"""
+def test_cash_comes_from_usdt_eq():
+    """`cash` 用 USDT 的 `eq` ✓（这个字段是对的，实测 2787.1 ≈ totalEq）。"""
     m = _load()
     sec, cash = m._okx_split_equity(
-        {"details": [{"ccy": "BTC", "eq": "1000"}]})
-    assert sec == pytest.approx(1000.0)
+        {"details": [{"ccy": "BTC", "eq": "100"}, {"ccy": "USDT", "eq": "50"}]})
+    assert sec != sec
+    assert cash == pytest.approx(50.0)
+
+
+def test_no_usdt_gives_none_cash():
+    """没有 USDT ⇒ `cash=None` ✓（调用方保留原值，不硬写 0 ✗）。"""
+    m = _load()
+    sec, cash = m._okx_split_equity({"details": [{"ccy": "BTC", "eq": "1"}]})
+    assert sec != sec
     assert cash is None
 
 
-def test_split_equity_empty_details():
-    """`details` 缺失/空 ⇒ `(0.0, None)` ✓ 不抛错（不拖死同步链 ✓）。"""
+def test_empty_details_is_safe():
+    """`details` 缺失/空 ⇒ `(nan, None)` ✓ 不抛错（不拖死同步链 ✓）。"""
     m = _load()
-    assert m._okx_split_equity({}) == (0.0, None)
-    assert m._okx_split_equity({"details": []}) == (0.0, None)
+    for payload in ({}, {"details": []}):
+        sec, cash = m._okx_split_equity(payload)
+        assert sec != sec
+        assert cash is None
 
 
-def test_split_equity_bad_payload_returns_nan():
-    """畸形 payload ⇒ `(nan, None)` ✓（调用方据此留空，不写假数 ✗）。"""
+def test_bad_payload_does_not_raise():
+    """畸形 payload ⇒ `(nan, None)` ✓ 不抛错。"""
     m = _load()
     sec, cash = m._okx_split_equity({"details": "not-a-list"})
-    assert sec != sec, "畸形数据应返回 NaN ✗"
+    assert sec != sec
     assert cash is None

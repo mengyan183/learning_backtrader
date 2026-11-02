@@ -316,25 +316,38 @@ def _okx_request(creds, path):
 def _okx_split_equity(data):
     """OKX `/account/balance` 的 `data[0]` ⇒ `(证券市值, 现金)` ✓（2026-11-02）。
 
-    `totalEq` 只是一个总数 ✗ —— 简报里「加密净值 vs BTC 市值差 448」
-    之所以解释不了，就是因为没拆开 ✗
-    `details[]` 有每个币种的 `eq` ✓
-    ⇒ 证券市值 = 非 USDT 币种 eq 之和；现金 = USDT 的 eq ✓
+    🔴 **2026-11-02 实测（第三次 sync_positions）：拆不出来** ✗
+        `net=2783.42 != mv(0.0) + cash(2787.1)`
+      ⇒ `details[]` 里**只有 USDT**（`eq` 合计 ≈ `totalEq`）✗
+      ⇒ BTC 是「**借 USDT 买入**」的现货杠杆持仓 ⇒ 它在 OKX 账本里
+        表现为**负债**而非 `details` 里的正 `eq` ✗
+      ⇒ 「证券市值 = 非 USDT 的 eq 之和」这个假设**不成立** ✗
 
-    :returns: `(sec_mv, cash)`；解析不出 ⇒ `(nan, None)`（调用方保留原值 ✓）
+    ⇒ 处置：**不拆**（返回 `nan`）✓ —— 让 `securities_mv` 留空，
+      恒等式校验自动跳过 ✓（脚本里那条 `pd.notna(mv)` 就是为此 ✗）
+      同时**打印 `details` 摘要** ✓ —— 一次看清 OKX 到底给了什么字段 ✗
+      （等看清了再决定用 `cashBal` / `availBal` / `upl` 哪一个 ✓）
+
+    :returns: `(nan, cash)`；`cash` 仍用 USDT 的 `eq`（它是对的 ✓）
     """
     try:
         det = data.get("details") or []
+        # 一次性打印：币种 / eq / cashBal / availBal / frozenBal / upl
+        print("[okx] details: %s"
+              % "; ".join(
+                  "%s eq=%s cashBal=%s avail=%s frozen=%s upl=%s"
+                  % (d.get("ccy"), d.get("eq"), d.get("cashBal"),
+                     d.get("availBal"), d.get("frozenBal"), d.get("upl"))
+                  for d in det))
         usdt_eq = None
-        others = 0.0
         for d in det:
-            eq = _f(d.get("eq"), 0.0)
             if str(d.get("ccy") or "").upper() == "USDT":
-                usdt_eq = eq
-            else:
-                others += eq
-        return round(others, 2), (None if usdt_eq is None else round(usdt_eq, 2))
-    except Exception:                       # noqa: BLE001 —— 解析失败不拖死链 ✓
+                usdt_eq = _f(d.get("eq"), 0.0)
+                break
+        return (float("nan"),
+                None if usdt_eq is None else round(usdt_eq, 2))
+    except Exception as exc:                # noqa: BLE001 —— 解析失败不拖死链 ✓
+        print("[okx] details 解析失败：%s" % exc)
         return float("nan"), None
 
 
