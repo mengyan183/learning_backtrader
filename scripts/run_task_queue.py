@@ -343,6 +343,50 @@ def _act_c5_backtest(params):
             "errors": bad}
 
 
+def _act_f_factor_backtest(params):
+    """F-012 / F-020 通用回测裁判 ✓（2026-11-02）。
+
+    两步：`eval_f020.py --dump-features`（写出 `f012_term` / `f020_pc`）
+    → `factor_backtest_probe.py --factor <列> --direction <方向>` ✓
+
+    ⚠️ **一个动作跑一个因子** ✗ —— 用户裁定 F-012 / F-020 是**两个独立裁判** ✓
+    （两者信号来源不同、经济含义不同，合在一起会混淆结论 ✗）
+
+    方向：
+      - `f012_term`（term 变化率）：高=恐慌缓和 ⇒ **positive** ✓
+      - `f020_pc`（P/C>1.2 触发）：高=极恐 ⇒ **negative** ✓（逆向：触发时应看多）
+    """
+    feat = str(params.get("features")
+               or "evolution/experiments/factor-adoption/features_f012f020.csv")
+    factor = str(params.get("factor") or "f012_term")
+    direc = str(params.get("direction") or "positive")
+    sym = str(params.get("symbol") or "SPY")
+    steps = [
+        [sys.executable, os.path.join(ROOT, "scripts", "eval_f020.py"),
+         "--dump-features", feat],
+        [sys.executable, os.path.join(ROOT, "scripts", "factor_backtest_probe.py"),
+         "--factor", factor, "--symbol", sym,
+         "--direction", direc, "--features", feat],
+    ]
+    out = []
+    for cmd in steps:
+        try:
+            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                               timeout=1800)
+        except subprocess.TimeoutExpired:
+            out.append({"cmd": " ".join(cmd[1:]), "rc": -1,
+                        "stdout": "", "stderr": "超过 1800 秒"})
+            continue
+        # 🔴 probe 判 FAIL 时 exit 1 是**结论**不是崩溃 ✗ ⇒ 不 break ✓
+        out.append({"cmd": " ".join(cmd[1:]), "rc": r.returncode,
+                    "stdout": (r.stdout or "")[-2000:],
+                    "stderr": (r.stderr or "")[-400:]})
+    return {"ok": all(x["rc"] in (0, 1) for x in out),
+            "factor": factor, "direction": direc, "symbol": sym,
+            "note": "⚠️ 裁判 FAIL 时 probe 会 exit 1 —— 那是**结论**不是崩溃 ✓",
+            "steps": out}
+
+
 def _act_fetch_fred(params):
     """抓 FRED 系列 ✓（默认补 **DGS10** —— 它至今从未落盘 ✗）。
 
@@ -929,6 +973,7 @@ ACTIONS = {
     "run_pipeline": _act_run_pipeline,
     "c1_backtest": _act_c1_backtest,
     "c5_backtest": _act_c5_backtest,
+    "f_factor_backtest": _act_f_factor_backtest,
     "fetch_pe_ratio": _act_fetch_pe_ratio,
     "fetch_fred": _act_fetch_fred,
     "fetch_indices": _act_fetch_indices,
