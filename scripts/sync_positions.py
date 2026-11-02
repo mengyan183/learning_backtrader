@@ -399,7 +399,11 @@ def sync_okx(accounts, positions, date):
         # 「证券市值」对加密账户是**概念错配** ✗（只有币和负债，没有证券 ✗）
         # 而且 OKX 的 `details[]` 给的是**净头寸**（BTC 借 USDT 买的 ⇒
         # 被负债抵消，`eq` 为 0 或缺失 ✗）⇒ 拆不出来 ✗
-        "",
+        # ⚠️ 必须写 **`None`** ✗ 不能写 `""` ✗ ——
+        #   校验用的是 `pd.notna(mv)`，而 `pd.notna("")` 返回 **True** ✗
+        #   ⇒ 空串照样触发恒等式校验 ⇒ 第五次还会被拦 ✗
+        #   （`pd.notna(None)` / `pd.notna(nan)` 才是 False ✓）
+        None,
         round(cash, 2),
         "", "", "USDT",
         # note 里写清「为什么没有证券/现金拆分」✓

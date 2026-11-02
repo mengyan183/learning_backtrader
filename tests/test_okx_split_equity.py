@@ -84,3 +84,27 @@ def test_bad_payload_does_not_raise():
     sec, cash = m._okx_split_equity({"details": "not-a-list"})
     assert sec != sec
     assert cash is None
+
+
+def test_sec_mv_written_as_none_not_empty_string():
+    """`securities_mv` 必须写 **`None`** ✗ 不能写 `""` ✗（2026-11-02）。
+
+    校验用的是 `pd.notna(mv)`：
+      `pd.notna("")`   → **True**  ✗ ⇒ 空串照样触发恒等式校验 ⇒ 被拦
+      `pd.notna(None)` → **False** ✓ ⇒ 才真的跳过
+
+    实测：第四次 `net=2784.65 != mv(0)+cash(2788.30)` 就是因为写了空串 ✗
+    """
+    import io
+    import os
+
+    import pandas as pd
+
+    assert pd.notna("") is True, "pandas 行为变了？"
+    assert pd.notna(None) is False
+
+    src = io.open(os.path.join(os.path.dirname(__file__), "..", "scripts",
+                               "sync_positions.py"), encoding="utf-8").read()
+    # 构造 crypto 行时，securities_mv 那一位必须是 None
+    assert "\n        None,\n        round(cash, 2)," in src, \
+        "crypto 行的 securities_mv 没写 None ✗"
