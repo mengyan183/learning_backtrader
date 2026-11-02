@@ -44,13 +44,21 @@ def test_sec_mv_is_nan_so_identity_check_skips():
     assert cash == pytest.approx(2787.1)
 
 
-def test_cash_comes_from_usdt_eq():
-    """`cash` 用 USDT 的 `eq` ✓（这个字段是对的，实测 2787.1 ≈ totalEq）。"""
+def test_cash_comes_from_usdt_cashbal_not_eq():
+    """`cash` 用 USDT 的 **`cashBal`** ✓，不是 `eq` ✗。
+
+    实测（2026-11-02 第四次）：
+      USDT eq=2788.30  cashBal=2342.82  upl=445.48
+      ⇒ `eq = cashBal + upl` ✓
+      ⇒ `eq` **含未实现盈亏** ✗ 当「现金」用会高估 445
+    """
     m = _load()
-    sec, cash = m._okx_split_equity(
-        {"details": [{"ccy": "BTC", "eq": "100"}, {"ccy": "USDT", "eq": "50"}]})
-    assert sec != sec
-    assert cash == pytest.approx(50.0)
+    sec, cash = m._okx_split_equity({"details": [
+        {"ccy": "BTC", "eq": "100", "cashBal": "100"},
+        {"ccy": "USDT", "eq": "2788.30", "cashBal": "2342.82"},
+    ]})
+    assert sec != sec, "sec_mv 应为 NaN（不拆）✗"
+    assert cash == pytest.approx(2342.82), "cash 应取 cashBal ✗"
 
 
 def test_no_usdt_gives_none_cash():

@@ -339,13 +339,23 @@ def _okx_split_equity(data):
                   % (d.get("ccy"), d.get("eq"), d.get("cashBal"),
                      d.get("availBal"), d.get("frozenBal"), d.get("upl"))
                   for d in det))
-        usdt_eq = None
+        # 🔴 2026-11-02 第四次实测的 `details`（真相）：
+        #   USDT eq=2788.30  cashBal=2342.82  avail=1605.35  frozen=1182.95  upl=445.48
+        #   BTC  eq=0.0000000097  ← **几乎为零** ✓ 印证「BTC 被负债抵消」
+        #   SOL/DOGE eq≈1e-6      ← 忽略不计
+        # ⇒ `eq = cashBal + upl`（2788.30 = 2342.82 + 445.48 ✓ 完全对上）
+        # ⇒ `cashBal` 才是**真实现金**（不含浮盈）✓
+        # ⇒ `securities_mv` 永远留空（BTC 净头寸≈0 ✗ 拆不出证券）
+        # ⚠️ `totalEq=2784.65` vs `Σeq=2788.30` 差 **3.65** ✗
+        #    ⇒ 恒等式对 OKX **永远不成立** ✗（容差 1.0 太严 ✗）
+        #    ⇒ 靠 `sec_mv` 留空跳过校验 ✓（脚本里 `pd.notna(mv)` 判断 ✓）
+        cash_bal = None
         for d in det:
             if str(d.get("ccy") or "").upper() == "USDT":
-                usdt_eq = _f(d.get("eq"), 0.0)
+                cash_bal = _f(d.get("cashBal"), None)
                 break
         return (float("nan"),
-                None if usdt_eq is None else round(usdt_eq, 2))
+                None if cash_bal is None else round(cash_bal, 2))
     except Exception as exc:                # noqa: BLE001 —— 解析失败不拖死链 ✓
         print("[okx] details 解析失败：%s" % exc)
         return float("nan"), None
