@@ -33,26 +33,18 @@ sys.path.insert(0, str(REPO))
 
 from fg_system.factors import erp as ferp        # noqa: E402
 from fg_system.factors import protocol as fproto  # noqa: E402
+from fg_system.factors import report as frep     # noqa: E402
 
 DATA = REPO / "Data"
-#: 日频（现有唯一标准 ✓）
-HORIZONS_DAILY = (5, 10, 20, 40)
-#: 月频（慢变量对照 ✓，**不作为采纳依据** ✗）
-HORIZONS_MONTHLY = (60, 120, 240)
-WINDOW = 60
+#: 渲染层统一在 `fg_system.factors.report` ✓（2026-11-02 工程加固）
+HORIZONS_DAILY = frep.HORIZONS_DAILY
+HORIZONS_MONTHLY = frep.HORIZONS_MONTHLY
+WINDOW = frep.WINDOW
+_fmt = frep.fmt                       # 向后兼容（本文件内还有引用）✓
 #: 评测起点（用户裁定：1962 —— DGS10 起点，样本量最大 ✓）
 START = "1962-01-01"
 
 
-def _fmt(v, spec="+.3f", scale=1.0):
-    """`None` ⇒ `—` ✓（样本不足时 screen_report 会返回 None ✗）。"""
-    return "—" if v is None else format(v * scale, spec)
-
-
-def _spy_close():
-    p = pd.read_csv(DATA / "raw" / "prices.csv", parse_dates=["date"])
-    s = p[p.symbol == "SPY"].set_index("date")["close"].astype(float)
-    return s[~s.index.duplicated(keep="last")].sort_index().dropna()
 
 
 def _corr_table(sig, feat):
@@ -72,34 +64,6 @@ def _corr_table(sig, feat):
     return out
 
 
-def _print_report(rep, label, horizons, sig=None, close=None):
-    print("\n## %s（%s）" % (label, "/".join(str(h) for h in horizons)))
-    v = rep.get("verdict") or {}
-    print("判定：%s —— %s"
-          % (v.get("status") or "—", v.get("detail") or "—"))
-    if v.get("passed"):
-        print("  达标 horizon：%s" % v["passed"])
-    # 🔴 2026-10-31：**必须报 IC 自相关** ✗ —— 滚动窗 + 重叠收益 + 慢变因子
-    # 会让 ICIR 结构性虚高（实测 C5 ENE 自相关 0.99 ⇒ n_eff 仅名义的 0.5%）
-    print("| horizon | rank_ic_mean | rank_ICIR | pearson_ICIR | n | IC自相关 | n_eff |")
-    print("|---|---|---|---|---|---|---|")
-    for h in horizons:
-        ic = (rep.get("ic") or {}).get(h) or {}
-        ac1 = n_eff = None
-        if sig is not None and close is not None:
-            from fg_system.factors.eval import forward_returns as _fwd
-            try:
-                tgt = _fwd(close, (h,))["fwd_%d" % h]
-                ac1, n_eff = fproto.ic_autocorr(sig, tgt, window=WINDOW)
-            except Exception:              # noqa: BLE001
-                ac1 = n_eff = None
-        warn = " ⚠️虚高" if (ac1 is not None and ac1 > 0.8) else ""
-        print("| %d | %s | %s | %s | %s | %s%s | %s |"
-              % (h, _fmt(ic.get("rank_ic_mean")), _fmt(ic.get("rank_icir")),
-                 _fmt(ic.get("pearson_icir")), ic.get("n") or 0,
-                 _fmt(ac1, ".2f"), warn,
-                 "—" if n_eff is None else "%.0f" % n_eff))
-
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
@@ -109,7 +73,7 @@ def main(argv=None):
     ap.add_argument("--target", default="SPY", help="目标标的（默认 SPY）")
     args = ap.parse_args(argv)
 
-    spy = _spy_close()
+    spy = frep.close_series(frep.load_prices(DATA), args.target)
     sig = ferp.erp_pct(target_index=spy.index, window=args.window).dropna()
     if START:
         sig = sig[sig.index >= pd.Timestamp(START)]
@@ -135,10 +99,10 @@ def main(argv=None):
     print("样本：%s → %s，n_days=%s"
           % (rep_d["sample_start"], rep_d["sample_end"], rep_d["n_days"]))
 
-    _print_report(rep_d, "日频（现有唯一标准 ✓）", HORIZONS_DAILY,
-                  sig=sig, close=spy)
-    _print_report(rep_m, "月频（**仅对照**，不作采纳依据 ✗）", HORIZONS_MONTHLY,
-                  sig=sig, close=spy)
+    print(frep.report_block(rep_d, "日频（现有唯一标准 ✓）",
+                            HORIZONS_DAILY, sig=sig, close=spy))
+    print(frep.report_block(rep_m, "月频（**仅对照**，不作采纳依据 ✗）",
+                            HORIZONS_MONTHLY, sig=sig, close=spy))
 
     # CAPE 分歧分布（回答「阈值该定多少」✓）
     div = ferp.cape_divergence(window=args.window).dropna()

@@ -23,7 +23,8 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 from fg_system.factors import base as fbase  # noqa: E402
-from fg_system.factors import protocol as fproto  # noqa: E402
+from fg_system.factors import protocol as fproto
+from fg_system.factors import report as frep  # noqa: E402
 from fg_system.factors import credit_spread as cs  # noqa: E402
 
 DATA = REPO / "Data"
@@ -35,20 +36,6 @@ AVAIL_CSV = "Data/raw/fred_baa10y_avail.csv"
 MIN_ORTH = 250
 
 
-def _fmt(v, spec="+.3f", scale=1.0):
-    """`None` ⇒ `—` ✓。
-
-    🔴 2026-10-29 Mac 实测：样本不足时 `screen_report` 把 `ic` 各字段给 **None** ✗，
-    直接 `{v:+.3f}` 会 `TypeError: unsupported format string passed to NoneType` ✗
-    ⇒ 整条评测崩掉、结果只剩一行「样本不足」✗。
-    """
-    return "—" if v is None else format(v * scale, spec)
-
-
-def _spy_close() -> pd.Series:
-    p = pd.read_csv(DATA / "raw" / "prices.csv", parse_dates=["date"])
-    s = p[p.symbol == "SPY"].set_index("date")["close"].astype(float)
-    return s[~s.index.duplicated(keep="last")].sort_index().dropna()
 
 
 def main(argv=None):
@@ -62,7 +49,7 @@ def main(argv=None):
                     help="先剔除 features.csv 该列（如 fed）再评测 ✓ 滚动 β、shift(1) 无前视")
     args = ap.parse_args(argv)
 
-    spy = _spy_close()
+    spy = frep.close_series(frep.load_prices(REPO / "Data"), "SPY")
     df = cs.load(str(REPO / AVAIL_CSV))
     z = cs.baa10y_zscore(df, spy.index, lag_days=args.lag_days)
 
@@ -114,40 +101,22 @@ def main(argv=None):
     print(f"样本：{rep['sample_start']} → {rep['sample_end']}，n_days={rep['n_days']}")
     print(f"判定：{rep['verdict']['status']} —— {rep['verdict']['detail']}")
     print()
-    print("| horizon | rank_ic_mean | rank_ICIR | pearson_ICIR | n | 近窗ICIR | 分层mono | top-bottom |")
-    print("|---|---|---|---|---|---|---|---|")
-    for h in HORIZONS:
-        ic = rep["ic"][h]
-        rec = rep["recent"].get(h) or {}
-        lay = rep["layers"].get(h, {})
-        print(
-            f"| {h} | {_fmt(ic.get('rank_ic_mean'))} | {_fmt(ic.get('rank_icir'))} | "
-            f"{_fmt(ic.get('pearson_icir'))} | {ic.get('n')} | "
-            f"{_fmt(rec.get('icir'))} | "
-            f"{_fmt(lay.get('monotonic_spearman'), '.3f')} | "
-            f"{_fmt(lay.get('top_minus_bottom'), '+.2f', 100)}% |")
+    # 表格统一走 `report.ic_table` ✓ —— 自动带 IC 自相关与 n_eff ✗
+    def _recent(rep_, h):
+        return frep.fmt((rep_.get("recent", {}).get(h) or {}).get("icir"))
 
-    # 🔴 2026-10-31：**必须报 IC 自相关** ✗ —— 滚动窗（相邻 IC 共享 59 天）
-    # + 重叠 forward return + 慢变因子 ⇒ ICIR 结构性虚高 ✗
-    # 实测（C5 ENE）自相关 0.99 ⇒ n_eff 仅名义的约 0.5% ⇒ 1.48 是假象 ✗
-    try:
-        from fg_system.factors.eval import forward_returns as _fwd
-        print("\n## IC 自相关与有效样本（ICIR 可信度 ✓）")
-        print("| horizon | IC自相关 | n_eff | 判读 |")
-        print("|---|---|---|---|")
-        for h in HORIZONS:
-            try:
-                tgt = _fwd(spy, (h,))["fwd_%d" % h]
-                ac1, n_eff = fproto.ic_autocorr(z, tgt, window=WINDOW)
-            except Exception:              # noqa: BLE001
-                ac1 = n_eff = None
-            judge = ("—" if ac1 is None else
-                     ("⚠️ 虚高（ICIR 不可直信）" if ac1 > 0.8 else "✓ 可参考"))
-            print("| %d | %s | %s | %s |"
-                  % (h, "—" if ac1 is None else "%.2f" % ac1,
-                     "—" if n_eff is None else "%.0f" % n_eff, judge))
-    except Exception as _e:                # noqa: BLE001 —— 算不出不阻塞 ✓
-        print("\n[warn] IC 自相关计算失败：%s" % _e)
+    def _mono(rep_, h):
+        return frep.fmt((rep_.get("layers", {}).get(h) or {})
+                        .get("monotonic_spearman"), ".3f")
+
+    def _tmb(rep_, h):
+        return frep.fmt((rep_.get("layers", {}).get(h) or {})
+                        .get("top_minus_bottom"), "+.2f", 100) + "%"
+
+    print(frep.ic_table(rep, HORIZONS, sig=z, close=spy,
+                        extra=[("近窗ICIR", _recent), ("分层mono", _mono),
+                               ("top-bottom", _tmb)]))
+
 
     # 与现有情绪/宏观因子的相关性（正交性取证，Spearman，z 非空区间）
     # 正交化后这里应该看到目标列的相关系数**掉到 0 附近** ✓（正交化是否生效的活证据）

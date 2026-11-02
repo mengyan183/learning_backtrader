@@ -37,7 +37,8 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
 from fg_system.factors import ene as fene          # noqa: E402
-from fg_system.factors import protocol as fproto    # noqa: E402
+from fg_system.factors import protocol as fproto
+from fg_system.factors import report as frep    # noqa: E402
 
 DATA = REPO / "Data"
 HORIZONS = (5, 10, 20, 40)
@@ -55,23 +56,8 @@ COMBOS = (
 )
 
 
-def _fmt(v, spec="+.3f"):
-    return "—" if v is None else format(v, spec)
 
 
-def _load_prices():
-    p = pd.read_csv(DATA / "raw" / "prices.csv", parse_dates=["date"])
-    return p
-
-
-def _close(prices, sym):
-    return fene.close_series(prices, sym)
-
-
-def _fwd(close, h_all=HORIZONS):
-    """前瞻收益（复用于 IC 自相关计算）✓。"""
-    from fg_system.factors.eval import forward_returns
-    return forward_returns(close, h_all)
 
 
 def main(argv=None):
@@ -89,7 +75,7 @@ def main(argv=None):
     # 2026-10-31：C5b 进裁判前先 dump 研究专用 features ✓
     # （`factor_backtest_probe` 只认 features 里的**列** ✗）
     if args.dump_features:
-        prices0 = _load_prices()
+        prices0 = frep.load_prices(DATA)
         sig0 = fene.signal_for(prices0, args.dump_symbol, mode=args.dump_mode)
         feat_p0 = DATA / "features.csv"
         out0 = pd.read_csv(feat_p0, parse_dates=["date"]) if feat_p0.exists() \
@@ -109,12 +95,12 @@ def main(argv=None):
         # ⇒ 任务耗时翻倍、stdout 被截断到 2000 字 ⇒ 结果看不到 ✗
         return 0
 
-    prices = _load_prices()
+    prices = frep.load_prices(DATA)
     out = {}
     print("# C5_ENE 三变体对照评测（ENE 10/10/9 vs Keltner 2×ATR20）")
 
     for sym, mode, label in COMBOS:
-        target = _close(prices, sym)
+        target = frep.close_series(prices, sym)
         if target.empty:
             print("\n## %s —— ✗ 无价格数据，跳过" % label)
             continue
@@ -140,32 +126,10 @@ def main(argv=None):
         print("\n## %s" % label)
         print("样本 %s → %s（%d 天）"
               % (rep["sample_start"], rep["sample_end"], rep["n_days"]))
-        print("判定：%s" % (v.get("status") or "—"))
-        print("| h | rank_ic_mean | rank_ICIR | n | IC自相关 |")
-        print("|---|---|---|---|---|")
-        # 🔴 2026-10-31：**必须报 IC 自相关** ✗ ——
-        # ENE 的 |ICIR| 到 1.48，远高于正常因子（0.3~1.0）✗
-        # 主因是 5/10/20/40 日 forward return **高度重叠** ⇒ IC 序列自相关
-        # ⇒ ICIR 被系统性高估 ✗。lag-1 自相关 > 0.8 ⇒ 这个 ICIR 不能直信 ✓
-        fwd = _fwd(target, h_all=HORIZONS)
-        for h in HORIZONS:
-            ic = (rep.get("ic") or {}).get(h) or {}
-            ac1 = None
-            try:
-                ser = fproto.ic_spearman(sig, fwd["fwd_%d" % h], window=WINDOW)
-                ac1 = float(ser.autocorr(1))
-            except Exception:              # noqa: BLE001 —— 算不出就不报 ✓
-                ac1 = None
-            note = ""
-            if ac1 is not None and ac1 > 0.8:
-                # 有效样本数：n_eff ≈ n × (1-ρ)/(1+ρ) ✓
-                # ρ=0.99 ⇒ n_eff ≈ n × 0.005 ⇒ 2400 天只有 **12 个**独立观测 ✗
-                n_eff = (ic.get("n") or 0) * (1 - ac1) / (1 + ac1)
-                note = " ⚠️虚高（n_eff≈%.0f）" % n_eff
-            print("| %d | %s | %s | %s | %s%s |"
-                  % (h, _fmt(ic.get("rank_ic_mean")),
-                     _fmt(ic.get("rank_icir")), ic.get("n") or 0,
-                     _fmt(ac1, ".2f"), note))
+        # 表格统一走 `report.ic_table` ✓ —— 内含 IC 自相关与 n_eff ✗
+        print(frep.verdict_line(rep))
+        print(frep.ic_table(rep, HORIZONS, sig=sig, close=target))
+
 
     if args.json:
         p = Path(args.json)
