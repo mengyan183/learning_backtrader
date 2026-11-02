@@ -837,8 +837,14 @@ def build_snapshot_lines(snap):
             # 原逻辑「securities_mv 非空才显示」⇒ **整段明细被跳过** ✗
             # （简报只出现 `crypto 净值2792`，看不到现金 ✗）
             # ⇒ 改成「任一项有值就显示」，缺的那项打 `—` ✓
+            # 🔴 2026-11-02 用户裁定：**crypto 不显示「证券/现金」** ✗ ——
+            # 「证券市值」对加密账户是**概念错配** ✗（只有币和负债 ✗）
+            # 且 OKX 的 `details[]` 给净头寸，BTC 借 USDT 买的被负债抵消 ✗
+            # ⇒ 改成一句「含借币负债」✓（比硬凑数字对 ✓）
             _mv, _cash = v.get("securities_mv"), v.get("cash")
-            if _mv is not None or _cash is not None:
+            if k == "crypto":
+                seg += "（**含借币负债**，净值≈USDT 余额）"
+            elif _mv is not None or _cash is not None:
                 seg += "（证券%s / 现金%s）" % (
                     "—" if _mv is None else "%.0f" % _mv,
                     "—" if _cash is None else "%.0f" % _cash)

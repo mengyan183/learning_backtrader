@@ -385,9 +385,17 @@ def sync_okx(accounts, positions, date):
         cash = cash_from_details
     accounts.loc[len(accounts)] = [
         date, "crypto", round(total_eq, 2),
-        ("" if sec_mv != sec_mv else round(sec_mv, 2)),
+        # 🔴 2026-11-02 用户裁定：`securities_mv` **永远留空** ✓ ——
+        # 「证券市值」对加密账户是**概念错配** ✗（只有币和负债，没有证券 ✗）
+        # 而且 OKX 的 `details[]` 给的是**净头寸**（BTC 借 USDT 买的 ⇒
+        # 被负债抵消，`eq` 为 0 或缺失 ✗）⇒ 拆不出来 ✗
+        "",
         round(cash, 2),
-        "", "", "USDT", _tag_date_basis("OKX 动态同步", date)]
+        "", "", "USDT",
+        # note 里写清「为什么没有证券/现金拆分」✓
+        # —— 否则以后看 `accounts.csv` 会疑惑 crypto 这列为什么是空的 ✗
+        _tag_date_basis("OKX 动态同步；含借币负债，净值≈USDT 余额，"
+                        "BTC 市值见 positions", date)]
 
     try:
         poss = _okx_request(creds, "/api/v5/account/positions")

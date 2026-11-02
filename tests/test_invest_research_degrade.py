@@ -587,7 +587,11 @@ def test_brief_body_shows_account_detail():
     txt = m.build_snapshot_lines(snap)
 
     assert "账户明细" in txt, txt
-    assert "现金424" in txt, "加密现金没露出来 ✗：%s" % txt
+    # 🔴 2026-11-02 用户裁定：crypto **不显示「证券/现金」** ✗ ——
+    # 「证券市值」对加密账户是概念错配 ✗（只有币和负债 ✗）
+    # 且 OKX 的 details[] 给净头寸，BTC 借 USDT 买的被负债抵消 ✗
+    # ⇒ 改成一句「含借币负债」✓
+    assert "含借币负债" in txt, "crypto 没标「含借币负债」✗：%s" % txt
     assert "现金-880" in txt, "股票融资没露出来 ✗"
 
 
@@ -755,7 +759,7 @@ def test_ene_line_escapes_percent_literal():
 
 
 def test_news_entity_filter_handles_cjk():
-    """新闻实体过滤必须同时处理**中文别名**和**中文包围** ✓。
+    r"""新闻实体过滤必须同时处理**中文别名**和**中文包围** ✓。
 
     两个实测坑（2026-11-02）：
       ① BTC 用中文检索「比特币」，标题里不写 BTC ⇒ 全被滤掉 ✗
