@@ -343,6 +343,46 @@ def _act_c5_backtest(params):
             "errors": bad}
 
 
+def _act_factor_reduce_probe(params):
+    """**风控型因子专用裁判**：减仓触发回测 ✓（2026-11-02 用户裁定接进队列）。
+
+    为什么需要独立动作 ✗：`factor_backtest_probe` 的口径是「因子 → 仓位 0.2~1.0
+    线性映射」✗ 它要求因子能**决定仓位比例** ✗ 但 F-016/F-018/F-020 的能力只是
+    「识别危险时刻」✗ ⇒ 用满仓吃 beta 的口径去测必然「跑输 B0」✗ 是口径错配 ✗
+
+    参数：
+      - `factor`：`ene` / `f020` / `f020_pct`（默认 `ene`）
+      - `symbols`：逗号分隔（默认 SPY,YINN,GDXU,CONL,QQQ）
+      - `trend_filter`：`1` 开启 MA200 趋势过滤 ✓
+        ⚠️ **位置型因子（ENE）不要开** ✗ —— 实测 GDXU 从 +0.05 掉到 -0.04 ✗
+           **状态型因子（f020_pct）要开** ✓ —— 有效数 2/5→4/5 ✓
+      - `json`：结果落盘路径
+    """
+    factor = str(params.get("factor") or "ene")
+    syms = str(params.get("symbols") or "SPY,YINN,GDXU,CONL,QQQ")
+    tf = str(params.get("trend_filter") or "").lower() in ("1", "true", "yes", "on")
+    js = params.get("json") or (
+        "evolution/experiments/factor-adoption/reduce-%s.json" % factor)
+
+    cmd = [sys.executable,
+           os.path.join(ROOT, "scripts", "factor_reduce_probe.py"),
+           "--factor", factor, "--symbols", syms, "--json", js]
+    if tf:
+        cmd.append("--trend-filter")
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=1800)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "factor": factor, "trend_filter": tf,
+                "error": "超过 1800 秒"}
+    return {"ok": r.returncode == 0, "factor": factor,
+            "trend_filter": tf, "symbols": syms, "json": js,
+            "note": "判据是 **Calmar**（不是「跑赢 B0」✗）—— "
+                    "风控型因子的价值是「同样收益下更少回撤」✓",
+            "stdout": (r.stdout or "")[-3000:],
+            "stderr": (r.stderr or "")[-400:]}
+
+
 def _act_f_factor_backtest(params):
     """F-012 / F-020 通用回测裁判 ✓（2026-11-02）。
 
@@ -974,6 +1014,7 @@ ACTIONS = {
     "c1_backtest": _act_c1_backtest,
     "c5_backtest": _act_c5_backtest,
     "f_factor_backtest": _act_f_factor_backtest,
+    "factor_reduce_probe": _act_factor_reduce_probe,
     "fetch_pe_ratio": _act_fetch_pe_ratio,
     "fetch_fred": _act_fetch_fred,
     "fetch_indices": _act_fetch_indices,
