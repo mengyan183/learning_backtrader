@@ -225,6 +225,63 @@ def _act_install_daily_plist(params):
                       for v in out.values()), "result": out}
 
 
+def _act_sync_positions(params):
+    """跑一次持仓/账户同步 ✓（`scripts/sync_positions.py`）。
+
+    2026-11-02：用于验证 OKX 的 `securities_mv` / `cash` 拆分 ✓
+    （`_okx_split_equity` 从 `/account/balance` 的 `details[]` 拆出来 ✓）
+    ⚠️ 会**覆盖** `accounts.csv` / `positions.csv` 的当日行 ✗ —— 幂等 ✓
+    """
+    cmd = [sys.executable, os.path.join(ROOT, "scripts", "sync_positions.py")]
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=300)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 300 秒未完成"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    # 恒等式不成立时脚本 return 1 ✗ —— 那是**保护**不是崩溃 ✓
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "note": "rc=1 多半是恒等式校验拦住了（sec_mv+cash != net）✗",
+            "stdout": (r.stdout or "")[-1500:],
+            "stderr": (r.stderr or "")[-600:]}
+
+
+def _act_bsk_update(params):
+    """在 **Mac** 上升级 bsk ✓（`bsk update`）。
+
+    2026-11-02：Windows 侧升不了 ✗ ——
+      ① 直连 GitHub 超时
+      ② 公司代理只支持 **HTTP 转发**，不支持 HTTPS CONNECT 隧道 ✗
+      ③ 腾讯镜像站域名被拦（DNS 能解析，TCP 连不上）✗
+    Mac 有 7890 完整代理 ⇒ 在那里升 ✓
+    """
+    cmd = ["bsk", "update"]
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=300)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 300 秒未完成"}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败（bsk 未安装？）：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": (r.stdout or "")[-1500:],
+            "stderr": (r.stderr or "")[-600:]}
+
+
+def _act_bsk_status(params):
+    """查 bsk 版本与协议兼容状态 ✓（只读）。"""
+    cmd = ["bsk", "status"]
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=120)
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": (r.stdout or "")[-1200:],
+            "stderr": (r.stderr or "")[-400:]}
+
+
 def _act_fetch_indices(params):
     """补抓 VIX / VIX3M（`fetch.update_indices()`）✓。
 
@@ -827,6 +884,9 @@ ACTIONS = {
     "fetch_pe_ratio": _act_fetch_pe_ratio,
     "fetch_fred": _act_fetch_fred,
     "fetch_indices": _act_fetch_indices,
+    "sync_positions": _act_sync_positions,
+    "bsk_update": _act_bsk_update,
+    "bsk_status": _act_bsk_status,
     "key_diag": _act_key_diag,
     "backtest_plan": _act_backtest_plan,
     "fetch_shoutu_history": _act_fetch_shoutu_history,

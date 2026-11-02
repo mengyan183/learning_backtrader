@@ -519,3 +519,16 @@ def test_c5_backtest_dumps_per_symbol_features(monkeypatch, tmp_path):
     assert all(s in f for s, f in res["features"].items())
     # 每个标的 2 步（dump + probe）⇒ 共 6 次调用
     assert len(calls) == 6, calls
+
+
+def test_sync_positions_and_bsk_actions_registered():
+    """三个新动作必须在白名单里 ✓（2026-11-02）。
+
+    - `sync_positions`：验证 OKX 的 securities_mv/cash 拆分 ✓
+    - `bsk_update` / `bsk_status`：Windows 侧升不了 bsk ✗
+      （公司代理只支持 HTTP 转发，不支持 HTTPS CONNECT 隧道 ✗）
+      ⇒ 在 Mac 上升 ✓
+    """
+    for name in ("sync_positions", "bsk_update", "bsk_status"):
+        assert name in q.ACTIONS, "%s 未注册 ✗" % name
+        assert callable(q.ACTIONS[name])

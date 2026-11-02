@@ -493,7 +493,12 @@ def main():
         if net <= 0:
             print(f"⛔ net_value={net} <= 0 可疑（account={r['account']}），中止写盘。")
             return 1
-        # OKX 行 securities_mv 为空（NaN）⇒ 跳过恒等式校验
+        # 🔴 2026-11-02：OKX 行的 `securities_mv` 现在**有值了** ✗ ——
+        # 从 `/account/balance` 的 `details[]` 拆出来（见 `_okx_split_equity`）✓
+        # ⇒ 恒等式校验对 OKX **也生效** ✓
+        #   若 `sec_mv + cash != net` 会**中止写盘** ✓（比写错数据好 ✓）
+        #   ⚠️ 第一次跑若报「恒等式不成立」⇒ 说明 OKX 的 `eq` 单位
+        #   不是美元估值（而是币数）✗ 那时要改用 `eqUsd` 字段 ✓
         if pd.notna(mv) and abs(net - (_f(mv) + _f(cash))) > 1.0:
             print(f"⛔ 恒等式不成立：net={net} != mv({_f(mv)})+cash({_f(cash)})"
                   f"（account={r['account']}），中止写盘。")
