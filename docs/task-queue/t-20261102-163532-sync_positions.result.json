@@ -1,0 +1,11 @@
+{
+  "id": "t-20261102-163532-sync_positions",
+  "action": "sync_positions",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"note\": \"rc=1 多半是恒等式校验拦住了（sec_mv+cash != net）✗\", \"stdout\": \"[sync] FG_SYNC_MODE=live：动态同步 2026-10-30（美东交易日口径，16:00 ET 为收盘线）\\n2026-11-02 16:36:53,861 | 75496 | 140704481268160 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7522939783550139574(1) context=<futu.trade.open_trade_context.OpenSecTradeContext object at 0x7fadb31ba440>\\n[futu] 使用账户 acc_id=281756479002309614\\n2026-11-02 16:36:54,064 | 75496 | 123145352138752 | [open_context_base.py:521] on_disconnect: Disconnected: conn=0(1) reason=CallClose\\n[okx] details: USDT eq=2788.3029163011097 cashBal=2342.82262378289 avail=1605.3540015405167 frozen=1182.9489147605932 upl=445.48029251822004; BTC eq=0.0000000096786415 cashBal=0.0000000096786415 avail=0.0000000096786415 frozen=0 upl=0; SOL eq=0.0000009376 cashBal=0.0000009376 avail=0.0000009376 frozen=0 upl=0; DOGE eq=0.0000005568 cashBal=0.0000005568 avail=0.0000005568 frozen=0 upl=0\\n⛔ 恒等式不成立：net=2784.65 != mv(0.0)+cash(2788.3)（account=crypto），中止写盘。\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-02T16:36:53",
+  "finished_at": "2026-11-02T16:36:55",
+  "duration_s": 1.88
+}
