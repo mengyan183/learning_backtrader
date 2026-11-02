@@ -618,3 +618,38 @@ def test_snapshot_text_carries_no_trade_disclaimer():
     snap = {"positions": [], "accounts": {"stock": 1000.0}}
     txt = m.snapshot_text(snap)
     assert "禁止推断" in txt, txt
+
+
+def test_ene_ratio_is_08():
+    """ENE 减仓比例必须是 **0.8** ✓（2026-11-02 扫描 + 分段验证的选定值）。
+
+    `sweep_ene_ratio.py`：粗扫 0~1 步长 0.1 ⇒ 0.8 是 Calmar **第一个转正**的点
+    （+0.007）；分段验证显示它在上涨段略优于 1.0
+    （2020 反弹 +199.93% vs +199.64%、2023-24 +39.26% vs +38.30%）
+    且保留 63% 平均仓位 ✓。
+    """
+    m = _load()
+    assert m.ENE_RATIO == 0.8
+    assert m.ENE_HIGH == 0.8 and m.ENE_LOW == 0.2
+
+
+def test_ene_reduce_line_skips_non_leveraged(monkeypatch):
+    """非杠杆标的（SPY/BTC）**不得**进 ENE 减仓建议 ✗。
+
+    实测（2026-10-31）：SPY 减仓是负收益（年化 13.76% → 7.46% ✗）
+    ⇒ 无杠杆标的参与只会误导 ✓。
+    """
+    m = _load()
+    snap = {"positions": [{"symbol": "SPY"}, {"symbol": "BTC-USDT"}]}
+    assert m._ene_reduce_line(snap) is None, "非杠杆标的被误纳入了 ✗"
+
+
+def test_ene_reduce_line_formula():
+    """触发时仓位 = `1 − pos × 0.8` ✓；未触发（中间区）不显示 ✓。"""
+    m = _load()
+    # pos=1.0 ⇒ 1 − 0.8 = 20%
+    assert abs((1.0 - 1.0 * m.ENE_RATIO) - 0.2) < 1e-9
+    # pos=0.8 ⇒ 1 − 0.64 = 36%
+    assert abs((1.0 - 0.8 * m.ENE_RATIO) - 0.36) < 1e-9
+    # 中间区（0.5）不应触发
+    assert not (0.5 >= m.ENE_HIGH or 0.5 <= m.ENE_LOW)

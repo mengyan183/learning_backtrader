@@ -915,7 +915,68 @@ def action_brief_text(snap):
                  "盈利仓不减）：%s"
                  % " > ".join("%s（%.0f%%×%dx）" % (s, p, l)
                               for _sc, s, p, l in ranked))
+    # 🔴 2026-11-02 用户裁定：**ENE 超买减仓接进简报** ✓
+    # 依据（`scripts/sweep_ene_ratio.py` + `backtest_ene_reduce.py`）：
+    #   仓位 = 1 − pos × 0.8（ratio 扫描的「相对合适」值 ✓）
+    #   ratio=0.8 是 Calmar **第一个转正**的点（+0.007）；
+    #   比 1.0 好在「上涨段略胜」（2020 反弹 +199.93% vs +199.64%、
+    #   2023-24 +39.26% vs +38.30%）且保留 63% 平均仓位 ✓
+    # ⚠️ 只在**杠杆 ETF** 上有效 ✗ —— SPY 实测减仓是亏的
+    #   （年化 13.76% → 7.46% ✗）⇒ 非杠杆标的**不参与** ✓
+    # ⚠️ 只显示**触发中**的标的（pos>0.8 超买 / pos<0.2 超卖）✓
+    #   中间区不显示，避免 6 行噪音 ✗
+    ene_line = _ene_reduce_line(snap)
+    if ene_line:
+        head += "\n" + ene_line
     return head + "\n" + "\n".join(out)
+
+
+#: ENE 减仓比例 ✓ —— 2026-11-02 扫描 + 分段验证后的选定值
+#: （`sweep_ene_ratio.py`：粗扫 0~1 步长 0.1 + 二分细化；
+#:   0.8 是 Calmar 第一个转正点，且上涨段略优于 1.0 ✓）
+ENE_RATIO = 0.8
+#: 超买/超卖阈值 ✓（0.8 = 接近上轨；0.2 = 接近下轨）
+ENE_HIGH, ENE_LOW = 0.8, 0.2
+
+
+def _ene_reduce_line(snap):
+    """ENE 减仓触发提示 ✓（只列触发中的标的，2026-11-02）。
+
+    仓位建议 = `1 − pos × ENE_RATIO` ✓
+    ⚠️ 仅对**杠杆 ETF** 生效 ✗ —— SPY 等无杠杆标的实测减仓是负收益
+       （年化 13.76% → 7.46% ✗），不进建议 ✓
+    """
+    try:
+        import pandas as pd
+        from fg_system.factors import ene as _ene
+        from fg_system import position_plan as _pp
+        p = pd.read_csv(DATA / "raw" / "prices.csv", parse_dates=["date"])
+    except Exception:                     # noqa: BLE001 —— 缺数据不该拖死简报 ✓
+        return None
+
+    hits = []
+    for r in snap.get("positions", []):
+        sym = str(r.get("symbol") or "").replace("-USDT", "")
+        if _pp.leverage_of(sym) <= 1:
+            continue                      # 非杠杆 ⇒ 不参与 ✗
+        try:
+            pos = _ene.ene_pos(p, sym)
+        except Exception:                 # noqa: BLE001
+            continue
+        if pos is None or pos.dropna().empty:
+            continue
+        v = float(pos.dropna().iloc[-1])
+        if v >= ENE_HIGH:
+            tgt = max(0.0, 1.0 - v * ENE_RATIO)
+            hits.append("· %s 通道位置 **%.2f 超买** ⇒ 建议减至 **%.0f%%** 仓位"
+                        % (sym, v, tgt * 100))
+        elif v <= ENE_LOW:
+            hits.append("· %s 通道位置 **%.2f 超卖** ⇒ 均值回归视角可持有 ✓"
+                        % (sym, v))
+    if not hits:
+        return None
+    return ("**ENE 减仓触发**（ratio=%.1f；仅杠杆 ETF ✓，实测 6/6 回撤改善）：\n%s"
+            % (ENE_RATIO, "\n".join(hits)))
 
 
 def position_plan_brief(snap):
