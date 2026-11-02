@@ -702,7 +702,26 @@ def fetch_news(snap):
                 # 🔴 2026-11-02 实测：`CONL` 会匹配到 `ONL`（Orion Office
                 # REIT）✗ —— 富途是**模糊检索**，子串命中就算 ✓
                 # ⇒ 标题必须含**该标的代码**（词边界）✓
-                _pat = re.compile(r"\b%s\b" % re.escape(sym), re.I)
+                # ⚠️ 但 BTC/ETH 用中文检索「比特币」，标题里**不会写 BTC** ✗
+                # ⇒ 必须把中文别名一起算进实体词 ✓（否则 BTC 新闻全被滤掉 ✗）
+                _alias = {"BTC": ("BTC", "比特币", "bitcoin"),
+                          "ETH": ("ETH", "以太坊", "ethereum")}.get(
+                    sym, (sym,))
+                # ⚠️ `\b` 对**中文不生效** ✗ —— 中文字符在 Unicode 模式下算
+                # `\w` ⇒ `\b比特币\b` 在「发布比特币 Tracker」里匹配不到 ✗
+                # ⇒ ASCII 别名加词边界（防 ONL 误匹配），中文别名**不加** ✓
+                _asc = [a for a in _alias if a.isascii()]
+                _cjk = [a for a in _alias if not a.isascii()]
+                _parts = []
+                for a in _asc:
+                    # ⚠️ 不能用 `\b` ✗ —— 「SOXS、CONL和NVDX」里 CONL 两侧
+                    # 都是中文 ⇒ `\b` 不成立 ⇒ 正样本被误杀 ✗
+                    # ⇒ 改成「两侧不是 ASCII 字母数字」✓
+                    _parts.append(r"(?<![A-Za-z0-9])%s(?![A-Za-z0-9])"
+                                  % re.escape(a))
+                if _cjk:
+                    _parts.append("|".join(re.escape(a) for a in _cjk))
+                _pat = re.compile("|".join(_parts), re.I)
                 _kept = [str(t).strip() for t in data["title"].tolist()
                          if _pat.search(str(t))]
                 if _kept:

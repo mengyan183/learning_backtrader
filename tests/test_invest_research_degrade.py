@@ -752,3 +752,40 @@ def test_ene_line_escapes_percent_literal():
     2026-11-02 实测：`TypeError: not enough arguments for format string`
     """
     assert "1%% 规则" in _src(), "字面量 `1%` 没转义 ✗"
+
+
+def test_news_entity_filter_handles_cjk():
+    """新闻实体过滤必须同时处理**中文别名**和**中文包围** ✓。
+
+    两个实测坑（2026-11-02）：
+      ① BTC 用中文检索「比特币」，标题里不写 BTC ⇒ 全被滤掉 ✗
+         （`\b` 对中文不生效 ✗ —— 中文字符算 `\w`）
+      ② CONL 在「SOXS、CONL和NVDX」里两侧都是中文 ⇒ `\b` 不成立
+         ⇒ **正样本被误杀** ✗
+    ⇒ ASCII 别名用「两侧不是 ASCII 字母数字」，中文别名不加边界 ✓
+    """
+    import re
+
+    src = _src()
+    assert "比特币" in src, "缺 BTC 中文别名 ✗"
+    assert "(?<![A-Za-z0-9])" in src, "ASCII 别名没用「两侧非字母数字」✗"
+    assert r"\b(?:%s)\b" not in src, "还在用对中文无效的 `\b` ✗"
+
+    # 行为校验：复刻同一套规则
+    def mk(alias):
+        asc = [a for a in alias if a.isascii()]
+        cjk = [a for a in alias if not a.isascii()]
+        parts = [r"(?<![A-Za-z0-9])%s(?![A-Za-z0-9])" % re.escape(a)
+                 for a in asc]
+        if cjk:
+            parts.append("|".join(re.escape(a) for a in cjk))
+        return re.compile("|".join(parts), re.I)
+
+    btc = mk(("BTC", "比特币", "bitcoin"))
+    assert btc.search("Michael Saylor 发布比特币 Tracker")
+    assert btc.search("BTC price falls")
+    assert not btc.search("美股收盘：三大股指低收")
+
+    conl = mk(("CONL",))
+    assert not conl.search("猎户座办公 REIT 亏损 ONL"), "ONL 被误匹配 ✗"
+    assert conl.search("每周ETF变动者中有SOXS、CONL和NVDX"), "正样本被误杀 ✗"
