@@ -532,3 +532,35 @@ def test_sync_positions_and_bsk_actions_registered():
     for name in ("sync_positions", "bsk_update", "bsk_status"):
         assert name in q.ACTIONS, "%s 未注册 ✗" % name
         assert callable(q.ACTIONS[name])
+
+
+def test_unknown_action_hints_code_not_ingested():
+    """未知 action 的报错必须提示「代码可能还没入库」✓（2026-11-02）。
+
+    实测：`t-20261102-152253-bsk_status` 报「未知 action」✗
+    而动作代码其实写了、只是**代码包入库晚于任务 id** ✗
+    ⇒ 光看「未知 action」会以为是动作名拼错 ✗
+    """
+    import io
+    import os
+
+    src = io.open(os.path.join(os.path.dirname(__file__), "..", "scripts",
+                               "run_task_queue.py"), encoding="utf-8").read()
+    assert "代码包还没入库" in src, "缺少「代码没入库」的提示 ✗"
+    assert "先确认代码入库" in src, "缺少「先入库再下发」的约定 ✗"
+
+
+def test_sync_positions_forces_live_mode():
+    """`sync_positions` 动作必须传 `FG_SYNC_MODE=live` ✓（2026-11-02）。
+
+    `sync_positions.py` 默认 **static** ✗ —— 不调任何外部 API、
+    不碰 accounts/positions ✗ ⇒ 任务报 done 但什么都没验证到 ✗
+    （第一次下发就是这么被骗的 ✗）
+    而每日链 plist 里是 `FG_SYNC_MODE=live ... sync_positions.py` ✓
+    """
+    import io
+    import os
+
+    src = io.open(os.path.join(os.path.dirname(__file__), "..", "scripts",
+                               "run_task_queue.py"), encoding="utf-8").read()
+    assert 'FG_SYNC_MODE="live"' in src, "队列没强制 live ✗"

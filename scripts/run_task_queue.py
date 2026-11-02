@@ -233,9 +233,15 @@ def _act_sync_positions(params):
     ⚠️ 会**覆盖** `accounts.csv` / `positions.csv` 的当日行 ✗ —— 幂等 ✓
     """
     cmd = [sys.executable, os.path.join(ROOT, "scripts", "sync_positions.py")]
+    # 🔴 2026-11-02 实测：`sync_positions.py` 默认 **static** ✗ ——
+    # static 下**不调任何外部 API**、**不碰 accounts/positions** ✗
+    # ⇒ 队列任务跑完报 done，但什么都没验证到 ✗（第一次就是这么被骗的 ✗）
+    # 而每日链 plist 里是 `FG_SYNC_MODE=live ... sync_positions.py` ✓
+    # ⇒ 队列必须显式传 live ✓（否则「验证 OKX 拆分」这个目的达不到 ✗）
+    env = dict(os.environ, FG_SYNC_MODE="live")
     try:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=300)
+                           timeout=300, env=env)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 300 秒未完成"}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -1122,8 +1128,16 @@ def run_once(commit=True):
         spec["_t0"] = time.time()
         if fn is None:
             # 未知 action ⇒ 明确失败，不静默跳过 ✓（否则下发方以为在排队）
+            # 🔴 2026-11-02 实测：最常见的原因是**代码还没入库** ✗ ——
+            # 任务 json 和代码分两个包发，若任务 id 早于代码包入库时间，
+            # 队列会先用**旧版** `ACTIONS` 跑 ⇒ 报「未知 action」✗
+            # （`t-20261102-152253-bsk_status` 就是这么失败的 ✗）
+            # ⇒ 提示里必须写清这条，否则看起来像「动作名拼错」✗
             _write_result(spec, "failed", -1,
-                          "未知 action：%s（白名单：%s）"
+                          "未知 action：%s（白名单：%s）\n"
+                          "⚠️ 若该动作**刚加进代码**：多半是**代码包还没入库** ✗ "
+                          "—— 任务 json 与代码分两个包发时，"
+                          "必须**先确认代码入库**再下发任务 ✓"
                           % (action, ", ".join(sorted(ACTIONS))),
                           started, time.strftime("%Y-%m-%dT%H:%M:%S"))
             done.append((spec["id"], "failed"))
