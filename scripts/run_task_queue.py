@@ -873,6 +873,16 @@ ACTION_ENV = {
 def _env_for(action):
     """该动作可见的环境变量 ✓（白名单 + 声明）"""
     env = {k: os.environ[k] for k in _BASE_ENV if k in os.environ}
+    # 🔴 2026-11-02 实测：launchd 起的队列进程**可能没有 `HOME`** ✗ ——
+    # 富途 SDK 硬读 `os.environ['HOME']`（`ft_logger.py:71`）✗
+    # ⇒ 直接 `KeyError: 'HOME'` 崩在 import 阶段 ✗
+    # （白名单「只拷贝已存在的键」会把这个缺失**放大**成崩溃 ✗）
+    # ⇒ 缺失时用 `expanduser("~")` 兜底 ✓
+    if "HOME" not in env:
+        try:
+            env["HOME"] = os.path.expanduser("~")
+        except Exception:                   # noqa: BLE001
+            pass
     spec = ACTION_ENV.get(action) or ()
     if isinstance(spec, dict):
         env.update({k: str(v) for k, v in spec.items()})

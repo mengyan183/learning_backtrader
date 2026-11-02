@@ -611,3 +611,15 @@ def test_llm_key_not_in_whitelist(monkeypatch):
     assert "FG_LLM_KEY" not in env, "明文 key 泄漏进动作环境 ✗"
     # 通道配置仍要留着（否则简报找不到 Hermes）
     assert "FG_HERMES_URL" in q.ACTION_ENV["run_invest_research"]
+
+
+def test_env_home_falls_back_when_missing(monkeypatch):
+    """`HOME` 缺失时必须兜底 ✓（2026-11-02 实测的崩溃）。
+
+    launchd 起的队列进程**可能没有 `HOME`** ✗
+    而富途 SDK 硬读 `os.environ['HOME']`（`ft_logger.py:71`）✗
+    ⇒ `KeyError: 'HOME'` 崩在 import 阶段 ✗
+    """
+    monkeypatch.delenv("HOME", raising=False)
+    env = q._env_for("sync_positions")
+    assert env.get("HOME"), "HOME 缺失时没兜底 ✗"
