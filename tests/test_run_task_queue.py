@@ -521,17 +521,18 @@ def test_c5_backtest_dumps_per_symbol_features(monkeypatch, tmp_path):
     assert len(calls) == 6, calls
 
 
-def test_sync_positions_and_bsk_actions_registered():
-    """三个新动作必须在白名单里 ✓（2026-11-02）。
+def test_sync_positions_registered_bsk_removed():
+    """`sync_positions` 在、`bsk_*` **已删** ✓（2026-11-02 用户裁定）。
 
     - `sync_positions`：验证 OKX 的 securities_mv/cash 拆分 ✓
-    - `bsk_update` / `bsk_status`：Windows 侧升不了 bsk ✗
-      （公司代理只支持 HTTP 转发，不支持 HTTPS CONNECT 隧道 ✗）
-      ⇒ 在 Mac 上升 ✓
+    - `bsk_update` / `bsk_status`：**删掉了** ✗ ——
+      实测 Mac 上根本没装 bsk（`[Errno 2] No such file or directory`）✗
+      ⇒ 这两个动作永远失败，留着只制造噪音 ✗
     """
-    for name in ("sync_positions", "bsk_update", "bsk_status"):
-        assert name in q.ACTIONS, "%s 未注册 ✗" % name
-        assert callable(q.ACTIONS[name])
+    assert "sync_positions" in q.ACTIONS
+    assert callable(q.ACTIONS["sync_positions"])
+    for name in ("bsk_update", "bsk_status"):
+        assert name not in q.ACTIONS, "%s 该删掉 ✗" % name
 
 
 def test_unknown_action_hints_code_not_ingested():
@@ -564,3 +565,36 @@ def test_sync_positions_forces_live_mode():
     src = io.open(os.path.join(os.path.dirname(__file__), "..", "scripts",
                                "run_task_queue.py"), encoding="utf-8").read()
     assert 'FG_SYNC_MODE="live"' in src, "队列没强制 live ✗"
+
+
+def test_env_whitelist_blocks_unrelated_secrets(monkeypatch):
+    """环境变量白名单 ✓ —— 动作读不到无关密钥（2026-11-02 用户裁定）。
+
+    🔴 原来 `subprocess` **继承全部** `os.environ` ✗ ⇒
+      动作能读到 plist 里所有密钥（`FG_LLM_KEY` / `FEISHU_OPEN_ID` …）✗
+    """
+    monkeypatch.setenv("SOME_SECRET_KEY", "leak-me")
+    env = q._env_for("factor_diag")
+    assert "SOME_SECRET_KEY" not in env, "无关密钥泄漏进动作环境 ✗"
+    assert "PATH" in env, "基础变量被误删 ✗"
+
+
+def test_env_whitelist_injects_sync_mode():
+    """`sync_positions` 必须拿到 `FG_SYNC_MODE=live` ✓。
+
+    默认 static ⇒ 不调外部 API、不碰 accounts/positions ✗
+    ⇒ 任务报 done 但什么都没验证 ✗
+    """
+    env = q._env_for("sync_positions")
+    assert env.get("FG_SYNC_MODE") == "live", \
+        "sync_positions 没拿到 live ✗：%r" % env.get("FG_SYNC_MODE")
+
+
+def test_env_whitelist_scoped_restores_after(monkeypatch):
+    """`_scoped_env` 退出后必须**恢复**原环境 ✓（否则后续动作被污染 ✗）。"""
+    monkeypatch.setenv("SOME_SECRET_KEY", "keep-me")
+    with q._scoped_env("factor_diag"):
+        import os
+        assert "SOME_SECRET_KEY" not in os.environ, "作用域内没被收窄 ✗"
+    import os
+    assert os.environ.get("SOME_SECRET_KEY") == "keep-me", "作用域外没恢复 ✗"

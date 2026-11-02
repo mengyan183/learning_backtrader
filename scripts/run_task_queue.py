@@ -22,6 +22,7 @@
 import argparse
 import glob
 import json
+import contextlib
 import os
 import shutil
 import subprocess
@@ -253,39 +254,6 @@ def _act_sync_positions(params):
             "stderr": (r.stderr or "")[-600:]}
 
 
-def _act_bsk_update(params):
-    """在 **Mac** 上升级 bsk ✓（`bsk update`）。
-
-    2026-11-02：Windows 侧升不了 ✗ ——
-      ① 直连 GitHub 超时
-      ② 公司代理只支持 **HTTP 转发**，不支持 HTTPS CONNECT 隧道 ✗
-      ③ 腾讯镜像站域名被拦（DNS 能解析，TCP 连不上）✗
-    Mac 有 7890 完整代理 ⇒ 在那里升 ✓
-    """
-    cmd = ["bsk", "update"]
-    try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=300)
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "reason": "超过 300 秒未完成"}
-    except (subprocess.SubprocessError, OSError) as exc:
-        return {"ok": False, "reason": "执行失败（bsk 未安装？）：%s" % exc}
-    return {"ok": r.returncode == 0, "rc": r.returncode,
-            "stdout": (r.stdout or "")[-1500:],
-            "stderr": (r.stderr or "")[-600:]}
-
-
-def _act_bsk_status(params):
-    """查 bsk 版本与协议兼容状态 ✓（只读）。"""
-    cmd = ["bsk", "status"]
-    try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=120)
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as exc:
-        return {"ok": False, "reason": "执行失败：%s" % exc}
-    return {"ok": r.returncode == 0, "rc": r.returncode,
-            "stdout": (r.stdout or "")[-1200:],
-            "stderr": (r.stderr or "")[-400:]}
 
 
 def _act_fetch_indices(params):
@@ -872,6 +840,63 @@ NEEDS_TID = {"install_daily_plist"}
 
 
 #: 🔴 唯一可执行清单。键是**任务名**，值是固定函数 —— 不接受任何命令字符串 ✓
+#: 基础环境变量白名单 ✓ —— 动作**只能**看到这些（2026-11-02 用户裁定）
+#: 🔴 原来 `subprocess` **继承全部** `os.environ` ✗ ⇒
+#:   ① 动作能读到 plist 里所有密钥（`FG_LLM_KEY` / `FEISHU_OPEN_ID` …）✗
+#:   ② 而**行为开关**（`FG_SYNC_MODE`）又因为没在 plist 里而丢失 ✗
+#:      ⇒ `sync_positions` 跑成 static、什么都没验证 ✗
+#: ⇒ 改成「**白名单 + 每动作声明**」✓
+_BASE_ENV = ("PATH", "HOME", "LANG", "LC_ALL", "TZ", "TMPDIR", "PYTHONPATH",
+             "SYSTEMROOT", "TEMP", "TMP", "USERPROFILE")
+
+#: 每个动作**额外**可见的环境变量 ✓
+#: 值可以是 `set`（按名取 `os.environ`）或 `dict`（显式注入/覆盖）✓
+ACTION_ENV = {
+    # `sync_positions.py` 默认 static ✗ ⇒ 必须显式 live 才会真调富途/OKX ✓
+    "sync_positions": {"FG_SYNC_MODE": "live"},
+    # 简报需要：飞书 open_id + LLM 通道配置（plist 里那份）
+    "run_invest_research": {
+        "FEISHU_OPEN_ID", "FG_LLM_URL", "FG_LLM_MODEL", "FG_LLM_KEY",
+        "FG_LLM_PROXY", "FG_HERMES_URL", "FG_HERMES_MODEL", "FG_PROXY",
+    },
+    # 日报链里的抓数动作要走代理（`config.PROXY` 读 `FG_PROXY`）
+    "fetch_fred": {"FG_PROXY"},
+    "fetch_pe_ratio": {"FG_PROXY"},
+    "fetch_indices": {"FG_PROXY"},
+    "fetch_shoutu_history": {"FG_PROXY"},
+}
+
+
+def _env_for(action):
+    """该动作可见的环境变量 ✓（白名单 + 声明）"""
+    env = {k: os.environ[k] for k in _BASE_ENV if k in os.environ}
+    spec = ACTION_ENV.get(action) or ()
+    if isinstance(spec, dict):
+        env.update({k: str(v) for k, v in spec.items()})
+    else:
+        for k in spec:
+            if k in os.environ:
+                env[k] = os.environ[k]
+    return env
+
+
+@contextlib.contextmanager
+def _scoped_env(action):
+    """执行期间把 `os.environ` **收窄**成该动作的白名单 ✓。
+
+    这样所有 `subprocess.run(...)`（继承 `os.environ`）都自动受限 ✓
+    —— 一处改造，26 个调用点全覆盖 ✓（逐个改容易漏 ✗）
+    """
+    saved = dict(os.environ)
+    try:
+        os.environ.clear()
+        os.environ.update(_env_for(action))
+        yield
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
+
+
 ACTIONS = {
     "cleanup_backlog": _act_cleanup_backlog,
     "sync_runtime": _act_sync_runtime,
@@ -891,8 +916,6 @@ ACTIONS = {
     "fetch_fred": _act_fetch_fred,
     "fetch_indices": _act_fetch_indices,
     "sync_positions": _act_sync_positions,
-    "bsk_update": _act_bsk_update,
-    "bsk_status": _act_bsk_status,
     "key_diag": _act_key_diag,
     "backtest_plan": _act_backtest_plan,
     "fetch_shoutu_history": _act_fetch_shoutu_history,
@@ -1151,7 +1174,10 @@ def run_once(commit=True):
             _params = dict(spec.get("params") or {})
             if action in NEEDS_TID:
                 _params.setdefault("_tid", spec["id"])
-            r = fn(_params)
+            # 🔴 2026-11-02：**环境变量白名单** ✓ —— 执行期间 `os.environ`
+            # 被收窄成该动作声明的集合 ✗ ⇒ 动作读不到无关密钥 ✓
+            with _scoped_env(action):
+                r = fn(_params)
             ok = bool(r.get("ok")) if isinstance(r, dict) else True
             _write_result(spec, "done" if ok else "failed",
                           0 if ok else 1,
