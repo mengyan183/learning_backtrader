@@ -856,7 +856,10 @@ ACTION_ENV = {
     "sync_positions": {"FG_SYNC_MODE": "live"},
     # 简报需要：飞书 open_id + LLM 通道配置（plist 里那份）
     "run_invest_research": {
-        "FEISHU_OPEN_ID", "FG_LLM_URL", "FG_LLM_MODEL", "FG_LLM_KEY",
+        # ⚠️ **不含 `FG_LLM_KEY`** ✗（2026-11-02 用户裁定）——
+        # 简报走**本地 Hermes**（`127.0.0.1:8642`）✓ key 由 Hermes 自己管 ✓
+        # ⇒ 脚本不需要拿到明文 key ✗（`_read_llm_key()` 会从 `~/.dsh` 读 ✓）
+        "FEISHU_OPEN_ID", "FG_LLM_URL", "FG_LLM_MODEL",
         "FG_LLM_PROXY", "FG_HERMES_URL", "FG_HERMES_MODEL", "FG_PROXY",
     },
     # 日报链里的抓数动作要走代理（`config.PROXY` 读 `FG_PROXY`）

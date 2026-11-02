@@ -598,3 +598,16 @@ def test_env_whitelist_scoped_restores_after(monkeypatch):
         assert "SOME_SECRET_KEY" not in os.environ, "作用域内没被收窄 ✗"
     import os
     assert os.environ.get("SOME_SECRET_KEY") == "keep-me", "作用域外没恢复 ✗"
+
+
+def test_llm_key_not_in_whitelist(monkeypatch):
+    """`FG_LLM_KEY` **不得**进白名单 ✓（2026-11-02 用户裁定）。
+
+    简报走**本地 Hermes**（`127.0.0.1:8642`）✓ key 由 Hermes 自己管 ✓
+    ⇒ 脚本不需要拿到明文 key ✗（`_read_llm_key()` 从 `~/.dsh` 读 ✓）
+    """
+    monkeypatch.setenv("FG_LLM_KEY", "sk-should-not-leak")
+    env = q._env_for("run_invest_research")
+    assert "FG_LLM_KEY" not in env, "明文 key 泄漏进动作环境 ✗"
+    # 通道配置仍要留着（否则简报找不到 Hermes）
+    assert "FG_HERMES_URL" in q.ACTION_ENV["run_invest_research"]
