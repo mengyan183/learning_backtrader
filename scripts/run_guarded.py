@@ -18,11 +18,39 @@ plist 里把每条命令套一层即可 ✓。
 `start_new_session` + 杀**整个进程组** ✓ —— 子进程再派生的孙进程也一起收掉 ✗
 （富途 SDK 的重连线程就是这样躲过 `proc.kill()` 的 ✗）。
 """
+import json
 import os
 import signal
 import subprocess
 import sys
 import time
+
+#: 🔴 失败台账 ✓（2026-11-03 用户要求「每日链每步失败即告警」）
+#: 为什么写文件而不是当场发飞书 ✗：
+#:   ① 链是 `;` 串行 ✗ 某步失败时**后面还有 10 步** ✗ 当场发会刷屏 ✗
+#:   ② `run_guarded` 不该耦合飞书 SDK ✗
+#: ⇒ 写台账 ✓ 链末由 `report_daily_failures.py` **汇总发一条** ✓
+FAIL_LOG = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "Data", "daily_failures.jsonl")
+
+
+def _record_failure(rc, cmd, seconds, timeout=False):
+    """把一次失败追加进台账 ✓ —— 写不进去也**不能让链挂** ✗。"""
+    try:
+        os.makedirs(os.path.dirname(FAIL_LOG), exist_ok=True)
+        rec = {
+            "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "cmd": " ".join(os.path.basename(c) if i == 0 else c
+                            for i, c in enumerate(cmd))[:200],
+            "rc": rc,
+            "seconds": round(seconds, 1),
+            "timeout": bool(timeout),
+        }
+        with open(FAIL_LOG, "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except Exception as exc:                # noqa: BLE001
+        print("[guard] 失败台账写不进去：%s" % exc, file=sys.stderr)
 
 
 def _kill_tree(proc):
@@ -53,9 +81,16 @@ def run(limit, cmd):
         _kill_tree(proc)
         print("[guard] ⏱ %s 超过 %g 秒 ⇒ 已强杀（rc=124）"
               % (os.path.basename(cmd[0]), limit), file=sys.stderr)
+        _record_failure(124, cmd, time.time() - t0, timeout=True)
         return 124
-    print("[guard] %s rc=%d %.1fs" % (os.path.basename(cmd[0]), rc,
-                                      time.time() - t0))
+    secs = time.time() - t0
+    print("[guard] %s rc=%d %.1fs" % (os.path.basename(cmd[0]), rc, secs))
+    # 🔴 2026-11-03：**非 0 退出就记台账** ✓ —— 原来只打印一行 ✗
+    #    而 `prices.csv` 断流 22 天正是「每天 rc≠0 但没人看」✗
+    if rc != 0:
+        print("[guard] ⚠️ %s **失败** rc=%d（已记入 daily_failures.jsonl）"
+              % (os.path.basename(cmd[0]), rc), file=sys.stderr)
+        _record_failure(rc, cmd, secs)
     return rc
 
 
