@@ -1,0 +1,9 @@
+{
+  "id": "t-20261103-172000-safe_pull_data",
+  "action": "safe_pull_data",
+  "params": {
+    "keep_backup": "1"
+  },
+  "status": "pending",
+  "created_at": "2026-11-03T17:20:00"
+}
