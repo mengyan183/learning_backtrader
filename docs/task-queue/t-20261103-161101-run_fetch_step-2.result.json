@@ -1,0 +1,14 @@
+{
+  "id": "t-20261103-161101-run_fetch_step-2",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "fetch_shoutu_api.py",
+    "timeout": "900"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"script\": \"fetch_shoutu_api.py\", \"args\": [], \"rc\": 0, \"seconds\": 8.6, \"changed\": {\"shoutu_fng.csv\": {\"before\": \"2026-10-13\", \"after\": \"2026-11-03\"}}, \"unchanged\": {\"putcall_daily_latest.csv\": \"2026-11-02\", \"fred_baa10y_avail.csv\": \"2026-10-23\", \"stablecoin_usage.csv\": \"2026-10-11\", \"funding_rate.csv\": \"2026-10-13\", \"vix3m.csv\": \"2026-11-02\", \"sp500_pe.csv\": \"2026-10-29\", \"prices.csv\": \"2026-11-02\", \"sentiment.csv\": \"2026-10-12\", \"putcall.csv\": \"2026-11-02\", \"vix_history.csv\": \"2026-10-12\", \"news_sentiment.csv\": \"2026-10-13\", \"kalshi_fed.csv\": \"2026-10-14\", \"fedwatch.csv\": \"2026-10-13\", \"vix.csv\": \"2026-11-02\", \"crypto_underlying.csv\": \"2026-09-29\", \"crypto_prices.csv\": \"2026-09-29\", \"shoutu_history.csv\": \"2026-10-14\", \"sp500_cape.csv\": \"2026-10-29\"}, \"verdict\": \"rc=0，更新了 1 个文件\", \"stdout\": \"取得 8 个标的：\\n  CONL  lever=2 emo_area=coin   score=-94.0  price=2.92\\n  YINN  lever=3 emo_area=a      score=-80.0  price=22.83\\n  GDXU  lever=3 emo_area=other  score=-100.0 price=65.7\\n  AXTX  lever=2 emo_area=us     score=-92.0  price=11.38\\n  CRCG  lever=2 emo_area=other  score=-97.0  price=8.52\\n  TQQQ  lever=3 emo_area=us     score=-63.0  price=59.51\\n  SOXL  lever=3 emo_area=us     score=-91.0  price=69.94\\n  UPRO  lever=3 emo_area=us     score=-21.0  price=138.61\\n逐标的时序已写入：/Users/xingguo/learning_backtrader/Data/raw/shoutu_fng.csv（本次 8 行，累计 14 行）\\n覆盖天数：AXTX 14 / CONL 14 / CRCG 14 / GDXU 14 / SOXL 13 / TQQQ 13 / UPRO 13 / YINN 14\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-03T16:15:23",
+  "finished_at": "2026-11-03T16:15:32",
+  "duration_s": 9.11
+}

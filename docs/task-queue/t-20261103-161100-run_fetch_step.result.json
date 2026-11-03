@@ -1,0 +1,14 @@
+{
+  "id": "t-20261103-161100-run_fetch_step",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "fetch_putcall.py",
+    "timeout": "900"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"script\": \"fetch_putcall.py\", \"args\": [], \"rc\": 0, \"seconds\": 55.2, \"changed\": {\"putcall_daily_latest.csv\": {\"before\": null, \"after\": \"2026-11-02\"}, \"putcall.csv\": {\"before\": \"2026-10-12\", \"after\": \"2026-11-02\"}}, \"unchanged\": {\"fred_baa10y_avail.csv\": \"2026-10-23\", \"stablecoin_usage.csv\": \"2026-10-11\", \"funding_rate.csv\": \"2026-10-13\", \"vix3m.csv\": \"2026-11-02\", \"sp500_pe.csv\": \"2026-10-29\", \"prices.csv\": \"2026-11-02\", \"sentiment.csv\": \"2026-10-12\", \"shoutu_fng.csv\": \"2026-10-13\", \"vix_history.csv\": \"2026-10-12\", \"news_sentiment.csv\": \"2026-10-13\", \"kalshi_fed.csv\": \"2026-10-14\", \"fedwatch.csv\": \"2026-10-13\", \"vix.csv\": \"2026-11-02\", \"crypto_underlying.csv\": \"2026-09-29\", \"crypto_prices.csv\": \"2026-09-29\", \"shoutu_history.csv\": \"2026-10-14\", \"sp500_cape.csv\": \"2026-10-29\"}, \"verdict\": \"rc=0，更新了 2 个文件\", \"stdout\": \"基底（官方 CSV）：3253 条，2006-11-01 → 2019-10-04\\n近期（逐日页面）：30 条，2026-09-22 → 2026-11-02\\n合并 → /Users/xingguo/learning_backtrader/Data/raw/putcall.csv：共 3283 条（2006-11-01 → 2026-11-02）\\ntotal_ratio 非空：3283 条\\nputcall_daily_latest.csv: 30 行（2026-09-22 → 2026-11-02），本次新增 30 行\\n  最新 2026-11-02: total=0.87 equity=0.67 vix=0.28\\nsentiment.csv: 9292 行 (1990-01-02 → 2026-10-12)，8 列\\n  Put-Call 最新 2026-10-12: total=0.91 equity=0.62\\n已重建 putcall.csv 并并入 sentiment.csv\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-03T16:14:22",
+  "finished_at": "2026-11-03T16:15:18",
+  "duration_s": 56.4
+}

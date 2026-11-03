@@ -1,9 +1,0 @@
-{
-  "id": "t-20261103-150708-prune_dead_data",
-  "action": "prune_dead_data",
-  "params": {
-    "restore": "1"
-  },
-  "status": "pending",
-  "created_at": "2026-11-03T15:07:08"
-}

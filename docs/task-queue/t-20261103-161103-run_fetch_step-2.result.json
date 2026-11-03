@@ -1,0 +1,14 @@
+{
+  "id": "t-20261103-161103-run_fetch_step-2",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "fetch_sentiment.py",
+    "timeout": "900"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"script\": \"fetch_sentiment.py\", \"args\": [], \"rc\": 0, \"seconds\": 5.4, \"changed\": {\"funding_rate.csv\": {\"before\": \"2026-10-13\", \"after\": \"2026-11-03\"}, \"sentiment.csv\": {\"before\": \"2026-10-12\", \"after\": \"2026-11-02\"}, \"vix_history.csv\": {\"before\": \"2026-10-12\", \"after\": \"2026-11-02\"}}, \"unchanged\": {\"putcall_daily_latest.csv\": \"2026-11-02\", \"fred_baa10y_avail.csv\": \"2026-10-23\", \"stablecoin_usage.csv\": \"2026-11-03\", \"vix3m.csv\": \"2026-11-02\", \"sp500_pe.csv\": \"2026-10-29\", \"prices.csv\": \"2026-11-02\", \"putcall.csv\": \"2026-11-02\", \"shoutu_fng.csv\": \"2026-11-03\", \"news_sentiment.csv\": \"2026-10-13\", \"kalshi_fed.csv\": \"2026-11-03\", \"fedwatch.csv\": \"2026-10-13\", \"vix.csv\": \"2026-11-02\", \"crypto_underlying.csv\": \"2026-09-29\", \"crypto_prices.csv\": \"2026-09-29\", \"shoutu_history.csv\": \"2026-10-14\", \"sp500_cape.csv\": \"2026-10-29\"}, \"verdict\": \"rc=0，更新了 3 个文件\", \"stdout\": \"VIX 同步: 1990-01-02 → 2026-11-02，9307 行，最新 21.15\\n资金费率更新: 2026-11-03 BTC 0.01% ETH 0.00746119036511%\\nsentiment.csv: 9307 行 (1990-01-02 → 2026-11-02)，8 列\\n  Put-Call 最新 2026-11-02: total=0.87 equity=0.67\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-03T16:16:09",
+  "finished_at": "2026-11-03T16:16:15",
+  "duration_s": 5.9
+}
