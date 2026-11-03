@@ -37,6 +37,21 @@ try:
 except Exception:                           # noqa: BLE001
     pass
 
+#: 🔴 **监控引用白名单** ✓ —— 出现在这里的一律判「**监控依赖**」✗
+#: 不参与「孤儿/死文件」判定 ✓
+#: 事故（2026-11-03）：审计把 `fred_T10Y2Y.csv` / `sp500_cape.csv` 判成死文件 ✗
+#:   而它们是 `check_freshness.py` 的 `REF_PRODUCTS`（硬编码完整路径 ✗）
+#:   静态扫描抓不到 ⇒ 用户收到「文件缺失」告警 ✗
+#: ⚠️ 加监控时必须同步更新这里 ✗
+MONITORED = {
+    "shoutu_history.csv", "fred_DGS10.csv", "sp500_pe.csv", "sp500_cape.csv",
+    "fedwatch.csv", "fred_T10Y2Y.csv", "sentiment.csv", "putcall.csv",
+    "kalshi_fed.csv", "funding_rate.csv", "shoutu_fng.csv",
+    "news_sentiment.csv", "stablecoin_usage.csv", "fred_DFF.csv",
+    # 以下由因子代码动态拼名读取（静态扫描也抓不到 ✗）
+    "fred_BAA10Y.csv", "fred_baa10y_avail.csv",
+}
+
 #: 扫哪些代码目录
 SCAN_DIRS = ("scripts", "fg_system", "tests")
 #: 写入的标志（**上下文窗口内**出现这些 ⇒ 视为生产者 ✓）
@@ -127,7 +142,10 @@ def main(argv=None):
     for n in sorted(audit):
         w = len(audit[n]["writers"])
         r = len(audit[n]["readers"])
-        if w > 0 and r > 0:
+        if n in MONITORED:
+            # 🔴 白名单优先 ✗ —— 监控/动态拼名的消费者静态扫描抓不到 ✓
+            verdict = "**监控依赖**（勿删 ✓）"
+        elif w > 0 and r > 0:
             verdict = "**在用** ✓"
         elif r > 0:
             verdict = "**只读**（无生产者 ✗）"
@@ -138,20 +156,30 @@ def main(argv=None):
         rows.append((n, w, r, verdict))
         print("| `%s` | %d | %d | %s |" % (n, w, r, verdict))
 
-    # 汇总
-    n_used = sum(1 for _n, w, r, _v in rows if w > 0 and r > 0)
-    n_orphan = sum(1 for _n, w, r, _v in rows if w > 0 and r == 0)
-    n_dead = sum(1 for _n, w, r, _v in rows if w == 0 and r == 0)
-    n_ro = sum(1 for _n, w, r, _v in rows if w == 0 and r > 0)
+    # 汇总（🔴 白名单优先 ✗ 不计入「孤儿/死文件」）
+    mon = [n for n in audit if n in MONITORED]
+    n_mon = len(mon)
+    rest = [n for n in audit if n not in MONITORED]
+    n_used = sum(1 for n in rest
+                 if audit[n]["writers"] and audit[n]["readers"])
+    n_ro = sum(1 for n in rest
+               if not audit[n]["writers"] and audit[n]["readers"])
+    n_orphan = sum(1 for n in rest
+                   if audit[n]["writers"] and not audit[n]["readers"])
+    n_dead = sum(1 for n in rest
+                 if not audit[n]["writers"] and not audit[n]["readers"])
     print("\n## 汇总\n")
     print("| 判定 | 数量 |")
     print("|---|---|")
+    print("| **监控依赖**（勿删 ✓）| %d |" % n_mon)
     print("| 在用 ✓ | %d |" % n_used)
     print("| 只读（无生产者）✗ | %d |" % n_ro)
     print("| 孤儿（无人读）✗ | %d |" % n_orphan)
     print("| 死文件 ✗ | %d |" % n_dead)
-    print("\n⚠️ 「只读」最值得查 ✗ —— 说明**抓取代码不在本仓库**")
-    print("   或**文件名拼错**（读了不存在的文件 ✗）")
+    print("\n⚠️ 「只读」「孤儿」「死文件」**都可能有误判** ✗：")
+    print("   ① 监控脚本用**硬编码完整路径**（`REF_PRODUCTS` ✗）⇒ 抓不到")
+    print("   ② 因子代码用**动态拼名**（`\"%s.csv\" % name` ✗）⇒ 抓不到")
+    print("   ⇒ **删之前必须人工核对** ✓ 白名单见 `MONITORED`")
 
     if args.json:
         p = Path(args.json)
