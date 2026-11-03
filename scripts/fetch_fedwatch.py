@@ -44,6 +44,31 @@ OUT = RAW / "fedwatch.csv"
 from fg_system import config
 
 PROXY = "http://127.0.0.1:7890"
+
+
+def _find_chrome():
+    """**自动探测 Chrome/Chromium 路径** ✓（2026-11-03 修）。
+
+    🔴 原来 `CHROME` 写死 `/Applications/Google Chrome.app/...` ✗
+       ⇒ 没装 Chrome（只有 Chromium / 或装在其他位置）时
+         `subprocess.run` 抛 `OSError` ✗ 被 `except` 吞掉 ✗
+         只打印「刷新异常」✗ 看起来像网络问题 ✗ **实际是找不到浏览器** ✗
+    """
+    cands = [
+        os.environ.get("FG_CHROME") or "",
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+        "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+        "/opt/homebrew/bin/chromium",
+        "/usr/local/bin/chromium",
+        "/usr/bin/google-chrome",
+        "/usr/bin/chromium",
+    ]
+    for c in cands:
+        if c and os.path.exists(c):
+            return c
+    return None
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -86,19 +111,37 @@ def _kill_stray_chrome():
 def _refresh_session(debug=False, retries=2):
     """headless Chrome 打开 CME FedWatch 页面 → netlog 提取最新 insid+qsid。
     返回 (insid, qsid)；失败返回 (None, None)。"""
+    chrome = _find_chrome()
+    if not chrome:
+        # 🔴 2026-11-03：**必须明确说「找不到浏览器」** ✗
+        #    原来静默 `(None, None)` ⇒ 上层 `sys.exit(2)` ⇒
+        #    日志只写「无法获取会话」✗ 完全误导 ✗
+        print("[fedwatch] ✗ **找不到 Chrome/Chromium** ✗ —— "
+              "设环境变量 `FG_CHROME=/path/to/chrome` 或装 Chrome ✓",
+              file=sys.stderr)
+        return None, None
+    if debug:
+        print("[fedwatch] 使用浏览器：%s" % chrome)
+
     for attempt in range(retries + 1):
         _kill_stray_chrome()
         fd, netlog = tempfile.mkstemp(suffix=".json")
         os.close(fd)
         try:
-            cmd = [CHROME, "--headless=new", "--disable-gpu", "--no-sandbox",
+            cmd = [chrome, "--headless=new", "--disable-gpu", "--no-sandbox",
                    "--proxy-server=" + PROXY, "--user-agent=" + UA,
-                   "--virtual-time-budget=20000",
+                   # 🔴 20000 → 40000：CME 页面在代理下加载慢 ✗
+                   #    实测 20s 常常 dump 到空 DOM ✗
+                   "--virtual-time-budget=40000",
                    "--log-net-log=" + netlog,
                    "--net-log-capture-mode=IncludeSensitive",
                    "--dump-dom", config.FEDWATCH_PAGE_URL]
-            subprocess.run(cmd, stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL, timeout=150)
+            r = subprocess.run(cmd, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace",
+                               timeout=180)
+            if debug and r.returncode != 0:
+                print("[fedwatch] chrome rc=%s stderr=%s"
+                      % (r.returncode, (r.stderr or "")[-200:]))
             with open(netlog, encoding="utf-8", errors="ignore") as f:
                 data = f.read()
             m = re.search(r'QuikStrikeView\.aspx[^"\\]{0,300}?insid=(\d+)[^"\\]{0,200}?qsid=([a-f0-9\-]{36})',
@@ -116,10 +159,25 @@ def _refresh_session(debug=False, retries=2):
                     print("[fedwatch] 会话刷新(%d): insid=%s qsid=%s"
                           % (attempt + 1, insid, qsid))
                 return insid, qsid
-            if debug:
-                print("[fedwatch] 刷新第 %d 次: netlog 无 View 请求" % (attempt + 1))
+            # 🔴 2026-11-03：**失败原因必须总是可见** ✗
+            #    原来 `if debug:` 才打印 ✗ ⇒ 链里跑时完全静默 ✗
+            #    ⇒ 21 天没人知道是「Chrome 缺失」还是「页面结构变了」✗
+            nlog = len(data)
+            has_qs = "QuikStrike" in data
+            print("[fedwatch] ✗ 第 %d 次失败：netlog %d 字节，含 QuikStrike=%s"
+                  % (attempt + 1, nlog, has_qs), file=sys.stderr)
+            if nlog < 5000:
+                print("[fedwatch]   ⇒ netlog 太小 ⇒ **Chrome 没真正打开页面** ✗"
+                      "（代理不通 / 浏览器崩溃 ✗）", file=sys.stderr)
+            elif not has_qs:
+                print("[fedwatch]   ⇒ 有 netlog 但**无 QuikStrike 请求** ✗"
+                      "（CME 页面结构变了 / 被反爬拦 ✗）", file=sys.stderr)
+            else:
+                print("[fedwatch]   ⇒ 有 QuikStrike 但**正则不匹配** ✗"
+                      "（insid/qsid 格式变了 ✗）", file=sys.stderr)
         except (subprocess.TimeoutExpired, OSError) as e:
-            print("[fedwatch] 刷新异常(第 %d 次): %s" % (attempt + 1, e))
+            print("[fedwatch] ✗ 第 %d 次异常：%s: %s"
+                  % (attempt + 1, type(e).__name__, e), file=sys.stderr)
         finally:
             try:
                 os.remove(netlog)
