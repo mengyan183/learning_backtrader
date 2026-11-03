@@ -455,6 +455,52 @@ def _act_sync_positions(params):
 
 
 
+def _act_fetch_prices(params):
+    """**补抓行情**（`fetch.update_prices()`）✓（2026-11-03 数据断流修复）。
+
+    【背景】
+      每日链里**有**这一步（`python -c "fetch.update_prices()"` ✗）
+      但 `prices.csv` 停在 2026-10-12 ✗ 断 22 天 ✗
+      ⇒ 说明这一步**每天失败** ✗ 而日志被后面成功的步骤淹没了 ✗
+
+    【做什么】
+      ① 跑 `fetch.update_prices()` ✓ 抓完整 traceback ✓
+      ② 跑完读 `prices.csv` 的**最新日期** ✓ 看有没有真更新 ✓
+      ③ 同时补 `update_indices()`（VIX/VIX3M 也停了 22 天 ✗）
+
+    参数：`indices`（默认 1，顺带抓 VIX ✓）
+    """
+    import pandas as _pd
+
+    code = ("from fg_system.data import fetch;"
+            "print('prices:', fetch.update_prices())")
+    if str(params.get("indices") or "1").lower() in ("1", "true", "yes"):
+        code += ";print('indices:', fetch.update_indices())"
+
+    try:
+        r = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
+                           capture_output=True, text=True, timeout=1800)
+        so, se, rc = r.stdout or "", r.stderr or "", r.returncode
+    except subprocess.TimeoutExpired:
+        so, se, rc = "", "超过 1800 秒", -1
+
+    # 抓完看结果 ✓ —— 「跑成功」不等于「数据变了」✗
+    after = {}
+    for name in ("prices.csv", "vix.csv", "vix3m.csv"):
+        p = os.path.join(ROOT, "Data", "raw", name)
+        try:
+            d = _pd.read_csv(p, usecols=["date"], parse_dates=["date"])
+            after[name] = {"rows": int(len(d)),
+                           "last": str(d["date"].max().date())}
+        except Exception as e:              # noqa: BLE001
+            after[name] = {"error": str(e)[:80]}
+
+    return {"ok": rc == 0, "rc": rc,
+            "stdout": so[-2500:], "stderr": se[-2000:],
+            "after": after,
+            "note": "⚠️ rc=0 但 `after` 里日期没变 ⇒ 抓取「成功但无新数据」✗"}
+
+
 def _act_fetch_indices(params):
     """补抓 VIX / VIX3M（`fetch.update_indices()`）✓。
 
@@ -1204,6 +1250,7 @@ ACTIONS = {
     "archive_briefs": _act_archive_briefs,
     "weekly_review": _act_weekly_review,
     "diagnose_data": _act_diagnose_data,
+    "fetch_prices": _act_fetch_prices,
     "clean_sync_partial": _act_clean_sync_partial,
     "daily_log_tail": _act_daily_log_tail,
     "install_evolve_tasks": _act_install_evolve_tasks,
