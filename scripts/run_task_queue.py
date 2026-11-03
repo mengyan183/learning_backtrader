@@ -97,6 +97,30 @@ def _act_cleanup_backlog(params):
     return dict(r, ok=ok)
 
 
+def _act_weekly_review(params):
+    """**周度复盘**（在 Mac 上跑 ✓ 2026-11-03 用户裁定）。
+
+    🔴 为什么必须在 Mac：
+       `Data/raw/*.csv` 在 Windows 侧只是**旧快照** ✗
+       （实测停在 2026-10-12 ✗ 而 Mac 上是新的 ✗）
+       ⇒ 在 Windows 跑会得出「数据断流」的假警报 ✗
+
+    参数：`days`（回顾最近 N 份简报，默认 7）✓
+    """
+    days = int(params.get("days") or 7)
+    cmd = [sys.executable, os.path.join(ROOT, "scripts", "weekly_review.py"),
+           "--days", str(days)]
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=600)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "超过 600 秒"}
+    return {"ok": r.returncode == 0, "days": days,
+            "note": "⚠️ 样本很小 ✗ 单周胜率不能当因子有效性证据 ✓",
+            "stdout": (r.stdout or "")[-4000:],
+            "stderr": (r.stderr or "")[-400:]}
+
+
 def _act_archive_briefs(params):
     """**立即归档简报并自动提交** ✓（2026-11-03 用户裁定）。
 
@@ -1087,6 +1111,7 @@ ACTIONS = {
     "sync_runtime": _act_sync_runtime,
     "git_pull": _act_git_pull,
     "archive_briefs": _act_archive_briefs,
+    "weekly_review": _act_weekly_review,
     "clean_sync_partial": _act_clean_sync_partial,
     "daily_log_tail": _act_daily_log_tail,
     "install_evolve_tasks": _act_install_evolve_tasks,
