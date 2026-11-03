@@ -97,6 +97,31 @@ def _act_cleanup_backlog(params):
     return dict(r, ok=ok)
 
 
+def _act_archive_briefs(params):
+    """**立即归档简报并自动提交** ✓（2026-11-03 用户裁定）。
+
+    🔴 为什么需要：Mac 端堆了 10+ 个未追踪的
+       `Data/briefs/archive/2026-10/invest_brief_*.md` ✗
+       （`archive_briefs.py` 原来只写文件不提交 ✗）
+       2026-11-03 已加自动提交 ✓ 但 Mac 端要先拉代码 ✓
+       ⇒ 拉完用本动作**立即清一次存量** ✓
+
+    参数：`keep`（保留最近 N 天，默认 7）✓
+    """
+    keep = int(params.get("keep") or 7)
+    cmd = [sys.executable, os.path.join(ROOT, "scripts", "archive_briefs.py"),
+           "--keep", str(keep)]
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=600)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "超过 600 秒"}
+    return {"ok": r.returncode == 0, "keep": keep,
+            "note": "归档后会自动 git commit ✓（只 add Data/briefs/ 路径 ✗）",
+            "stdout": (r.stdout or "")[-2000:],
+            "stderr": (r.stderr or "")[-400:]}
+
+
 def _act_git_pull(params):
     """在 Mac 上 **git pull** 并汇报关键状态 ✓（2026-11-03 用户裁定）。
 
@@ -1061,6 +1086,7 @@ ACTIONS = {
     "cleanup_backlog": _act_cleanup_backlog,
     "sync_runtime": _act_sync_runtime,
     "git_pull": _act_git_pull,
+    "archive_briefs": _act_archive_briefs,
     "clean_sync_partial": _act_clean_sync_partial,
     "daily_log_tail": _act_daily_log_tail,
     "install_evolve_tasks": _act_install_evolve_tasks,
