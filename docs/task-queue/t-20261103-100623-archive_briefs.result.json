@@ -1,0 +1,13 @@
+{
+  "id": "t-20261103-100623-archive_briefs",
+  "action": "archive_briefs",
+  "params": {
+    "keep": "7"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"keep\": 7, \"note\": \"归档后会自动 git commit ✓（只 add Data/briefs/ 路径 ✗）\", \"stdout\": \"[archive] 归档 6 份，工作区活跃 9 份，索引 /Users/xingguo/learning_backtrader/Data/briefs/index.md\\n[archive] 提交✓：chore(briefs): 简报归档（新增 6 份，保留最近 7 天）\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-03T10:07:46",
+  "finished_at": "2026-11-03T10:07:46",
+  "duration_s": 0.39
+}
