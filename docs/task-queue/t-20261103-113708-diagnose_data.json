@@ -1,0 +1,9 @@
+{
+  "id": "t-20261103-113708-diagnose_data",
+  "action": "diagnose_data",
+  "params": {
+    "tail": "40"
+  },
+  "status": "pending",
+  "created_at": "2026-11-03T11:37:08"
+}
