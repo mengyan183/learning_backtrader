@@ -1,0 +1,13 @@
+{
+  "id": "t-20261103-172725-inspect_sync",
+  "action": "inspect_sync",
+  "params": {
+    "untrack": "0"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"root\": \"/Users/xingguo/learning_backtrader\", \"fg_sync_candidates\": [\"/Users/xingguo/.openclaw/workspace/skills/fg-sync/scripts/fg-sync-bypass.py.bak-1028-1602\", \"/Users/xingguo/.openclaw/workspace/skills/fg-sync/scripts/fg-sync-bypass.py\", \"/Users/xingguo/.openclaw/workspace/skills/fg-sync/scripts/fg_sync_tool.py\", \"/Users/xingguo/.openclaw/workspace/skills/fg-sync/scripts/fg-sync-watcher.py\", \"/Users/xingguo/.openclaw/agents/main/agent/workshop-skills/fg-sync-SKILL.md\", \"/Users/xingguo/.openclaw/tmp/fg-sync-bypass.py\"], \"git_add_lines\": {}, \"tracked_count\": 40, \"tracked_sample\": [\"Data/raw/crypto_fng.csv\", \"Data/raw/crypto_prices.csv\", \"Data/raw/crypto_underlying.csv\", \"Data/raw/fedwatch.csv\", \"Data/raw/fedwatch_session.json\"], \"ignore_rule\": \"**未 ignore** ✗\", \"verdict\": \"⚠️ 找到 10 个候选 fg-sync ✗ 若其中有 `git add -A` / `add -a` / `add .` ⇒ **这就是 Data/raw 反复回索引的真因** ✗\"}",
+  "started_at": "2026-11-03T17:30:12",
+  "finished_at": "2026-11-03T17:30:51",
+  "duration_s": 38.54
+}
