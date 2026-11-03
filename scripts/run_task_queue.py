@@ -97,6 +97,65 @@ def _act_cleanup_backlog(params):
     return dict(r, ok=ok)
 
 
+def _act_git_pull(params):
+    """在 Mac 上 **git pull** 并汇报关键状态 ✓（2026-11-03 用户裁定）。
+
+    【为什么需要】
+      公司端 push → gitee → Mac 拉取 ✗ 这条链路一直靠人工 ✗
+      而「入库后本地文件被删/被改」这类副作用（如
+      `git rm --cached Data/realtime_state.json` ✗）需要**验证** ✓
+
+    【参数】
+      - `stash`：`1` ⇒ 拉取前先 `git stash`（本地有未提交改动时用 ✓）
+      - `show_status`：`1`（默认）⇒ 拉完打印 `git status --short`
+
+    【输出】
+      before/after 的 HEAD、behind 数、拉取结果、status ✓
+    """
+    import subprocess as _sp
+
+    def _git(*a):
+        try:
+            r = _sp.run(["git", "-C", ROOT] + list(a),
+                        capture_output=True, text=True, timeout=300)
+            return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
+        except _sp.TimeoutExpired:
+            return -1, "", "超过 300 秒"
+        except Exception as e:              # noqa: BLE001
+            return -1, "", str(e)
+
+    steps = []
+    _, before, _ = _git("rev-parse", "--short", "HEAD")
+    steps.append({"step": "before_head", "value": before})
+
+    if str(params.get("stash") or "").lower() in ("1", "true", "yes"):
+        rc, so, se = _git("stash", "push", "-m", "task-queue auto-stash")
+        steps.append({"step": "stash", "rc": rc, "stdout": so, "stderr": se})
+
+    rc, so, se = _git("fetch", "origin")
+    steps.append({"step": "fetch", "rc": rc, "stderr": se[-300:]})
+
+    rc, behind, _ = _git("rev-list", "--count", "HEAD..origin/main")
+    steps.append({"step": "behind", "value": behind})
+
+    # 🔴 `--ff-only` 而非 `pull --rebase` ✗ —— 公司端是**线性**提交 ✓
+    #    本地若有分叉 ⇒ 明确失败 ✓ 而不是自动产生 merge commit ✗
+    rc, so, se = _git("merge", "--ff-only", "origin/main")
+    steps.append({"step": "pull", "rc": rc, "stdout": so[-500:],
+                  "stderr": se[-500:]})
+
+    _, after, _ = _git("rev-parse", "--short", "HEAD")
+    steps.append({"step": "after_head", "value": after})
+
+    if str(params.get("show_status") or "1").lower() in ("1", "true", "yes"):
+        _, st, _ = _git("status", "--short")
+        steps.append({"step": "status", "value": st[:1500] or "(clean ✓)"})
+
+    ok = all(x.get("rc", 0) == 0 for x in steps if "rc" in x)
+    return {"ok": ok, "before": before, "after": after,
+            "pulled": before != after, "steps": steps}
+
+
 def _act_sync_runtime(params):
     """把仓库版 bypass 覆盖到运行时副本（见 sync_health.sync_runtime_copy）。"""
     from fg_system.dashboard import sync_health
@@ -1001,6 +1060,7 @@ def _scoped_env(action):
 ACTIONS = {
     "cleanup_backlog": _act_cleanup_backlog,
     "sync_runtime": _act_sync_runtime,
+    "git_pull": _act_git_pull,
     "clean_sync_partial": _act_clean_sync_partial,
     "daily_log_tail": _act_daily_log_tail,
     "install_evolve_tasks": _act_install_evolve_tasks,
