@@ -60,10 +60,16 @@ def _record_failure(rc, cmd, seconds, timeout=False):
     """把一次失败追加进台账 ✓ —— 写不进去也**不能让链挂** ✗。"""
     try:
         os.makedirs(os.path.dirname(FAIL_LOG), exist_ok=True)
+        # 🔴 2026-11-03 用户裁定：**超时要记完整命令** ✓
+        #    原因：日志里只有 `[guard] python` ✗ 定位不了 ✗
+        #    而 `_label` 也只是短名 ✗ 台账必须留**可复现的完整命令** ✓
+        #    ⚠️ 上限 800 字符 ✗ —— 太长会撑爆 result 文件 ✗
+        full = " ".join(cmd)
         rec = {
             "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
-            "cmd": " ".join(os.path.basename(c) if i == 0 else c
-                            for i, c in enumerate(cmd))[:200],
+            "label": _label(cmd),           # 短名（便于一眼看 ✓）
+            "cmd": full[:800],              # **完整命令** ✓
+            "cmd_truncated": len(full) > 800,
             "rc": rc,
             "seconds": round(seconds, 1),
             "timeout": bool(timeout),
