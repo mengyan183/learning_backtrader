@@ -1,0 +1,13 @@
+{
+  "id": "t-20261103-172000-safe_pull_data",
+  "action": "safe_pull_data",
+  "params": {
+    "keep_backup": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"backup\": \"dist/raw_backup_20261103-172238\", \"backup_kept\": true, \"file_count\": 25, \"steps\": [{\"step\": \"backup\", \"ok\": true, \"files\": 25, \"path\": \"dist/raw_backup_20261103-172238\"}, {\"step\": \"merge\", \"rc\": 0, \"stdout\": \"Already up to date.\", \"stderr\": \"\"}, {\"step\": \"restore\", \"restored\": 0, \"files\": [], \"errors\": []}], \"files_after\": {\"crypto_fng.csv\": \"2026-11-03\", \"crypto_prices.csv\": \"2026-11-02\", \"crypto_underlying.csv\": \"2026-10-29\", \"fedwatch.csv\": \"2026-10-13\", \"fred_BAA10Y.csv\": \"2026-10-23\", \"fred_DFF.csv\": \"2026-10-30\", \"fred_DGS10.csv\": \"2026-10-29\", \"fred_T10Y2Y.csv\": \"2026-11-02\", \"fred_baa10y_avail.csv\": \"2026-10-23\", \"funding_rate.csv\": \"2026-11-03\", \"kalshi_fed.csv\": \"2026-11-03\", \"news_sentiment.csv\": \"2026-11-03\", \"prices.csv\": \"2026-11-02\", \"putcall.csv\": \"2026-11-02\", \"putcall_daily_latest.csv\": \"2026-11-02\", \"sentiment.csv\": \"2026-11-02\", \"shoutu_fng.csv\": \"2026-11-03\", \"shoutu_history.csv\": \"2026-10-14\", \"sp500_cape.csv\": \"2026-10-29\", \"sp500_pe.csv\": \"2026-10-29\", \"stablecoin_usage.csv\": \"2026-11-03\", \"vix.csv\": \"2026-11-02\", \"vix3m.csv\": \"2026-11-02\", \"vix_history.csv\": \"2026-11-02\", \"watchlist_3x.csv\": \"?\"}, \"note\": \"⚠️ 备份**保留**在 `dist/raw_backup_20261103-172238` ✗ 确认数据无误后可手工删 ✓\"}",
+  "started_at": "2026-11-03T17:22:38",
+  "finished_at": "2026-11-03T17:22:39",
+  "duration_s": 1.68
+}
