@@ -138,3 +138,8 @@ docs/task-queue/*.running
 
 # 运行时健康状态（富途预检 / 简报阶段日志，2026-10-29）
 Data/health/
+
+# ---- 运行时状态（每次跑都会变 ✗ 不该入库）----
+# check_freshness.py / drift_monitor.py **写**，invest_research.py **读**
+# 内容是「距今 N 天」的相对时间 ⇒ 每天不同 ✗ 且两机数据状态不同 ✗
+Data/freshness_warning.txt
