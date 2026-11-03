@@ -157,8 +157,11 @@ def _act_audit_data(params):
     js = params.get("json") or "evolution/experiments/factor-adoption/data-audit.json"
     cmd += ["--json", str(js)]
     try:
+        # 🔴 2026-11-03：`text=True` 在 Windows 用 **GBK** 解码 ✗
+        #    而审计输出含 `✓`/`✗` ⇒ `UnicodeDecodeError` ✗（Mac 上无此问题 ✓）
+        #    ⇒ 显式指定 utf-8 + replace ✓ 两边都稳 ✓
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=900)
+                           encoding="utf-8", errors="replace", timeout=900)
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": "超过 900 秒"}
 
@@ -189,8 +192,13 @@ def _act_audit_data(params):
             "json": js,
             "summary": summary,
             "groups": groups,
-            "note": "⚠️ 审计有 ~10% 误判 ✗（动态拼名/消费者在别处 ✗）"
-                    " ⇒ 删文件前务必人工复核 ✓；明细见 `%s`" % js,
+            # 🔴 2026-11-03 踩坑：`"~10% 误判 ... %s" % js` ✗
+            #    第一个 `%` 后面跟的是中文「误」✗ ⇒
+            #    `ValueError: unsupported format character '误' (0x8bef)` ✗
+            #    ⇒ 任务直接 `failed` ✗ 整个动作白跑 ✗
+            #    ⇒ 改用 `.format()` ✓ 不受 `%` 影响 ✓
+            "note": ("⚠️ 审计有 ~10% 误判 ✗（动态拼名/消费者在别处 ✗）"
+                     " ⇒ 删文件前务必人工复核 ✓；明细见 `{f}`").format(f=js),
             "stdout": (r.stdout or "")[-1200:],
             "stderr": (r.stderr or "")[-400:]}
 
