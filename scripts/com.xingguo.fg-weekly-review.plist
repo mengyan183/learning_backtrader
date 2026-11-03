@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.xingguo.fg-weekly-review</string>
+
+    <!-- 每周一 07:30 ✓（错开 evolve-weekly 的 07:00 ✗ 避免同时跑） -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+
+    <!--
+      🔴 必须在 **Mac** 上跑 ✗（2026-11-03 用户澄清）
+         `Data/raw/*.csv` 在 Windows 侧只是旧快照 ✗
+         ⇒ 周度复盘要对比「建议 vs 实际走势」✗ 必须有新价格 ✓
+
+      套 `run_guarded` ✓ —— 与每日链一致（超时保护 + 日志 ✓）
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>.venv/bin/python "/Users/xingguo/learning_backtrader/scripts/run_guarded.py" 900 .venv/bin/python "/Users/xingguo/learning_backtrader/scripts/weekly_review.py" --days 7 &gt;&gt; /tmp/fg_weekly_review.log 2&gt;&amp;1</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardErrorPath</key>
+    <string>/tmp/fg_weekly_review.err</string>
+    <key>StandardOutPath</key>
+    <string>/tmp/fg_weekly_review.out</string>
+</dict>
+</plist>
