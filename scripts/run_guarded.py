@@ -35,6 +35,27 @@ FAIL_LOG = os.path.join(
     "Data", "daily_failures.jsonl")
 
 
+def _label(cmd):
+    """给命令起一个**可辨识**的短名 ✓（2026-11-03 修）。
+
+    🔴 原实现用 `os.path.basename(cmd[0])` ✗ —— 而每日链的命令是
+       `.venv/bin/python scripts/foo.py ...` 或 `.venv/bin/python -c "..."` ✗
+       ⇒ basename 永远是 **`python`** ✗
+       ⇒ 日志里全是 `[guard] python rc=2` ✗ **看不出是哪一步** ✗
+       （2026-11-03 实测：21 个 `[guard]` 全是 `python` ✗ 完全无法定位 ✗）
+
+    ⇒ 取**第一个 `.py` 参数** ✓；`-c` 则取代码前 40 字 ✓
+    """
+    for a in cmd[1:]:
+        if a.endswith(".py"):
+            return os.path.basename(a)
+    if "-c" in cmd:
+        i = cmd.index("-c")
+        if i + 1 < len(cmd):
+            return "-c " + cmd[i + 1][:40].replace("\n", " ")
+    return os.path.basename(cmd[0]) if cmd else "?"
+
+
 def _record_failure(rc, cmd, seconds, timeout=False):
     """把一次失败追加进台账 ✓ —— 写不进去也**不能让链挂** ✗。"""
     try:
@@ -80,16 +101,16 @@ def run(limit, cmd):
     except subprocess.TimeoutExpired:
         _kill_tree(proc)
         print("[guard] ⏱ %s 超过 %g 秒 ⇒ 已强杀（rc=124）"
-              % (os.path.basename(cmd[0]), limit), file=sys.stderr)
+              % (_label(cmd), limit), file=sys.stderr)
         _record_failure(124, cmd, time.time() - t0, timeout=True)
         return 124
     secs = time.time() - t0
-    print("[guard] %s rc=%d %.1fs" % (os.path.basename(cmd[0]), rc, secs))
+    print("[guard] %s rc=%d %.1fs" % (_label(cmd), rc, secs))
     # 🔴 2026-11-03：**非 0 退出就记台账** ✓ —— 原来只打印一行 ✗
     #    而 `prices.csv` 断流 22 天正是「每天 rc≠0 但没人看」✗
     if rc != 0:
         print("[guard] ⚠️ %s **失败** rc=%d（已记入 daily_failures.jsonl）"
-              % (os.path.basename(cmd[0]), rc), file=sys.stderr)
+              % (_label(cmd), rc), file=sys.stderr)
         _record_failure(rc, cmd, secs)
     return rc
 
