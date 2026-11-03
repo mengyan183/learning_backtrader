@@ -127,6 +127,15 @@ def _signal(prices, sym, factor):
     if factor == "ene":
         from fg_system.factors import ene as fene
         return fene.ene_pos(prices, sym)
+    if factor == "gold":
+        # F-021 黄金相对强度 ✓（2026-11-03）
+        # `gold_ratio_pct` ∈ [0,1]（1 = 金矿股相对最强 ✗）
+        # ⚠️ **实测方向是「逆向」** ✗ —— 比值高 ⇒ 后续跑输 ✗
+        #    但本脚本要的是「**危险度**」（1 = 最该减仓 ✓）
+        #    ⇒ **取反**：`1 - pct` ✓ 比值高 = 危险度高 ✓
+        from fg_system.factors import gold_ratio as _fgr
+        pct = _fgr.gold_ratio_pct(prices)
+        return (1.0 - pct).rename("gold_danger")
     if factor in ("f020", "f020_pct"):
         # ⚠️ 两个用途方向相反，别混 ✗：
         #   ① 作「择时信号」：P/C 高 = 极恐 = 逆向看多 ✗

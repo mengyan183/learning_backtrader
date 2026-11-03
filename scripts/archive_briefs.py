@@ -12,6 +12,7 @@
 import argparse
 import re
 import shutil
+import subprocess
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -78,11 +79,51 @@ def archive(keep_days=7):
     return moved
 
 
+def _git_commit(moved, keep_days):
+    """把归档结果**自动提交** ✓（2026-11-03 用户裁定）。
+
+    🔴 为什么需要：
+       原来只 `write_text` 不提交 ✗ ⇒ Mac 端每天堆一个未追踪的
+       `Data/briefs/archive/2026-10/invest_brief_*.md` ✗
+       实测堆了 10+ 个 ✗ 每次 `git status` 都脏 ✗
+
+    ⚠️ **只 add 简报相关路径** ✗ —— 绝不用 `git add -A` ✓
+       否则会把 `Data/realtime_state.json` 之类的运行时文件带进来 ✗
+
+    :returns: `(ok, 说明)`
+    """
+    paths = ["Data/briefs/", "Data/invest_brief_*.md"]
+    # ① 先 add（通配路径由 git 自己展开 ✓）
+    r = subprocess.run(["git", "-C", str(REPO), "add", "--"] + paths,
+                       capture_output=True, text=True, timeout=180)
+    if r.returncode != 0:
+        return False, "git add 失败：%s" % (r.stderr or "")[-200:]
+
+    # ② 有没有东西可提交？（`diff --cached --quiet` ⇒ 无改动）
+    r = subprocess.run(["git", "-C", str(REPO), "diff", "--cached", "--quiet"],
+                       capture_output=True, text=True, timeout=120)
+    if r.returncode == 0:
+        return True, "无改动，跳过提交"
+
+    msg = "chore(briefs): 简报归档（新增 %d 份，保留最近 %d 天）" % (
+        len(moved), keep_days)
+    r = subprocess.run(["git", "-C", str(REPO), "commit", "-m", msg],
+                       capture_output=True, text=True, timeout=180)
+    if r.returncode != 0:
+        return False, "git commit 失败：%s" % (r.stderr or "")[-300:]
+    return True, msg
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--keep", type=int, default=7, help="保留最近 N 天（默认 7）")
+    ap.add_argument("--no-commit", action="store_true",
+                    help="**只归档不提交** ✓（默认会提交 ✗ 见 2026-11-03 裁定）")
     args = ap.parse_args()
-    archive(keep_days=args.keep)
+    moved = archive(keep_days=args.keep)
+    if not args.no_commit:
+        ok, msg = _git_commit(moved, args.keep)
+        print("[archive] 提交%s：%s" % ("✓" if ok else "✗", msg))
 
 
 if __name__ == "__main__":
