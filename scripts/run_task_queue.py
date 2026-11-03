@@ -526,6 +526,106 @@ def _act_diagnose_data(params):
     return out
 
 
+def _act_safe_pull_data(params):
+    """**带数据保护的 git pull** ✓（2026-11-03 新增，紧急）。
+
+    🔴 为什么必须单独做一个：
+       `Data/raw/` 已被 `git rm --cached` 停止追踪 ✗
+       ⇒ 那个提交里含 **`delete mode`** 记录 ✗
+       ⇒ 普通 `git pull` / `merge --ff-only` 会**物理删除本地文件** ✗
+       ⇒ Mac 上 40 个抓了几个月的数据文件会**瞬间消失** ✗
+          （历史数据抓不回来 ✗）
+
+    【本动作的顺序】
+      ① 备份 `Data/raw/*.csv` 到 `dist/raw_backup_<时间戳>/` ✓
+      ② `git fetch` + `git merge --ff-only origin/main` ✓（会删文件 ✗ 正常）
+      ③ **把备份里「现在不存在」的文件拷回** ✓
+      ④ 验证：文件数、各 csv 最新日期 ✓
+      ⑤ 备份**保留** ✓（不自动删 ✗ 让用户确认后再清 ✓）
+
+    参数：`keep_backup`（默认 1 = 保留备份 ✓）
+    """
+    import glob as _g
+    import shutil as _sh
+
+    steps = []
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    backup = os.path.join(ROOT, "dist", "raw_backup_%s" % ts)
+    raw = os.path.join(ROOT, "Data", "raw")
+
+    # ① 备份
+    try:
+        os.makedirs(backup, exist_ok=True)
+        n = 0
+        for p in _g.glob(os.path.join(raw, "*.csv")):
+            _sh.copy2(p, os.path.join(backup, os.path.basename(p)))
+            n += 1
+        steps.append({"step": "backup", "ok": True, "files": n,
+                      "path": os.path.relpath(backup, ROOT)})
+    except OSError as exc:
+        return {"ok": False, "error": "备份失败，**中止** ✗：%s" % exc}
+
+    # ② pull
+    def _git(*a):
+        try:
+            r = subprocess.run(["git", "-C", ROOT] + list(a),
+                               capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=300)
+            return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
+        except Exception as e:              # noqa: BLE001
+            return -1, "", str(e)
+
+    _git("fetch", "origin")
+    rc, so, se = _git("merge", "--ff-only", "origin/main")
+    steps.append({"step": "merge", "rc": rc,
+                  "stdout": so[-400:], "stderr": se[-400:]})
+
+    # ③ 恢复被删的文件 ✓
+    restored, missing_src = [], []
+    for p in _g.glob(os.path.join(backup, "*.csv")):
+        dest = os.path.join(raw, os.path.basename(p))
+        if os.path.exists(dest):
+            continue
+        try:
+            _sh.copy2(p, dest)
+            restored.append(os.path.basename(p))
+        except OSError as exc:
+            missing_src.append("%s: %s" % (os.path.basename(p), exc))
+    steps.append({"step": "restore", "restored": len(restored),
+                  "files": restored[:10], "errors": missing_src[:5]})
+
+    # ④ 验证
+    import pandas as _pd
+    after = {}
+    for p in sorted(_g.glob(os.path.join(raw, "*.csv"))):
+        try:
+            last = None
+            for col in ("date", "observation_date"):
+                try:
+                    d = _pd.read_csv(p, usecols=[col], parse_dates=[col])
+                    last = d[col].max()
+                    break
+                except Exception:           # noqa: BLE001
+                    continue
+            after[os.path.basename(p)] = (
+                str(last.date()) if last is not None and _pd.notna(last) else "?")
+        except Exception:                   # noqa: BLE001
+            after[os.path.basename(p)] = "?"
+
+    keep = str(params.get("keep_backup") or "1").lower() in ("1", "true", "yes")
+    if not keep and not missing_src:
+        _sh.rmtree(backup, ignore_errors=True)
+
+    return {"ok": rc == 0 and not missing_src,
+            "backup": os.path.relpath(backup, ROOT),
+            "backup_kept": keep,
+            "file_count": len(after),
+            "steps": steps,
+            "files_after": after,
+            "note": "⚠️ 备份**保留**在 `%s` ✗ 确认数据无误后可手工删 ✓"
+                    % os.path.relpath(backup, ROOT)}
+
+
 def _act_git_pull(params):
     """在 Mac 上 **git pull** 并汇报关键状态 ✓（2026-11-03 用户裁定）。
 
@@ -1595,6 +1695,7 @@ ACTIONS = {
     "cleanup_backlog": _act_cleanup_backlog,
     "sync_runtime": _act_sync_runtime,
     "git_pull": _act_git_pull,
+    "safe_pull_data": _act_safe_pull_data,
     "archive_briefs": _act_archive_briefs,
     "weekly_review": _act_weekly_review,
     "diagnose_data": _act_diagnose_data,
