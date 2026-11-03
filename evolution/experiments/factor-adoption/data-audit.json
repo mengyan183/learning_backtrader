@@ -136,7 +136,7 @@
     "fred_baa10y_avail.csv": {
       "writers": [
         "scripts/eval_baa10y.py:85",
-        "scripts/run_task_queue.py:816"
+        "scripts/run_task_queue.py:824"
       ],
       "readers": []
     },
