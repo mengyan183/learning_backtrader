@@ -1,0 +1,14 @@
+{
+  "id": "t-20261103-141110-git_pull",
+  "action": "git_pull",
+  "params": {
+    "stash": "1",
+    "push": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "irectory and index state On main: task-queue auto-stash\", \"stderr\": \"\"}, {\"step\": \"fetch\", \"rc\": 0, \"stderr\": \"\"}, {\"step\": \"behind\", \"value\": \"0\"}, {\"step\": \"pull\", \"rc\": 0, \"stdout\": \"Already up to date.\", \"stderr\": \"\"}, {\"step\": \"after_head\", \"value\": \"807e22c\"}, {\"step\": \"status\", \"value\": \"M Data/realtime_state.json\\n?? Data/kb/subtitles/28H31JdMXaQ.en-ar.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-bn.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-de.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-en.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-fr.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-hi.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-it.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-ja.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-ko.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-orig.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-pt.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-zh.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-ar.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-bn.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-de.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-en.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-es.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-fr.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-hi.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-it.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-ko.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-orig.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-pt.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-ro.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-ru.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-tr.vtt\\n?? Data/kb/subtitles/3T0IUQRdNdo.en-zh.vtt\\n?? Data/kb/subtitles/5nvsDmwZWdM.en.vtt.part\\n?? Data/kb/subtitles/E7pl0tqzIUQ.en-orig.vtt\\n?? Data/kb/subtitles/E7pl0tqzIUQ.en.vtt\\n?? Data/kb/subtitles/OM042f4rWoc.en-orig.vtt\\n?? Data/kb/subtitles/OM042f4rWoc.en.vtt\\n?? Data/kb/subtitles/YskGZx_b7tY.en-orig.vtt\\n?? Data/kb/subtitles/YskGZx_b7tY.en.vtt\\n?? Data/\"}, {\"step\": \"ahead_before_push\", \"value\": \"0\"}, {\"step\": \"push\", \"rc\": 0, \"stdout\": \"\", \"stderr\": \"Everything up-to-date\"}, {\"step\": \"ahead_after_push\", \"value\": \"0\"}]}",
+  "started_at": "2026-11-03T14:12:30",
+  "finished_at": "2026-11-03T14:12:32",
+  "duration_s": 2.71
+}
