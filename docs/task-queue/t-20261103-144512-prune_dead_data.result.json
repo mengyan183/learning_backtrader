@@ -1,0 +1,13 @@
+{
+  "id": "t-20261103-144512-prune_dead_data",
+  "action": "prune_dead_data",
+  "params": {
+    "apply": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"applied\": true, \"note\": \"误删可从 `dist/pruned/` 拷回 ✓\", \"stdout\": \"# 死文件清理（**真删** ✓）\\n\\n| 文件 | 大小 |\\n|---|---|\\n| `putcall_daily_1.csv` | 43.3 KB |\\n| `putcall_daily_2.csv` | 36.7 KB |\\n| `putcall_daily_latest.csv` | 3.3 KB |\\n| `fred_DCOILBRENTEU.csv` | 152.3 KB |\\n| `fred_DCOILWTICO.csv` | 158.6 KB |\\n| `fred_T10Y2Y.csv` | 198.7 KB |\\n| `fedwatch.csv` | 0.9 KB |\\n| `fng_altme.csv` | 0.1 KB |\\n| `sp500_cape.csv` | 50.7 KB |\\n| `crypto_fng.csv` | 75.0 KB |\\n| `shoutu_history.csv` | 100.5 KB |\\n| `splits.csv` | 0.1 KB |\\n| `shoutu_etf_universe.csv` | 113.5 KB |\\n\\n**共 13 个，0.9 MB**（另有 10 个已不存在 ✓）\\n\\n✓ 已备份到 `dist/pruned`（13 个）\\n✓ 已删除 13 / 13 个\\n\\n⚠️ `Data/raw/` 已 gitignore ✓ 所以 **git 不会有任何改动** ✗\\n   若误删：从 `dist/pruned/` 拷回即可 ✓\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-03T14:48:52",
+  "finished_at": "2026-11-03T14:48:52",
+  "duration_s": 0.15
+}
