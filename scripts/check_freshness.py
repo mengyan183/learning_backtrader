@@ -66,9 +66,33 @@ def _last_date(path, col="date"):
     return rows[-1][col] if rows else None
 
 
+def _max_date(path, col="date"):
+    """**长表的真正最新日期** ✓（2026-11-03 新增）。
+
+    🔴 原实现 `_last_date` 只取**最后一行** ✗ —— 对 `prices.csv` 这种
+       **多 symbol 长表**是错的 ✗：
+       文件按 symbol 分组追加 ✗ 最后一行是「最后一个 symbol 的最后一天」✗
+       实测：某些 symbol 抓取失败停在 10-12 ✗ 而排在后面的 symbol 到 11-02 ✗
+       ⇒ 取最后一行会得出「数据是新的」✗ 从而**漏报整表停更** ✗
+       （2026-11-03：`prices.csv` 停 22 天而 `check_freshness` 报 `rc=0` ✗）
+
+    ⇒ 必须 `max(date)` ✓ 与行序无关 ✓
+    """
+    if not os.path.exists(path):
+        return None
+    try:
+        import pandas as _pd
+        d = _pd.read_csv(path, usecols=[col], parse_dates=[col])
+        m = d[col].max()
+        return None if _pd.isna(m) else str(m.date())
+    except Exception:                       # noqa: BLE001
+        return _last_date(path, col=col)    # 退回原实现 ✓
+
+
 def main():
     fd = _last_date(FEATURES)
-    pd_ = _last_date(PRICES)
+    # 🔴 `prices.csv` 是**长表** ⇒ 用 max(date) 而不是最后一行 ✗
+    pd_ = _max_date(PRICES)
     issues = []
     today = date.today()
     if not fd:
@@ -78,15 +102,20 @@ def main():
         lag_today = (today - d1).days
         if lag_today > MAX_LAG_DAYS:
             issues.append(f"指数数据 {fd} 距今天已 {lag_today} 天未更新（正常 ≤{MAX_LAG_DAYS}）")
-        if pd_:
-            d2 = date.fromisoformat(str(pd_)[:10])
-            if (d2 - d1).days > MAX_LAG_DAYS:
-                issues.append(f"指数落后最新行情 {pd_} 共 {(d2 - d1).days} 天")
-            lagp = (today - d2).days
-            if lagp > MAX_LAG_DAYS:
-                issues.append(f"行情数据 {pd_} 距今天已 {lagp} 天未更新")
-    if not pd_ and fd:
+    # 🔴 2026-11-03：`prices.csv` 的检查**移出 `features` 分支** ✗
+    #    原来嵌在 `else:` 里 ⇒ `features.csv` 缺失时**完全不查行情** ✗
+    #    ⇒ 漏报 ✗（结构性问题 ✗ 不是阈值问题 ✗）
+    if not pd_:
         issues.append("prices.csv 不存在")
+    else:
+        d2 = date.fromisoformat(str(pd_)[:10])
+        lagp = (today - d2).days
+        if lagp > MAX_LAG_DAYS:
+            issues.append(f"行情数据 {pd_} 距今天已 {lagp} 天未更新")
+        if fd:
+            d1b = date.fromisoformat(str(fd)[:10])
+            if (d2 - d1b).days > MAX_LAG_DAYS:
+                issues.append(f"指数落后最新行情 {pd_} 共 {(d2 - d1b).days} 天")
     for label, path in EXTRA_FRESH:
         ld = _last_date(path)
         if not ld:

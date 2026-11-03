@@ -331,17 +331,28 @@ def _act_run_fetch_step(params):
     # ① 跑前快照 ✓ —— 只对比该脚本**可能写**的文件（全量太多 ✗）
     def _snap():
         import glob as _g
-        from datetime import datetime as _dt2
         snap = {}
         for p in _g.glob(os.path.join(ROOT, "Data", "raw", "*.csv")):
+            name = os.path.basename(p)
             try:
                 import pandas as _pd
-                d = _pd.read_csv(p, usecols=["date"], parse_dates=["date"])
-                last = d["date"].max()
-                snap[os.path.basename(p)] = (
-                    str(last.date()) if _pd.notna(last) else "?")
+                # 🔴 2026-11-03 踩坑：FRED 落盘用的是 **`observation_date`** ✗
+                #    而原来写死 `usecols=["date"]` ✗ ⇒ 读 FRED 文件**抛异常** ✗
+                #    ⇒ 记成 `"?"` ⇒ 被 `unchanged` 排除 ✗
+                #    ⇒ 误判「`fetch_fred` 静默成功、无文件更新」✗（实际抓成功了 ✗）
+                #    ⇒ 依次尝试 `date` / `observation_date` ✓
+                last = None
+                for col in ("date", "observation_date"):
+                    try:
+                        d = _pd.read_csv(p, usecols=[col], parse_dates=[col])
+                        last = d[col].max()
+                        break
+                    except Exception:       # noqa: BLE001
+                        continue
+                snap[name] = (str(last.date())
+                              if last is not None and _pd.notna(last) else "?")
             except Exception:               # noqa: BLE001
-                snap[os.path.basename(p)] = "?"
+                snap[name] = "?"
         return snap
 
     before = _snap()
