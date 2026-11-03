@@ -290,6 +290,91 @@ def _act_prune_dead_data(params):
             "stderr": (r.stderr or "")[-400:]}
 
 
+#: 🔴 `run_fetch_step` 的**脚本白名单** ✓（2026-11-03）
+#: 为什么必须白名单：这个动作会**执行任意命令** ✗ 若不加限，
+#: 一个拼错的任务 json 就能跑 `rm -rf` ✗
+FETCH_SCRIPTS = (
+    "fetch_sentiment.py", "fetch_putcall.py", "fetch_kalshi_fed.py",
+    "fetch_fred.py", "fetch_fedwatch.py", "fetch_shoutu_api.py",
+    "fetch_stablecoin_usage.py", "fetch_news.py", "fetch_trades_futu.py",
+)
+
+
+def _act_run_fetch_step(params):
+    """**单独重跑一个 fetch 脚本** ✓ 并对比跑前/跑后的数据日期。
+
+    【为什么需要（2026-11-03）】
+      7 个数据源在每日链里 `rc=0` ✗ 但数据停在 10-11~10-13 ✗
+      ⇒ 链日志只记 rc ✗ **看不到脚本自己的输出** ✗
+      ⇒ 必须单独跑一次，看它到底说了什么 ✓
+
+    【本动作回答三个问题】
+      ① 脚本**报错了吗**（stderr / 非 0 rc）✓
+      ② 脚本**说成功但没写**吗（`before == after` ✗）✓ ← 最关键
+      ③ 卡在**哪个环节**（完整 stdout 里有分步打印 ✓）
+
+    参数：
+      - `script`：**必须**是 `FETCH_SCRIPTS` 里的一个 ✓
+      - `args`：额外参数（逗号分隔 ✗ 会被原样传给脚本 ✓）
+      - `timeout`：默认 900 秒 ✓
+    """
+    script = str(params.get("script") or "").strip()
+    if script not in FETCH_SCRIPTS:
+        return {"ok": False,
+                "error": "不允许的脚本：`%s` ✗（白名单：%s）"
+                         % (script, ", ".join(FETCH_SCRIPTS))}
+
+    raw_args = str(params.get("args") or "").strip()
+    extra = [a for a in raw_args.split(",") if a] if raw_args else []
+    limit = int(params.get("timeout") or 900)
+
+    # ① 跑前快照 ✓ —— 只对比该脚本**可能写**的文件（全量太多 ✗）
+    def _snap():
+        import glob as _g
+        from datetime import datetime as _dt2
+        snap = {}
+        for p in _g.glob(os.path.join(ROOT, "Data", "raw", "*.csv")):
+            try:
+                import pandas as _pd
+                d = _pd.read_csv(p, usecols=["date"], parse_dates=["date"])
+                last = d["date"].max()
+                snap[os.path.basename(p)] = (
+                    str(last.date()) if _pd.notna(last) else "?")
+            except Exception:               # noqa: BLE001
+                snap[os.path.basename(p)] = "?"
+        return snap
+
+    before = _snap()
+    t0 = time.time()
+    cmd = [sys.executable, os.path.join(ROOT, "scripts", script)] + extra
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=limit)
+        rc, so, se = r.returncode, r.stdout or "", r.stderr or ""
+    except subprocess.TimeoutExpired:
+        rc, so, se = 124, "", "超过 %d 秒被强杀" % limit
+    secs = time.time() - t0
+    after = _snap()
+
+    # ② 哪些文件的日期变了 ✓ / 没变 ✗
+    changed, unchanged = {}, {}
+    for name, av in after.items():
+        bv = before.get(name)
+        if bv != av:
+            changed[name] = {"before": bv, "after": av}
+        elif av != "?":
+            unchanged[name] = av
+
+    return {"ok": rc == 0, "script": script, "args": extra, "rc": rc,
+            "seconds": round(secs, 1),
+            "changed": changed, "unchanged": unchanged,
+            "verdict": ("rc=%d 但**没有任何文件更新** ✗ ⇒ 「静默成功」✗"
+                        % rc if rc == 0 and not changed
+                        else "rc=%d，更新了 %d 个文件"
+                             % (rc, len(changed))),
+            "stdout": so[-6000:], "stderr": se[-2000:]}
+
+
 def _act_diagnose_data(params):
     """**数据断流诊断** ✓（2026-11-03 用户要求「Mac 上先修数据」）。
 
@@ -1394,6 +1479,7 @@ ACTIONS = {
     "archive_briefs": _act_archive_briefs,
     "weekly_review": _act_weekly_review,
     "diagnose_data": _act_diagnose_data,
+    "run_fetch_step": _act_run_fetch_step,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
     "diag_daily_log": _act_diag_daily_log,
