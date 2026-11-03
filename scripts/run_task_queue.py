@@ -275,6 +275,19 @@ def _act_git_pull(params):
         _, st, _ = _git("status", "--short")
         steps.append({"step": "status", "value": st[:1500] or "(clean ✓)"})
 
+    # 🔴 2026-11-03：**补推** ✓ —— 用户反馈「页面显示任务失败但 git 上没有结果」✗
+    #    根因可能是：任务结果**在 Mac 本地提交了但没 push** ✗
+    #    （`_try_push_pending` 每 300s 自愈一次 ✗ 若一直失败就永远不推 ✗）
+    #    ⇒ `push=1` 时显式推一次 ✓ 并**回传 ahead 数**（推前有几个未推提交 ✓）
+    if str(params.get("push") or "").lower() in ("1", "true", "yes"):
+        _, ahead, _ = _git("rev-list", "--count", "@{u}..HEAD")
+        steps.append({"step": "ahead_before_push", "value": ahead})
+        rc, so, se = _git("push", "origin", "HEAD")
+        steps.append({"step": "push", "rc": rc, "stdout": so[-300:],
+                      "stderr": se[-500:]})
+        _, ahead2, _ = _git("rev-list", "--count", "@{u}..HEAD")
+        steps.append({"step": "ahead_after_push", "value": ahead2})
+
     ok = all(x.get("rc", 0) == 0 for x in steps if "rc" in x)
     return {"ok": ok, "before": before, "after": after,
             "pulled": before != after, "steps": steps}
@@ -1508,13 +1521,15 @@ TASK_OUTPUT_DIRS = ("evolution/experiments/factor-adoption",)
 #: （2026-10-30 实测：`sync_1028dn` 因 `evolution/hypotheses.md` 冲突入库失败 ✗）
 TASK_OUTPUT_FILES = ("evolution/hypotheses.md",
                      "evolution/factors.md",
-                     "evolution/hypothesis_results.md",
-                     # 2026-10-30：C2 的三个数据源由任务抓取 ⇒ 必须入库 ✓
-                     # （否则数据只躺在 Mac 本地 ✗，Windows 侧既看不到也没法开发因子 ✗）
-                     # 体量：PE/CAPE 各 ~1870 行、DGS10 16191 行，都在 200KB 内 ✓
-                     "Data/raw/sp500_pe.csv",
-                     "Data/raw/sp500_cape.csv",
-                     "Data/raw/fred_DGS10.csv")
+                     "evolution/hypothesis_results.md")
+# 🔴 2026-11-03 移除：`Data/raw/sp500_pe.csv` / `sp500_cape.csv` /
+#    `fred_DGS10.csv` 曾在这里 ✗（2026-10-30 为让 Windows 看到 C2 数据 ✗）
+#    但 2026-11-03 用户裁定「数据不入库」⇒ `Data/raw/` 已进 `.gitignore` ✗
+#    ⇒ 这几个路径**会被 git 拒绝** ✗ 而 `_git_commit` 的 `git add` 用了
+#       `check=True` ✗ ⇒ **抛异常 ⇒ 整个提交（含 `docs/task-queue` 的结果）
+#       全被跳过** ✗
+#    ⇒ 现象：Mac 上任务跑了、页面显示失败 ✗ 但 gitee 上**没有任何 result** ✗
+#    （用户 2026-11-03 反馈的正是这个 ✗）
 
 
 def _git_commit(done):
@@ -1525,8 +1540,20 @@ def _git_commit(done):
             if os.path.isdir(os.path.join(ROOT, d))] + [
             f for f in TASK_OUTPUT_FILES
             if os.path.isfile(os.path.join(ROOT, f))]
-        subprocess.run(["git", "add", *paths], cwd=ROOT,
-                       check=True, capture_output=True, timeout=60)
+        # 🔴 2026-11-03：**不能 `check=True`** ✗ —— 只要有一个路径被
+        #    `.gitignore` 拒绝（如 `Data/raw/*` ✗），git 就**整体失败** ✗
+        #    ⇒ 连 `docs/task-queue` 的结果都提交不了 ✗
+        #    ⇒ 改为：**逐个 add** ✓ 失败的单独报警但不中断 ✓
+        bad = []
+        for pth in paths:
+            r = subprocess.run(["git", "add", "--", pth], cwd=ROOT,
+                               capture_output=True, text=True, timeout=60)
+            if r.returncode != 0:
+                bad.append((pth, (r.stderr or "").strip()[:120]))
+        if bad:
+            print("[warn] 以下路径 add 失败（其余照常提交 ✓）：")
+            for pth, err in bad:
+                print("   %s —— %s" % (pth, err))
         msg = "task: %s" % "; ".join("%s=%s" % (i, s) for i, s in done)
         r = subprocess.run(["git", "commit", "-m", msg], cwd=ROOT,
                            capture_output=True, text=True, timeout=120)
