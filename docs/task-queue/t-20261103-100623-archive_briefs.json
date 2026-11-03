@@ -1,0 +1,9 @@
+{
+  "id": "t-20261103-100623-archive_briefs",
+  "action": "archive_briefs",
+  "params": {
+    "keep": "7"
+  },
+  "status": "pending",
+  "created_at": "2026-11-03T10:06:23"
+}
