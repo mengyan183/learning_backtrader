@@ -154,17 +154,44 @@ def _act_audit_data(params):
     """
     cmd = [sys.executable,
            os.path.join(ROOT, "scripts", "audit_data_files.py")]
-    if params.get("json"):
-        cmd += ["--json", str(params["json"])]
+    js = params.get("json") or "evolution/experiments/factor-adoption/data-audit.json"
+    cmd += ["--json", str(js)]
     try:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
                            timeout=900)
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": "超过 900 秒"}
+
+    # 🔴 2026-11-03：**只回汇总 + 分类文件名** ✗ —— 全表 39 行会撑爆
+    #    `_write_result` 的 8000 上限 ✗ 且 JSON 被截断就没法解析 ✗
+    #    ⇒ 明细落盘（`--json`）✓ 返回值只带「能行动的结论」✓
+    summary, groups = {}, {"used": [], "read_only": [], "orphan": [], "dead": []}
+    try:
+        import json as _json
+        ap = os.path.join(ROOT, str(js))
+        with open(ap, "r", encoding="utf-8") as f:
+            data = _json.load(f)
+        for name, rec in (data.get("audit") or {}).items():
+            w, rd = len(rec.get("writers") or []), len(rec.get("readers") or [])
+            if w and rd:
+                groups["used"].append(name)
+            elif rd:
+                groups["read_only"].append(name)
+            elif w:
+                groups["orphan"].append(name)
+            else:
+                groups["dead"].append(name)
+        summary = {k: len(v) for k, v in groups.items()}
+    except Exception as exc:                # noqa: BLE001
+        summary = {"error": str(exc)[:120]}
+
     return {"ok": r.returncode == 0,
+            "json": js,
+            "summary": summary,
+            "groups": groups,
             "note": "⚠️ 审计有 ~10% 误判 ✗（动态拼名/消费者在别处 ✗）"
-                    " ⇒ 删文件前务必人工复核 ✓",
-            "stdout": (r.stdout or "")[-6000:],
+                    " ⇒ 删文件前务必人工复核 ✓；明细见 `%s`" % js,
+            "stdout": (r.stdout or "")[-1200:],
             "stderr": (r.stderr or "")[-400:]}
 
 
@@ -1372,7 +1399,11 @@ def _write_result(spec, status, rc, output, started, finished):
         "params": spec.get("params") or {},
         "status": status,
         "rc": rc,
-        "output": output[-2000:],       # 只留尾部，避免 result 文件膨胀
+        # 🔴 2026-11-03：2000 → **8000** ✗ —— 实测 `audit_data` 的 JSON
+        #    在 2000 处被**从中间切断** ⇒ `json.loads` 直接失败 ✗
+        #    ⇒ 结果「看得见但解析不了」✗（`ok: None` 就是这个症状 ✗）
+        #    ⚠️ 仍有上限 ✗ —— 超长输出请让动作**自己精简** ✓（见 `_act_audit_data`）
+        "output": output[-8000:],
         "started_at": started,
         "finished_at": finished,
         "duration_s": round(time.time() - spec.get("_t0", time.time()), 2),
