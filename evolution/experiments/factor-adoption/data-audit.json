@@ -1,14 +1,20 @@
 {
   "existing": [
+    "crypto_fng.csv",
     "crypto_prices.csv",
     "crypto_underlying.csv",
     "equitypc.csv",
     "equitypcarchive.csv",
     "etppc.csv",
+    "fedwatch.csv",
+    "fng_altme.csv",
     "fred_BAA10Y.csv",
     "fred_BAMLH0A0HYM2.csv",
+    "fred_DCOILBRENTEU.csv",
+    "fred_DCOILWTICO.csv",
     "fred_DFF.csv",
     "fred_DGS10.csv",
+    "fred_T10Y2Y.csv",
     "fred_baa10y_avail.csv",
     "funding_rate.csv",
     "indexpc.csv",
@@ -18,9 +24,16 @@
     "pcratioarchive.csv",
     "prices.csv",
     "putcall.csv",
+    "putcall_daily_1.csv",
+    "putcall_daily_2.csv",
+    "putcall_daily_latest.csv",
     "sentiment.csv",
+    "shoutu_etf_universe.csv",
     "shoutu_fng.csv",
+    "shoutu_history.csv",
+    "sp500_cape.csv",
     "sp500_pe.csv",
+    "splits.csv",
     "spxpc.csv",
     "stablecoin_usage.csv",
     "totalpc.csv",
@@ -32,6 +45,12 @@
     "watchlist_3x.csv"
   ],
   "audit": {
+    "crypto_fng.csv": {
+      "writers": [
+        "fg_system/data/fetch.py:540"
+      ],
+      "readers": []
+    },
     "crypto_prices.csv": {
       "writers": [],
       "readers": [
@@ -56,6 +75,24 @@
       "writers": [],
       "readers": []
     },
+    "fedwatch.csv": {
+      "writers": [
+        "scripts/fetch_fedwatch.py:280",
+        "tests/test_drift_crosscheck.py:258",
+        "tests/test_drift_crosscheck.py:292",
+        "tests/test_fedwatch_migration.py:32",
+        "tests/test_dashboard_tasks_api.py:50",
+        "tests/test_dashboard_tasks_api.py:52"
+      ],
+      "readers": []
+    },
+    "fng_altme.csv": {
+      "writers": [
+        "scripts/fetch_fng_altme.py:88",
+        "tests/test_fetch_fng_altme.py:56"
+      ],
+      "readers": []
+    },
     "fred_BAA10Y.csv": {
       "writers": [
         "tests/test_verify_h065.py:75",
@@ -66,6 +103,14 @@
       "readers": []
     },
     "fred_BAMLH0A0HYM2.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "fred_DCOILBRENTEU.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "fred_DCOILWTICO.csv": {
       "writers": [],
       "readers": []
     },
@@ -84,10 +129,14 @@
       ],
       "readers": []
     },
+    "fred_T10Y2Y.csv": {
+      "writers": [],
+      "readers": []
+    },
     "fred_baa10y_avail.csv": {
       "writers": [
         "scripts/eval_baa10y.py:85",
-        "scripts/run_task_queue.py:806"
+        "scripts/run_task_queue.py:816"
       ],
       "readers": []
     },
@@ -169,7 +218,6 @@
         "scripts/query_symbol_fg.py:344",
         "scripts/putcall_factor_check.py:27",
         "scripts/observe_screen.py:39",
-        "scripts/prune_dead_data.py:7",
         "scripts/eval_baa10y.py:53",
         "scripts/risk_report.py:50",
         "scripts/evolve_variant_analysis.py:97",
@@ -280,6 +328,18 @@
         "fg_system/pipeline.py:47"
       ]
     },
+    "putcall_daily_1.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "putcall_daily_2.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "putcall_daily_latest.csv": {
+      "writers": [],
+      "readers": []
+    },
     "sentiment.csv": {
       "writers": [
         "scripts/invest_research.py:1891",
@@ -292,6 +352,12 @@
         "scripts/drift_monitor.py:281",
         "fg_system/dashboard/report.py:749"
       ]
+    },
+    "shoutu_etf_universe.csv": {
+      "writers": [
+        "tests/dashboard/test_watchlist_3x.py:31"
+      ],
+      "readers": []
     },
     "shoutu_fng.csv": {
       "writers": [
@@ -308,9 +374,29 @@
         "scripts/invest_research.py:350"
       ]
     },
+    "shoutu_history.csv": {
+      "writers": [
+        "fg_system/data/shoutu.py:648",
+        "tests/test_shoutu_wiring.py:146",
+        "tests/test_shoutu_wiring.py:165",
+        "tests/data/test_shoutu_history.py:177"
+      ],
+      "readers": []
+    },
+    "sp500_cape.csv": {
+      "writers": [],
+      "readers": []
+    },
     "sp500_pe.csv": {
       "writers": [
         "tests/test_erp_factor.py:58"
+      ],
+      "readers": []
+    },
+    "splits.csv": {
+      "writers": [
+        "scripts/fetch_corporate_actions.py:145",
+        "tests/test_merge_trades.py:119"
       ],
       "readers": []
     },
