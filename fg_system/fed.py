@@ -19,16 +19,53 @@ from fg_system import config
 
 
 def _load_fedwatch():
-    """读 CME FedWatch 市场预期 CSV（scripts/fetch_fedwatch.py 产出）。
-    返回最新一行 dict；无数据返回 None。"""
+    """读 CME FedWatch 市场预期 CSV（`scripts/fetch_fedwatch.py` 产出）。
+    返回最新一行 dict；无数据返回 None。
+
+    🔴 2026-11-03：**加了 Kalshi 兜底** ✓
+       背景：`fetch_fedwatch.py` 拿不到 CME 会话就 `sys.exit(2)` ✗
+             ⇒ `fedwatch.csv` 停在 2026-10-13（21 天 ✗）
+             ⇒ 本函数返回 `None` ⇒ `fw_*` 全 `None` ⇒ **`fed` 因子静默降级** ✗
+             而**没有任何告警** ✗
+
+       为什么 Kalshi 能兜：`kalshi_fed.csv`（`fetch_kalshi_fed.py` 产出 ✓ 在跑 ✓）
+         字段几乎一一对应：
+           `fedwatch.csv`: meeting / hold_pct / hike_pct / ease_pct
+           `kalshi_fed.csv`: meeting / hold / hike / ease
+         ⚠️ **语义不同** ✗ —— Kalshi 是**市场交易价格**（0~100 的概率）
+            CME 是**期货隐含概率** ✗ 两者都表示「加息概率」✓ 方向一致 ✓
+            但**数值不严格可比** ✗ ⇒ 兜底时打一条标注 ✓
+         ⚠️ `wk_hike_pct`（一周前）和 `m_hike_pct`（下一档会议）Kalshi 没有 ✗
+            ⇒ 这两项保持 `None` ✓（`fw_delta_1w` / `fw_curve` 会缺失 ✓）
+    """
     p = os.path.join(config.RAW_DIR, "fedwatch.csv")
     try:
         df = pd.read_csv(p)
+        if not df.empty:
+            return df.iloc[-1].to_dict()
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        pass
+
+    # ---- 兜底：Kalshi ✓ ----
+    kp = os.path.join(config.RAW_DIR, "kalshi_fed.csv")
+    try:
+        kdf = pd.read_csv(kp)
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return None
-    if df.empty:
+    if kdf.empty:
         return None
-    return df.iloc[-1].to_dict()
+    row = kdf.iloc[-1].to_dict()
+    return {
+        "meeting": row.get("meeting"),
+        # 字段改名 ✓ —— 让上层 `fed_context` 不用改 ✓
+        "ease_pct": row.get("ease"),
+        "hold_pct": row.get("hold"),
+        "hike_pct": row.get("hike"),
+        # Kalshi 没有的两项 ✗ ⇒ 显式 None ✓（上层会算成 None ✓ 不会崩 ✓）
+        "wk_hike_pct": None,
+        "m_hike_pct": None,
+        "_source": "kalshi_fed.csv（CME FedWatch 兜底 ✗ 语义为市场交易价 ✗）",
+    }
 
 
 def _parse(d):

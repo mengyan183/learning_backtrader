@@ -300,6 +300,71 @@ FETCH_SCRIPTS = (
 )
 
 
+def _act_update_crypto(params):
+    """**补抓加密数据** ✓（2026-11-03 用户要求）。
+
+    🔴 为什么单独做一个动作：
+       `crypto_prices.csv` / `crypto_underlying.csv` 停在 **2026-09-29**（35 天 ✗）
+       而它们由每日链里的 `python -c "fetch.update_crypto_prices();
+       fetch.update_crypto_aux()"` 生成 ✗（`guard#7`）
+       ⇒ 那不是独立脚本 ✗ `run_fetch_step` 的白名单覆盖不到 ✗
+       ⇒ 单独做一个 ✓
+
+    【和 `run_fetch_step` 一样对比跑前后日期】✓
+    参数：`aux`（默认 1，顺带跑 `update_crypto_aux()` ✓）
+    """
+    do_aux = str(params.get("aux") or "1").lower() in ("1", "true", "yes")
+    code = ("from fg_system.data import fetch;"
+            "print('prices:', fetch.update_crypto_prices())")
+    if do_aux:
+        code += ";print('aux:', fetch.update_crypto_aux())"
+
+    def _snap():
+        import glob as _g
+        snap = {}
+        for p in _g.glob(os.path.join(ROOT, "Data", "raw", "*.csv")):
+            name = os.path.basename(p)
+            if not any(k in name for k in ("crypto", "btc", "eth")):
+                continue
+            try:
+                import pandas as _pd
+                last = None
+                for col in ("date", "observation_date"):
+                    try:
+                        d = _pd.read_csv(p, usecols=[col], parse_dates=[col])
+                        last = d[col].max()
+                        break
+                    except Exception:       # noqa: BLE001
+                        continue
+                snap[name] = (str(last.date())
+                              if last is not None and _pd.notna(last) else "?")
+            except Exception:               # noqa: BLE001
+                snap[name] = "?"
+        return snap
+
+    before = _snap()
+    t0 = time.time()
+    try:
+        r = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
+                           capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=1800)
+        rc, so, se = r.returncode, r.stdout or "", r.stderr or ""
+    except subprocess.TimeoutExpired:
+        rc, so, se = 124, "", "超过 1800 秒"
+    secs = time.time() - t0
+    after = _snap()
+
+    changed = {k: {"before": before.get(k), "after": v}
+               for k, v in after.items() if before.get(k) != v}
+    return {"ok": rc == 0, "rc": rc, "seconds": round(secs, 1),
+            "aux": do_aux, "before": before, "after": after,
+            "changed": changed,
+            "verdict": ("rc=%d 但**加密文件无更新** ✗ ⇒ 静默失败 ✗"
+                        % rc if rc == 0 and not changed
+                        else "rc=%d，更新 %d 个" % (rc, len(changed))),
+            "stdout": so[-4000:], "stderr": se[-2000:]}
+
+
 def _act_run_fetch_step(params):
     """**单独重跑一个 fetch 脚本** ✓ 并对比跑前/跑后的数据日期。
 
@@ -1491,6 +1556,7 @@ ACTIONS = {
     "weekly_review": _act_weekly_review,
     "diagnose_data": _act_diagnose_data,
     "run_fetch_step": _act_run_fetch_step,
+    "update_crypto": _act_update_crypto,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
     "diag_daily_log": _act_diag_daily_log,
