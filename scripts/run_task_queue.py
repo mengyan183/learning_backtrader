@@ -204,11 +204,21 @@ def _act_prune_dead_data(params):
       ③ 只删 `Data/raw/` 下**明确列出**的文件 ✓ 不递归扫 ✗
       ④ `Data/raw/` 已 gitignore ⇒ **git 不会有任何改动** ✓
 
-    参数：`apply`（默认 0 = 只看 ✓）
+    参数：
+      - `apply`：`1` = 真删 ✓（默认只看 ✗）
+      - `restore`：`1` = **全部从 `dist/pruned/` 恢复** ✓
+        （2026-11-03 误删事故后加的 ✗）
+      - `restore_files`：逗号分隔的**指定文件名** ✓ 优先于 `restore`
     """
     cmd = [sys.executable,
            os.path.join(ROOT, "scripts", "prune_dead_data.py")]
-    if str(params.get("apply") or "").lower() in ("1", "true", "yes"):
+    rf = str(params.get("restore_files") or "").strip()
+    if rf:
+        cmd.append("--restore")
+        cmd += [x.strip() for x in rf.split(",") if x.strip()]
+    elif str(params.get("restore") or "").lower() in ("1", "true", "yes"):
+        cmd.append("--restore")
+    elif str(params.get("apply") or "").lower() in ("1", "true", "yes"):
         cmd.append("--apply")
     try:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
