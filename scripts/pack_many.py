@@ -298,6 +298,34 @@ def _tar_bytes(entries):
     return buf.getvalue()
 
 
+def _multi_commit_files(srcs):
+    """找出「在 `origin/main..HEAD` 的**多个提交**里都被改过」的文件 ✓（2026-11-03）。
+
+    🔴 事故背景（`sync_1028gz`）：
+       `gx` / `gy` / `gz` 三个包**都改 `evolution/factors.md`** ✗
+       各自基于当时的 `origin/main` 生成 diff ✗ 而入库是串行不确定的 ✗
+       ⇒ `gy` 先入库改了同一个文件 ⇒ `gz` 的上下文对不上 ⇒ `apply` 失败 ✗
+
+    ⇒ 本检测在打包时**警告**：这些文件的改动散在多个提交里，
+      **应该合并成一个包** ✓（或先确认前一个包已入库 ✗）
+
+    :returns: `{rel: [commit_sha, ...]}`，只含**多个提交**改过的文件
+    """
+    out = {}
+    for rel in srcs:
+        try:
+            r = subprocess.run(
+                ["git", "-C", REPO, "log", "--format=%h", "%s..HEAD" % DEFAULT_BASE_REF,
+                 "--", rel],
+                capture_output=True, timeout=120)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        shas = [x for x in r.stdout.decode("utf-8", "replace").split() if x]
+        if len(shas) > 1:
+            out[rel] = shas
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("pkg")
@@ -311,6 +339,20 @@ def main():
     args = ap.parse_args()
     pkg = args.pkg
     srcs = args.srcs
+
+    # 🔴 2026-11-03：**同一文件被多个提交改动**的警告 ✓
+    # 事故（sync_1028gz）：gx/gy/gz 三个包都改 evolution/factors.md ✗
+    # ⇒ 入库串行不确定 ⇒ 后一个的 diff 上下文对不上 ⇒ apply 失败 ✗
+    multi = _multi_commit_files(srcs)
+    if multi:
+        print("⚠️ 以下文件在 `%s..HEAD` 的**多个提交**里都被改过 ✗："
+              % DEFAULT_BASE_REF)
+        for rel, shas in multi.items():
+            print("   %s ← %s" % (rel, ", ".join(shas)))
+        print("   ⇒ **强烈建议把这些改动合并成一个包** ✓ —— 否则入库时")
+        print("     后一个包的 diff 上下文可能对不上（`git apply` 失败 ✗）")
+        print("   ⇒ 或先确认前一个包**已入库**再打这个包 ✓")
+        print()
 
     # 校验文件存在（两种模式都要，保持原有报错行为）
     for rel in srcs:
