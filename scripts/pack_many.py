@@ -340,6 +340,21 @@ def main():
     pkg = args.pkg
     srcs = args.srcs
 
+    # 🔴 2026-11-03 用户发现：包名日期**过期** ✗
+    #    实测 `sync_1028xx` 从 10-28 一直用到 11-03 ✗ 约 40 个包 ✗
+    #    原因是**复制旧命令忘了改日期** ✗（包名是手工传的 ✗）
+    # ⇒ 检查包名里的 `MMDD` 是否是今天 ✓ 不是就警告 ✓
+    import re as _re
+    from datetime import datetime as _dt
+    m = _re.match(r"sync_(\d{4})", pkg)
+    if m:
+        today = _dt.now().strftime("%m%d")
+        if m.group(1) != today:
+            print("⚠️ 包名日期**不是今天** ✗：`%s`（今天是 `sync_%s…`）"
+                  % (pkg, today))
+            print("   ⇒ 包名规则是 `sync_<MMDD><序号>` ✓ 复制旧命令时记得改日期 ✗")
+            print()
+
     # 🔴 2026-11-03：**同一文件被多个提交改动**的警告 ✓
     # 事故（sync_1028gz）：gx/gy/gz 三个包都改 evolution/factors.md ✗
     # ⇒ 入库串行不确定 ⇒ 后一个的 diff 上下文对不上 ⇒ apply 失败 ✗
