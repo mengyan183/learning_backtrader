@@ -526,6 +526,97 @@ def _act_diagnose_data(params):
     return out
 
 
+def _act_inspect_sync(params):
+    """**查 Mac 端的 `fg-sync` 到底怎么提交的** ✓ + 可选停止追踪 `Data/raw/`。
+
+    🔴 为什么需要（2026-11-03）：
+       `Data/raw/` 被 `git rm --cached` **三次**都「回退」了 ✗
+       每次都发现「索引里又是 40 个」✗
+       ⇒ 高度怀疑 Mac 端的 `fg-sync`（外部工具 ✗ 不在仓库里 ✗）
+         用了 `git add -A` ✗ ⇒ 每次都把 `Data/raw/` 加回来 ✗
+
+    【查什么】
+      ① `fg-sync` 脚本在哪（搜 `~/.openclaw` / `~/bin` / `/usr/local/bin` ✗）
+      ② 它的 `git add` 用法（`-A` / `-a` / `.` ✗ 都是全加 ✗）
+      ③ 当前 `git ls-files Data/raw/` 的数量 ✓
+      ④ 是否已有 `Data/raw/` 的 ignore 规则 ✓
+
+    参数：`untrack`（`1` = 顺带执行 `git rm -r --cached Data/raw/` ✓
+                    **本地文件保留** ✓ 但不提交 ✗ 让常规流程带走 ✓）
+    """
+    import glob as _g
+
+    out = {}
+    # ① 找 fg-sync
+    hits = []
+    for d in (os.path.expanduser("~/.openclaw"),
+              os.path.expanduser("~/bin"),
+              "/usr/local/bin", "/opt/homebrew/bin",
+              os.path.expanduser("~/learning_backtrader/scripts")):
+        if not os.path.isdir(d):
+            continue
+        for p in _g.glob(os.path.join(d, "**", "*fg*sync*"), recursive=True):
+            if os.path.isfile(p):
+                hits.append(p)
+        for p in _g.glob(os.path.join(d, "**", "*sync*"), recursive=True):
+            if os.path.isfile(p) and p not in hits and os.path.getsize(p) < 200000:
+                try:
+                    txt = open(p, encoding="utf-8", errors="replace").read()
+                    if "fg-sync" in txt or "公司端同步" in txt:
+                        hits.append(p)
+                except OSError:
+                    pass
+    out["fg_sync_candidates"] = hits[:6]
+
+    # ② 看它们的 git add 用法
+    adds = {}
+    for p in hits[:6]:
+        try:
+            txt = open(p, encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        lines = [ln.strip() for ln in txt.splitlines()
+                 if "git" in ln and "add" in ln]
+        if lines:
+            adds[p] = lines[:5]
+    out["git_add_lines"] = adds
+
+    # ③ 当前追踪状态
+    def _git(*a):
+        try:
+            r = subprocess.run(["git", "-C", ROOT] + list(a),
+                               capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=120)
+            return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
+        except Exception as e:              # noqa: BLE001
+            return -1, "", str(e)
+
+    _, tracked, _ = _git("ls-files", "Data/raw/")
+    out["tracked_count"] = len([x for x in tracked.splitlines() if x])
+    out["tracked_sample"] = tracked.splitlines()[:5]
+
+    # ④ ignore 规则
+    rc, _, _ = _git("check-ignore", "-v", "Data/raw/prices.csv")
+    out["ignore_rule"] = "已 ignore ✓" if rc == 0 else "**未 ignore** ✗"
+
+    # 可选：停止追踪 ✓
+    if str(params.get("untrack") or "").lower() in ("1", "true", "yes"):
+        rc, so, se = _git("rm", "-r", "--cached", "--quiet", "Data/raw/")
+        _, after, _ = _git("ls-files", "Data/raw/")
+        out["untrack"] = {
+            "rc": rc, "stderr": se[-300:],
+            "tracked_after": len([x for x in after.splitlines() if x]),
+            "note": "本地文件**保留** ✓ 只是索引移除 ✓ "
+                    "⚠️ 未提交 ✗ 需常规流程带走（或 `fg-sync` ✗ 见 git_add_lines）",
+        }
+
+    return {"ok": True, "root": ROOT, **out,
+            "verdict": ("⚠️ 找到 %d 个候选 fg-sync ✗ 若其中有 `git add -A` / `add -a` / "
+                        "`add .` ⇒ **这就是 Data/raw 反复回索引的真因** ✗"
+                        % len(hits)) if hits else
+                       "✗ **没找到 fg-sync 脚本** ✗ 需手工确认它从哪来"}
+
+
 def _act_safe_pull_data(params):
     """**带数据保护的 git pull** ✓（2026-11-03 新增，紧急）。
 
@@ -1696,6 +1787,7 @@ ACTIONS = {
     "sync_runtime": _act_sync_runtime,
     "git_pull": _act_git_pull,
     "safe_pull_data": _act_safe_pull_data,
+    "inspect_sync": _act_inspect_sync,
     "archive_briefs": _act_archive_briefs,
     "weekly_review": _act_weekly_review,
     "diagnose_data": _act_diagnose_data,
