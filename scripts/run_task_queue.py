@@ -146,6 +146,81 @@ def _act_archive_briefs(params):
             "stderr": (r.stderr or "")[-400:]}
 
 
+def _act_diagnose_data(params):
+    """**数据断流诊断** ✓（2026-11-03 用户要求「Mac 上先修数据」）。
+
+    【背景】
+      `Data/raw/prices.csv` 停在 2026-10-12 ✗ 断 22 天 ✗
+      而简报每天正常生成 ✗ ⇒ 「现价」「浮盈亏」全是 3 周前的数字 ✗
+      ⇒ 先查**为什么停**，再决定怎么补 ✗
+
+    【查什么】
+      ① 每个 `Data/raw/*.csv` 的**行数 + 最新日期** ✓
+      ② `/tmp/fg_daily.log` 尾部（找 `fetch_*` 的报错 ✗）
+      ③ launchd 里 `fg-daily` 的**最后退出码** ✓
+
+    参数：`tail`（日志行数，默认 40）✓
+    """
+    import glob as _glob
+    from datetime import datetime as _dt
+
+    n_tail = int(params.get("tail") or 40)
+    out = {"checked_at": _dt.now().isoformat(timespec="seconds"),
+           "files": {}, "log_tail": "", "launchd": ""}
+
+    # ① 各 csv 的最新日期
+    for p in sorted(_glob.glob(os.path.join(ROOT, "Data", "raw", "*.csv"))):
+        name = os.path.basename(p)
+        try:
+            import pandas as _pd
+            d = _pd.read_csv(p, usecols=["date"], parse_dates=["date"])
+            last = d["date"].max()
+            out["files"][name] = {
+                "rows": int(len(d)),
+                "last": str(last.date()) if _pd.notna(last) else "?",
+            }
+        except Exception as e:              # noqa: BLE001
+            out["files"][name] = {"error": str(e)[:80]}
+
+    # ② 每日链日志尾部
+    log = "/tmp/fg_daily.log"
+    try:
+        with open(log, "r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+        out["log_tail"] = "".join(lines[-n_tail:])[-3000:]
+    except Exception as e:                  # noqa: BLE001
+        out["log_tail"] = "读不到 %s：%s" % (log, e)
+
+    # ③ launchd 状态
+    try:
+        r = subprocess.run(["launchctl", "print", "gui/%d/com.xingguo.fg-daily"
+                            % os.getuid()],
+                           capture_output=True, text=True, timeout=60)
+        txt = r.stdout or r.stderr or ""
+        keep = [ln.strip() for ln in txt.splitlines()
+                if any(k in ln for k in ("state =", "last exit", "runs =",
+                                         "program ="))]
+        out["launchd"] = "\n".join(keep[:8]) or "(无输出)"
+    except Exception as e:                  # noqa: BLE001
+        out["launchd"] = "查不到：%s" % e
+
+    # 判断是否真的断流 ✓
+    stale = []
+    for name, v in out["files"].items():
+        last = v.get("last")
+        if not last or last == "?":
+            continue
+        try:
+            gap = (_dt.now() - _dt.strptime(last, "%Y-%m-%d")).days
+        except ValueError:
+            continue
+        if gap > 5:
+            stale.append("%s 停 %d 天（%s）" % (name, gap, last))
+    out["stale"] = stale
+    out["ok"] = not stale
+    return out
+
+
 def _act_git_pull(params):
     """在 Mac 上 **git pull** 并汇报关键状态 ✓（2026-11-03 用户裁定）。
 
@@ -1115,6 +1190,7 @@ ACTIONS = {
     "git_pull": _act_git_pull,
     "archive_briefs": _act_archive_briefs,
     "weekly_review": _act_weekly_review,
+    "diagnose_data": _act_diagnose_data,
     "clean_sync_partial": _act_clean_sync_partial,
     "daily_log_tail": _act_daily_log_tail,
     "install_evolve_tasks": _act_install_evolve_tasks,
