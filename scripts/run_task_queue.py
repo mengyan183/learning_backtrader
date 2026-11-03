@@ -146,6 +146,55 @@ def _act_archive_briefs(params):
             "stderr": (r.stderr or "")[-400:]}
 
 
+def _act_audit_data(params):
+    """**数据文件审计** ✓（谁读谁写 ⇒ 在用/孤儿/死文件）。
+
+    🔴 必须在 **Mac** 跑 ✗ —— Windows 的 `Data/raw/` 只是旧快照 ✗
+       （2026-11-03 用户澄清）
+    """
+    cmd = [sys.executable,
+           os.path.join(ROOT, "scripts", "audit_data_files.py")]
+    if params.get("json"):
+        cmd += ["--json", str(params["json"])]
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=900)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "超过 900 秒"}
+    return {"ok": r.returncode == 0,
+            "note": "⚠️ 审计有 ~10% 误判 ✗（动态拼名/消费者在别处 ✗）"
+                    " ⇒ 删文件前务必人工复核 ✓",
+            "stdout": (r.stdout or "")[-6000:],
+            "stderr": (r.stderr or "")[-400:]}
+
+
+def _act_prune_dead_data(params):
+    """**删死文件** ✓（2026-11-03 用户裁定「死文件要删」）。
+
+    安全措施：
+      ① 默认 **dry-run** ✓ —— 必须显式 `apply=1` 才真删 ✗
+      ② 真删前**备份**到 `dist/pruned/` ✓
+      ③ 只删 `Data/raw/` 下**明确列出**的文件 ✓ 不递归扫 ✗
+      ④ `Data/raw/` 已 gitignore ⇒ **git 不会有任何改动** ✓
+
+    参数：`apply`（默认 0 = 只看 ✓）
+    """
+    cmd = [sys.executable,
+           os.path.join(ROOT, "scripts", "prune_dead_data.py")]
+    if str(params.get("apply") or "").lower() in ("1", "true", "yes"):
+        cmd.append("--apply")
+    try:
+        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                           timeout=600)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "error": "超过 600 秒"}
+    return {"ok": r.returncode == 0,
+            "applied": "--apply" in cmd,
+            "note": "误删可从 `dist/pruned/` 拷回 ✓",
+            "stdout": (r.stdout or "")[-5000:],
+            "stderr": (r.stderr or "")[-400:]}
+
+
 def _act_diagnose_data(params):
     """**数据断流诊断** ✓（2026-11-03 用户要求「Mac 上先修数据」）。
 
@@ -1251,6 +1300,8 @@ ACTIONS = {
     "weekly_review": _act_weekly_review,
     "diagnose_data": _act_diagnose_data,
     "fetch_prices": _act_fetch_prices,
+    "audit_data": _act_audit_data,
+    "prune_dead_data": _act_prune_dead_data,
     "clean_sync_partial": _act_clean_sync_partial,
     "daily_log_tail": _act_daily_log_tail,
     "install_evolve_tasks": _act_install_evolve_tasks,
