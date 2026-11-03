@@ -267,7 +267,10 @@ def _act_futu_preflight(params):
 
 
 #: 需要「从仓库副本装到 LaunchAgents」的 plist ✓
-PLISTS = ["com.xingguo.fg-daily.plist", "com.xingguo.fg-task-queue.plist"]
+PLISTS = ["com.xingguo.fg-daily.plist", "com.xingguo.fg-task-queue.plist",
+          # 2026-11-03 新增：每周一 07:30 跑 `weekly_review.py` ✓
+          # （必须在 Mac ✗ Windows 的 Data/raw 只是旧快照 ✗）
+          "com.xingguo.fg-weekly-review.plist"]
 
 
 def _act_install_daily_plist(params):
