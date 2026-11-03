@@ -143,3 +143,12 @@ Data/health/
 # check_freshness.py / drift_monitor.py **写**，invest_research.py **读**
 # 内容是「距今 N 天」的相对时间 ⇒ 每天不同 ✗ 且两机数据状态不同 ✗
 Data/freshness_warning.txt
+
+# ---- 运行时快照/会话（每次跑都变 ✗ 不该入库）----
+# 判据：内容会不会因为「今天跑了一次」而变？会 ⇒ ignore ✗
+# ⚠️ **例外**：`Data/state.json`（熔断/弹药）是**业务状态** ✓
+#    跨机同步有意义 ⇒ 保留入库 ✓
+Data/last_brief_check.json
+Data/brief_check_history.jsonl
+Data/realtime_state.json
+Data/raw/fedwatch_session.json
