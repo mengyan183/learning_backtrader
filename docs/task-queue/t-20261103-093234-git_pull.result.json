@@ -1,0 +1,13 @@
+{
+  "id": "t-20261103-093234-git_pull",
+  "action": "git_pull",
+  "params": {
+    "stash": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "rning: in the working copy of 'Data/raw/news_sentiment.csv', CRLF will be replaced by LF the next time Git touches it\\nwarning: in the working copy of 'Data/raw/stablecoin_usage.csv', CRLF will be replaced by LF the next time Git touches it\"}, {\"step\": \"fetch\", \"rc\": 0, \"stderr\": \"\"}, {\"step\": \"behind\", \"value\": \"0\"}, {\"step\": \"pull\", \"rc\": 0, \"stdout\": \"Already up to date.\", \"stderr\": \"\"}, {\"step\": \"after_head\", \"value\": \"48304c7\"}, {\"step\": \"status\", \"value\": \"M Data/realtime_state.json\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-07.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-08.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-09.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-10.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-11.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-12.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-14.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-15.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-16.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-17.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-18.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-19.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-20.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-21.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-22.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-23.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-26.md\\n?? Data/briefs/archive/2026-10/invest_brief_2026-10-27.md\\n?? Data/invest_brief_2026-10-29.md\\n?? Data/invest_brief_2026-10-30.md\\n?? Data/invest_brief_2026-11-02.md\\n?? Data/kb/subtitles/28H31JdMXaQ.en-ar.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-bn.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-de.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-en.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-fr.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-hi.vtt\\n?? Data/kb/subtitles/28H31JdMXaQ.en-it.vtt\\n?? Data/kb/subtitles/28\"}]}",
+  "started_at": "2026-11-03T09:33:51",
+  "finished_at": "2026-11-03T09:33:58",
+  "duration_s": 6.74
+}
