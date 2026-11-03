@@ -55,6 +55,8 @@ MONITORED = {
     "news_sentiment.csv",       # 2026-11-03 告警：停更 21 天
     "stablecoin_usage.csv",     # 2026-11-03 告警：停更 23 天
     "fred_DFF.csv",             # 2026-11-03 告警：停更 26 天
+    # 🔴 2026-11-03 复核新增（审计判「孤儿」是**误判** ✗）：
+    "watchlist_3x.csv",         # dashboard `server.py:454` + `build_watchlist_3x.py:36`
 }
 
 #: 2026-11-03 审计出的**死文件** ✓（已剔除 `MONITORED` 里的 ✗）
@@ -70,6 +72,10 @@ DEAD = (
     # --- 其他
     "fng_altme.csv", "crypto_fng.csv",
     "splits.csv", "shoutu_etf_universe.csv",
+    # 🔴 2026-11-03 复核新增（Mac 审计发现，Windows 没有这两个 ✗）：
+    #    `fred_BAMLH0A0HYM2.csv` —— `docs/notes/2026-10-16-假说登记草案` 明确
+    #    「❌ **已弃用**（2026-10-16 换 BAA10Y，因 FRED 该 id 仅 2023-10 起 ✗）」
+    "fred_BAMLH0A0HYM2.csv",
 )
 
 

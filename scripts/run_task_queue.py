@@ -146,6 +146,56 @@ def _act_archive_briefs(params):
             "stderr": (r.stderr or "")[-400:]}
 
 
+def _act_diag_daily_log(params):
+    """**查每日链日志里每一步的 rc** ✓（2026-11-03 排查 `fetch_*` 停更）。
+
+    【为什么需要】
+      用户告警：`sentiment`/`putcall`/`fedwatch`/`kalshi_fed`/`funding_rate`/
+      `shoutu_fng`/`news_sentiment`/`stablecoin_usage`/`fred_dff` **全停更 20-26 天** ✗
+      但日志尾部显示「简报成功 / 漂移监控成功 / 稳定币成功」✗ ⇒ **矛盾** ✗
+      ⇒ 链是 `;` 串联 ✗ **某步失败不影响后面** ✗
+      ⇒ 必须看**每一行 `[guard]` 的 rc** 才能定位 ✓
+
+    【查什么】
+      ① `/tmp/fg_daily.log` 里所有 `[guard] ... rc=` 行（最近 N 条）✓
+      ② 非 0 的单独列出 ✓
+      ③ 日志里最后的「日期」—— 判断日志是不是**今天的** ✗
+         （如果日志是旧的 ✗ 那「简报成功」也是旧的 ✗ 就解释了矛盾 ✓）
+
+    参数：`tail`（默认 400 行）✓
+    """
+    import re as _re
+
+    n = int(params.get("tail") or 400)
+    log = params.get("log") or "/tmp/fg_daily.log"
+    try:
+        with open(log, "r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+    except Exception as exc:                # noqa: BLE001
+        return {"ok": False, "error": "读不到 %s：%s" % (log, exc)}
+
+    tail = lines[-n:]
+    guards = [ln.rstrip() for ln in tail if "[guard]" in ln]
+    fails = [g for g in guards if "rc=0" not in g]
+    # 日志里的日期（找 `MM-DD HH:MM:SS` 或 `YYYY-MM-DD`）
+    dates = []
+    for ln in tail:
+        m = _re.search(r"\b(\d{4}-\d{2}-\d{2})\b", ln) or \
+            _re.search(r"\b(\d{2}-\d{2} \d{2}:\d{2}:\d{2})\b", ln)
+        if m:
+            dates.append(m.group(1))
+
+    return {"ok": True, "log": log,
+            "total_lines": len(lines), "tail_lines": len(tail),
+            "guard_count": len(guards), "fail_count": len(fails),
+            "log_first_date": dates[0] if dates else "?",
+            "log_last_date": dates[-1] if dates else "?",
+            "note": "⚠️ 链是 `;` 串联 ⇒ **某步失败不影响后面** ✗ "
+                    "所以「简报成功」不代表前面 fetch 成功 ✗",
+            "fails": fails[-40:],
+            "guards_tail": guards[-40:]}
+
+
 def _act_audit_data(params):
     """**数据文件审计** ✓（谁读谁写 ⇒ 在用/孤儿/死文件）。
 
@@ -1346,6 +1396,7 @@ ACTIONS = {
     "diagnose_data": _act_diagnose_data,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
+    "diag_daily_log": _act_diag_daily_log,
     "prune_dead_data": _act_prune_dead_data,
     "clean_sync_partial": _act_clean_sync_partial,
     "daily_log_tail": _act_daily_log_tail,
