@@ -1,17 +1,11 @@
 {
-  "id": "t-20261103-143432-install_daily_plist",
+  "id": "t-20261103-160255-install_daily_plist",
   "action": "install_daily_plist",
   "params": {},
   "status": "done",
   "rc": 0,
   "output": "{\"ok\": true, \"result\": {\"com.xingguo.fg-daily.plist\": \"ok\", \"com.xingguo.fg-task-queue.plist\": \"已拷贝（8 秒后重装，结果下轮回写）\", \"com.xingguo.fg-weekly-review.plist\": \"ok\"}}",
-  "started_at": "2026-11-03T14:39:10",
-  "finished_at": "2026-11-03T14:39:10",
-  "duration_s": 0.09,
-  "reinstall": {
-    "ok": true,
-    "rc": 0,
-    "at": "2026-11-03T14:39:18",
-    "label": "com.xingguo.fg-task-queue"
-  }
+  "started_at": "2026-11-03T16:05:24",
+  "finished_at": "2026-11-03T16:05:24",
+  "duration_s": 0.05
 }
