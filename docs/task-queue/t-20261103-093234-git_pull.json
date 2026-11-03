@@ -1,9 +1,0 @@
-{
-  "id": "t-20261103-093234-git_pull",
-  "action": "git_pull",
-  "params": {
-    "stash": "1"
-  },
-  "status": "pending",
-  "created_at": "2026-11-03T09:32:34"
-}

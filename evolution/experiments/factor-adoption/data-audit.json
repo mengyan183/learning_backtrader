@@ -1,0 +1,413 @@
+{
+  "existing": [
+    "crypto_prices.csv",
+    "crypto_underlying.csv",
+    "equitypc.csv",
+    "equitypcarchive.csv",
+    "etppc.csv",
+    "fred_BAA10Y.csv",
+    "fred_BAMLH0A0HYM2.csv",
+    "fred_DFF.csv",
+    "fred_DGS10.csv",
+    "fred_baa10y_avail.csv",
+    "funding_rate.csv",
+    "indexpc.csv",
+    "indexpcarchive.csv",
+    "kalshi_fed.csv",
+    "news_sentiment.csv",
+    "pcratioarchive.csv",
+    "prices.csv",
+    "putcall.csv",
+    "sentiment.csv",
+    "shoutu_fng.csv",
+    "sp500_pe.csv",
+    "spxpc.csv",
+    "stablecoin_usage.csv",
+    "totalpc.csv",
+    "totalpcarchive.csv",
+    "vix.csv",
+    "vix3m.csv",
+    "vix_history.csv",
+    "vixpc.csv",
+    "watchlist_3x.csv"
+  ],
+  "audit": {
+    "crypto_prices.csv": {
+      "writers": [],
+      "readers": [
+        "scripts/evolve_crypto_cost.py:32"
+      ]
+    },
+    "crypto_underlying.csv": {
+      "writers": [],
+      "readers": [
+        "scripts/evolve_verify.py:57"
+      ]
+    },
+    "equitypc.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "equitypcarchive.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "etppc.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "fred_BAA10Y.csv": {
+      "writers": [
+        "tests/test_verify_h065.py:75",
+        "tests/test_verify_h065.py:78",
+        "tests/test_verify_h068.py:85",
+        "tests/test_verify_h068.py:88"
+      ],
+      "readers": []
+    },
+    "fred_BAMLH0A0HYM2.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "fred_DFF.csv": {
+      "writers": [],
+      "readers": [
+        "scripts/factor_screen.py:226",
+        "tests/test_fetch_fred.py:30",
+        "tests/test_fetch_fred.py:37"
+      ]
+    },
+    "fred_DGS10.csv": {
+      "writers": [
+        "tests/test_verify_h065.py:70",
+        "tests/test_verify_h065.py:73"
+      ],
+      "readers": []
+    },
+    "fred_baa10y_avail.csv": {
+      "writers": [
+        "scripts/eval_baa10y.py:85",
+        "scripts/run_task_queue.py:806"
+      ],
+      "readers": []
+    },
+    "funding_rate.csv": {
+      "writers": [
+        "scripts/fetch_sentiment.py:78"
+      ],
+      "readers": [
+        "scripts/fetch_sentiment.py:69",
+        "scripts/fetch_sentiment.py:88"
+      ]
+    },
+    "indexpc.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "indexpcarchive.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "kalshi_fed.csv": {
+      "writers": [
+        "tests/test_drift_crosscheck.py:259"
+      ],
+      "readers": []
+    },
+    "news_sentiment.csv": {
+      "writers": [],
+      "readers": [
+        "scripts/factor_screen_extend.py:94"
+      ]
+    },
+    "pcratioarchive.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "prices.csv": {
+      "writers": [
+        "scripts/check_freshness.py:110",
+        "scripts/eval_ene.py:80",
+        "scripts/invest_research.py:258",
+        "scripts/invest_research.py:261",
+        "scripts/fetch_candidates.py:95",
+        "scripts/fetch_candidates.py:96",
+        "scripts/fetch_market_data.py:254",
+        "scripts/fetch_market_data.py:255",
+        "scripts/fetch_market_data.py:256",
+        "fg_system/dashboard/report.py:993",
+        "tests/test_verify_h065.py:68",
+        "tests/test_lookahead_audit.py:87",
+        "tests/test_sensitivity_scan.py:66",
+        "tests/test_drift_crosscheck.py:124",
+        "tests/test_drift_crosscheck.py:151",
+        "tests/test_drift_crosscheck.py:167",
+        "tests/test_drift_crosscheck.py:181",
+        "tests/test_verify_h069.py:85",
+        "tests/test_evolve_walkforward.py:39",
+        "tests/test_evolve_walkforward.py:41",
+        "tests/test_verify_h068.py:78",
+        "tests/test_r15_quality_gate.py:105",
+        "tests/test_r15_quality_gate.py:118",
+        "tests/test_verify_hypotheses.py:571",
+        "tests/dashboard/test_symbol_fg_api.py:19",
+        "tests/dashboard/test_symbol_fg_api.py:21",
+        "tests/dashboard/test_report.py:272",
+        "tests/dashboard/test_report.py:275",
+        "tests/dashboard/test_freshness.py:34",
+        "tests/dashboard/test_freshness.py:46",
+        "tests/dashboard/test_freshness.py:62",
+        "tests/data/test_shoutu_record.py:389",
+        "tests/data/test_loader.py:14",
+        "tests/data/test_splits.py:22",
+        "tests/data/test_splits.py:37",
+        "tests/data/test_splits.py:53",
+        "tests/data/test_loader_crypto.py:25"
+      ],
+      "readers": [
+        "scripts/eval_erp.py:76",
+        "scripts/query_symbol_fg.py:344",
+        "scripts/putcall_factor_check.py:27",
+        "scripts/observe_screen.py:39",
+        "scripts/prune_dead_data.py:7",
+        "scripts/eval_baa10y.py:53",
+        "scripts/risk_report.py:50",
+        "scripts/evolve_variant_analysis.py:97",
+        "scripts/portfolio_backtest.py:191",
+        "scripts/eval_gold_ratio.py:52",
+        "scripts/eval_gold_ratio.py:77",
+        "scripts/eval_gold_ratio_retest.py:152",
+        "scripts/eval_gold_ratio_retest.py:163",
+        "scripts/evolve_variant.py:80",
+        "scripts/attribution_check.py:43",
+        "scripts/backtest_ene_reduce.py:54",
+        "scripts/backtest_ene_reduce.py:101",
+        "scripts/sweep_ene_ratio.py:52",
+        "scripts/sweep_ene_ratio.py:84",
+        "scripts/sweep_ene_ratio.py:115",
+        "scripts/evolve_walkforward.py:87",
+        "scripts/eval_ene.py:79",
+        "scripts/eval_ene.py:99",
+        "scripts/eval_ene.py:104",
+        "scripts/screen_factors.py:167",
+        "scripts/verify_hypotheses.py:262",
+        "scripts/verify_hypotheses.py:569",
+        "scripts/verify_hypotheses.py:707",
+        "scripts/verify_hypotheses.py:896",
+        "scripts/verify_hypotheses.py:1060",
+        "scripts/invest_research.py:265",
+        "scripts/invest_research.py:1039",
+        "scripts/evolve_crypto_cost.py:32",
+        "scripts/evolve_verify.py:50",
+        "scripts/evolve_baseline.py:144",
+        "scripts/evolve_baseline.py:236",
+        "scripts/weekly_review.py:93",
+        "scripts/eval_f020.py:95",
+        "scripts/fetch_candidates.py:37",
+        "scripts/fetch_candidates.py:58",
+        "scripts/factor_reduce_probe.py:63",
+        "scripts/vector_scan_bench.py:130",
+        "scripts/sensitivity_scan.py:196",
+        "scripts/sensitivity_scan.py:321",
+        "scripts/yinn_cost_after.py:146",
+        "scripts/evolve_propose.py:87",
+        "scripts/weight_sensitivity.py:125",
+        "scripts/eval_f012_f008.py:57",
+        "scripts/backtest_position_plan.py:78",
+        "scripts/audit_data_files.py:51",
+        "scripts/sweep_f020_threshold.py:41",
+        "scripts/factor_backtest_probe.py:59",
+        "scripts/calibrate_extreme.py:63",
+        "scripts/calibrate_extreme.py:102",
+        "scripts/drift_monitor.py:55",
+        "scripts/drift_monitor.py:271",
+        "scripts/screen_yinn_momentum.py:115",
+        "scripts/norm_compare.py:166",
+        "fg_system/cli.py:346",
+        "fg_system/cli.py:364",
+        "fg_system/cli.py:440",
+        "fg_system/pipeline.py:34",
+        "fg_system/factors/ene.py:67",
+        "fg_system/factors/ene.py:106",
+        "fg_system/factors/ene.py:128",
+        "fg_system/factors/ene.py:134",
+        "fg_system/factors/gold_ratio.py:47",
+        "fg_system/factors/gold_ratio.py:48",
+        "fg_system/factors/symbol.py:30",
+        "fg_system/factors/report.py:40",
+        "fg_system/factors/report.py:42",
+        "fg_system/factors/report.py:45",
+        "fg_system/backtest/runner.py:125",
+        "fg_system/dashboard/server.py:429",
+        "fg_system/dashboard/server.py:473",
+        "fg_system/dashboard/report.py:885",
+        "fg_system/data/synthetic.py:174",
+        "fg_system/data/loader.py:20",
+        "fg_system/data/loader.py:53",
+        "fg_system/data/loader.py:218",
+        "fg_system/data/splits.py:55",
+        "tests/test_calibrate_extreme.py:90",
+        "tests/test_calibrate_extreme.py:97",
+        "tests/test_calibrate_extreme.py:176",
+        "tests/test_leverage.py:55",
+        "tests/test_leverage.py:66",
+        "tests/data/test_loader.py:28",
+        "tests/data/test_loader.py:37",
+        "tests/data/test_loader.py:48",
+        "tests/data/test_loader.py:62",
+        "tests/data/test_loader.py:76",
+        "tests/data/test_loader.py:88",
+        "tests/data/test_loader.py:123",
+        "tests/data/test_loader.py:151",
+        "tests/data/test_loader.py:165",
+        "tests/data/test_loader.py:180",
+        "tests/data/test_loader.py:191",
+        "tests/data/test_loader.py:207"
+      ]
+    },
+    "putcall.csv": {
+      "writers": [
+        "scripts/putcall_factor_check.py:106",
+        "scripts/putcall_factor_check.py:108",
+        "scripts/eval_f020.py:103",
+        "scripts/fetch_sentiment.py:101"
+      ],
+      "readers": [
+        "scripts/putcall_factor_check.py:26",
+        "scripts/factor_reduce_probe.py:144",
+        "scripts/factor_screen_extend.py:107",
+        "scripts/fetch_sentiment.py:94",
+        "fg_system/pipeline.py:47"
+      ]
+    },
+    "sentiment.csv": {
+      "writers": [
+        "scripts/invest_research.py:1891",
+        "scripts/fetch_sentiment.py:103",
+        "scripts/fetch_sentiment.py:105",
+        "tests/test_lookahead_audit.py:87"
+      ],
+      "readers": [
+        "scripts/factor_screen_extend.py:94",
+        "scripts/drift_monitor.py:281",
+        "fg_system/dashboard/report.py:749"
+      ]
+    },
+    "shoutu_fng.csv": {
+      "writers": [
+        "fg_system/data/shoutu.py:317",
+        "tests/test_execution_confirm.py:42",
+        "tests/data/test_shoutu_record.py:79",
+        "tests/data/test_shoutu_record.py:384",
+        "tests/data/test_loader_shoutu.py:25",
+        "tests/data/test_loader_shoutu.py:31",
+        "tests/data/test_loader_shoutu.py:34"
+      ],
+      "readers": [
+        "scripts/attribution_check.py:82",
+        "scripts/invest_research.py:350"
+      ]
+    },
+    "sp500_pe.csv": {
+      "writers": [
+        "tests/test_erp_factor.py:58"
+      ],
+      "readers": []
+    },
+    "spxpc.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "stablecoin_usage.csv": {
+      "writers": [
+        "scripts/validate_stablecoin_data.py:64",
+        "scripts/audit_data_files.py:44",
+        "scripts/audit_data_files.py:45",
+        "tests/test_fetch_stablecoin_usage.py:124",
+        "tests/test_stablecoin_usage.py:39",
+        "tests/test_stablecoin_usage.py:51",
+        "tests/test_stablecoin_usage.py:52"
+      ],
+      "readers": []
+    },
+    "totalpc.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "totalpcarchive.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "vix.csv": {
+      "writers": [
+        "scripts/eval_f020.py:99",
+        "scripts/eval_f020.py:112",
+        "scripts/fetch_sentiment.py:46",
+        "scripts/fetch_sentiment.py:47",
+        "scripts/fetch_sentiment.py:48",
+        "scripts/fetch_sentiment.py:101",
+        "tests/test_verify_h065.py:83",
+        "tests/test_verify_h065.py:84",
+        "tests/test_lookahead_audit.py:87",
+        "tests/test_drift_crosscheck.py:212",
+        "tests/test_drift_crosscheck.py:213",
+        "tests/test_drift_crosscheck.py:224",
+        "tests/test_drift_crosscheck.py:276",
+        "tests/test_drift_crosscheck.py:277",
+        "tests/test_verify_h069.py:87",
+        "tests/test_verify_h069.py:89",
+        "tests/test_verify_h069.py:90",
+        "tests/test_verify_h068.py:80",
+        "tests/test_verify_h068.py:82",
+        "tests/test_verify_h068.py:83",
+        "tests/test_r15_quality_gate.py:107",
+        "tests/test_r15_quality_gate.py:121",
+        "tests/data/test_fetch.py:97"
+      ],
+      "readers": [
+        "scripts/portfolio_qa.py:56",
+        "scripts/verify_hypotheses.py:725",
+        "scripts/verify_hypotheses.py:909",
+        "scripts/verify_hypotheses.py:1073",
+        "scripts/eval_f012_f008.py:47",
+        "scripts/eval_f012_f008.py:48",
+        "scripts/factor_screen_extend.py:125",
+        "scripts/factor_screen_extend.py:126",
+        "scripts/drift_monitor.py:278",
+        "scripts/fetch_sentiment.py:85",
+        "fg_system/pipeline.py:41",
+        "fg_system/pipeline.py:42",
+        "tests/data/test_fetch.py:113"
+      ]
+    },
+    "vix3m.csv": {
+      "writers": [
+        "scripts/eval_f020.py:99",
+        "scripts/eval_f020.py:112"
+      ],
+      "readers": [
+        "scripts/eval_f012_f008.py:48",
+        "scripts/factor_screen_extend.py:126",
+        "fg_system/pipeline.py:42"
+      ]
+    },
+    "vix_history.csv": {
+      "writers": [
+        "scripts/fetch_sentiment.py:47"
+      ],
+      "readers": [
+        "scripts/fetch_sentiment.py:85"
+      ]
+    },
+    "vixpc.csv": {
+      "writers": [],
+      "readers": []
+    },
+    "watchlist_3x.csv": {
+      "writers": [
+        "tests/dashboard/test_watchlist_3x.py:40"
+      ],
+      "readers": []
+    }
+  }
+}

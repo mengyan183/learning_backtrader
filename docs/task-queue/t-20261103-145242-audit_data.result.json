@@ -1,0 +1,11 @@
+{
+  "id": "t-20261103-145242-audit_data",
+  "action": "audit_data",
+  "params": {},
+  "status": "failed",
+  "rc": -1,
+  "output": "ValueError: unsupported format character '?' (0x8bef) at index 12",
+  "started_at": "2026-11-03T14:55:21",
+  "finished_at": "2026-11-03T14:55:22",
+  "duration_s": 1.06
+}
