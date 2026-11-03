@@ -1,0 +1,10 @@
+{
+  "id": "t-20261103-161104-run_fetch_step",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "fetch_news.py",
+    "timeout": "900"
+  },
+  "status": "pending",
+  "created_at": "2026-11-03T16:11:04"
+}
