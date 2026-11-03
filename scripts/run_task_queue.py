@@ -568,7 +568,10 @@ def _act_inspect_sync(params):
                     pass
     out["fg_sync_candidates"] = hits[:6]
 
-    # ② 看它们的 git add 用法
+    # ② 看它们的 **所有 git 调用行** ✓
+    #    🔴 2026-11-03 实测：只 grep `git`+`add` 得到 **空结果** ✗
+    #    ⇒ 说明它不用 `git add` ✗ 可能用 `git commit -a` / `git add -u`
+    #      / 或者调别的工具 ✗ ⇒ **必须把全部含 git 的行都打出来** ✓
     adds = {}
     for p in hits[:6]:
         try:
@@ -576,10 +579,21 @@ def _act_inspect_sync(params):
         except OSError:
             continue
         lines = [ln.strip() for ln in txt.splitlines()
-                 if "git" in ln and "add" in ln]
+                 if "git" in ln.lower() or "add -" in ln or "commit" in ln]
         if lines:
-            adds[p] = lines[:5]
-    out["git_add_lines"] = adds
+            adds[p] = lines[:12]
+    out["git_lines"] = adds
+
+    # ②b 如果还是空 ⇒ 直接把候选文件的**前 40 行**打出来 ✓
+    if not adds:
+        heads = {}
+        for p in hits[:3]:
+            try:
+                txt = open(p, encoding="utf-8", errors="replace").read()
+                heads[p] = txt[:1200]
+            except OSError:
+                continue
+        out["file_heads"] = heads
 
     # ③ 当前追踪状态
     def _git(*a):
