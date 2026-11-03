@@ -106,18 +106,28 @@ def main(argv=None):
           % (len(briefs), briefs[-1][0], briefs[0][0]))
 
     rows = []
+    n_parse_fail = n_no_price = 0
+    last_price_date = None
     for date_s, p in briefs:
         sig = _parse(p)
         if not sig:
-            print("· %s —— 解析不到建议（跳过 ✗）" % date_s)
+            print("· %s —— **解析不到建议** ✗（格式变了？）" % date_s)
+            n_parse_fail += 1
             continue
         d0 = pd.Timestamp(date_s)
         for sym, s in sorted(sig.items()):
             c = close(sym)
             if c.empty:
+                print("· %s %s —— 无价格数据 ✗" % (date_s, sym))
+                n_no_price += 1
                 continue
+            last_price_date = c.index[-1]
             after = c[c.index > d0]
             if after.empty:
+                # 🔴 2026-11-03 修：原来这里**静默 continue** ✗
+                #    导致「无未来价格」被误报成「解析不到建议」✗
+                #    （Mac 上实测就是这个 ✗ 而 prices 停在 10-12 ✗）
+                n_no_price += 1
                 continue
             # 之后 5 个交易日 / 到最新的涨幅 ✓
             r5 = (after.iloc[min(4, len(after) - 1)] / after.iloc[0] - 1.0) * 100
@@ -134,8 +144,18 @@ def main(argv=None):
             })
 
     if not rows:
-        print("\n✗ 没有可对照的记录 —— 简报里解析不到「减仓」建议 ✗")
-        print("  （可能是最近几天没有触发 ✗ 或简报格式变了 ✗）")
+        print("\n## ✗ 没有可对照的记录\n")
+        print("| 原因 | 条数 |")
+        print("|---|---|")
+        print("| **解析不到建议**（简报格式变了？）| %d |" % n_parse_fail)
+        print("| **无未来价格**（`prices.csv` 太旧）| %d |" % n_no_price)
+        if last_price_date is not None:
+            print("\n`prices.csv` 最新日期：**%s**" % last_price_date.date())
+            print("最新简报日期：**%s**" % briefs[0][0])
+            if str(last_price_date.date()) < briefs[0][0]:
+                print("\n⇒ 🔴 **价格比简报还旧** ✗ —— 数据抓取停了 ✗")
+                print("   在 Mac 上查：`tail -3 Data/raw/prices.csv`")
+                print("   和 `/tmp/fg_daily.log` 里的 `fetch_prices` 段 ✓")
         return 0
 
     print("\n## 建议 vs 实际（减仓建议 ⇒ 之后跌 = 对 ✓）\n")
