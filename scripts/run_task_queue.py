@@ -726,8 +726,51 @@ def _act_install_daily_plist(params):
             out[name] = "ok" if r.returncode == 0 else (r.stderr or "")[-200:]
         except (subprocess.SubprocessError, OSError) as exc:
             out[name] = "launchctl 失败：%s" % exc
+    # 🔴 2026-11-03 用户要求：**装完必须验证** ✗
+    #    原来只返回「拷贝成功」✗ 无法证明
+    #    ① 代理变量真的进了 `~/Library/LaunchAgents/*.plist` ✗
+    #    ② launchd 认了这份配置 ✗
+    #    ⇒ 而 `launchctl print` **不显示 EnvironmentVariables** ✗
+    #    ⇒ 只能「回读已安装的 plist 文件」+「看 launchd 状态」两条并用 ✓
+    verify = {}
+    for name in PLISTS:
+        dst = os.path.join(agent, name)
+        v = {}
+        try:
+            import plistlib as _pl
+            with open(dst, "rb") as f:
+                d = _pl.load(f)
+            ev = d.get("EnvironmentVariables") or {}
+            v["proxy_in_file"] = {
+                k: ev.get(k) for k in
+                ("FG_LLM_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY")
+                if k in ev
+            }
+            v["env_keys"] = sorted(ev)
+        except Exception as exc:            # noqa: BLE001
+            v["file_error"] = str(exc)[:120]
+        label = name[:-len(".plist")]
+        try:
+            r = subprocess.run(
+                ["launchctl", "print", "%s/%s" % (domain, label)],
+                capture_output=True, text=True, encoding="utf-8",
+                errors="replace", timeout=60)
+            txt = r.stdout or r.stderr or ""
+            keep = [ln.strip() for ln in txt.splitlines()
+                    if any(k in ln for k in ("state =", "last exit",
+                                             "runs =", "path ="))]
+            v["launchd"] = " | ".join(keep[:4]) or "(无输出)"
+        except Exception as exc:            # noqa: BLE001
+            v["launchd"] = "查不到：%s" % exc
+        verify[name] = v
+
     return {"ok": all(v.startswith("ok") or v.startswith("已拷贝")
-                      for v in out.values()), "result": out}
+                      for v in out.values()),
+            "result": out,
+            "verify": verify,
+            "note": "⚠️ `launchctl print` **不显示 EnvironmentVariables** ✗ "
+                    "⇒ 代理是否生效看 `verify.*.proxy_in_file` ✓；"
+                    "真实生效要等下次链跑（看 fetch 耗时）✓"}
 
 
 def _act_sync_positions(params):
