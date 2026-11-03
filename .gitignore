@@ -152,3 +152,10 @@ Data/last_brief_check.json
 Data/brief_check_history.jsonl
 Data/realtime_state.json
 Data/raw/fedwatch_session.json
+
+# ---- 原始数据不入库 ✓（2026-11-03 用户裁定）----
+# 数据本身属于数据 ✗ 不入 git ✓
+# ⚠️ 后果：其他机器 pull 后 Data/raw/ 会变空 ✗
+#    需要「从 Mac 同步数据」的独立机制（未实现 ✗）
+# ⚠️ 但 evolution/*.json（研究产物）**仍入库** ✓ 二者性质不同 ✗
+Data/raw/
