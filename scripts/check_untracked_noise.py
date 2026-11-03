@@ -94,6 +94,8 @@ def main(argv=None):
                     help="看最近多少次提交（默认 20）")
     ap.add_argument("--min-changes", type=int, default=3,
                     help="改动次数阈值（默认 3）")
+    ap.add_argument("--existing-only", action="store_true",
+                    help="**只扫本机实际存在的文件** ✓（跳过「索引有但本地没有」✗）")
     args = ap.parse_args(argv)
 
     print("# 噪声文件扫描（最近 %d 次提交；阈值 ≥%d 次改动）\n"
@@ -109,6 +111,11 @@ def main(argv=None):
         if rel.startswith(EXCLUDE_PREFIX):
             continue
         if not rel.endswith((".json", ".jsonl", ".txt", ".csv")):
+            continue
+        # 🔴 `--existing-only` ✓（2026-11-03 用户要求）：
+        #    索引里有但**本地不存在**的文件（另一台机器提交的 ✗）
+        #    扫了没意义 ✗ —— 本机看不到内容、也不知道是否还在用 ✗
+        if args.existing_only and not (REPO / rel).exists():
             continue
         n = _commit_count(rel, args.commits)
         if n < args.min_changes:
