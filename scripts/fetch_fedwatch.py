@@ -172,6 +172,113 @@ def dump_netlog_urls(netlog_path, patterns=None):
             "api_samples": samples}
 
 
+#: 2026-11-04 从 netlog 实测到的**新数据接口** ✓（无 query 参数 ✗ 可直接调 ✓）
+CME_CONTRACTS_API = ("https://www.cmegroup.com/CmeWS/mvc/quotes/v2/"
+                     "contracts-by-number")
+
+
+def probe_sources(debug=True):
+    """**同时试两条路，报告哪条能拿到数据** ✓（2026-11-04 用户要求）。
+
+    背景：CME 把数据源从 QuikStrike 换成了 `CmeWS/mvc/quotes/v2/contracts-by-number`
+    ✗ 而 `--dump-dom` 的 HTML 里可能也有 ✗
+    ⇒ **不猜，两条都试** ✓ 用能拿到数据的那条 ✓
+
+    :returns: `{"api": {...}, "dom": {...}, "verdict": "..."}`
+    """
+    out = {}
+
+    # ---- 路线 A：直接 GET 新接口 ✓ ----
+    a = {"url": CME_CONTRACTS_API}
+    try:
+        html = _fetch(CME_CONTRACTS_API)
+        a["ok"] = True
+        a["len"] = len(html)
+        a["head"] = html[:600]
+        # 找关键字段 ✓（FedWatch 的概率数据通常带这些键 ✗）
+        import json as _json
+        try:
+            j = _json.loads(html)
+            a["json"] = True
+            a["keys"] = list(j.keys())[:12] if isinstance(j, dict) else "list"
+            # 递归找「概率」类字段名 ✓
+            found = set()
+
+            def _walk(o, depth=0):
+                if depth > 4:
+                    return
+                if isinstance(o, dict):
+                    for k, v in o.items():
+                        kl = str(k).lower()
+                        if any(t in kl for t in ("prob", "percent", "pct",
+                                                 "ease", "hike", "hold")):
+                            found.add(str(k))
+                        _walk(v, depth + 1)
+                elif isinstance(o, list):
+                    for v in o[:5]:
+                        _walk(v, depth + 1)
+
+            _walk(j)
+            a["prob_fields"] = sorted(found)[:12]
+        except Exception:                   # noqa: BLE001
+            a["json"] = False
+    except Exception as exc:                # noqa: BLE001
+        a["ok"] = False
+        a["error"] = "%s: %s" % (type(exc).__name__, str(exc)[:200])
+    out["api"] = a
+
+    # ---- 路线 B：headless 拿 DOM ✓ ----
+    b = {}
+    chrome = _find_chrome()
+    if not chrome:
+        b["ok"] = False
+        b["error"] = "找不到 Chrome ✗"
+    else:
+        fd, dom = tempfile.mkstemp(suffix=".html")
+        os.close(fd)
+        try:
+            cmd = [chrome, "--headless=new", "--disable-gpu", "--no-sandbox",
+                   "--proxy-server=" + PROXY, "--user-agent=" + UA,
+                   "--virtual-time-budget=40000", "--dump-dom",
+                   config.FEDWATCH_PAGE_URL]
+            with open(dom, "w", encoding="utf-8") as f:
+                subprocess.run(cmd, stdout=f, stderr=subprocess.DEVNULL,
+                               timeout=180)
+            html = open(dom, encoding="utf-8", errors="replace").read()
+            b["ok"] = True
+            b["len"] = len(html)
+            # 找数据特征 ✓
+            b["has_number_td"] = '<td class="number">' in html
+            b["has_fedwatch"] = "FedWatch Tool" in html
+            b["has_zq"] = bool(re.search(r"\bZQ[A-Z]\d", html))
+            # 抽几个像概率的数字 ✓（`>78.4%<` 之类 ✗）
+            pcts = re.findall(r">(\d{1,2}\.\d)%<", html)[:12]
+            b["pct_samples"] = pcts
+        except Exception as exc:            # noqa: BLE001
+            b["ok"] = False
+            b["error"] = "%s: %s" % (type(exc).__name__, str(exc)[:200])
+        finally:
+            try:
+                os.remove(dom)
+            except OSError:
+                pass
+    out["dom"] = b
+
+    # ---- 判据 ✓ ----
+    api_ok = (out["api"].get("ok") and out["api"].get("prob_fields"))
+    dom_ok = (out["dom"].get("has_number_td") and out["dom"].get("pct_samples"))
+    if api_ok:
+        out["verdict"] = "✓ **用路线 A（直接调 API）** —— 有概率字段 %s" % (
+            out["api"].get("prob_fields"))
+    elif dom_ok:
+        out["verdict"] = "✓ **用路线 B（DOM 解析）** —— 有 %d 个百分比数字" % (
+            len(out["dom"].get("pct_samples") or []))
+    else:
+        out["verdict"] = ("✗ **两条都不行** ✗ —— API 无概率字段、DOM 无数字 ✗ "
+                          "⇒ 需再抓 netlog 找别的接口 ✗")
+    return out
+
+
 def _refresh_session(debug=False, retries=2, keep_netlog=False,
                      dump_urls=False):
     """headless Chrome 打开 CME FedWatch 页面 → netlog 提取最新 insid+qsid。
@@ -331,7 +438,18 @@ def main():
                     help="从 netlog 里列出所有相关 URL（找 CME 新接口 ✗）")
     ap.add_argument("--keep-netlog", action="store_true",
                     help="保留 netlog 文件到 /tmp（8MB+ ✗ 用于离线分析 ✓）")
+    ap.add_argument("--probe", action="store_true",
+                    help="**同时试 API 与 DOM 两条路** ✓ 报告哪条能拿到数据 ✗")
     args = ap.parse_args()
+
+    # 🔴 2026-11-04：`--probe` **优先** ✓ —— 只做「哪条路能拿数据」的判断 ✗
+    #    不写盘、不改会话 ✓ 纯诊断 ✓
+    if args.probe:
+        import json as _json
+        r = probe_sources()
+        print(_json.dumps(r, ensure_ascii=False, indent=2))
+        print("\n" + r["verdict"])
+        sys.exit(0 if ("✓" in r["verdict"]) else 1)
 
     # qsid 有效期短（分钟~小时级），默认每次先 headless 刷新；
     # 刷新失败回退上次成功会话（config 默认值兜底）
