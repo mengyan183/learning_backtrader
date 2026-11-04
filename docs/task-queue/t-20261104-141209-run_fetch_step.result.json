@@ -1,0 +1,14 @@
+{
+  "id": "t-20261104-141209-run_fetch_step",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "fetch_fedwatch.py",
+    "timeout": "300"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"script\": \"fetch_fedwatch.py\", \"args\": [], \"rc\": 2, \"seconds\": 288.7, \"changed\": {}, \"unchanged\": {\"putcall_daily_latest.csv\": \"2026-11-02\", \"shoutu_etf_universe.csv\": \"2026-09-29\", \"fred_baa10y_avail.csv\": \"2026-10-23\", \"fred_DFF.csv\": \"2026-11-02\", \"splits.csv\": \"2026-10-01\", \"stablecoin_usage.csv\": \"2026-11-03\", \"funding_rate.csv\": \"2026-11-04\", \"fred_BAA10Y.csv\": \"2026-10-23\", \"vix3m.csv\": \"2026-11-03\", \"sp500_pe.csv\": \"2026-10-29\", \"fred_DCOILBRENTEU.csv\": \"2026-10-06\", \"fred_T10Y2Y.csv\": \"2026-11-02\", \"crypto_fng.csv\": \"2026-11-03\", \"prices.csv\": \"2026-11-03\", \"putcall_daily_1.csv\": \"2025-06-30\", \"sentiment.csv\": \"2026-11-02\", \"putcall.csv\": \"2026-11-02\", \"putcall_daily_2.csv\": \"2026-10-07\", \"fred_DGS10.csv\": \"2026-11-02\", \"shoutu_fng.csv\": \"2026-11-04\", \"fng_altme.csv\": \"2026-11-03\", \"vix_history.csv\": \"2026-11-02\", \"news_sentiment.csv\": \"2026-11-04\", \"kalshi_fed.csv\": \"2026-11-04\", \"fred_DCOILWTICO.csv\": \"2026-10-06\", \"fedwatch.csv\": \"2026-10-13\", \"vix.csv\": \"2026-11-03\", \"crypto_underlying.csv\": \"2026-10-29\", \"crypto_prices.csv\": \"2026-11-02\", \"shoutu_history.csv\": \"2026-10-14\", \"sp500_cape.csv\": \"2026-10-29\"}, \"verdict\": \"rc=2，更新了 0 个文件\", \"stdout\": \"[fedwatch] 无法获取会话，退出（保留旧数据）\\n\", \"stderr\": \"[fedwatch] ✗ 第 1 次失败：netlog 8778819 字节，含 QuikStrike=False\\n[fedwatch]   ⇒ 有 netlog 但**无 QuikStrike 请求** ✗（CME 页面结构变了 / 被反爬拦 ✗）\\n[fedwatch] ✗ 第 2 次失败：netlog 14547761 字节，含 QuikStrike=False\\n[fedwatch]   ⇒ 有 netlog 但**无 QuikStrike 请求** ✗（CME 页面结构变了 / 被反爬拦 ✗）\\n[fedwatch] ✗ 第 3 次失败：netlog 8966586 字节，含 QuikStrike=False\\n[fedwatch]   ⇒ 有 netlog 但**无 QuikStrike 请求** ✗（CME 页面结构变了 / 被反爬拦 ✗）\\n[fedwatch] ✗ 第 1 次失败：netlog 8708844 字节，含 QuikStrike=False\\n[fedwatch]   ⇒ 有 netlog 但**无 QuikStrike 请求** ✗（CME 页面结构变了 / 被反爬拦 ✗）\\n[fedwatch] ✗ 第 2 次异常：TimeoutExpired: Command '['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '--headless=new', '--disable-gpu', '--no-sandbox', '--proxy-server=http://127.0.0.1:7890', '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36', '--virtual-time-budget=40000', '--log-net-log=/tmp/tmp4qtka0q5.json', '--net-log-capture-mode=IncludeSensitive', '--dump-dom', 'https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html']' timed out after 180 seconds\\n[fedwatch] ✗ 第 3 次失败：netlog 9129385 字节，含 QuikStrike=False\\n[fedwatch]   ⇒ 有 netlog 但**无 QuikStrike 请求** ✗（CME 页面结构变了 / 被反爬拦 ✗）\\n\"}",
+  "started_at": "2026-11-04T14:13:29",
+  "finished_at": "2026-11-04T14:18:19",
+  "duration_s": 289.69
+}
