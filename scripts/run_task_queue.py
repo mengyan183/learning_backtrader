@@ -177,6 +177,20 @@ def _act_diag_daily_log(params):
     tail = lines[-n:]
     guards = [ln.rstrip() for ln in tail if "[guard]" in ln]
     fails = [g for g in guards if "rc=0" not in g]
+
+    # 🔴 2026-11-04 用户要求：**还要抓 traceback** ✗
+    #    因为 `backfill_stockanalysis.py` 里**只有 `return 0`** ✗
+    #    它的 `rc=1` 来自**未捕获异常** ✗ ⇒ 日志里有完整 traceback ✓
+    #    而原来只 grep `[guard]` ✗ 看不到 ✗
+    traces = []
+    for i, ln in enumerate(tail):
+        if "Traceback (most recent call last)" in ln:
+            # 抓后续 25 行 ✓（含异常类型和消息 ✓）
+            traces.append("\n".join(x.rstrip() for x in tail[i:i + 25]))
+    # 单独抓「Error / Exception」行 ✓（有些脚本不打印 traceback ✗）
+    errs = [ln.rstrip() for ln in tail
+            if ("Error:" in ln or "Exception:" in ln
+                or "❌" in ln or "[ERROR]" in ln) and "[guard]" not in ln]
     # 日志里的日期（找 `MM-DD HH:MM:SS` 或 `YYYY-MM-DD`）
     dates = []
     for ln in tail:
@@ -193,7 +207,9 @@ def _act_diag_daily_log(params):
             "note": "⚠️ 链是 `;` 串联 ⇒ **某步失败不影响后面** ✗ "
                     "所以「简报成功」不代表前面 fetch 成功 ✗",
             "fails": fails[-40:],
-            "guards_tail": guards[-40:]}
+            "guards_tail": guards[-40:],
+            "tracebacks": traces[-3:],
+            "error_lines": errs[-20:]}
 
 
 def _act_audit_data(params):

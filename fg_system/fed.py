@@ -18,6 +18,12 @@ import pandas as pd
 from fg_system import config
 
 
+#: `fedwatch.csv` 超过这么多天就认为**过期** ✗ 改用 Kalshi 兜底 ✓
+#: 为什么 5 天：FOMC 预期是**低频但要求准确**的 ✗
+#:   一个会议周期的预期变化很大 ✗ 5 天前的数字已无参考价值 ✗
+_FEDWATCH_MAX_LAG_DAYS = 5
+
+
 def _load_fedwatch():
     """读 CME FedWatch 市场预期 CSV（`scripts/fetch_fedwatch.py` 产出）。
     返回最新一行 dict；无数据返回 None。
@@ -42,7 +48,27 @@ def _load_fedwatch():
     try:
         df = pd.read_csv(p)
         if not df.empty:
-            return df.iloc[-1].to_dict()
+            # 🔴 2026-11-04 **关键修复**：**文件存在 ≠ 数据新鲜** ✗
+            #    实测：`fedwatch.csv` 停在 2026-10-13（22 天 ✗）
+            #    而简报照常显示「市场预期（CME FedWatch 2026-10-13）」
+            #    ⇒ 用户看到的「美联储动态」是 **22 天前** 的 ✗
+            #    原因：原实现只要文件非空就 `return` ✗ 根本走不到 Kalshi 兜底 ✗
+            #    ⇒ 加**新鲜度判断** ✓ 太旧就走兜底 ✓
+            row = df.iloc[-1].to_dict()
+            d = str(row.get("date") or row.get("fw_date") or "")[:10]
+            fresh = True
+            if d:
+                try:
+                    lag = (dt.date.today()
+                           - dt.date.fromisoformat(d)).days
+                    fresh = lag <= _FEDWATCH_MAX_LAG_DAYS
+                    if not fresh:
+                        print("[fed] ⚠️ fedwatch.csv 停在 %s（%d 天）⇒ "
+                              "改用 Kalshi 兜底 ✓" % (d, lag))
+                except ValueError:
+                    pass
+            if fresh:
+                return row
     except (FileNotFoundError, pd.errors.EmptyDataError):
         pass
 
@@ -55,12 +81,26 @@ def _load_fedwatch():
     if kdf.empty:
         return None
     row = kdf.iloc[-1].to_dict()
+
+    def _pick(*keys):
+        """按顺序取第一个**非空**的键 ✓（兼容 `ease` / `ease_pct` 两种列名 ✗）。
+
+        🔴 2026-11-04 踩坑：实际列名是 **`ease_pct` / `hold_pct` / `hike_pct`** ✗
+           而我第一版写的是 `row.get("ease")` ✗ ⇒ 三个概率全是 `None` ✗
+           ⇒ 简报里「市场预期」一栏会变成空白 ✗（比显示旧数据更糟 ✗）
+        """
+        for k in keys:
+            v = row.get(k)
+            if v is not None and pd.notna(v):
+                return v
+        return None
+
     return {
-        "meeting": row.get("meeting"),
-        # 字段改名 ✓ —— 让上层 `fed_context` 不用改 ✓
-        "ease_pct": row.get("ease"),
-        "hold_pct": row.get("hold"),
-        "hike_pct": row.get("hike"),
+        "meeting": _pick("meeting"),
+        # 字段名统一成 `fedwatch.csv` 的写法 ✓ 上层 `fed_context` 不用改 ✓
+        "ease_pct": _pick("ease_pct", "ease"),
+        "hold_pct": _pick("hold_pct", "hold"),
+        "hike_pct": _pick("hike_pct", "hike"),
         # Kalshi 没有的两项 ✗ ⇒ 显式 None ✓（上层会算成 None ✓ 不会崩 ✓）
         "wk_hike_pct": None,
         "m_hike_pct": None,
