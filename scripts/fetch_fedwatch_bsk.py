@@ -124,7 +124,16 @@ def fetch_html(wait_ms=WAIT_MS, retries=2, debug=False):
             if rc != 0:
                 continue
             # 🔴 **必须等 JS 渲染** ✗ 不等就是空表 ✗
-            _run(["wait-ms", str(wait_ms), "--session", sid], timeout=90)
+            #    2026-11-04 踩坑：`bsk wait-ms` **没有 `--session` 参数** ✗
+            #      实测 `bsk wait-ms --help`：
+            #        Usage: bsk wait-ms [OPTIONS] <DURATION>
+            #        （只接受时长 ✗ 且是 **daemon 侧 sleep** ✗ 与 session 无关 ✗）
+            #      ⇒ 原来传 `--session sid` ⇒ **命令报错** ✗ 而返回值没检查 ✗
+            #      ⇒ **等待从未生效** ✗ 5.1 秒就 get-html ✗ 页面没渲染完 ✗
+            #      ⇒ 症状：HTML 217KB ✗ 但 `pct_total=0` ✗
+            wrc, wout, werr = _run(["wait-ms", str(wait_ms)], timeout=90)
+            info["attempts"].append({"step": "wait_ms", "rc": wrc,
+                                     "ms": wait_ms, "err": werr[-200:]})
             rc, html, err = _run(["get-html", "--session", sid], timeout=120)
             info["attempts"].append({"step": "get_html", "rc": rc,
                                      "len": len(html or ""),
@@ -207,10 +216,37 @@ def main():
     html, info = fetch_html(wait_ms=args.wait_ms, retries=args.retries,
                             debug=args.debug)
     if args.dump_html and html:
-        with open(args.dump_html, "w", encoding="utf-8") as f:
+        # 🔴 相对路径按 ROOT 解析 ✓（`run_fetch_step` 的 cwd 是仓库根 ✗）
+        out_path = args.dump_html
+        if not os.path.isabs(out_path):
+            out_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                out_path)
+        os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
             f.write(html)
         print("HTML 已存：%s（%.1f KB ✗）"
-              % (args.dump_html, len(html) / 1024.0))
+              % (out_path, len(html) / 1024.0))
+
+    # 🔴 2026-11-04：**把 HTML 里的关键片段打出来** ✓
+    #    因为 217KB 的文件没法直接看 ✗ 而 `pct_total=0` 需要知道
+    #    「页面里到底有什么」✗ 才能判断是「没渲染」还是「结构变了」✗
+    if html:
+        import re as _re2
+        print("\n--- HTML 特征 ---")
+        for key in ("FedWatch", "ZQ", "probability", "Probability",
+                    "target rate", "Target Rate", "table", "quikstrike",
+                    "QuikStrike", "CmeWS"):
+            print("  %-14s %s" % (key, html.count(key)))
+        # 任何数字+% 的样本 ✓（不限于 `>78.4%<` ✗）
+        pcts = _re2.findall(r"(\d{1,3}\.\d)\s*%", html)[:15]
+        print("  百分比样本:", pcts if pcts else "(零个 ✗)")
+        # 找最大的 `<table>` 片段 ✓
+        tbls = _re2.findall(r"<table.{0,4000}?</table>", html, _re2.S)
+        print("  table 数量:", len(tbls))
+        if tbls:
+            print("  最大 table 前 600 字：")
+            print("  " + max(tbls, key=len)[:600].replace("\n", " "))
 
     if not html:
         print("✗ bsk 抓取失败 ✗", file=sys.stderr)

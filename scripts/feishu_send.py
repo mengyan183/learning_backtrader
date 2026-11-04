@@ -362,7 +362,16 @@ def main():
         sid = bsk.start(no_focus=True)
         print("bsk 会话：%s" % sid)
 
-        bsk.run("navigate", FEISHU_URL)
+        # 🔴 2026-11-04：**必须显式给 `--timeout 90s`** ✗
+        #    实测 `bsk navigate` 的 **默认超时是 30 秒** ✗
+        #      （`bsk navigate --help`：`--timeout <TIMEOUT>  Hard timeout
+        #        (default 30s)` ✗）
+        #    而飞书首屏**很慢** ✗ 30 秒不够 ✗ ⇒ 报：
+        #      `error: operation timed out / details: tool RPC timed out
+        #       after 30s` ✗
+        #    2026-11-04 实测：连发 2 次都超时 ✗ 第 3 次（缓存热了）才成功 ✗
+        #    ⇒ 提到 **90 秒** ✓ 一次到位 ✓
+        bsk.run("navigate", FEISHU_URL, "--timeout", "90s")
 
         # ⚠️ 飞书首屏**很慢**（实测 5 秒时连会话列表都还没渲染出来）——
         # 固定 sleep 会误判成"找不到会话"。改成轮询等待。
