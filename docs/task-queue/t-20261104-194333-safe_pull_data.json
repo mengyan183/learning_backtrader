@@ -1,0 +1,10 @@
+{
+  "id": "t-20261104-194333-safe_pull_data",
+  "action": "safe_pull_data",
+  "params": {
+    "untrack": "1",
+    "keep_backup": "1"
+  },
+  "status": "pending",
+  "created_at": "2026-11-04T19:43:33"
+}
