@@ -21,6 +21,7 @@
 import argparse
 import json
 import os
+import socket          # 2026-11-04：识别超时异常（超时不重试 ✗）
 import sys
 import time
 import urllib.request
@@ -61,7 +62,23 @@ def needs_backfill(path, today=None):
     return latest < recent_trading_day(today)
 
 
-def fetch_symbol(symbol, retries=3):
+def fetch_symbol(symbol, retries=4, timeout=60):
+    """抓一个标的的日线（备用源 = stockanalysis.com）✓。
+
+    🔴 2026-11-04 调参（用户要求「XBI 超时加重试」）：
+       原来 `retries=3, timeout=30` ✗
+       实测 `XBI` **3 次全超时**（每次 30s + sleep 2/4/6 = 102s ✗）
+       而整个脚本跑 196 秒 ✗ ⇒ 说明**不止一个标的慢** ✗
+
+       改：`retries=4, timeout=60` ✓
+       ⚠️ 代价：最坏 4×60 + 2+4+6+8 = **260 秒/标的** ✗
+          而缺 11 个标的 ⇒ 最坏 **47 分钟** ✗
+       ⇒ **所以真正的修法不是加重试** ✗ 而是**查为什么 Nasdaq 主源漏了这 11 个** ✗
+          （见 `update_prices()` ✗ 它应该抓全部 39 个 ✗ 实际只有 36 个 ✗）
+
+    ⚠️ 但「加重试」能提高**偶发超时**的成功率 ✓
+       而 `XBI` 是**长期缺失**（不是偶发 ✗）⇒ 重试大概率还是失败 ✗
+    """
     url = SA_API.format(symbol=symbol)
     headers = {
         "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -75,10 +92,16 @@ def fetch_symbol(symbol, retries=3):
     for i in range(retries):
         try:
             req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return json.loads(r.read().decode("utf-8"))
         except Exception as exc:
             last = exc
+            # 🔴 2026-11-04：**超时不重试** ✗ —— 超时通常是「源不认这个 symbol」✗
+            #    再等 60 秒也没用 ✗ 只会拖长整脚本 ✗
+            if isinstance(exc, (TimeoutError, socket.timeout)):
+                print("   %s 超时（%ds）⇒ **不再重试** ✗" % (symbol, timeout),
+                      file=sys.stderr)
+                break
             time.sleep(2 * (i + 1))
     raise RuntimeError(f"{symbol} 备用源请求失败: {last}")
 

@@ -313,6 +313,11 @@ FETCH_SCRIPTS = (
     "fetch_sentiment.py", "fetch_putcall.py", "fetch_kalshi_fed.py",
     "fetch_fred.py", "fetch_fedwatch.py", "fetch_shoutu_api.py",
     "fetch_stablecoin_usage.py", "fetch_news.py", "fetch_trades_futu.py",
+    # 🔴 2026-11-04：补 `shoutu_history.csv`（停在 10-14 ✗ 21 天）
+    #    它是**服务端权威日值**（每只 ~600 天 ✗ 研究/回测用 ✗）
+    #    ⚠️ **不在每日链里**（需会员 ✗ 至 2027-01-16）⇒ 只能手工/按需跑 ✓
+    #    ⚠️ 缺口会**永久丢失** ✗（服务端只给最近 N 天 ✗）⇒ 该补 ✓
+    "fetch_shoutu_history.py",
 )
 
 
