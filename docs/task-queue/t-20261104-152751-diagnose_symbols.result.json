@@ -1,0 +1,14 @@
+{
+  "id": "t-20261104-152751-diagnose_symbols",
+  "action": "diagnose_symbols",
+  "params": {
+    "symbols": "TLT,XBI",
+    "test_stooq": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"checked\": 2, \"fetch_ok\": 2, \"fetch_fail\": 0, \"stooq_ok\": 2, \"symbols\": {\"TLT\": {\"in_csv\": 2514, \"csv_last\": \"2026-11-03\", \"missing_ranges\": {\"start\": \"2026-11-04\", \"end\": null}, \"fromdate_used\": \"2026-11-04\", \"stooq_ok\": true, \"stooq_rows\": 0, \"fetch_ok\": true, \"fetch_rows\": 0}, \"XBI\": {\"in_csv\": 2514, \"csv_last\": \"2026-11-03\", \"missing_ranges\": {\"start\": \"2026-11-04\", \"end\": null}, \"fromdate_used\": \"2026-11-04\", \"stooq_ok\": true, \"stooq_rows\": 0, \"fetch_ok\": true, \"fetch_rows\": 0}}, \"note\": \"⚠️ `fetch_ok=True` 但 `missing_ranges` 给了错日期 ⇒ **增量逻辑是根因** ✗；`fetch_ok=False` ⇒ 看 `fetch_error` ✓\"}",
+  "started_at": "2026-11-04T15:36:19",
+  "finished_at": "2026-11-04T15:37:08",
+  "duration_s": 49.26
+}
