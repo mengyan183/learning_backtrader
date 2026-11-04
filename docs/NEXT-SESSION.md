@@ -17,7 +17,75 @@
 
 ---
 
-## 🆕 2026-11-04 数据源：加 Stooq 备选（Nasdaq 空表兜底）
+## 🆕 2026-11-04 数据源：Stooq 已废弃 ✗ + CME 改用 bsk ✓
+
+### Stooq：**实测不可用，代码已删** ✗
+
+```
+stooq_raw_head:
+<!DOCTYPE html>...<noscript>This site requires JavaScript to verify
+your browser.</noscript><script nonce="...">(async()=>{const c="AAAA...
+```
+
+⇒ Stooq 加了 **JS 挑战** ✗ 纯 HTTP **永远拿不到 CSV** ✗
+⇒ 而 11 个标的**已全部补齐**（`TLT/XBI/ITB/KRE` 各 2514 行 ✓ 到 11-03 ✓）
+⇒ 兜底**永远不会被触发** ✗ ⇒ 已删除（`config.STOOQ_API` /
+  `fetch.parse_stooq_csv` / `fetch.fetch_symbol_stooq` / `fetch_symbol` 兜底块 /
+  `diagnose_symbols` 的 `test_stooq`）
+
+⚠️ **删代码时踩坑**：用「跳过 N 行」的粗糙脚本删 ✗ 误删了 `config.SYMBOLS` /
+`UNDERLYING_MAP` / `LEVERAGE_RATIO` ✗ ⇒ 10 个测试失败 ✗
+⇒ **已从 git 恢复 + 按「连续注释行往上吃」精确删** ✓
+⇒ 教训：**删代码必须按语义定位，不能按固定行数** ✗
+
+---
+
+## 🆕 2026-11-04 CME FedWatch：改用 **bsk**（真实 Chromium）
+
+### 为什么不用 headless
+
+| 方案 | 实测结果 |
+|---|---|
+| `--dump-dom`（headless ✗）| 287KB ✗ 有 `FedWatch` 字样、有 `ZQ` 合约代码 ✗ **零个百分比数字** ✗ |
+| 直接调 `CmeWS/mvc/quotes/v2/contracts-by-number` | **HTTP 403** ✗ |
+| **bsk（真实浏览器 ✓）** | **待验证** ✓ |
+
+### 新脚本 `scripts/fetch_fedwatch_bsk.py`
+
+```bash
+python scripts/fetch_fedwatch_bsk.py --dump-html /tmp/cme.html   # 先看结构 ✗
+python scripts/fetch_fedwatch_bsk.py --write                     # 解析并写盘 ✓
+```
+
+**流程**（严格按 bsk lifecycle ✗ 否则报
+`shared page control or observation changed` ✗）：
+```
+bsk session start            → 4 字母 id ✓
+bsk navigate <url> --session → 打开 ✓
+bsk wait-ms 8000 --session   → **等 JS 渲染** ✓（关键 ✗ 不等就是空表）
+bsk get-html --session       → 渲染后 HTML ✓
+bsk session stop <id>        → **必须停** ✓（成功/异常都停）
+```
+
+**⚠️ 已知限制**：
+- 需 Mac 上 **Chrome 常驻 + bsk daemon 在跑** ✗
+- 与 **OpenClaw agent** 抢浏览器会失败 ✗（`--retries` 缓解 ✓）
+- `parse()` 的**字段映射待确认** ✗ —— 旧正则依赖 `<td class="number">` ✗
+  而实测 `has_number_td: False` ✗ ⇒ **必须先 `--dump-html` 看真实结构** ✗
+
+**✅ 好消息：Mac 端发飞书不用 bsk** ✓
+`invest_research._send_feishu` 走**官方 API**（`open.feishu.cn` ✗ 纯 `urllib`）✓
+⇒ **bsk 抓数据与发飞书不冲突** ✓
+（只有 **Windows 侧**的 `feishu_send.py` 用 bsk 网页版 ✗）
+
+**下一步**：
+1. Mac 上 `fetch_fedwatch_bsk.py --dump-html /tmp/cme.html` ✓
+2. 看 HTML 里概率数据的**真实结构** ✗ 再改 `parse()` ✓
+3. 验证通过后接进每日链（替换 `fetch_fedwatch.py` ✗）
+
+---
+
+## 🗄️ 2026-11-04 数据源：加 Stooq 备选（已废弃 ✗ 见上）
 
 **为什么改（问题）**：
 - `config.FETCH_SYMBOLS` **39 个** ✗ 而 `prices.csv` 长期只有 **36 个** ✗

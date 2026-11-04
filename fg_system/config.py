@@ -30,13 +30,6 @@ PROXY = os.environ.get("FG_PROXY", "http://10.30.6.49:9090")
 # alternative.me）一律直连 —— 公司代理在家里不可达，曾导致 prices 停更。
 PROXY_HOSTS = ("okx.com",)
 NASDAQ_API = "https://api.nasdaq.com/api/quote/{symbol}/historical"
-# 🔴 2026-11-04：**Stooq 备选源** ✓（用户要求）
-#    Nasdaq 对 11 个主流 ETF（DIA/EWY/ITB/KRE/TLT/VGK/XBI/XLE/XLK/XLU/XLV ✗）
-#    长期返回空表 ⇒ 用 Stooq 兜底 ✓
-#    ✅ 免费 ✓ 无需 key ✓ **无需代理**（直连 ✗ 与现有 `PROXY_HOSTS` 一致 ✓）
-#    ✅ 返回 CSV（`Date,Open,High,Low,Close,Volume` ✗）
-#    ⚠️ 美股代码后缀 `.us`（`tlt.us` ✗ 小写 ✗）
-STOOQ_API = "https://stooq.com/q/d/l/?s={symbol}.us&i=d"
 CBOE_CDN = "https://cdn.cboe.com/api/global/us_indices/daily_prices/{name}_History.csv"
 
 # ---------------------------------------------------------------- 标的

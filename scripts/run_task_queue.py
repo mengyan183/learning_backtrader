@@ -318,6 +318,8 @@ FETCH_SCRIPTS = (
     #    ⚠️ **不在每日链里**（需会员 ✗ 至 2027-01-16）⇒ 只能手工/按需跑 ✓
     #    ⚠️ 缺口会**永久丢失** ✗（服务端只给最近 N 天 ✗）⇒ 该补 ✓
     "fetch_shoutu_history.py",
+    # 🔴 2026-11-04：CME 改用 **bsk**（真实浏览器 ✗ headless 拿不到数据 ✗）
+    "fetch_fedwatch_bsk.py",
 )
 
 
@@ -378,54 +380,6 @@ def _act_diagnose_symbols(params):
             rec["missing_ranges"] = {"error": str(exc)[:120]}
             fromdate = "2010-01-01"
         rec["fromdate_used"] = fromdate
-        # 🔴 2026-11-04 用户要求「数据源改动必须在 Mac 测」✓
-        #    ⇒ `test_stooq=1` 时**绕过 Nasdaq 直接测 Stooq** ✓
-        #    因为 Nasdaq 能抓到的时候 Stooq 兜底**根本不会被触发** ✗
-        #    ⇒ 不单独测就永远不知道兜底是否可用 ✗
-        if str(params.get("test_stooq") or "").lower() in ("1", "true", "yes"):
-            try:
-                sdf = _fetch.fetch_symbol_stooq(sym, fromdate="2026-10-01")
-                rec["stooq_ok"] = True
-                rec["stooq_rows"] = int(len(sdf))
-                if len(sdf):
-                    rec["stooq_range"] = "%s → %s" % (
-                        sdf["date"].min().date(), sdf["date"].max().date())
-                else:
-                    # 🔴 2026-11-04：`stooq_ok=True` 但 `rows=0` ✗
-                    #    实测 TLT/XBI 都是这个情况 ✗ 无法区分：
-                    #      ① Stooq 返回 `No data`（该标的无数据 ✗）
-                    #      ② 格式变了（列名/日期格式 ✗）
-                    #      ③ `fromdate` 过滤把它全滤掉了 ✗
-                    #    ⇒ **把原始返回的头 300 字打出来** ✓
-                    import urllib.request as _ur
-                    url = _cfg.STOOQ_API.format(symbol=sym.lower())
-                    raw = ""
-                    for _mode in ("direct", "proxy"):
-                        try:
-                            if _mode == "proxy":
-                                _px = (os.environ.get("HTTPS_PROXY")
-                                       or os.environ.get("HTTP_PROXY"))
-                                if not _px:
-                                    break
-                                _op = _ur.build_opener(_ur.ProxyHandler(
-                                    {"http": _px, "https": _px}))
-                            else:
-                                _op = _ur.build_opener(
-                                    _ur.ProxyHandler({}))
-                            _rq = _ur.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-                            with _op.open(_rq, timeout=25) as _r:
-                                raw = _r.read().decode("utf-8",
-                                                       errors="replace")
-                            break
-                        except Exception:       # noqa: BLE001
-                            continue
-                    rec["stooq_raw_head"] = (raw[:300] if raw
-                                             else "**两次都取不到** ✗")
-                    rec["stooq_raw_len"] = len(raw)
-            except Exception as exc:        # noqa: BLE001
-                rec["stooq_ok"] = False
-                rec["stooq_error"] = "%s: %s" % (type(exc).__name__,
-                                                 str(exc)[:200])
         # ③④ 直接抓 ✓
         try:
             df = _fetch.fetch_symbol(sym, fromdate=fromdate)
@@ -441,10 +395,8 @@ def _act_diagnose_symbols(params):
         out[sym] = rec
 
     ok_cnt = sum(1 for v in out.values() if v.get("fetch_ok"))
-    st_ok = sum(1 for v in out.values() if v.get("stooq_ok"))
     return {"ok": True, "checked": len(out),
             "fetch_ok": ok_cnt, "fetch_fail": len(out) - ok_cnt,
-            "stooq_ok": st_ok,
             "symbols": out,
             "note": "⚠️ `fetch_ok=True` 但 `missing_ranges` 给了错日期 ⇒ "
                     "**增量逻辑是根因** ✗；"
