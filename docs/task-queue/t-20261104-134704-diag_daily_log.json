@@ -1,0 +1,9 @@
+{
+  "id": "t-20261104-134704-diag_daily_log",
+  "action": "diag_daily_log",
+  "params": {
+    "tail": "600"
+  },
+  "status": "pending",
+  "created_at": "2026-11-04T13:47:04"
+}
