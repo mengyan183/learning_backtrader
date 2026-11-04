@@ -107,10 +107,23 @@ def main():
 
     total_new = 0
     frames = []
+    failed = []        # 抓取失败的标的（跳过但留痕 ✓）
     for sym in symbols:
         sub = old[old["symbol"] == sym] if not old.empty else pd.DataFrame()
         last_date = sub["date"].max() if not sub.empty else None
-        data = fetch_symbol(sym)
+        # 🔴 2026-11-04 **关键修复**：单标的失败**不该中断整个脚本** ✗
+        #    实测 traceback：
+        #      RuntimeError: XBI 备用源请求失败: The read operation timed out
+        #    ⇒ 一个标的超时 ⇒ 整个 `backfill_stockanalysis.py` `rc=1` ✗
+        #    ⇒ 每日链里这一步**每天失败** ✗ 而它要跑 196 秒 ✗ 纯浪费 ✗
+        #    ⇒ 改成「跳过失败的、继续其余」✓ 最后汇总报告 ✓
+        try:
+            data = fetch_symbol(sym)
+        except Exception as exc:            # noqa: BLE001
+            failed.append("%s: %s" % (sym, str(exc)[:120]))
+            print("⚠️ %s 抓取失败，跳过（%s）"
+                  % (sym, str(exc)[:100]), file=sys.stderr)
+            continue
         rows = data.get("data") or []
         added = 0
         for r in rows:
@@ -141,6 +154,16 @@ def main():
         return 0
     merged.to_csv(path, index=False, encoding="utf-8")
     print(f"✅ 已补 {total_new} 行写入 {path}")
+    # 🔴 2026-11-04：**部分失败不算整体失败** ✗
+    #    只有「全部标的都失败」才返回非 0 ✓
+    #    ⇒ 否则每天都会因为某个冷门标的超时而让整条链记失败 ✗
+    if failed:
+        print("⚠️ %d 个标的抓取失败（已跳过 ✓）：" % len(failed))
+        for x in failed:
+            print("   · %s" % x)
+        if total_new == 0 and len(failed) >= len(symbols):
+            print("✗ **全部标的失败** ⇒ 返回非 0 ✗", file=sys.stderr)
+            return 1
     return 0
 
 
