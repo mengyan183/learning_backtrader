@@ -783,6 +783,19 @@ def _act_safe_pull_data(params):
         except Exception as e:              # noqa: BLE001
             return -1, "", str(e)
 
+    # ①b 🔴 2026-11-04：**拉取前先停止追踪 `Data/raw/`** ✓（`untrack=1`）
+    #     为什么必须在 pull **之前**做 ✗：
+    #       `git rm -r --cached Data/raw/` 只删索引 ✓ **本地文件保留** ✓
+    #       索引里没有记录后 ✗ `merge` 就不会「按提交里的 delete mode
+    #       去删工作区文件」✗ ⇒ **文件不会消失** ✓
+    #     ⚠️ 反过来（先 pull 再 rm --cached）✗ 文件已经被删了 ✗ 补不回来 ✗
+    if str(params.get("untrack") or "").lower() in ("1", "true", "yes"):
+        rc_u, so_u, se_u = _git("rm", "-r", "--cached", "--quiet", "Data/raw/")
+        _, left, _ = _git("ls-files", "Data/raw/")
+        steps.append({"step": "untrack_before_pull", "rc": rc_u,
+                      "tracked_after": len([x for x in left.splitlines() if x]),
+                      "stderr": se_u[-300:]})
+
     _git("fetch", "origin")
     rc, so, se = _git("merge", "--ff-only", "origin/main")
     steps.append({"step": "merge", "rc": rc,
