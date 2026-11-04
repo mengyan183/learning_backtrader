@@ -390,6 +390,38 @@ def _act_diagnose_symbols(params):
                 if len(sdf):
                     rec["stooq_range"] = "%s → %s" % (
                         sdf["date"].min().date(), sdf["date"].max().date())
+                else:
+                    # 🔴 2026-11-04：`stooq_ok=True` 但 `rows=0` ✗
+                    #    实测 TLT/XBI 都是这个情况 ✗ 无法区分：
+                    #      ① Stooq 返回 `No data`（该标的无数据 ✗）
+                    #      ② 格式变了（列名/日期格式 ✗）
+                    #      ③ `fromdate` 过滤把它全滤掉了 ✗
+                    #    ⇒ **把原始返回的头 300 字打出来** ✓
+                    import urllib.request as _ur
+                    url = _cfg.STOOQ_API.format(symbol=sym.lower())
+                    raw = ""
+                    for _mode in ("direct", "proxy"):
+                        try:
+                            if _mode == "proxy":
+                                _px = (os.environ.get("HTTPS_PROXY")
+                                       or os.environ.get("HTTP_PROXY"))
+                                if not _px:
+                                    break
+                                _op = _ur.build_opener(_ur.ProxyHandler(
+                                    {"http": _px, "https": _px}))
+                            else:
+                                _op = _ur.build_opener(
+                                    _ur.ProxyHandler({}))
+                            _rq = _ur.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                            with _op.open(_rq, timeout=25) as _r:
+                                raw = _r.read().decode("utf-8",
+                                                       errors="replace")
+                            break
+                        except Exception:       # noqa: BLE001
+                            continue
+                    rec["stooq_raw_head"] = (raw[:300] if raw
+                                             else "**两次都取不到** ✗")
+                    rec["stooq_raw_len"] = len(raw)
             except Exception as exc:        # noqa: BLE001
                 rec["stooq_ok"] = False
                 rec["stooq_error"] = "%s: %s" % (type(exc).__name__,

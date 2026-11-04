@@ -143,8 +143,33 @@ def dump_netlog_urls(netlog_path, patterns=None):
     except OSError as exc:
         return {"error": str(exc)[:120]}
     top = sorted(urls.items(), key=lambda kv: -kv[1])[:40]
+    # 🔴 2026-11-04 补充：**保留 query 参数** ✓
+    #    实测发现新接口 `CmeWS/mvc/quotes/v2/contracts-by-number` ✗
+    #    但 `dump_netlog_urls` **去掉了 query** ✗ ⇒ 看不到**参数格式** ✗
+    #    ⇒ 适配时必须知道它带什么参数 ✓
+    samples = {}
+    try:
+        with open(netlog_path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                if '"url"' not in line:
+                    continue
+                for m in re.finditer(r'"url"\s*:\s*"((?:[^"\\]|\\.)+)"', line):
+                    u = m.group(1).replace("\\/", "/").replace("\\u0026", "&")
+                    lo = u.lower()
+                    # 只挑「可能有数据」的接口 ✓（排除字体/脚本/样式 ✗）
+                    if not any(k in lo for k in ("cmews", "quotes", "contracts",
+                                                 "quikstrike", "api/")):
+                        continue
+                    base = u.split("?")[0]
+                    bucket = samples.setdefault(base, [])
+                    if len(bucket) < 3 and u not in bucket:
+                        bucket.append(u[:400])
+    except OSError:
+        pass
+
     return {"unique": len(urls),
-            "top": [{"url": u[:220], "hits": n} for u, n in top]}
+            "top": [{"url": u[:220], "hits": n} for u, n in top],
+            "api_samples": samples}
 
 
 def _refresh_session(debug=False, retries=2, keep_netlog=False,
@@ -215,6 +240,11 @@ def _refresh_session(debug=False, retries=2, keep_netlog=False,
                 for it in (info.get("top") or [])[:25]:
                     print("   [%4d] %s" % (it["hits"], it["url"]),
                           file=sys.stderr)
+                # 🔴 接口的**完整 URL（含参数）** ✓ —— 适配的唯一依据 ✗
+                for base, us in (info.get("api_samples") or {}).items():
+                    print("[fedwatch] 接口样本 %s" % base, file=sys.stderr)
+                    for u in us:
+                        print("   → %s" % u, file=sys.stderr)
             if keep_netlog:
                 keep = os.path.join(
                     tempfile.gettempdir(),
