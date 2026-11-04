@@ -37,7 +37,45 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fg_system import config  # noqa: E402
 
-BSK = os.environ.get("FG_BSK") or "bsk"
+def _find_bsk():
+    """**自动探测 `bsk` 可执行文件** ✓（2026-11-04 修）。
+
+    🔴 为什么不能直接 `["bsk", ...]` ✗：
+       实测（Mac / launchd 环境）：
+         `session_start rc=-1  **找不到 bsk** ✗`
+       而 bsk **确实装着** ✓（`fetch_shoutu_history.py` 用过 ✓）
+       ⇒ 因为 **launchd 的 PATH 不含 `~/.local/bin` / `/opt/homebrew/bin`** ✗
+         （plist 里只加过 `/opt/homebrew/bin` ✗ 而 bsk 可能装在
+          `~/.local/bin` 或 `~/Library/Python/*/bin` ✗）
+
+    ⇒ 依次尝试：`FG_BSK` 环境变量 → `shutil.which` → 常见路径 ✓
+    """
+    env = os.environ.get("FG_BSK")
+    if env and os.path.exists(env):
+        return env
+    import shutil
+    w = shutil.which("bsk")
+    if w:
+        return w
+    home = os.path.expanduser("~")
+    cands = [
+        os.path.join(home, ".local", "bin", "bsk"),
+        "/opt/homebrew/bin/bsk",
+        "/usr/local/bin/bsk",
+        "/usr/bin/bsk",
+        os.path.join(home, ".npm-global", "bin", "bsk"),
+    ]
+    # `~/Library/Python/3.x/bin/bsk`（pip --user 常见位置 ✗）
+    import glob as _g
+    cands += sorted(_g.glob(os.path.join(
+        home, "Library", "Python", "*", "bin", "bsk")), reverse=True)
+    for c in cands:
+        if os.path.exists(c) and os.access(c, os.X_OK):
+            return c
+    return None
+
+
+BSK = _find_bsk() or "bsk"      # 探测失败仍用 "bsk" ✓（至少报错更明确 ✗）
 PAGE = config.FEDWATCH_PAGE_URL
 #: 等 JS 渲染的毫秒数 ✗ —— 实测页面要 5~10 秒才出表格 ✓
 WAIT_MS = int(os.environ.get("FG_CME_WAIT_MS") or 8000)
@@ -51,7 +89,14 @@ def _run(args, timeout=120):
                            timeout=timeout)
         return r.returncode, (r.stdout or ""), (r.stderr or "")
     except FileNotFoundError:
-        return -1, "", "**找不到 bsk** ✗（`pip install browser-skill` 或设 FG_BSK ✗）"
+        # 探测结果给出来 ✓ 便于定位是「没装」还是「PATH 不含」✗
+        import shutil as _sh
+        where = _sh.which("bsk") or "(which 也找不到 ✗)"
+        return -1, "", ("**找不到 bsk** ✗\n"
+                        "   探测结果：BSK=%r  which=%s\n"
+                        "   常见路径：~/.local/bin/bsk / /opt/homebrew/bin/bsk\n"
+                        "   ⇒ 设 `FG_BSK=/完整/路径/bsk` 或 `pip install browser-skill` ✗"
+                        % (BSK, where))
     except subprocess.TimeoutExpired:
         return -2, "", "bsk 命令超时（%ds ✗）" % timeout
 
