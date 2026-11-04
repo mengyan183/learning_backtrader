@@ -245,36 +245,63 @@ def diagnose(wait_ms=20000, debug=True):
         rc, o, e = _run(["tab", "list", "--session", sid], timeout=60)
         out["steps"]["tab_list"] = {"rc": rc, "out": (o or "")[:1200]}
 
-        # ③ network（**最有价值** ✗ 看它请求什么 API）
-        rc, o, e = _run(["network", "--session", sid], timeout=90)
-        urls = re.findall(r"https?://[^\s\"'<>]+", o or "")
+        # ③ network（**最有价值** ✗ 看它请求什么 API + **响应体** ✓）
+        #    🔴 2026-11-04 实测：`network --help` 有 `--max-text-chars` ✗
+        #       ⇒ **能拿到响应体** ✓ 这是关键 ✓
+        #       因为 `CmeWS/mvc/quotes/v2/contracts-by-number` 在浏览器里
+        #       是 **200 成功** ✓（带 cookie ✗）而纯 HTTP 直调是 **403** ✗
+        #       ⇒ 从浏览器的 network 缓冲里取响应 ✗ 就能绕过 403 ✓
+        rc, o, e = _run(["network", "--session", sid, "--json",
+                         "--limit", "200", "--max-text-chars", "30000"],
+                        timeout=120)
+        urls = re.findall(r"https?://[^\s\"'<>\\]+", o or "")
         api = [u for u in urls
                if any(k in u.lower() for k in
-                      ("cmews", "quotes", "contracts", "quikstrike",
-                       "api/", "json"))]
+                      ("cmews", "quotes", "contracts", "quikstrike"))]
+        # 从 JSON 里找 `contracts-by-number` 那条的响应体 ✓
+        cbn_body, cbn_status = "", None
+        try:
+            import json as _j2
+            arr = _j2.loads(o) if (o or "").strip().startswith(("[", "{")) else []
+            if isinstance(arr, dict):
+                arr = arr.get("entries") or arr.get("items") or []
+            for it in (arr or []):
+                u = str(it.get("url") or "")
+                if "contracts-by-number" in u:
+                    cbn_status = it.get("status")
+                    cbn_body = str(it.get("text") or it.get("body") or "")
+                    if not cbn_body:
+                        cbn_body = str(it.get("response") or "")[:30000]
+        except Exception as exc:            # noqa: BLE001
+            out["steps"].setdefault("network_parse_error", str(exc)[:150])
         out["steps"]["network"] = {
             "rc": rc, "total_urls": len(urls),
-            "api_urls": sorted(set(api))[:25],
-            "raw_head": (o or "")[:1500],
+            "api_urls": sorted(set(api))[:10],
+            "cbn_status": cbn_status,
+            "cbn_body_len": len(cbn_body),
+            "cbn_body_head": cbn_body[:4000],
+            "raw_head": (o or "")[:1200],
         }
 
         # ④ evaluate（找 window 上的数据 ✓）
+        #    🔴 2026-11-04 踩坑：上一版 JS **rc=1 失败** ✗
+        #       原因：`f=>f.src` 箭头函数 + 多层引号嵌套 ✗
+        #       ⇒ 改成**极简语句** ✓ 一条一个 `;` ✗ 不用箭头函数 ✗
+        #       （`bsk evaluate` 的 JS 会被 shell/CLI 二次解析 ✗ 越简单越稳 ✓）
         js = (
-            "(()=>{const r={};"
-            "try{r.hasQuik=typeof window.QuikStrike!=='undefined';}catch(e){r.hasQuik='err';}"
-            "try{r.qsKeys=Object.keys(window.QuikStrike||{}).slice(0,20);}catch(e){}"
-            "try{const t=document.querySelectorAll('table');r.tables=t.length;"
-            "r.tableRows=t.length?t[t.length-1].rows.length:0;}catch(e){}"
-            "try{r.iframes=Array.from(document.querySelectorAll('iframe'))"
-            ".map(f=>f.src).slice(0,10);}catch(e){}"
-            "try{r.pctText=(document.body.innerText.match(/\\d{1,3}\\.\\d\\s*%/g)||[])"
-            ".slice(0,20);}catch(e){}"
-            "try{r.bodyLen=document.body.innerText.length;}catch(e){}"
-            "return JSON.stringify(r);})()"
+            "JSON.stringify({"
+            "hasQuik: (typeof window.QuikStrike !== 'undefined'),"
+            "tables: document.querySelectorAll('table').length,"
+            "iframes: document.querySelectorAll('iframe').length,"
+            "bodyLen: (document.body ? document.body.innerText.length : 0),"
+            "pcts: (document.body ? "
+            "(document.body.innerText.match(/[0-9]+[.][0-9][ ]*%/g) || [])"
+            ".slice(0,20) : [])"
+            "})"
         )
         rc, o, e = _run(["evaluate", js, "--session", sid], timeout=90)
         out["steps"]["evaluate"] = {"rc": rc, "out": (o or "")[:1500],
-                                    "err": e[-200:]}
+                                    "err": e[-300:]}
 
         # ⑤ snapshot（无障碍树 ✗ 比 observe 更严格）
         rc, o, e = _run(["snapshot", "--session", sid], timeout=120)
