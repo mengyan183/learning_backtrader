@@ -238,7 +238,7 @@ def diagnose(wait_ms=20000, debug=True):
         out["steps"]["observe"] = {
             "rc": rc, "lines": len((o or "").splitlines()),
             "len": len(o or ""), "data_hits": hits,
-            "head": (o or "")[:1200],
+            "head": (o or "")[:500],
         }
 
         # ② tab list（看 iframe / 子 tab ✗）
@@ -279,15 +279,20 @@ def diagnose(wait_ms=20000, debug=True):
             "api_urls": sorted(set(api))[:10],
             "cbn_status": cbn_status,
             "cbn_body_len": len(cbn_body),
-            "cbn_body_head": cbn_body[:4000],
-            "raw_head": (o or "")[:1200],
+            "cbn_body_head": cbn_body[:2500],
+            "raw_head": (o or "")[:300],
         }
 
         # ④ evaluate（找 window 上的数据 ✓）
-        #    🔴 2026-11-04 踩坑：上一版 JS **rc=1 失败** ✗
-        #       原因：`f=>f.src` 箭头函数 + 多层引号嵌套 ✗
-        #       ⇒ 改成**极简语句** ✓ 一条一个 `;` ✗ 不用箭头函数 ✗
-        #       （`bsk evaluate` 的 JS 会被 shell/CLI 二次解析 ✗ 越简单越稳 ✓）
+        #    🔴 2026-11-04 踩坑（两次）：
+        #      v1：`f=>f.src` 箭头函数 + 多层引号嵌套 ⇒ rc=1 ✗
+        #      v2：改成极简 JS ⇒ **仍 rc=1** ✗ 错误变成：
+        #          `shared page control or observation changed`
+        #          `requires the context returned by the latest cooperate sync` ✗
+        #    ⇒ 根因**不是 JS 语法** ✗ 而是 **`evaluate` 要求「刚刚 observe 过」** ✗
+        #      中间夹了 `tab list` / `network` ⇒ 上下文失效 ✗
+        #    ⇒ **在 evaluate 前重新 observe 一次** ✓（刷新控制上下文 ✗）
+        _run(["observe", "--session", sid], timeout=90)
         js = (
             "JSON.stringify({"
             "hasQuik: (typeof window.QuikStrike !== 'undefined'),"
@@ -300,15 +305,39 @@ def diagnose(wait_ms=20000, debug=True):
             "})"
         )
         rc, o, e = _run(["evaluate", js, "--session", sid], timeout=90)
-        out["steps"]["evaluate"] = {"rc": rc, "out": (o or "")[:1500],
+        out["steps"]["evaluate"] = {"rc": rc, "out": (o or "")[:600],
                                     "err": e[-300:]}
+
+        # ④b 🔴 **点开 `@e13 button "Select your ..."`** ✓
+        #     实测 `observe` 里唯一可交互的是它 ✗ 而页面**没有任何表格数据** ✗
+        #     ⇒ 强烈怀疑**必须先选一个选项**（日期 / 会议 ✗）才加载数据 ✗
+        #     点完再 observe ✓ 看有没有出现 `%` 或 `ZQ` ✓
+        for label in ("Select your", "Select"):
+            rc, o, e = _run(["observe", "--session", sid], timeout=90)
+            m = re.search(r'(@e\d+) button "%s' % re.escape(label), o or "")
+            if not m:
+                continue
+            ref = m.group(1)
+            crc, cout, cerr = _run(["click", ref, "--session", sid],
+                                   timeout=90)
+            out["steps"]["click_%s" % ref] = {
+                "rc": crc, "ref": ref, "out": cout[-300:], "err": cerr[-300:]}
+            if crc == 0:
+                _run(["wait-ms", "3000"], timeout=30)
+                rc2, o2, e2 = _run(["observe", "--session", sid], timeout=90)
+                out["steps"]["observe_after_click"] = {
+                    "rc": rc2, "lines": len((o2 or "").splitlines()),
+                    "data_hits": sum(o2.count(k) for k in ("%", "ZQ", "Target")),
+                    "head": (o2 or "")[:500],
+                }
+                break
 
         # ⑤ snapshot（无障碍树 ✗ 比 observe 更严格）
         rc, o, e = _run(["snapshot", "--session", sid], timeout=120)
         out["steps"]["snapshot"] = {
             "rc": rc, "lines": len((o or "").splitlines()),
             "data_hits": sum(o.count(k) for k in ("%", "ZQ", "Target")),
-            "head": (o or "")[:800],
+            "head": (o or "")[:400],
         }
     finally:
         _run(["session", "stop", sid], timeout=60)
