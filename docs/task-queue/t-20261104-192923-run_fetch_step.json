@@ -1,0 +1,11 @@
+{
+  "id": "t-20261104-192923-run_fetch_step",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "fetch_fedwatch_bsk.py",
+    "args": "--dump-html,dist/cme.html,--wait-ms,30000",
+    "timeout": "600"
+  },
+  "status": "pending",
+  "created_at": "2026-11-04T19:29:23"
+}
