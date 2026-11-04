@@ -321,6 +321,86 @@ FETCH_SCRIPTS = (
 )
 
 
+def _act_diagnose_symbols(params):
+    """**查 `update_prices()` 为什么漏标的** ✓（2026-11-04 用户要求）。
+
+    【背景】
+      `config.FETCH_SYMBOLS` **39 个** ✗ 而 `prices.csv` 只有 **36 个** ✗
+      长期缺失 11 个：
+        DIA / EWY / ITB / KRE / TLT / VGK / XBI / XLE / XLK / XLU / XLV
+      ⇒ 全是**主流 ETF** ✗ Nasdaq 不可能没有 ✗
+      ⇒ 而 `fetch_symbol` **已有** `etf→stocks` 回退 + 3 轮退避重试 ✗
+      ⇒ **所以问题在「增量逻辑」或「URL 参数」** ✗ 不在「标的不可得」✗
+
+    【逐个标的查 4 件事】
+      ① `prices.csv` 里有没有、行数、最新日期 ✓
+      ② `missing_ranges(old, sym)` 返回什么 ✓ ← **最可疑**
+      ③ 用它给的 `fromdate` 直接调 `fetch_symbol` 能否抓到 ✓
+      ④ 抓不到时的**真实异常** ✓
+
+    参数：`symbols`（逗号分隔 ✗ 默认 = FETCH_SYMBOLS 里 `prices.csv` 缺的那些 ✓）
+    """
+    import pandas as _pd
+
+    want = str(params.get("symbols") or "").strip()
+    path = os.path.join(ROOT, "Data", "raw", "prices.csv")
+    old = _pd.DataFrame()
+    if os.path.exists(path):
+        old = _pd.read_csv(path, dtype={"symbol": str},
+                           parse_dates=["date"])
+
+    from fg_system import config as _cfg
+    if want:
+        syms = [x.strip() for x in want.split(",") if x.strip()]
+    else:
+        have = set(old["symbol"].unique()) if not old.empty else set()
+        syms = [s for s in _cfg.FETCH_SYMBOLS if s not in have]
+
+    from fg_system.data import fetch as _fetch
+
+    out = {}
+    for sym in syms:
+        rec = {}
+        sub = old[old["symbol"] == sym] if not old.empty else _pd.DataFrame()
+        rec["in_csv"] = int(len(sub))
+        if len(sub):
+            rec["csv_last"] = str(sub["date"].max().date())
+        # ② 增量逻辑怎么说 ✓
+        try:
+            start, end = _fetch.missing_ranges(old, sym)
+            rec["missing_ranges"] = {
+                "start": str(start.date()) if start is not None else None,
+                "end": str(end.date()) if end is not None else None,
+            }
+            fromdate = (start.strftime("%Y-%m-%d")
+                        if start is not None else "2010-01-01")
+        except Exception as exc:            # noqa: BLE001
+            rec["missing_ranges"] = {"error": str(exc)[:120]}
+            fromdate = "2010-01-01"
+        rec["fromdate_used"] = fromdate
+        # ③④ 直接抓 ✓
+        try:
+            df = _fetch.fetch_symbol(sym, fromdate=fromdate)
+            rec["fetch_ok"] = True
+            rec["fetch_rows"] = int(len(df))
+            if len(df):
+                rec["fetch_range"] = "%s → %s" % (
+                    df["date"].min().date(), df["date"].max().date())
+        except Exception as exc:            # noqa: BLE001
+            rec["fetch_ok"] = False
+            rec["fetch_error"] = "%s: %s" % (type(exc).__name__,
+                                             str(exc)[:200])
+        out[sym] = rec
+
+    ok_cnt = sum(1 for v in out.values() if v.get("fetch_ok"))
+    return {"ok": True, "checked": len(out),
+            "fetch_ok": ok_cnt, "fetch_fail": len(out) - ok_cnt,
+            "symbols": out,
+            "note": "⚠️ `fetch_ok=True` 但 `missing_ranges` 给了错日期 ⇒ "
+                    "**增量逻辑是根因** ✗；"
+                    "`fetch_ok=False` ⇒ 看 `fetch_error` ✓"}
+
+
 def _act_update_crypto(params):
     """**补抓加密数据** ✓（2026-11-03 用户要求）。
 
@@ -1828,6 +1908,7 @@ ACTIONS = {
     "diagnose_data": _act_diagnose_data,
     "run_fetch_step": _act_run_fetch_step,
     "update_crypto": _act_update_crypto,
+    "diagnose_symbols": _act_diagnose_symbols,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
     "diag_daily_log": _act_diag_daily_log,
