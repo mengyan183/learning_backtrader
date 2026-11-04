@@ -200,6 +200,95 @@ def parse(html):
     return out
 
 
+def diagnose(wait_ms=20000, debug=True):
+    """**把 bsk 的工具全跑一遍** ✓（2026-11-04 用户要求「完整使用 bsk 功能」）。
+
+    🔴 为什么需要：
+       实测 `get-html` 拿到 478 KB ✗ 但 `<table>` 标签 **0 个** ✗
+       零个百分比 ✗ ⇒ **不知道数据在哪** ✗
+       可能：① 在 `<iframe>` 里 ✗ ② 在 JS 变量里 ✗ ③ 需要交互才加载 ✗
+       ⇒ 必须用**别的 bsk 工具**去探 ✓
+
+    【跑 5 件事】
+      ① `observe`      —— 语义视图（能直接看到表格数据吗 ✗）
+      ② `tab list`     —— 有没有子 frame / 新 tab ✓
+      ③ `network`      —— 它请求了哪些 API ✓ ← **最有价值**
+      ④ `evaluate`     —— `window` 上有没有 QuikStrike / 数据对象 ✓
+      ⑤ `snapshot`     —— 无障碍树（比 observe 更严格 ✗）
+    """
+    out = {"page": PAGE, "wait_ms": wait_ms, "steps": {}}
+    rc, o, e = _run(["session", "start"], timeout=60)
+    sid = (o or "").strip().splitlines()[-1].strip() if o else ""
+    if rc != 0 or not sid:
+        return {"ok": False, "error": "session start 失败",
+                "stdout": o[-300:], "stderr": e[-300:]}
+    out["session"] = sid
+    try:
+        rc, o, e = _run(["navigate", PAGE, "--session", sid,
+                         "--timeout", "90s"], timeout=180)
+        out["steps"]["navigate"] = {"rc": rc, "out": o[-200:], "err": e[-200:]}
+        if rc != 0:
+            return out
+        wrc, _, werr = _run(["wait-ms", str(wait_ms)], timeout=90)
+        out["steps"]["wait_ms"] = {"rc": wrc, "ms": wait_ms, "err": werr[-150:]}
+
+        # ① observe ✓
+        rc, o, e = _run(["observe", "--session", sid], timeout=120)
+        hits = sum(o.count(k) for k in ("%", "ZQ", "Target", "Prob"))
+        out["steps"]["observe"] = {
+            "rc": rc, "lines": len((o or "").splitlines()),
+            "len": len(o or ""), "data_hits": hits,
+            "head": (o or "")[:1200],
+        }
+
+        # ② tab list（看 iframe / 子 tab ✗）
+        rc, o, e = _run(["tab", "list", "--session", sid], timeout=60)
+        out["steps"]["tab_list"] = {"rc": rc, "out": (o or "")[:1200]}
+
+        # ③ network（**最有价值** ✗ 看它请求什么 API）
+        rc, o, e = _run(["network", "--session", sid], timeout=90)
+        urls = re.findall(r"https?://[^\s\"'<>]+", o or "")
+        api = [u for u in urls
+               if any(k in u.lower() for k in
+                      ("cmews", "quotes", "contracts", "quikstrike",
+                       "api/", "json"))]
+        out["steps"]["network"] = {
+            "rc": rc, "total_urls": len(urls),
+            "api_urls": sorted(set(api))[:25],
+            "raw_head": (o or "")[:1500],
+        }
+
+        # ④ evaluate（找 window 上的数据 ✓）
+        js = (
+            "(()=>{const r={};"
+            "try{r.hasQuik=typeof window.QuikStrike!=='undefined';}catch(e){r.hasQuik='err';}"
+            "try{r.qsKeys=Object.keys(window.QuikStrike||{}).slice(0,20);}catch(e){}"
+            "try{const t=document.querySelectorAll('table');r.tables=t.length;"
+            "r.tableRows=t.length?t[t.length-1].rows.length:0;}catch(e){}"
+            "try{r.iframes=Array.from(document.querySelectorAll('iframe'))"
+            ".map(f=>f.src).slice(0,10);}catch(e){}"
+            "try{r.pctText=(document.body.innerText.match(/\\d{1,3}\\.\\d\\s*%/g)||[])"
+            ".slice(0,20);}catch(e){}"
+            "try{r.bodyLen=document.body.innerText.length;}catch(e){}"
+            "return JSON.stringify(r);})()"
+        )
+        rc, o, e = _run(["evaluate", js, "--session", sid], timeout=90)
+        out["steps"]["evaluate"] = {"rc": rc, "out": (o or "")[:1500],
+                                    "err": e[-200:]}
+
+        # ⑤ snapshot（无障碍树 ✗ 比 observe 更严格）
+        rc, o, e = _run(["snapshot", "--session", sid], timeout=120)
+        out["steps"]["snapshot"] = {
+            "rc": rc, "lines": len((o or "").splitlines()),
+            "data_hits": sum(o.count(k) for k in ("%", "ZQ", "Target")),
+            "head": (o or "")[:800],
+        }
+    finally:
+        _run(["session", "stop", sid], timeout=60)
+    out["ok"] = True
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="用 bsk 抓 CME FedWatch（真实浏览器 ✗ 能过 JS 渲染 ✓）")
@@ -211,7 +300,16 @@ def main():
                     help="等 JS 渲染的毫秒数（默认 %d ✗）" % WAIT_MS)
     ap.add_argument("--retries", type=int, default=2)
     ap.add_argument("--debug", action="store_true")
+    # 🔴 2026-11-04：**把 bsk 的工具全跑一遍** ✓（observe/tab/network/evaluate/snapshot）
+    ap.add_argument("--diagnose", action="store_true",
+                    help="跑 observe+tab+network+evaluate+snapshot，定位数据在哪 ✗")
     args = ap.parse_args()
+
+    if args.diagnose:
+        import json as _json
+        r = diagnose(wait_ms=args.wait_ms)
+        print(_json.dumps(r, ensure_ascii=False, indent=2)[:12000])
+        return 0 if r.get("ok") else 2
 
     html, info = fetch_html(wait_ms=args.wait_ms, retries=args.retries,
                             debug=args.debug)
