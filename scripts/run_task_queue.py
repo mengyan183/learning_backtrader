@@ -378,6 +378,22 @@ def _act_diagnose_symbols(params):
             rec["missing_ranges"] = {"error": str(exc)[:120]}
             fromdate = "2010-01-01"
         rec["fromdate_used"] = fromdate
+        # 🔴 2026-11-04 用户要求「数据源改动必须在 Mac 测」✓
+        #    ⇒ `test_stooq=1` 时**绕过 Nasdaq 直接测 Stooq** ✓
+        #    因为 Nasdaq 能抓到的时候 Stooq 兜底**根本不会被触发** ✗
+        #    ⇒ 不单独测就永远不知道兜底是否可用 ✗
+        if str(params.get("test_stooq") or "").lower() in ("1", "true", "yes"):
+            try:
+                sdf = _fetch.fetch_symbol_stooq(sym, fromdate="2026-10-01")
+                rec["stooq_ok"] = True
+                rec["stooq_rows"] = int(len(sdf))
+                if len(sdf):
+                    rec["stooq_range"] = "%s → %s" % (
+                        sdf["date"].min().date(), sdf["date"].max().date())
+            except Exception as exc:        # noqa: BLE001
+                rec["stooq_ok"] = False
+                rec["stooq_error"] = "%s: %s" % (type(exc).__name__,
+                                                 str(exc)[:200])
         # ③④ 直接抓 ✓
         try:
             df = _fetch.fetch_symbol(sym, fromdate=fromdate)
@@ -393,8 +409,10 @@ def _act_diagnose_symbols(params):
         out[sym] = rec
 
     ok_cnt = sum(1 for v in out.values() if v.get("fetch_ok"))
+    st_ok = sum(1 for v in out.values() if v.get("stooq_ok"))
     return {"ok": True, "checked": len(out),
             "fetch_ok": ok_cnt, "fetch_fail": len(out) - ok_cnt,
+            "stooq_ok": st_ok,
             "symbols": out,
             "note": "⚠️ `fetch_ok=True` 但 `missing_ranges` 给了错日期 ⇒ "
                     "**增量逻辑是根因** ✗；"

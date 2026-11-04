@@ -48,6 +48,46 @@
 - ① Mac 上跑一次 `diagnose_symbols`（`symbols=TLT,XBI,ITB,KRE` ✗）确认 Stooq 可用
 - ② 若 Stooq 也不通 ⇒ 换 Yahoo `v8/finance/chart/{sym}`（需代理 ✓）
 
+### 🔴 铁律（2026-11-04 用户裁定）：数据源改动**必须在 Mac 侧验证**
+
+```
+Windows 端受限于**公司网络** ✗
+  ⇒ 部分外网域名直连不通 ✗（实测 `stooq.com` 超时 ✗）
+  ⇒ 代理是**公司代理** `10.30.6.49:9090` ✗ 家里不可达 ✗
+⇒ **任何数据源改动，Windows 侧「测通」不代表可用** ✗
+⇒ 必须下发到 Mac 跑一次才算验证 ✓
+```
+
+**验证方式（按改动类型选）**：
+
+| 改动 | 验证动作 |
+|---|---|
+| 新增/修改 fetch 脚本 | `run_fetch_step --script=<名> --args=<参数>` |
+| 改 `fetch_symbol` / 备选源 | `diagnose_symbols --symbols=<清单> --test_stooq=1` |
+| 改整批抓取逻辑 | `fetch_prices`（回报 `prices.csv` 最新日期 ✓）|
+
+**⚠️ `test_stooq=1` 的意义**：
+- Nasdaq 能抓到的时候，Stooq 兜底**根本不会被触发** ✗
+- ⇒ 不单独测就**永远不知道兜底是否可用** ✗
+
+### 🆕 CME FedWatch 适配（2026-11-04 用户要求「CME 要适配」）
+
+**已加两个诊断开关**（`scripts/fetch_fedwatch.py`）：
+
+```bash
+fetch_fedwatch.py --dump-urls      # 从 netlog 列出所有相关 URL ✗ 找新接口
+fetch_fedwatch.py --keep-netlog    # 保留 8MB+ netlog 到 /tmp 供离线分析
+```
+
+**已确认事实**：`netlog 8.7MB` ✗ 但**零个 `QuikStrike` 请求** ✗
+⇒ CME 换了接口 或 加了反爬 ✗
+
+**下一步**（在 Mac 上跑）：
+```bash
+run_fetch_step --script=fetch_fedwatch.py --args=--dump-urls
+```
+⇒ 拿到 URL 清单后，看 `CmeWS/mvc/*` 或新域名，再决定怎么改解析 ✓
+
 ---
 
 ## 🆕 2026-10-27 MT-76：C1 BAA10Y 信用利差因子进评测池（闭环）

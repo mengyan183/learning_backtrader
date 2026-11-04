@@ -108,7 +108,47 @@ def _kill_stray_chrome():
         pass
 
 
-def _refresh_session(debug=False, retries=2):
+def dump_netlog_urls(netlog_path, patterns=None):
+    """**从 netlog 里提取所有 URL** ✓（2026-11-04 用户要求「CME 要适配」）。
+
+    🔴 为什么需要：
+       实测 `netlog 8.7MB` ✗ 但**零个 `QuikStrike` 请求** ✗
+       ⇒ 说明 CME 换了接口 ✗ 或加了反爬 ✗
+       ⇒ **必须知道它现在请求什么** 才能适配 ✓
+
+    :param patterns: 只保留包含这些子串的 URL（默认 `cme` / `quikstrike`
+                     / `api` / `fedwatch` ✗ 不区分大小写 ✓）
+    """
+    import json as _json
+
+    pats = [p.lower() for p in (patterns or
+                                ("cme", "quikstrike", "fedwatch", "api"))]
+    urls = {}
+    try:
+        with open(netlog_path, "r", encoding="utf-8", errors="ignore") as f:
+            # netlog 是**大 JSON** ✗ 逐行扫 `"url"` 字段（比整体解析快 ✓）
+            for line in f:
+                if '"url"' not in line:
+                    continue
+                for m in re.finditer(r'"url"\s*:\s*"((?:[^"\\]|\\.)+)"', line):
+                    u = m.group(1)
+                    # 反转义 ✓（netlog 里 `\/` 很常见 ✗）
+                    u = u.replace("\\/", "/").replace("\\u0026", "&")
+                    lo = u.lower()
+                    if not any(p in lo for p in pats):
+                        continue
+                    # 去掉 query 里的随机参数 ✗ 便于归并 ✓
+                    base = u.split("?")[0]
+                    urls[base] = urls.get(base, 0) + 1
+    except OSError as exc:
+        return {"error": str(exc)[:120]}
+    top = sorted(urls.items(), key=lambda kv: -kv[1])[:40]
+    return {"unique": len(urls),
+            "top": [{"url": u[:220], "hits": n} for u, n in top]}
+
+
+def _refresh_session(debug=False, retries=2, keep_netlog=False,
+                     dump_urls=False):
     """headless Chrome 打开 CME FedWatch 页面 → netlog 提取最新 insid+qsid。
     返回 (insid, qsid)；失败返回 (None, None)。"""
     chrome = _find_chrome()
@@ -166,6 +206,27 @@ def _refresh_session(debug=False, retries=2):
             has_qs = "QuikStrike" in data
             print("[fedwatch] ✗ 第 %d 次失败：netlog %d 字节，含 QuikStrike=%s"
                   % (attempt + 1, nlog, has_qs), file=sys.stderr)
+
+            # 🔴 2026-11-04：**把真实请求打出来** ✓（适配新接口的唯一途径 ✗）
+            if dump_urls:
+                info = dump_netlog_urls(netlog)
+                print("[fedwatch] netlog 里的相关 URL（%s 个唯一）✗"
+                      % info.get("unique", "?"), file=sys.stderr)
+                for it in (info.get("top") or [])[:25]:
+                    print("   [%4d] %s" % (it["hits"], it["url"]),
+                          file=sys.stderr)
+            if keep_netlog:
+                keep = os.path.join(
+                    tempfile.gettempdir(),
+                    "fedwatch_netlog_%d.json" % (attempt + 1))
+                try:
+                    os.replace(netlog, keep)
+                    print("[fedwatch] netlog 已保留：%s（%.1f MB ✗）"
+                          % (keep, nlog / 1048576.0), file=sys.stderr)
+                    # 已移走 ⇒ 下面 `finally` 的 remove 会失败但不影响 ✓
+                except OSError as exc:
+                    print("[fedwatch] 保留 netlog 失败：%s" % exc,
+                          file=sys.stderr)
             if nlog < 5000:
                 print("[fedwatch]   ⇒ netlog 太小 ⇒ **Chrome 没真正打开页面** ✗"
                       "（代理不通 / 浏览器崩溃 ✗）", file=sys.stderr)
@@ -235,11 +296,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--debug", action="store_true")
     ap.add_argument("--force-refresh", action="store_true")
+    # 🔴 2026-11-04：**适配 CME 新接口的诊断开关** ✓
+    ap.add_argument("--dump-urls", action="store_true",
+                    help="从 netlog 里列出所有相关 URL（找 CME 新接口 ✗）")
+    ap.add_argument("--keep-netlog", action="store_true",
+                    help="保留 netlog 文件到 /tmp（8MB+ ✗ 用于离线分析 ✓）")
     args = ap.parse_args()
 
     # qsid 有效期短（分钟~小时级），默认每次先 headless 刷新；
     # 刷新失败回退上次成功会话（config 默认值兜底）
-    insid, qsid = _refresh_session(debug=args.debug)
+    insid, qsid = _refresh_session(debug=args.debug, keep_netlog=args.keep_netlog, dump_urls=args.dump_urls)
     if not insid:
         insid, qsid = _load_session()
         if args.debug:
@@ -250,7 +316,7 @@ def main():
     attempts = 0
     while attempts < 2:
         if not insid or not qsid:
-            insid, qsid = _refresh_session(debug=args.debug)
+            insid, qsid = _refresh_session(debug=args.debug, keep_netlog=args.keep_netlog, dump_urls=args.dump_urls)
             if not insid:
                 print("[fedwatch] 无法获取会话，退出（保留旧数据）")
                 sys.exit(2)
