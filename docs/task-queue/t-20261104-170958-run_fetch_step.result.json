@@ -1,0 +1,15 @@
+{
+  "id": "t-20261104-170958-run_fetch_step",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "fetch_fedwatch_bsk.py",
+    "args": "--dump-html,C:/Users/260023/AppData/Local/Temp/cme.html",
+    "timeout": "600"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"script\": \"fetch_fedwatch_bsk.py\", \"args\": [\"--dump-html\", \"C:/Users/260023/AppData/Local/Temp/cme.html\"], \"rc\": 2, \"seconds\": 9.2, \"changed\": {}, \"unchanged\": {\"putcall_daily_latest.csv\": \"2026-11-02\", \"shoutu_etf_universe.csv\": \"2026-09-29\", \"fred_baa10y_avail.csv\": \"2026-10-23\", \"fred_DFF.csv\": \"2026-11-02\", \"splits.csv\": \"2026-10-01\", \"stablecoin_usage.csv\": \"2026-11-03\", \"funding_rate.csv\": \"2026-11-04\", \"fred_BAA10Y.csv\": \"2026-10-23\", \"vix3m.csv\": \"2026-11-03\", \"sp500_pe.csv\": \"2026-10-29\", \"fred_DCOILBRENTEU.csv\": \"2026-10-06\", \"fred_T10Y2Y.csv\": \"2026-11-02\", \"crypto_fng.csv\": \"2026-11-03\", \"prices.csv\": \"2026-11-03\", \"putcall_daily_1.csv\": \"2025-06-30\", \"sentiment.csv\": \"2026-11-02\", \"putcall.csv\": \"2026-11-02\", \"putcall_daily_2.csv\": \"2026-10-07\", \"fred_DGS10.csv\": \"2026-11-02\", \"shoutu_fng.csv\": \"2026-11-04\", \"fng_altme.csv\": \"2026-11-03\", \"vix_history.csv\": \"2026-11-02\", \"news_sentiment.csv\": \"2026-11-04\", \"kalshi_fed.csv\": \"2026-11-04\", \"fred_DCOILWTICO.csv\": \"2026-10-06\", \"fedwatch.csv\": \"2026-10-13\", \"vix.csv\": \"2026-11-03\", \"crypto_underlying.csv\": \"2026-10-29\", \"crypto_prices.csv\": \"2026-11-02\", \"shoutu_history.csv\": \"2026-10-14\", \"sp500_cape.csv\": \"2026-10-29\"}, \"verdict\": \"rc=2，更新了 0 个文件\", \"stdout\": \"\", \"stderr\": \"✗ bsk 抓取失败 ✗\\n   session_start rc=-1  **找不到 bsk** ✗（`pip install browser-skill` 或设 FG_BSK ✗）\\n   session_start rc=-1  **找不到 bsk** ✗（`pip install browser-skill` 或设 FG_BSK ✗）\\n   session_start rc=-1  **找不到 bsk** ✗（`pip install browser-skill` 或设 FG_BSK ✗）\\n\"}",
+  "started_at": "2026-11-04T17:13:47",
+  "finished_at": "2026-11-04T17:13:57",
+  "duration_s": 10.22
+}
