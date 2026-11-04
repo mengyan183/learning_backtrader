@@ -7,6 +7,7 @@ import json
 import os
 import random
 import ssl
+import sys          # 2026-11-04：Stooq 兜底失败时打 stderr ✓
 import time
 import urllib.error
 import urllib.parse
@@ -204,6 +205,112 @@ def parse_nasdaq_rows(rows, symbol):
     return pd.DataFrame(recs).sort_values("date").reset_index(drop=True)
 
 
+def parse_stooq_csv(text, symbol):
+    """解析 Stooq 的 CSV ✓（2026-11-04 新增）。
+
+    格式（首行是表头 ✗）：
+        Date,Open,High,Low,Close,Volume
+        2026-11-03,90.12,90.55,89.80,90.30,1234567
+
+    ⚠️ 失败时 Stooq 返回 `No data`（纯文本 ✗ 不是 CSV ✗）⇒ 返回空表 ✓
+    """
+    import csv as _csv
+    import io as _io
+
+    t = (text or "").strip()
+    if not t or t.lower().startswith("no data"):
+        return pd.DataFrame(columns=["date", "symbol", "open", "high",
+                                     "low", "close", "volume"])
+    recs = []
+    for row in _csv.DictReader(_io.StringIO(t)):
+        try:
+            recs.append({
+                "date": pd.to_datetime(row["Date"]),
+                "symbol": symbol,
+                "open": float(row["Open"]),
+                "high": float(row["High"]),
+                "low": float(row["Low"]),
+                "close": float(row["Close"]),
+                "volume": float(row.get("Volume") or 0),
+            })
+        except (KeyError, ValueError, TypeError):
+            continue
+    if not recs:
+        return pd.DataFrame(columns=["date", "symbol", "open", "high",
+                                     "low", "close", "volume"])
+    return (pd.DataFrame(recs).sort_values("date").reset_index(drop=True))
+
+
+def fetch_symbol_stooq(symbol, fromdate="2010-01-01"):
+    """从 **Stooq** 抓单标的日线 ✓（Nasdaq 的备选源 ✗）。
+
+    🔴 为什么需要（2026-11-04）：
+       `config.FETCH_SYMBOLS` 39 个 ✗ 而 `prices.csv` 长期只有 36 个 ✗
+       缺的 11 个全是**主流 ETF** ✗ Nasdaq 不可能没有 ✗
+       ⇒ 但 `fetch_symbol` 的 `etf→stocks` 回退 + 3 轮重试都抓不到 ✗
+       ⇒ 加 Stooq 兜底 ✓
+
+    ⚠️ Stooq 一次给**全历史** ✗ 不支持 `fromdate` ✗
+       ⇒ 抓完在本地按 `fromdate` 过滤 ✓
+    """
+    import urllib.request as _ur
+
+    url = config.STOOQ_API.format(symbol=symbol.lower())
+    headers = {
+        "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) "
+                       "Chrome/120.0.0.0 Safari/537.36"),
+    }
+    # 🔴 2026-11-04 **直连→代理双路径** ✓
+    #    实测（Windows/国内）：`stooq.com` **直连超时** ✗
+    #    而 `config.PROXY_HOSTS` 只有 `okx.com` ✗ ⇒ 默认直连 ✗ 必失败 ✗
+    #    但公司代理在家里**不可达** ✗（见 `_opener` 注释 ✗）
+    #    ⇒ **不能简单加进 PROXY_HOSTS** ✗ 那会让家里环境更糟 ✗
+    #    ⇒ 先直连（短超时 20s ✗）失败再走代理 ✓ 两边都能用 ✓
+    # 🔴 2026-11-04：代理**优先读环境变量** ✓ —— 不用 `config.PROXY` ✗
+    #    原因：`config.PROXY` 默认是**公司代理** `10.30.6.49:9090` ✗
+    #    而家里 Mac **访问不到公司代理** ✗（见 `_opener` 注释 ✗）
+    #    ⇒ 家里应该用 `HTTP_PROXY` / `HTTPS_PROXY`（plist 里已设 `127.0.0.1:7890` ✓）
+    #    ⇒ 顺序：`FG_PROXY` → `HTTPS_PROXY` → `HTTP_PROXY` → `config.PROXY`
+    proxy = (os.environ.get("FG_PROXY")
+             or os.environ.get("HTTPS_PROXY")
+             or os.environ.get("https_proxy")
+             or os.environ.get("HTTP_PROXY")
+             or os.environ.get("http_proxy")
+             or config.PROXY)
+
+    text = None
+    last = None
+    for mode in ("direct", "proxy"):
+        try:
+            if mode == "proxy":
+                if not proxy:
+                    break
+                op = _ur.build_opener(_ur.ProxyHandler(
+                    {"http": proxy, "https": proxy}))
+                to = 40
+            else:
+                op = _ur.build_opener(_ur.ProxyHandler({}))
+                to = 20
+            req = _ur.Request(url, headers=headers)
+            with op.open(req, timeout=to) as r:
+                text = r.read().decode("utf-8", errors="replace")
+            break
+        except Exception as exc:            # noqa: BLE001
+            last = exc
+            continue
+    if text is None:
+        raise RuntimeError("Stooq 直连+代理都失败：%s: %s"
+                           % (type(last).__name__, str(last)[:120]))
+    df = parse_stooq_csv(text, symbol)
+    if df.empty:
+        return df
+    # 按 fromdate 过滤 ✓（Stooq 不支持起始日期 ✗）
+    if fromdate:
+        df = df[df["date"] >= pd.to_datetime(fromdate)]
+    return df.reset_index(drop=True)
+
+
 def fetch_symbol(symbol, limit=9999, fromdate="2010-01-01"):
     """抓取单标的日线。
 
@@ -238,6 +345,28 @@ def fetch_symbol(symbol, limit=9999, fromdate="2010-01-01"):
             raise last_err
         if attempt < 2:
             time.sleep(2 * (attempt + 1))
+
+    # 🔴 2026-11-04 **关键兜底**：Nasdaq 返回空表 ⇒ **试 Stooq** ✓
+    #    根因链条：
+    #      `fetch_symbol` 抓不到 ⇒ `return 空表` ✗
+    #      `update_prices` 对空表**不报错** ✗ ⇒ 该标的**静默消失** ✗
+    #      ⇒ `prices.csv` 长期缺 11 个主流 ETF ✗（DIA/EWY/ITB/KRE/TLT/
+    #        VGK/XBI/XLE/XLK/XLU/XLV ✗）
+    #      ⇒ 而 `TLT` 是 H-065 必需 ✗ `XBI`/`ITB`/`KRE` 是关注列表底层必需 ✗
+    #    ⚠️ 不 raise ✓ —— 备用源也失败就返回空表 ✓
+    #       让上层按「该标的无数据」处理 ✗ 不阻断整批 ✗
+    try:
+        alt = fetch_symbol_stooq(symbol, fromdate=fromdate)
+        if not alt.empty:
+            print("[fetch] %s Nasdaq 空表 ⇒ **Stooq 兜底成功**（%d 行）✓"
+                  % (symbol, len(alt)))
+            return alt
+        print("[fetch] %s Nasdaq + Stooq **都空** ✗" % symbol,
+              file=sys.stderr)
+    except Exception as exc:                # noqa: BLE001
+        print("[fetch] %s Stooq 兜底失败：%s: %s"
+              % (symbol, type(exc).__name__, str(exc)[:120]),
+              file=sys.stderr)
     return pd.DataFrame(columns=PRICE_COLUMNS)
 
 

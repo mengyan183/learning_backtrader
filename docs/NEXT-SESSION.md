@@ -17,6 +17,39 @@
 
 ---
 
+## 🆕 2026-11-04 数据源：加 Stooq 备选（Nasdaq 空表兜底）
+
+**为什么改（问题）**：
+- `config.FETCH_SYMBOLS` **39 个** ✗ 而 `prices.csv` 长期只有 **36 个** ✗
+- 缺的 11 个全是**主流 ETF**：`DIA / EWY / ITB / KRE / TLT / VGK / XBI / XLE / XLK / XLU / XLV`
+- `fetch_symbol` 已有 `assetclass=etf→stocks` 回退 + 3 轮退避重试 ✗ 仍抓不到 ✗
+- **根因**：`fetch_symbol` 抓不到时 `return 空表` ✗ ⇒ `update_prices` 对空表**不报错** ✗
+  ⇒ 该标的**静默消失** ✗（`TLT` 是 H-065 必需 ✗ `XBI`/`ITB`/`KRE` 是关注列表底层必需 ✗）
+
+**改了什么**：
+- `config.STOOQ_API = "https://stooq.com/q/d/l/?s={symbol}.us&i=d"`
+- `fetch.parse_stooq_csv()` / `fetch.fetch_symbol_stooq()`
+- `fetch_symbol` 在「Nasdaq 空表」时**自动试 Stooq** ✓（不 raise ✗ 双失败才返回空表 ✓）
+- Stooq 走 **直连→代理双路径** ✓ —— **不用 `config.PROXY`** ✗（那是**公司代理** `10.30.6.49:9090` ✗ 家里不可达 ✗）
+  顺序：`FG_PROXY` → `HTTPS_PROXY` → `HTTP_PROXY` → `config.PROXY`
+
+**为什么不直接把 `stooq.com` 加进 `PROXY_HOSTS`**：
+- `PROXY_HOSTS` 是**静态白名单** ✗ 走代理就永远走 ✗
+- 而「公司能连代理、家里不能」✗ ⇒ 静态分流**两边都会坏一边** ✗
+- 实测（国内/Windows）：`stooq.com` **直连超时** ✗ 需代理 ✓
+- ⇒ 只能**运行时先试直连、失败再试代理** ✓
+
+**已知限制**：
+- Stooq 一次返回**全历史** ✗ 不支持 `fromdate` ⇒ 本地按 `fromdate` 过滤 ✓（流量略大 ✗）
+- 失败返回纯文本 `No data` ✗ ⇒ `parse_stooq_csv` 显式识别 ✓ 返回空表 ✓
+- ⚠️ **未在 Mac 验证**（Windows 无代理 ✗ 测不通 ✗）⇒ 下次 Mac 跑 `diagnose_symbols` 时看 `fetch_ok`
+
+**待办**：
+- ① Mac 上跑一次 `diagnose_symbols`（`symbols=TLT,XBI,ITB,KRE` ✗）确认 Stooq 可用
+- ② 若 Stooq 也不通 ⇒ 换 Yahoo `v8/finance/chart/{sym}`（需代理 ✓）
+
+---
+
 ## 🆕 2026-10-27 MT-76：C1 BAA10Y 信用利差因子进评测池（闭环）
 
 - **分工**：① Mac 供数（带 available_date 的 `Data/raw/fred_baa10y_avail.csv`，T+5 自然日显式滞后防 lookahead）→ ② Windows 写因子 `fg_system/factors/credit_spread.py` → ③ Windows 必测 lookahead → ④ Mac 跑 IC/IR/分层单调性 → ⑤ 回写。
