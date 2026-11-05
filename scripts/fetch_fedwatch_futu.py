@@ -185,6 +185,13 @@ def main():
         out = pd.concat([old, new], ignore_index=True)
     else:
         out = new
+    # 🔴 2026-11-05：**全 NA 列会导致 FutureWarning** ✗
+    #    `wk_*` / `m_*` 在富途版里全是 None ✗ ⇒ 该列全 NA ✗
+    #    ⇒ concat 后**统一按 COLS 对齐** ✓ 保证列序一致 ✓
+    for c in COLS:
+        if c not in out.columns:
+            out[c] = None
+    out = out[COLS]
     out = out.sort_values(["date", "meeting"]).reset_index(drop=True)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     out.to_csv(OUT, index=False, encoding="utf-8")
