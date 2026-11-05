@@ -323,7 +323,6 @@ FETCH_SCRIPTS = (
     #    ⚠️ 缺口会**永久丢失** ✗（服务端只给最近 N 天 ✗）⇒ 该补 ✓
     "fetch_shoutu_history.py",
     # 🔴 2026-11-04：CME 改用 **bsk**（真实浏览器 ✗ headless 拿不到数据 ✗）
-    "fetch_fedwatch_bsk.py",
     # 🔴 2026-11-05：**最终方案** ✓ 富途 OpenD 官方接口 ✗ 不是爬虫 ✓
     #    市面调研结论：
     #      cme-fedwatch（PyPI）⇒ 已停维护 ✗

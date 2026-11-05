@@ -19,6 +19,31 @@
 
 ## ✅ 2026-11-05 **CME FedWatch 最终方案：富途 OpenD 官方接口**
 
+### ✅ 已接进每日链（2026-11-05）
+
+**Mac 实测成功**：
+
+```
+fedwatch.csv  2026-10-13 → **2026-11-05** ✓   （23 天停更解决）
+seconds: **1.2 秒**                            （bsk 版要 34.5 秒 ✗ 快 29 倍）
+解析出 9 个会议：
+   meeting  ease_pct  hold_pct  hike_pct
+2026-12-09       0.0      20.5      79.5
+2027-01-27       0.0      15.8      84.2
+2027-03-17       0.0       7.2      92.8
+...（共 9 个，累计 18 行）
+```
+
+**改动**：
+
+| 项 | 内容 |
+|---|---|
+| `com.xingguo.fg-daily.plist` | 在 `fetch_kalshi_fed.py` **之前**插入 `fetch_fedwatch_futu.py`（guard 300s ✗）|
+| **删除** `scripts/fetch_fedwatch.py` | headless ✗ 实测零 `<table>` ✗ |
+| **删除** `scripts/fetch_fedwatch_bsk.py` | bsk ✗ 实测零 pct ✗ 34.5 秒 ✗ |
+| **保留** `scripts/fetch_kalshi_fed.py` | ✓ 交叉校验用 ✓ |
+| `run_task_queue.py` 白名单 | 移除 bsk 版 ✗ 加入 futu 版 ✓ |
+
 ### 结论：**不用爬虫，用富途** ✓
 
 ```python
