@@ -1,0 +1,10 @@
+{
+  "id": "t-20261105-105145-run_fetch_step",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "fetch_shoutu_api.py",
+    "timeout": "900"
+  },
+  "status": "pending",
+  "created_at": "2026-11-05T10:51:45"
+}
