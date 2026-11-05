@@ -1512,6 +1512,14 @@ def _source_footnote(snap):
         "美联储: federalreserve.gov + fedwatch.csv",
         "情绪: vix_history/funding_rate.csv",
     ]
+    # 🔴 2026-11-05 用户裁定（方案 B）：**统一在脚注说明时区** ✓
+    #    为什么不全篇逐处标注 ✗：
+    #      简报里 4 类日期混着两种时区 ✗ 逐处加会显著拉长文本 ✗
+    #      - `features.csv` / `positions.csv` / 简报标题 ⇒ **美东**（美股收盘日 ✗）
+    #      - `shoutu_fng.csv` 的抓取日 ⇒ **北京**（脚本 `date.today()` ✗）
+    #      - FOMC / 纪要 / 宏观日历 ⇒ **美东**（官方日程 ✗）
+    #    ⇒ 一行说明覆盖全部 ✓
+    parts.append("⚠️ 时区：除标注「北京」外，日期均为美股收盘日（美东）")
     return " · ".join(parts)
 
 
