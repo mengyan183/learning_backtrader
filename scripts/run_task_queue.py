@@ -649,8 +649,22 @@ def _act_run_fetch_step(params):
         elif av != "?":
             unchanged[name] = av
 
+    # 🔴 2026-11-05：**回报代理环境变量** ✓
+    #    为什么必须回报 ✗：
+    #      `install_daily_plist` 只**拷贝 plist 文件** ✗ **不重启进程** ✗
+    #      而任务队列是**常驻进程**（`state = running` ✗）
+    #      ⇒ **新补的代理不会生效** ✗ 直到重启 ✗
+    #      ⇒ 所以「重跑 fetch_*」之前**必须先确认这里有没有代理** ✗
+    env_proxy = {k: (os.environ.get(k) or "")
+                 for k in ("FG_LLM_PROXY", "HTTP_PROXY", "HTTPS_PROXY",
+                           "http_proxy", "https_proxy", "NO_PROXY")}
+
     return {"ok": rc == 0, "script": script, "args": extra, "rc": rc,
             "seconds": round(secs, 1),
+            "env_proxy": env_proxy,
+            "has_proxy": bool(env_proxy.get("FG_LLM_PROXY")
+                              or env_proxy.get("HTTPS_PROXY")
+                              or env_proxy.get("https_proxy")),
             "changed": changed, "unchanged": unchanged,
             "verdict": ("rc=%d 但**没有任何文件更新** ✗ ⇒ 「静默成功」✗"
                         % rc if rc == 0 and not changed
