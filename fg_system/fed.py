@@ -96,6 +96,13 @@ def _load_fedwatch():
         return None
 
     return {
+        # 🔴 2026-11-05 补：**必须有 `date`** ✗
+        #    实测简报显示「市场预期（CME FedWatch **None**）」
+        #    ⇒ `fed_brief_text` 用的是 `ctx["fw_date"]` ✗
+        #      而本兜底 dict **没返回 `date`** ✗ ⇒ `None` ✗
+        #    ⚠️ 注意：这里的 `date` 是 **kalshi_fed.csv 的抓取日** ✗
+        #       不是 CME 的日期 ✓ 所以显示时要带来源标注 ✓
+        "date": _pick("date"),
         "meeting": _pick("meeting"),
         # 字段名统一成 `fedwatch.csv` 的写法 ✓ 上层 `fed_context` 不用改 ✓
         "ease_pct": _pick("ease_pct", "ease"),
@@ -155,6 +162,8 @@ def fed_context(today=None):
         # 市场预期（CME FedWatch，可缺失）
         "fw_meeting": None, "fw_hold": None, "fw_hike": None, "fw_ease": None,
         "fw_delta_1w": None, "fw_curve": None, "fw_migrate": None, "fw_date": None,
+        # 🔴 2026-11-05：**数据来源** ✓（`fedwatch.csv` 还是 `kalshi_fed.csv` ✗）
+        "fw_source": None,
     }
     fw = _load_fedwatch()
     if fw is not None:
@@ -170,7 +179,16 @@ def fed_context(today=None):
             ctx["fw_hike"] = (float(_k) if pd.notna(_k) and _k is not None
                               else float("nan"))
             wk = fw.get("wk_hike_pct")
-            ctx["fw_delta_1w"] = (ctx["fw_hike"] - float(wk)) if wk == wk else None
+            # 🔴 2026-11-05 **关键修复**：`wk == wk` 只能挡 `NaN` ✗
+            #    而 Kalshi 兜底返回的是 **`None`** ✗
+            #    `None == None` ⇒ **True** ✗ ⇒ `float(None)` 抛 TypeError ✗
+            #    ⇒ **整个 try 块跳到 except** ✗
+            #    ⇒ 后面的 `fw_date` / `fw_source` **全没赋值** ✗
+            #    ⇒ 症状：简报显示「市场预期（CME FedWatch **None**）」
+            #    ⇒ 必须显式判 `is not None` ✓
+            ctx["fw_delta_1w"] = (
+                ctx["fw_hike"] - float(wk)
+                if (wk is not None and wk == wk) else None)
             # P-FW（2026-10-13，诺奖预期管理先验）：预期路径斜率 = 近端 vs
             # 远端（m_hike_pct，下一档会议）加息预期差；显著陡峭 → 预期路径
             # 迁移标记（|Δ1w|≥10pp 短期迁移 / |Δm|≥15pp 中期路径陡峭）。
@@ -186,6 +204,8 @@ def fed_context(today=None):
                     ctx["fw_migrate"] = ("⚠️ 预期路径陡峭：近端 vs 远端加息预期差"
                                          " %.0fpp（市场押注路径方向）" % abs(_dc))
             ctx["fw_date"] = str(fw.get("date") or "")
+            # 🔴 2026-11-05：透传来源 ✓ 供 `fed_brief_text` 标注 ✗
+            ctx["fw_source"] = fw.get("_source") or "fedwatch.csv"
         except (TypeError, ValueError):
             pass
     if next_meeting is not None:
@@ -245,8 +265,16 @@ def fed_brief_text(ctx):
              % (ctx["macro_event"], ctx["macro_date"], ctx["days_to_macro"]))
         parts.append(w)
     if ctx["fw_meeting"]:
-        fw = "市场预期（CME FedWatch %s）：维持 %.1f%% / 加息25bp %.1f%% / 降息 %.1f%%"
-        fw = fw % (ctx["fw_date"], ctx["fw_hold"], ctx["fw_hike"], ctx["fw_ease"])
+        # 🔴 2026-11-05：**标注数据来源** ✓
+        #    原来硬写「CME FedWatch」✗ 但实际可能是 Kalshi 兜底 ✗
+        #    ⇒ 用户看到「CME FedWatch」会以为 CME 是好的 ✗ 误导 ✗
+        _src = ctx.get("fw_source") or ""
+        _tag = (" · **Kalshi 兜底** ✗" if "kalshi" in str(_src).lower()
+                else "")
+        fw = ("市场预期（CME FedWatch %s%s）："
+              "维持 %.1f%% / 加息25bp %.1f%% / 降息 %.1f%%")
+        fw = fw % (ctx["fw_date"] or "?", _tag,
+                   ctx["fw_hold"], ctx["fw_hike"], ctx["fw_ease"])
         if ctx["fw_delta_1w"] is not None:
             d = ctx["fw_delta_1w"]
             arrow = "↑" if d > 0.05 else ("↓" if d < -0.05 else "→")

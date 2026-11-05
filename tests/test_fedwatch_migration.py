@@ -18,9 +18,15 @@ from fg_system import config
 
 
 def _fake_fedwatch(monkeypatch, hike, wk_hike, m_hike):
+    import datetime as _dt
+
     import pandas as pd
+    # 🔴 2026-11-05 修：**日期必须用「今天」** ✗
+    #    `fed._load_fedwatch()` 加了新鲜度检查（`_FEDWATCH_MAX_LAG_DAYS=5` ✗）
+    #    ⇒ 原来写死 `"2026-10-13"` ⇒ 被判定**过期** ⇒ 走 Kalshi 兜底 ✗
+    #    ⇒ 兜底没有 `wk_hike_pct` / `m_hike_pct` ⇒ 本文件的 4 个测试全挂 ✗
     rows = [{
-        "date": "2026-10-13", "meeting": "2026-10-28",
+        "date": _dt.date.today().isoformat(), "meeting": "2026-10-28",
         "ease_pct": 0.0, "hold_pct": 78.4, "hike_pct": hike,
         "now_hold_pct": 78.4, "now_hike_pct": hike,
         "wk_hold_pct": 77.9, "wk_hike_pct": wk_hike,

@@ -17,7 +17,40 @@
 
 ---
 
-## 🆕 2026-11-04 数据源：Stooq 已废弃 ✗ + CME 改用 bsk ✓
+## 🆕 2026-11-05 `fed` 因子的两个真 bug（已修）
+
+### bug ①：`wk == wk` 挡不住 `None` ⇒ 整个 try 块跳过
+
+```python
+wk = fw.get("wk_hike_pct")        # Kalshi 兜底返回 None ✗
+ctx["fw_delta_1w"] = (ctx["fw_hike"] - float(wk)) if wk == wk else None
+                                                    ↑ None == None 是 True ✗
+⇒ float(None) 抛 TypeError ✗ ⇒ 后面的 fw_date / fw_source 全没赋值 ✗
+```
+
+**症状**：简报显示「市场预期（CME FedWatch **None**）：维持 22.5% / 加息25bp 76.0%」
+
+**修法**：`if (wk is not None and wk == wk)` ✓
+（`wk == wk` 只能挡 `NaN` ✗ 对 `None` 无效 ✗）
+
+### bug ②：兜底没返回 `date`，也没标注来源
+
+- `fed_brief_text` 用 `ctx["fw_date"]` ✗ 而兜底 dict 没 `date` ✗
+- 硬写「CME FedWatch」✗ 但实际可能是 Kalshi ✗ 误导 ✗
+
+**修法**：
+- 兜底 dict 加 `"date": _pick("date")` ✓
+- 新增 `ctx["fw_source"]` ✓ 简报显示 `CME FedWatch 2026-10-14 · **Kalshi 兜底** ✗`
+
+### 顺带修了一个测试
+
+`tests/test_fedwatch_migration.py` 写死 `"date": "2026-10-13"` ✗
+⇒ 新鲜度检查判定过期 ⇒ 走兜底 ⇒ 兜底没 `wk_hike_pct`/`m_hike_pct` ⇒ **4 个测试全挂** ✗
+⇒ 改成 `_dt.date.today().isoformat()` ✓
+
+---
+
+## 🗄️ 2026-11-04 数据源：Stooq 已废弃 ✗ + CME 改用 bsk ✓
 
 ### Stooq：**实测不可用，代码已删** ✗
 
