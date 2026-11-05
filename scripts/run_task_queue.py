@@ -448,6 +448,75 @@ def _find_bsk_bin():
 BSK_BIN = _find_bsk_bin()
 
 
+def _act_verify_hypotheses(params):
+    """**跑 `verify_hypotheses.py` 推进假说验证** ✓（2026-11-05 用户要求）。
+
+    🔴 为什么要推进 ✗：
+       台账现状（`evolution/hypotheses.md` ✗ 共 85 条）：
+         `verifying`  **3 条** —— H-006 / H-008 / H-009 ✗ **10-02 登记，一个月没推进**
+         `open`       **15 条**
+         `pending-revise` **1 条** —— H-085
+       ⇒ 假说验证**停摆** ✗ 而 `verify_hypotheses.py` 就是执行器 ✓
+
+    【脚本参数】
+      `-H/--hypothesis H-006`（可重复 ✗ 不给则跑**全部 open** ✓）
+      `--dry-run`（只算不写台账 ✗）
+      `--out <path>`（结果另存 ✗）
+      `--check-table`（校验台账列名 ✗）
+
+    参数：
+      - `hypotheses`：逗号分隔（默认空 ⇒ 全部 open ✓）
+      - `dry_run`：`1` = 只算不写 ✓
+    """
+    hs = [x.strip() for x in str(params.get("hypotheses") or "").split(",")
+          if x.strip()]
+    dry = str(params.get("dry_run") or "").lower() in ("1", "true", "yes")
+
+    cmd = [sys.executable, "scripts/verify_hypotheses.py"]
+    for h in hs:
+        cmd += ["-H", h]
+    if dry:
+        cmd.append("--dry-run")
+
+    t0 = time.time()
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=1800, cwd=ROOT)
+    secs = round(time.time() - t0, 1)
+    so = (r.stdout or "").strip()
+    se = (r.stderr or "").strip()
+
+    # 🔴 逐条摘出结论行 ✓（脚本会打 `H-xxx` 开头的结果 ✗）
+    #    只留「有判定」的行 ✓ 去掉噪声 ✓
+    hits = []
+    for ln in so.splitlines():
+        s = ln.strip()
+        if re.match(r"^H-\d+", s) or re.search(
+                r"(通过|不通过|样本不足|跳过|无法|已验证|证伪)", s):
+            if s and s not in hits:
+                hits.append(s[:200])
+
+    out = {"ok": r.returncode == 0, "rc": r.returncode, "seconds": secs,
+           "hypotheses": hs or "全部 open",
+           "dry_run": dry,
+           "stdout_len": len(so), "stderr_len": len(se),
+           "verdict_lines": hits[:40],
+           "stdout_tail": so[-2500:] if so else "",
+           "stderr_tail": se[-800:] if se else ""}
+    # 简单判读 ✓
+    if r.returncode != 0:
+        out["verdict"] = "✗ 脚本失败 ✗ 见 stderr_tail"
+    elif not hits:
+        out["verdict"] = ("⚠️ 跑完了但**没有判定行** ✗ "
+                          "可能全部「样本不足」✗ 见 stdout_tail")
+    else:
+        n_ok = sum(1 for h in hits if "通过" in h and "不通过" not in h)
+        n_bad = sum(1 for h in hits if "不通过" in h)
+        n_skip = sum(1 for h in hits if "样本不足" in h or "跳过" in h)
+        out["verdict"] = ("✓ 有 %d 条判定：通过 %d / 不通过 %d / 样本不足 %d"
+                          % (len(hits), n_ok, n_bad, n_skip))
+    return out
+
+
 def _act_rerun_brief(params):
     """**重算 features 并生成简报** ✓（2026-11-05 用户要求「重新测试输出的简报」）。
 
@@ -2469,6 +2538,7 @@ ACTIONS = {
     "probe_url": _act_probe_url,
     "test_futu_fed": _act_test_futu_fed,
     "rerun_brief": _act_rerun_brief,
+    "verify_hypotheses": _act_verify_hypotheses,
     "diagnose_symbols": _act_diagnose_symbols,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
