@@ -1308,6 +1308,20 @@ def _read_accounts():
     return d
 
 
+def _read_positions():
+    """读 `Data/positions.csv` ✓（读不到返回 None ✓）。"""
+    import pandas as _pd
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    p = os.path.join(root, "Data", "positions.csv")
+    if not os.path.exists(p):
+        return None
+    d = _pd.read_csv(p)
+    if not {"date", "symbol"}.issubset(d.columns) or not len(d):
+        return None
+    d["date"] = d["date"].astype(str).str[:10]
+    return d
+
+
 def verify_h028(df):
     """H-028：现金 >0 且累计盈亏 <0 的频率**低于 10%** ⇒ 不成立。
 
@@ -1317,43 +1331,67 @@ def verify_h028(df):
       检验：统计所有交易日中，现金余额为正且累计盈亏为负的频率。
       不成立：此类情况频率**低于 10%**。
 
-    ⚠️ 口径限制 ✗：
-      `accounts.csv` 只有 `unrealized_pnl`（**浮动**盈亏 ✗）
-      **没有「累计盈亏」列** ✗
-      ⇒ 用 `unrealized_pnl < 0` 代理 ✓ 并在 note 里显式声明 ✗
+    🔴 2026-11-05 **口径修正**（关键 ✗）：
+       v1 用 `accounts.unrealized_pnl` ⇒ 得到 `0/28 = 0.0%` ✗ **结论是假的** ✗
+       根因：`H-011` 台账已实证 `unrealized_pnl` **不可信** ✗
+             （全量对账 17/17 天不一致 ✗ 10-01~10-19 共 15 天**恒报 0** ✗）
+             ⇒ `unrealized_pnl < 0` **永远 false** ✗ ⇒ `0/28` 是假象 ✗
+       ⇒ 改用 `fg_system/data/derived.py` 的**持仓自算** ✓
+          `unrealized = qty × (price − cost)` ✓（与项目历史口径一致 ✓）
+       `cash` 仍用 `accounts.csv` ✓（`H-011` 只质疑 `unrealized_pnl` ✗）
     """
     a = _read_accounts()
+    pos = _read_positions()
     if a is None:
         return {"passed": False, "status": "pending",
                 "reason": "缺 Data/accounts.csv"}
-    need = {"cash", "unrealized_pnl"}
-    if not need.issubset(a.columns):
+    if pos is None:
         return {"passed": False, "status": "pending",
-                "reason": "accounts.csv 缺列：%s" % sorted(need - set(a.columns))}
+                "reason": "缺 Data/positions.csv（浮亏需自算 ✗）"}
+    if "cash" not in a.columns:
+        return {"passed": False, "status": "pending",
+                "reason": "accounts.csv 缺 cash 列"}
 
-    # 按「日 × 账户」判定 ✓（一天两个账户各算一次 ✗）
-    d = a.dropna(subset=["cash", "unrealized_pnl"])
-    if not len(d):
+    try:
+        from fg_system.data import derived
+        d = derived.unrealized(pos)
+    except (ImportError, ValueError) as exc:
         return {"passed": False, "status": "pending",
-                "reason": "cash / unrealized_pnl 全为空"}
-    hit = d[(d["cash"] > 0) & (d["unrealized_pnl"] < 0)]
-    n_all, n_hit = int(len(d)), int(len(hit))
+                "reason": "derived.unrealized 失败：%s" % str(exc)[:150]}
+
+    # ① 逐日：浮亏合计（自算 ✓）+ 现金合计（accounts ✓）
+    upl = (d.dropna(subset=["unrealized"])
+           .groupby("date", as_index=False)["unrealized"].sum()
+           .rename(columns={"unrealized": "upl"}))
+    cash = (a.dropna(subset=["cash"])
+            .groupby("date", as_index=False)["cash"].sum())
+    m = upl.merge(cash, on="date", how="inner")
+    if not len(m):
+        return {"passed": False, "status": "pending",
+                "reason": ("positions 与 accounts 的日期无交集 ✗ "
+                           "positions %s→%s / accounts %s→%s"
+                           % (upl["date"].min(), upl["date"].max(),
+                              cash["date"].min(), cash["date"].max()))}
+
+    n_all = int(len(m))
+    hit = m[(m["cash"] > 0) & (m["upl"] < 0)]
+    n_hit = int(len(hit))
     freq = n_hit / float(n_all) if n_all else 0.0
 
-    # 样本门槛：至少 20 个「日×账户」观测 ✓
+    # 样本门槛：至少 20 个交易日 ✓
     if n_all < 20:
         return {"passed": False, "status": "pending",
-                "reason": "样本不足：%d 个日×账户观测（需 ≥20）" % n_all,
-                "freq": round(freq, 4), "n": n_all}
+                "reason": "样本不足：%d 个交易日（需 ≥20）" % n_all,
+                "freq": round(freq, 4), "n": n_all,
+                "note": "浮亏已改用 derived 自算 ✓（v1 的 0/28 是假象 ✗）"}
 
     passed = freq >= 0.10          # 频率 ≥10% ⇒ 假设成立 ✓
     return {
         "passed": bool(passed),
         "freq": round(freq, 4), "n_hit": n_hit, "n_all": n_all,
-        "date_range": "%s → %s" % (d["date"].min(), d["date"].max()),
+        "date_range": "%s → %s" % (m["date"].min(), m["date"].max()),
         "note": ("现金>0 且浮亏<0：%d/%d = %.1f%%（门槛 10%%）⇒ %s ✗"
-                 "⚠️ 用 unrealized_pnl 代理「累计盈亏」✗"
-                 "accounts.csv 无累计盈亏列 ✗"
+                 "浮亏用 derived 自算 ✓（qty×(price−cost) ✗）"
                  % (n_hit, n_all, freq * 100,
                     "成立" if passed else "不成立")),
     }
@@ -1435,6 +1473,170 @@ def verify_h038(df):
     }
 
 
+def verify_h040(df):
+    """H-040：AXTX 浮亏 >20% 的日期中 `extreme` 触发率 **≤0.5** ⇒ 不成立。
+
+    🔴 2026-11-05 新实现 ✓（原来只在 `PENDING` 里登记 ✗）
+
+    判据（`hypotheses.md` 原文）：
+      统计 `positions.csv` 中 AXTX 浮亏>20% 的日期中 `extreme` 触发率
+      **浮亏 = (price − cost) / cost** ✓
+      不成立：若 AXTX 浮亏>20% 时 `extreme` 触发率 **≤ 0.5**
+
+    🔴 口径（`MT-57` 实证 ✓）：
+      不用 `accounts.unrealized_pnl` ✗（17/17 天不一致 ✗）
+      改用 `derived.unrealized` 自算 ✓ —— 但本条**判据本身就写了**
+      `(price − cost) / cost` ✓ ⇒ **直接算比率** ✓ 更贴原意 ✓
+    """
+    pos = _read_positions()
+    if pos is None:
+        return {"passed": False, "status": "pending",
+                "reason": "缺 Data/positions.csv"}
+    need = {"date", "symbol", "price", "cost"}
+    if not need.issubset(pos.columns):
+        return {"passed": False, "status": "pending",
+                "reason": "positions.csv 缺列：%s" % sorted(need - set(pos.columns))}
+
+    a = pos[pos["symbol"].astype(str).str.upper() == "AXTX"].copy()
+    if not len(a):
+        return {"passed": False, "status": "pending",
+                "reason": "positions.csv 里没有 AXTX ✗"}
+    price = pd.to_numeric(a["price"], errors="coerce")
+    cost = pd.to_numeric(a["cost"], errors="coerce")
+    a = a.assign(loss=((price - cost) / cost))
+    a = a.dropna(subset=["loss"])
+    # 同日可能多行 ✗ ⇒ 取最差（最负 ✗）
+    per_day = a.groupby("date", as_index=False)["loss"].min()
+    deep = per_day[per_day["loss"] < -0.20]
+    if not len(deep):
+        return {"passed": False, "status": "pending",
+                "reason": ("AXTX 浮亏从未超过 20%%（最深 %.2f%% ✗）"
+                           % (per_day["loss"].min() * 100)),
+                "days_total": int(len(per_day)),
+                "loss_min": round(float(per_day["loss"].min()), 4)}
+
+    # `extreme` 从 features 取 ✓（`df` 的日期可能在索引上 ✗）
+    f = df.copy()
+    if "date" not in f.columns:
+        f = f.reset_index()
+    if "extreme" not in f.columns:
+        return {"passed": False, "status": "pending",
+                "reason": "features.csv 无 extreme 列"}
+    f["_d"] = pd.Series(f.index.astype(str), index=f.index) \
+        if "date" not in f.columns else f["date"].astype(str).str[:10]
+    if "date" in f.columns:
+        f["_d"] = f["date"].astype(str).str[:10]
+    ext = f.dropna(subset=["extreme"]).assign(
+        _e=lambda x: x["extreme"].astype(bool))[["_d", "_e"]]
+    ext = ext.groupby("_d", as_index=False)["_e"].max()
+
+    m = deep.merge(ext, left_on="date", right_on="_d", how="inner")
+    if not len(m):
+        return {"passed": False, "status": "pending",
+                "reason": ("AXTX 深亏日（%d 天 ✗）与 features 无交集 ✗"
+                           % len(deep))}
+
+    rate = float(m["_e"].mean())
+    n = int(len(m))
+    passed = rate > 0.5            # 触发率 >0.5 ⇒ 假设成立 ✓
+    return {
+        "passed": bool(passed),
+        "trigger_rate": round(rate, 4), "n_days": n,
+        "loss_min": round(float(per_day["loss"].min()), 4),
+        "date_range": "%s → %s" % (m["date"].min(), m["date"].max()),
+        "note": ("AXTX 浮亏>20%% 的 %d 天里 extreme 触发率 %.1f%%"
+                 "（门槛 >50%%）⇒ %s ✗ 浮亏=(price−cost)/cost ✓"
+                 % (n, rate * 100, "成立" if passed else "不成立")),
+    }
+
+
+def verify_h041(df):
+    """H-041：`core_position` **变化前后** `fg_index` 振幅**缩小** ⇒ 成立。
+
+    🔴 2026-11-05 新实现 ✓（原来只在 `PENDING` 里登记 ✗ 且文案说
+       `position_multiplier 列不存在` ✗ —— 那是 **2026-10-10 B-11 已修**的旧文案 ✗
+       `core_position` **确实存在** ✓）
+
+    判据（`hypotheses.md` 原文）：
+      统计 `core_position` 降档前后 `fg_index` 振幅。
+      不成立：若降档时 `fg_index` 振幅**未缩小**（如扩大）。
+
+    🔁 `MT-60` 已跑过一次 ✓：
+       唯一事件 **10-21**（0.3375→0.225）✗
+       降档前 10-16~10-20 fg 27.2→34.0（振幅 6.8）✗
+       降档后 10-21~10-22 fg 40.1→35.2（振幅 4.9 ✗ **缩小** ✓）
+       ⇒ 方向成立 ✓ 但 **n=1 不硬判** ✗ ⇒ 继续累积 ✓
+       ⇒ 本实现**自动枚举所有变化点** ✓ 不必人工找 ✓
+
+    口径：
+      振幅 = 窗口内 `fg_index` 的 **max − min** ✓
+      窗口 = 变化日**前/后各 `win` 个交易日** ✓（默认 5 ✓）
+      ⚠️ 不判「升/降档」方向 ✗ —— 台账写「降档」但 `2.0→3.0` 是**数值变大** ✗
+         语义不明 ✗ ⇒ 只判「变化前后」✓（两侧都算 ✓）
+    """
+    win = 5
+    f = df.copy()
+    if "core_position" not in f.columns or "fg_index" not in f.columns:
+        return {"passed": False, "status": "pending",
+                "reason": "features.csv 缺 core_position 或 fg_index 列"}
+    if "date" in f.columns:
+        f["_d"] = f["date"].astype(str).str[:10]
+    else:
+        f["_d"] = f.index.astype(str).str[:10]
+    d = (f.dropna(subset=["core_position", "fg_index"])
+         .sort_values("_d").reset_index(drop=True))
+    if len(d) < (2 * win + 2):
+        return {"passed": False, "status": "pending",
+                "reason": "样本不足：%d 行（需 ≥%d）" % (len(d), 2 * win + 2)}
+
+    cp = pd.to_numeric(d["core_position"], errors="coerce")
+    fg = pd.to_numeric(d["fg_index"], errors="coerce")
+    chg = cp.diff().abs() > 1e-9
+    idx = [i for i in range(win, len(d) - win) if bool(chg.iloc[i])]
+    if not idx:
+        return {"passed": False, "status": "pending",
+                "reason": "core_position 在样本内**从未变化** ✗",
+                "rows": int(len(d))}
+
+    rows = []
+    for i in idx:
+        before = fg.iloc[i - win:i].dropna()
+        after = fg.iloc[i:i + win].dropna()
+        if len(before) < 2 or len(after) < 2:
+            continue
+        amp_b = float(before.max() - before.min())
+        amp_a = float(after.max() - after.min())
+        rows.append({"date": d["_d"].iloc[i],
+                     "cp_from": round(float(cp.iloc[i - 1]), 4),
+                     "cp_to": round(float(cp.iloc[i]), 4),
+                     "amp_before": round(amp_b, 2),
+                     "amp_after": round(amp_a, 2),
+                     "shrunk": amp_a < amp_b})
+
+    if not rows:
+        return {"passed": False, "status": "pending",
+                "reason": "变化点的前/后窗口都有效数据不足 ✗"}
+    n = len(rows)
+    n_shrunk = sum(1 for r in rows if r["shrunk"])
+    rate = n_shrunk / float(n)
+    # 至少 3 个变化点才硬判 ✓（`MT-60` 只有 1 个 ✗）
+    if n < 3:
+        return {"passed": False, "status": "pending",
+                "reason": ("变化点只有 %d 个（需 ≥3 才硬判 ✗）"
+                           "其中缩小 %d 个" % (n, n_shrunk)),
+                "events": rows[:10]}
+    passed = rate >= 0.5
+    return {
+        "passed": bool(passed),
+        "n_events": n, "n_shrunk": n_shrunk, "shrink_rate": round(rate, 4),
+        "events": rows[:10],
+        "note": ("core_position 变化 %d 次，其中 fg 振幅缩小 %d 次（%.0f%%）"
+                 "⇒ %s ✗ 振幅=max−min（前/后各 %d 日 ✗）"
+                 % (n, n_shrunk, rate * 100,
+                    "成立" if passed else "不成立", win)),
+    }
+
+
 CUSTOM = {
     # 🔴 2026-11-05 新实现 ✓（原来只在 PENDING 里登记 ✗ 永远 pending ✗）
     "H-009": (verify_h009,
@@ -1447,6 +1649,13 @@ CUSTOM = {
     "H-038": (verify_h038,
               "zone 2.0 期间累计盈亏扩大（未扩大 ⇒ 不成立）",
               "features.csv(zone) + Data/accounts.csv(net_value)"),
+    # 🔴 2026-11-05 新实现 ✓（H-041 的列早就有 ✗ 只是旧文案说「不存在」✗）
+    "H-040": (verify_h040,
+              "AXTX 浮亏>20% 的日期中 extreme 触发率 >0.5",
+              "Data/positions.csv(price/cost) + features.csv(extreme)"),
+    "H-041": (verify_h041,
+              "core_position 变化前后 fg_index 振幅缩小",
+              "features.csv(core_position + fg_index)"),
     "H-010": (verify_h010, "zone 由 fg_index 固定边界驱动且边界稳定（区间重叠率 ≤20%）",
               "fg_index + zone"),
     "H-012": (verify_h012, "布尔位触发依赖 fg_index 极值（>=80 或 <=35）",
@@ -1538,6 +1747,11 @@ HYPOTHESES = {
               "fields": CUSTOM["H-028"][2]},
     "H-038": {"kind": "custom", "desc": CUSTOM["H-038"][1],
               "fields": CUSTOM["H-038"][2]},
+    # 🔴 2026-11-05 新注册 ✓
+    "H-040": {"kind": "custom", "desc": CUSTOM["H-040"][1],
+              "fields": CUSTOM["H-040"][2]},
+    "H-041": {"kind": "custom", "desc": CUSTOM["H-041"][1],
+              "fields": CUSTOM["H-041"][2]},
     "H-010": {"kind": "custom", "desc": CUSTOM["H-010"][1],
               "fields": CUSTOM["H-010"][2]},
     "H-012": {"kind": "custom", "desc": CUSTOM["H-012"][1],
@@ -1583,14 +1797,9 @@ HYPOTHESES = {
         "fields": "AXTX 浮亏（数据源缺失）+ trend_blocked_us/trend_blocked_crypto",
         "missing_dep": "features.csv / portfolio_features.csv 无 AXTX 浮亏列",
     },
-    "H-040": {
-        "kind": "pending",
-        "desc": "AXTX 浮亏 >20% 的日期中布尔位触发率 >0.5 → 不成立",
-        "selector": None,
-        "pass_when": "low",
-        "fields": "AXTX 浮亏（数据源缺失）+ trend_blocked_us/trend_blocked_crypto",
-        "missing_dep": "features.csv / portfolio_features.csv 无 AXTX 浮亏列",
-    },
+    # 🔴 2026-11-05：`H-040` 的**手写 pending 定义已删** ✗
+    #    它在本字典里**覆盖了**前面 `CUSTOM` 注册的 `custom` 定义 ✗
+    #    （同 key 后写胜出 ✗）⇒ 症状：明明实现了 ✗ 却仍报「无 AXTX 浮亏列」✗
 }
 
 # 挂起假说（数据源未接入 / 样本不足 / 缺列）。三要素照录 hypotheses.md。
@@ -1603,11 +1812,12 @@ PENDING = {
     "H-017": ('杠杆 ETF 组 vs BTC 组市值变动率比较（10-03↔10-07）', 'Data/positions.csv（本机仅 2026-09-22 一日快照）'),
     "H-022": ('5 只杠杆 ETF vs BTC-USDT 浮亏率比较（10-07/10-08）', 'Data/positions.csv（本机仅 2026-09-22 一日快照）'),
     "H-023": ('半凯利仓位 vs 规则仓位 walk-forward 净值回测', '胜率/盈亏比估计（样本 <60 日，置信度不足）'),
-    "H-040": ('AXTX 浮亏占组合浮亏的比重', 'AXTX 浮亏列不存在（MT-34 / MT-35 实测 ✗）'),
+    # 🔴 2026-11-05：`H-040` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
     # 🔴 2026-11-05：`H-028` / `H-038` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
     "H-030": ('量价-资金背离（价格/成交上涨而 TVL 未跟随）分组对比', 'DeFi TVL 数据源未接入（B 类待数据）'),
     "H-034": ('稳定币使用效率 = 链上月交易量/流通量 的领先性 IC', '稳定币链上交易量数据源未接入（B 类待数据）'),
-    "H-041": ('position_multiplier 降档前后 fg_index 振幅', 'position_multiplier 列不存在（虚构列）'),
+    # 🔴 2026-11-05：`H-041` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
+    #    （`core_position` **确实存在** ✓ 旧文案是 2026-10-10 B-11 前的 ✗）
 }
 # 🔴 2026-11-05 **修提示语硬编码** ✗
 #    症状：`H-006`/`H-008`/`H-009`/`H-017`/`H-022`/`H-028`/`H-038` 全部报
