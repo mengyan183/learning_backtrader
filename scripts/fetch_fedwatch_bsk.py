@@ -308,29 +308,60 @@ def diagnose(wait_ms=20000, debug=True):
         out["steps"]["evaluate"] = {"rc": rc, "out": (o or "")[:600],
                                     "err": e[-300:]}
 
-        # ④b 🔴 **点开 `@e13 button "Select your ..."`** ✓
+        # ④b 🔴 **点开那个「Select your ...」按钮** ✓
         #     实测 `observe` 里唯一可交互的是它 ✗ 而页面**没有任何表格数据** ✗
         #     ⇒ 强烈怀疑**必须先选一个选项**（日期 / 会议 ✗）才加载数据 ✗
-        #     点完再 observe ✓ 看有没有出现 `%` 或 `ZQ` ✓
-        for label in ("Select your", "Select"):
-            rc, o, e = _run(["observe", "--session", sid], timeout=90)
-            m = re.search(r'(@e\d+) button "%s' % re.escape(label), o or "")
-            if not m:
-                continue
-            ref = m.group(1)
-            crc, cout, cerr = _run(["click", ref, "--session", sid],
-                                   timeout=90)
-            out["steps"]["click_%s" % ref] = {
-                "rc": crc, "ref": ref, "out": cout[-300:], "err": cerr[-300:]}
+        #
+        #     🔴 2026-11-05 **关键踩坑**：不能用 `@eN` ref ✗
+        #        错误：`shared page control or observation changed` ✗
+        #        根因：CME 页面**持续动态变化**（倒计时每秒刷新 ✗ 数据异步 ✗）
+        #              ⇒ `observe` 拿到的 `@eN` 快照**立刻失效** ✗
+        #        ⇒ 本机实测（example.com 静态页）`click a` **成功** ✓
+        #          ⇒ 证明 bsk 没问题 ✓ 是**页面变化太快** ✗
+        #        ⇒ 改用 **CSS 选择器** ✓ 它不依赖快照 ✓
+        css_cands = [
+            "button[aria-haspopup]",
+            "main button",
+            "select",
+            "[class*=dropdown] button",
+        ]
+        for css in css_cands:
+            crc, cout, cerr = _run(
+                ["click", "--selector", css, "--session", sid,
+                 "--timeout", "20s"], timeout=60)
+            out["steps"]["click_%s" % css] = {
+                "rc": crc, "css": css,
+                "out": cout[-250:], "err": cerr[-250:]}
             if crc == 0:
-                _run(["wait-ms", "3000"], timeout=30)
+                _run(["wait-ms", "4000"], timeout=30)
                 rc2, o2, e2 = _run(["observe", "--session", sid], timeout=90)
                 out["steps"]["observe_after_click"] = {
                     "rc": rc2, "lines": len((o2 or "").splitlines()),
                     "data_hits": sum(o2.count(k) for k in ("%", "ZQ", "Target")),
-                    "head": (o2 or "")[:500],
+                    "head": (o2 or "")[:600],
                 }
                 break
+
+        # ④c 🔴 **查 iframe** ✓（2026-11-05 关键假设 ✗）
+        #     现象：`get-html` 478 KB ✗ 但 `<table>` **0 个** ✗ 零个百分比 ✗
+        #           `observe` 有 FedWatch 框架 ✗ 但没数据 ✗
+        #           `click` / `evaluate` 报 `shared page control` ✗
+        #     ⇒ **统一解释：数据在跨域 `<iframe>` 里** ✗
+        #       - `get-html` 只拿主文档 ⇒ 拿不到 iframe 内容 ✓
+        #       - `observe` 只看主文档的无障碍树 ✓
+        #       - iframe 抢了「页面控制权」⇒ 写操作被拒 ✓
+        #     ⇒ 必须确认有没有 iframe ✗ 有几个 ✗ src 是什么 ✓
+        rc, html, e = _run(["get-html", "--session", sid], timeout=120)
+        iframes = re.findall(
+            r"<iframe[^>]*?(?:src|data-src)\s*=\s*[\"']([^\"']+)[\"']",
+            html or "", re.I)
+        out["steps"]["iframes"] = {
+            "rc": rc, "html_len": len(html or ""),
+            "count": len(iframes),
+            "srcs": [u[:200] for u in iframes[:10]],
+            "has_table_tag": "<table" in (html or "").lower(),
+            "pct_in_html": len(re.findall(r"\d{1,3}\.\d\s*%", html or "")),
+        }
 
         # ⑤ snapshot（无障碍树 ✗ 比 observe 更严格）
         rc, o, e = _run(["snapshot", "--session", sid], timeout=120)
