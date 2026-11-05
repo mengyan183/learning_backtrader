@@ -1,0 +1,11 @@
+{
+  "id": "t-20261105-143129-rerun_brief",
+  "action": "rerun_brief",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"steps\": {\"pipeline\": {\"rc\": 0, \"seconds\": 3.5, \"stdout\": \"\", \"stderr\": \"/Users/xingguo/learning_backtrader/fg_system/factors/vix.py:16: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\\n  chg5 = vix.pct_change(5)\\n\"}, \"brief\": {\"rc\": 0, \"seconds\": 29.5, \"len\": 1083, \"stderr\": \"[stage_attribution] 归因失败（按无数据处理）: 调用失败(2次): HTTP Error 401: Unauthorized\\n\"}}, \"ok\": true, \"brief\": \"[warn] 有效敞口计算失败：No module named 'fg_system'\\n[warn] GDXU 合成：2/2541 天因腿缺失被剔除（腿 = GDX / GDXJ）\\n2026-11-05 14:34:12,986 | 58467 | 123145473806336 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7523996073392908088(1) context=<futu.quote.open_quote_context.OpenQuoteContext object at 0x7fb501872b90>\\n[news] 覆盖 6/6 标的；大盘有\\n2026-11-05 14:34:13,727 | 58467 | 123145542037504 | [open_context_base.py:521] on_disconnect: Disconnected: conn=0(1) reason=CallClose\\n简报已写入: /Users/xingguo/learning_backtrader/Data/invest_brief_2026-11-04.md\\n[verify] 简报检查: 通过 (fail=0 warn=0)\\n# 多智能体投研简报 2026-11-04\\n\\n## 🔌 数据源健康\\n富途 OpenD：正常 ✓（2026-11-05 09:39 检查）\\nAI 三阶段：**缺 归因、裁判** ✗（对应小节为占位）\\n六因子：**缺 2 个**（源数据滞后，分项用 T-n 值 ✓）\\n\\n---\\n\\n## 市场快照\\n```\\n系统贪恐指数 37.0 [1.0] · 目标仓位 47.1% · 回撤 10.65% · 熔断未触发\\n守猪待兔(2026-11-05): AXTX -90.0 / CONL -67.0 / CRCG -97.0 / GDXU -58.0 / SOXL -90.0 / TQQQ -55.0 / UPRO -9.0 / YINN -44.0\\n持仓:\\n🔻 YINN 三倍做多富时中国ETF-Direxion · 成本 26.82 · 现价 25.52 · 浮盈亏 -204.10 (-4.85%)\\n🔻 GDXU 三倍做多黄金矿业ETN-MicroSectors · 成本 111.19 · 现价 87.88 · 浮盈亏 -979.02 (-20.96%)\\n🔻 CRCG 2倍做多CRCL ETF-Leve\", \"fed_section\": \"(没找到美联储动态段 ✗)\"}",
+  "started_at": "2026-11-05T14:34:07",
+  "finished_at": "2026-11-05T14:34:40",
+  "duration_s": 33.0
+}
