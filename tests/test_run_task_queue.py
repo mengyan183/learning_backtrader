@@ -521,18 +521,33 @@ def test_c5_backtest_dumps_per_symbol_features(monkeypatch, tmp_path):
     assert len(calls) == 6, calls
 
 
-def test_sync_positions_registered_bsk_removed():
-    """`sync_positions` 在、`bsk_*` **已删** ✓（2026-11-02 用户裁定）。
+def test_sync_positions_registered_bsk_update_present():
+    """`sync_positions` 在 ✓，`bsk_update` **也在** ✓（2026-11-05 修正）。
 
-    - `sync_positions`：验证 OKX 的 securities_mv/cash 拆分 ✓
-    - `bsk_update` / `bsk_status`：**删掉了** ✗ ——
-      实测 Mac 上根本没装 bsk（`[Errno 2] No such file or directory`）✗
-      ⇒ 这两个动作永远失败，留着只制造噪音 ✗
+    🔴 **前提变了** ✗ —— 2026-11-02 的裁定是「Mac 上没装 bsk ⇒ 删掉 bsk 动作」✗
+       但 2026-11-05 查明：**bsk 装着** ✓（`fetch_shoutu_history.py` 一直在用 ✗）
+       当时的 `[Errno 2] No such file or directory` 真正原因是
+       **launchd 的 PATH 不含 `~/.local/bin`** ✗
+       ⇒ 已用 `_find_bsk_bin()` **自动探测**解决 ✓（`FG_BSK` → which → 常见路径 ✗）
+
+    🔴 为什么现在**必须**有 `bsk_update` ✗：
+       `bsk` 的**写操作全部失败** ✗：
+         `click` / `evaluate` ⇒ `shared page control or observation changed`
+       而**只读操作全部成功** ✓（observe/snapshot/get-html/network ✗）
+       根因：`protocol ext 1.3 vs CLI 1.1` ⇒ **CLI 太旧** ✗
+       ⇒ 必须升级 CLI ✓（`bsk_update` 带代理跑 ✗）
+
+    ⚠️ `bsk_status` 仍然**不需要** ✗ —— `bsk_update` 内部已经查版本了 ✓
     """
     assert "sync_positions" in q.ACTIONS
     assert callable(q.ACTIONS["sync_positions"])
-    for name in ("bsk_update", "bsk_status"):
-        assert name not in q.ACTIONS, "%s 该删掉 ✗" % name
+    # 2026-11-05：`bsk_update` 恢复了 ✓
+    assert "bsk_update" in q.ACTIONS
+    assert callable(q.ACTIONS["bsk_update"])
+    # `bsk_status` 仍不需要 ✗（`bsk_update` 已含版本查询 ✓）
+    assert "bsk_status" not in q.ACTIONS
+    # 自动探测函数必须存在 ✓（否则 launchd 下又找不到 ✗）
+    assert callable(getattr(q, "_find_bsk_bin", None))
 
 
 def test_unknown_action_hints_code_not_ingested():

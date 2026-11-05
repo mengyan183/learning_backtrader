@@ -403,6 +403,111 @@ def _act_diagnose_symbols(params):
                     "`fetch_ok=False` ⇒ 看 `fetch_error` ✓"}
 
 
+def _find_bsk_bin():
+    """**自动探测 `bsk` 路径** ✓（2026-11-05）。
+
+    🔴 为什么不能直接用 `"bsk"` ✗：
+       launchd 的 `PATH` **不含 `~/.local/bin`** ✗
+       实测 `fetch_fedwatch_bsk.py` 在 Mac 上报
+         `session_start rc=-1  **找不到 bsk** ✗`
+       而 bsk 确实装着 ✓
+    """
+    env = os.environ.get("FG_BSK")
+    if env and os.path.exists(env):
+        return env
+    import shutil
+    w = shutil.which("bsk")
+    if w:
+        return w
+    home = os.path.expanduser("~")
+    cands = [
+        os.path.join(home, ".local", "bin", "bsk"),
+        "/opt/homebrew/bin/bsk",
+        "/usr/local/bin/bsk",
+        os.path.join(home, ".npm-global", "bin", "bsk"),
+    ]
+    import glob as _g
+    cands += sorted(_g.glob(os.path.join(
+        home, "Library", "Python", "*", "bin", "bsk")), reverse=True)
+    for c in cands:
+        if os.path.exists(c) and os.access(c, os.X_OK):
+            return c
+    return "bsk"
+
+
+BSK_BIN = _find_bsk_bin()
+
+
+def _act_bsk_update(params):
+    """**升级 bsk CLI** ✓（2026-11-05 用户要求）。
+
+    🔴 为什么必须升级 ✗：
+       实测 bsk 的**写操作全部失败** ✗：
+         `click`     rc=1  `shared page control or observation changed` ✗
+         `evaluate`  rc=1  同上 ✗
+       而**只读操作全部成功** ✓（observe/snapshot/get-html/network/tab ✗）
+       根因：`bsk status` 长期警告：
+         `protocol ext 1.3 vs CLI 1.1 (app ext v0.3.3, CLI v0.2.0)`
+       ⇒ **写操作需要 ext 1.3 的新协议** ✗ ⇒ 必须升级 CLI ✓
+
+    🔴 **必须先配代理** ✗（用户特别叮嘱 ✗）：
+       `bsk update` 要下载 npm 包 ✗ 而**国内直连 npm 经常超时** ✗
+       ⇒ 显式注入 `HTTP_PROXY` / `HTTPS_PROXY`（Mac 上是 `127.0.0.1:7890` ✗）
+
+    参数：
+      - `proxy`：默认 `http://127.0.0.1:7890` ✓
+      - `dry_run`：`1` = 只查不升 ✓
+    """
+    proxy = str(params.get("proxy") or "http://127.0.0.1:7890")
+    dry = str(params.get("dry_run") or "").lower() in ("1", "true", "yes")
+
+    # ① 升级前版本 ✓
+    def _ver():
+        try:
+            r = subprocess.run([BSK_BIN, "--version"], capture_output=True,
+                               text=True, encoding="utf-8",
+                               errors="replace", timeout=30)
+            return (r.stdout or r.stderr or "").strip()[:120]
+        except Exception as exc:            # noqa: BLE001
+            return "查不到：%s" % str(exc)[:100]
+
+    before = _ver()
+
+    # ② **带代理**跑 update ✓（用户明确要求 ✗）
+    env = dict(os.environ)
+    for k in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY",
+              "http_proxy", "https_proxy", "all_proxy"):
+        env[k] = proxy
+    # ⚠️ npm registry 走代理时**不要**把 localhost 也代理掉 ✗
+    env.setdefault("NO_PROXY", "127.0.0.1,localhost,::1")
+    env.setdefault("no_proxy", "127.0.0.1,localhost,::1")
+
+    cmd = [BSK_BIN, "update"] + (["--check"] if dry else [])
+    t0 = time.time()
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace",
+                           timeout=900, env=env, cwd=ROOT)
+        rc, so, se = r.returncode, r.stdout or "", r.stderr or ""
+    except FileNotFoundError:
+        return {"ok": False, "error": "**找不到 bsk** ✗（设 FG_BSK ✗）"}
+    except subprocess.TimeoutExpired:
+        rc, so, se = 124, "", "超过 900 秒 ✗（代理不通？✗）"
+    secs = time.time() - t0
+
+    after = _ver()
+    return {"ok": rc == 0, "rc": rc, "seconds": round(secs, 1),
+            "proxy": proxy, "dry_run": dry,
+            "version_before": before, "version_after": after,
+            "changed": before != after,
+            "stdout": so[-3000:], "stderr": se[-1500:],
+            "note": ("⚠️ 升级后要**重启 daemon** 才生效 ✗"
+                     "（`bsk daemon restart` 或重启 Chrome ✗）；"
+                     "⚠️ 升级可能改变 CLI 行为 ✗ "
+                     "`fetch_shoutu_history.py` 依赖它 ✓ 要回归 ✓")
+            if rc == 0 and not dry else ""}
+
+
 def _act_update_crypto(params):
     """**补抓加密数据** ✓（2026-11-03 用户要求）。
 
@@ -1923,6 +2028,7 @@ ACTIONS = {
     "diagnose_data": _act_diagnose_data,
     "run_fetch_step": _act_run_fetch_step,
     "update_crypto": _act_update_crypto,
+    "bsk_update": _act_bsk_update,
     "diagnose_symbols": _act_diagnose_symbols,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
