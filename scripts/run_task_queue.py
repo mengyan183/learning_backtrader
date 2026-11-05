@@ -442,6 +442,93 @@ def _find_bsk_bin():
 BSK_BIN = _find_bsk_bin()
 
 
+def _act_test_futu_fed(params):
+    """**验证富途 OpenD 的 `get_fed_watch_target_rate`** ✓（2026-11-05）。
+
+    🔴 为什么这是 CME 的最优替代 ✗：
+       搜到 moomoo/futu 开放平台有**官方接口** ✓：
+         `OpenQuoteContext.get_fed_watch_target_rate()`
+       文档原文：「获取 CME FedWatch 工具的联邦基金目标利率概率预测数据。
+                 数据来源于 CME 联邦基金期货定价。」
+       返回字段：
+         `meeting_date`  str    FOMC 会议日期 "yyyy-MM-dd"
+         `target_range`  str    目标利率区间，如 "4.25% ~ 4.50%"
+         `probability`   float  市场预期概率(%)，如 92.13
+
+    ✅ 为什么比爬虫好 ✗：
+       - **官方接口** ✓ 不会因为 CME 改版而失效 ✓
+       - **项目已在用 futu** ✓（`fetch_trades_futu.py` / `sync_positions.py` ✗）
+         ⇒ **零新增依赖** ✓ 零新增凭证 ✓
+       - **不需要浏览器** ✗ 不需要代理 ✗ 不需要 cookie ✗
+
+    ⚠️ 前提：**OpenD 必须在跑** ✗（`127.0.0.1:11111` ✗）
+
+    参数：`host`（默认 127.0.0.1 ✗）、`port`（默认 11111 ✗）、`write`（1=写盘 ✗）
+    """
+    host = str(params.get("host") or "127.0.0.1")
+    port = int(params.get("port") or 11111)
+    write = str(params.get("write") or "").lower() in ("1", "true", "yes")
+
+    out = {"host": host, "port": port}
+    try:
+        import futu
+        out["futu_version"] = getattr(futu, "__version__", "?")
+        from futu import OpenQuoteContext
+    except ImportError as exc:
+        return {"ok": False, "error": "**没装 futu** ✗：%s" % str(exc)[:120]}
+
+    has = hasattr(OpenQuoteContext, "get_fed_watch_target_rate")
+    out["has_method"] = has
+    if not has:
+        out["fed_methods"] = [m for m in dir(OpenQuoteContext)
+                              if "fed" in m.lower()]
+        out["ok"] = False
+        out["error"] = ("**这个 futu 版本没有 `get_fed_watch_target_rate`** ✗ "
+                        "⇒ 需要升级 `pip install -U futu-api` ✗")
+        return out
+
+    ctx = None
+    try:
+        ctx = OpenQuoteContext(host=host, port=port)
+        ret, data = ctx.get_fed_watch_target_rate()
+        out["ret"] = str(ret)[:80]
+        # `RET_OK` 的字符串形式是 `RET_OK` ✗ 用 `str` 判断更稳 ✓
+        ok = ("RET_OK" in str(ret))
+        out["ok"] = ok
+        if not ok:
+            out["error"] = "接口返回非 OK：%s ✗" % str(ret)[:200]
+            return out
+        try:
+            out["columns"] = list(data.columns)
+            out["rows"] = int(len(data))
+            out["head"] = data.head(20).to_dict(orient="records")
+        except Exception:                   # noqa: BLE001
+            out["raw"] = str(data)[:1500]
+            return out
+
+        # 可选写盘 ✓（统一成 `fedwatch.csv` 的列名 ✗ 让 `fed.py` 直接消费 ✓）
+        if write and len(data):
+            import pandas as _pd
+            d = data.copy()
+            # 取**最近一次会议**的分布 ✓ 聚合成 ease/hold/hike ✓
+            # ⚠️ 这里只做**原始落盘** ✓ 聚合逻辑等看清数据结构再写 ✗
+            p = os.path.join(ROOT, "Data", "raw", "futu_fedwatch_raw.csv")
+            d.to_csv(p, index=False, encoding="utf-8")
+            out["written"] = os.path.relpath(p, ROOT)
+    except Exception as exc:                # noqa: BLE001
+        out["ok"] = False
+        out["error"] = "%s: %s" % (type(exc).__name__, str(exc)[:300])
+        out["hint"] = ("⚠️ 若是连接失败 ⇒ **OpenD 没开** ✗ "
+                       "（`~/futu_OpenD/OpenD` 或 GUI 版 ✗）")
+    finally:
+        if ctx is not None:
+            try:
+                ctx.close()
+            except Exception:               # noqa: BLE001
+                pass
+    return out
+
+
 def _act_probe_url(params):
     """**用 bsk 探测任意 URL** ✓（2026-11-05 用户要求分析 `cmegroup.cn`）。
 
@@ -2284,6 +2371,7 @@ ACTIONS = {
     "restart_queue": _act_restart_queue,
     "analyze_png": _act_analyze_png,
     "probe_url": _act_probe_url,
+    "test_futu_fed": _act_test_futu_fed,
     "diagnose_symbols": _act_diagnose_symbols,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
