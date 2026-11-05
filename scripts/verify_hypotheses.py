@@ -1637,6 +1637,232 @@ def verify_h041(df):
     }
 
 
+def _daily_ret():
+    """组合**日收益绝对值** ✓（`accounts.net_value` 按日求和 → pct_change ✗）。"""
+    import pandas as _pd
+    a = _read_accounts()
+    if a is None or "net_value" not in a.columns:
+        return None
+    g = (a.dropna(subset=["net_value"]).groupby("date", as_index=False)
+         ["net_value"].sum().sort_values("date"))
+    if len(g) < 3:
+        return None
+    g["ret"] = g["net_value"].pct_change()
+    g["abs_ret"] = g["ret"].abs()
+    return g.dropna(subset=["ret"])
+
+
+def _share(positions, symbol):
+    """**单标的日度占比** ✓（分母 = 当日全部 `market_value` 之和 ✗）。"""
+    import pandas as _pd
+    d = positions.copy()
+    d["market_value"] = _pd.to_numeric(d["market_value"], errors="coerce")
+    d = d.dropna(subset=["market_value"])
+    d = d[d["market_value"] > 0]
+    tot = d.groupby("date")["market_value"].transform("sum")
+    d = d.assign(share=d["market_value"] / tot)
+    s = d[d["symbol"].astype(str).str.upper() == symbol.upper()]
+    return s.groupby("date", as_index=False)["share"].max()
+
+
+def verify_h042(df):
+    """H-042：fg≥68 的触发率**不高于** fg<60 ⇒ 成立。
+
+    判据（原文）：
+      若高值箱（≥68）触发率 **≥** 低值箱（<60）触发率，
+      或高值箱在扩样后出现 **≥3 行 True**，则假设不成立。
+    """
+    f = df.copy()
+    if "fg_index" not in f.columns:
+        return {"passed": False, "status": "pending", "reason": "无 fg_index 列"}
+    cb = f.get("circuit_breaker")
+    ex = f.get("extreme")
+    if cb is None and ex is None:
+        return {"passed": False, "status": "pending",
+                "reason": "无 circuit_breaker / extreme 列"}
+    trig = None
+    for c in (cb, ex):
+        if c is None:
+            continue
+        v = c.fillna(False).astype(bool)
+        trig = v if trig is None else (trig | v)
+    d = f.assign(_t=trig).dropna(subset=["fg_index"])
+    hi = d[d["fg_index"] >= 68]
+    lo = d[d["fg_index"] < 60]
+    if len(hi) < 1 or len(lo) < 1:
+        return {"passed": False, "status": "pending",
+                "reason": "分箱样本不足：≥68 有 %d 行 / <60 有 %d 行"
+                          % (len(hi), len(lo))}
+    r_hi = float(hi["_t"].mean())
+    r_lo = float(lo["_t"].mean())
+    n_true_hi = int(hi["_t"].sum())
+    passed = (r_hi < r_lo) and (n_true_hi < 3)
+    return {
+        "passed": bool(passed),
+        "rate_hi": round(r_hi, 4), "rate_lo": round(r_lo, 4),
+        "n_hi": int(len(hi)), "n_lo": int(len(lo)),
+        "true_hi": n_true_hi,
+        "note": ("fg≥68 触发率 %.1f%%（%d/%d）vs fg<60 %.1f%%（%d/%d）✗ "
+                 "高值箱 True 共 %d 行 ✗ ⇒ %s ✗"
+                 % (r_hi * 100, n_true_hi, len(hi),
+                    r_lo * 100, int(lo["_t"].sum()), len(lo), n_true_hi,
+                    "成立" if passed else "不成立")),
+    }
+
+
+def verify_h049(df):
+    """H-049：GDXU 占比 >20% 期间组合波动**显著更高** ⇒ 成立。
+
+    判据（原文）：
+      若 GDXU 占比 >20% 期间组合日收益绝对值均值**不显著高于** ≤20% 期间 ⇒ 不成立。
+    显著性：单侧 **Mann-Whitney U**（`p < 0.05` ✗）—— 不假设正态 ✓
+    """
+    from scipy import stats as _st
+    pos = _read_positions()
+    ret = _daily_ret()
+    if pos is None or ret is None:
+        return {"passed": False, "status": "pending",
+                "reason": "缺 positions.csv 或 accounts.net_value"}
+    sh = _share(pos, "GDXU")
+    if not len(sh):
+        return {"passed": False, "status": "pending",
+                "reason": "positions.csv 里没有 GDXU"}
+    m = sh.merge(ret[["date", "abs_ret"]], on="date", how="inner")
+    if len(m) < 10:
+        return {"passed": False, "status": "pending",
+                "reason": "交集只有 %d 天（需 ≥10）" % len(m)}
+    hi = m[m["share"] > 0.20]["abs_ret"].dropna()
+    lo = m[m["share"] <= 0.20]["abs_ret"].dropna()
+    if len(hi) < 5 or len(lo) < 5:
+        return {"passed": False, "status": "pending",
+                "reason": ("样本不足：>20%% 组 %d 天 / ≤20%% 组 %d 天（各需 ≥5 ✗）"
+                           % (len(hi), len(lo))),
+                "share_max": round(float(m["share"].max()), 4)}
+    u = _st.mannwhitneyu(hi, lo, alternative="greater")
+    p = float(u.pvalue)
+    passed = p < 0.05
+    return {
+        "passed": bool(passed),
+        "mean_hi": round(float(hi.mean()), 4),
+        "mean_lo": round(float(lo.mean()), 4),
+        "n_hi": int(len(hi)), "n_lo": int(len(lo)), "p": round(p, 4),
+        "note": ("GDXU>20%% 组日|收益|均值 %.2f%%（n=%d）vs ≤20%% %.2f%%（n=%d）✗ "
+                 "Mann-Whitney 单侧 p=%.4f ⇒ %s ✗"
+                 % (hi.mean() * 100, len(hi), lo.mean() * 100, len(lo), p,
+                    "成立" if passed else "不成立")),
+    }
+
+
+def verify_h017(df):
+    """H-017：杠杆 ETF 浮亏贡献**高于** BTC ⇒ 成立（**已泛化** ✗）。
+
+    🔴 原文写死「2026-10-03↔2026-10-07」✗ —— 那是**当时只有那两天快照** ✗
+       现在有 27 天 ✓ ⇒ **用所有相邻交易日配对** ✓ 更稳 ✓
+
+    判据（泛化后）：
+      每个相邻配对里，若 `|BTC 变动率| ≥ 5 只杠杆 ETF 变动率的中位数`
+      ⇒ 该配对**不支持**假说 ✓
+      **不支持的比例 > 50%** ⇒ 假说被证伪 ✓
+    """
+    pos = _read_positions()
+    if pos is None or "market_value" not in pos.columns:
+        return {"passed": False, "status": "pending",
+                "reason": "缺 positions.csv 或 market_value 列"}
+    import pandas as _pd
+    d = pos.copy()
+    d["market_value"] = _pd.to_numeric(d["market_value"], errors="coerce")
+    d = d.dropna(subset=["market_value"])
+    piv = d.pivot_table(index="date", columns="symbol",
+                        values="market_value", aggfunc="sum").sort_index()
+    if "BTC" not in piv.columns:
+        return {"passed": False, "status": "pending",
+                "reason": "positions.csv 里没有 BTC ✗"}
+    lev = [c for c in ("AXTX", "CONL", "CRCG", "GDXU", "YINN")
+           if c in piv.columns]
+    if not lev:
+        return {"passed": False, "status": "pending",
+                "reason": "5 只杠杆 ETF 一只都没有 ✗"}
+    chg = piv.pct_change()
+    rows = []
+    for i in range(1, len(chg)):
+        b = chg["BTC"].iloc[i]
+        med = chg[lev].iloc[i].median()
+        if _pd.isna(b) or _pd.isna(med):
+            continue
+        rows.append({"date": chg.index[i], "btc": float(b),
+                     "lev_med": float(med),
+                     "not_support": abs(float(b)) >= abs(float(med))})
+    if len(rows) < 5:
+        return {"passed": False, "status": "pending",
+                "reason": "有效配对只有 %d 个（需 ≥5）" % len(rows)}
+    n = len(rows)
+    n_ns = sum(1 for r in rows if r["not_support"])
+    rate_ns = n_ns / float(n)
+    passed = rate_ns <= 0.5        # 不支持的比例 ≤50% ⇒ 假说成立 ✓
+    return {
+        "passed": bool(passed),
+        "pairs": n, "not_support": n_ns, "not_support_rate": round(rate_ns, 4),
+        "samples": rows[:6],
+        "note": ("相邻配对 %d 个 ✗ 其中 `|BTC| ≥ 杠杆中位数` 的 %d 个（%.0f%%）"
+                 "⇒ %s ✗ **已泛化**：原文写死 10-03↔10-07 ✗ "
+                 "改为全部相邻配对 ✓"
+                 % (n, n_ns, rate_ns * 100,
+                    "成立" if passed else "不成立")),
+    }
+
+
+def verify_h022(df):
+    """H-022：杠杆标的浮亏幅度**大于** BTC 现货 ⇒ 成立（**已泛化** ✗）。
+
+    🔴 原文写死「2026-10-07 与 2026-10-08」✗ ⇒ 泛化成**每天** ✓
+
+    判据（泛化后）：
+      每天若 `|BTC 浮亏率| ≥ 全部杠杆标的最大浮亏率`
+      ⇒ 该日**不支持**假说 ✓
+      **不支持的比例 > 50%** ⇒ 假说被证伪 ✓
+    浮亏率 = `(price − cost) / cost` ✓（原文口径 ✓）
+    """
+    pos = _read_positions()
+    if pos is None or not {"price", "cost"}.issubset(pos.columns):
+        return {"passed": False, "status": "pending",
+                "reason": "缺 positions.csv 或 price/cost 列"}
+    import pandas as _pd
+    d = pos.copy()
+    for c in ("price", "cost"):
+        d[c] = _pd.to_numeric(d[c], errors="coerce")
+    d = d.dropna(subset=["price", "cost"])
+    d = d[d["cost"] > 0]
+    d = d.assign(loss=(d["price"] - d["cost"]) / d["cost"])
+    lev = ("AXTX", "CONL", "CRCG", "GDXU", "YINN")
+    rows = []
+    for dt, g in d.groupby("date"):
+        g = g.assign(_s=g["symbol"].astype(str).str.upper())
+        b = g[g["_s"] == "BTC"]["loss"]
+        lv = g[g["_s"].isin(lev)]["loss"]
+        if not len(b) or not len(lv):
+            continue
+        bv = float(b.min())
+        worst = float(lv.min())        # 最负的杠杆浮亏 ✓
+        rows.append({"date": dt, "btc": bv, "lev_worst": worst,
+                     "not_support": abs(bv) >= abs(worst)})
+    if len(rows) < 5:
+        return {"passed": False, "status": "pending",
+                "reason": "有效日期只有 %d 天（需 ≥5）" % len(rows)}
+    n = len(rows)
+    n_ns = sum(1 for r in rows if r["not_support"])
+    rate_ns = n_ns / float(n)
+    passed = rate_ns <= 0.5
+    return {
+        "passed": bool(passed),
+        "days": n, "not_support": n_ns, "not_support_rate": round(rate_ns, 4),
+        "samples": rows[:6],
+        "note": ("%d 天里 `|BTC 浮亏率| ≥ 杠杆最差` 的 %d 天（%.0f%%）⇒ %s ✗ "
+                 "**已泛化**：原文写死 10-07/10-08 ✗ 改为每天 ✓"
+                 % (n, n_ns, rate_ns * 100,
+                    "成立" if passed else "不成立")),
+    }
+
+
 CUSTOM = {
     # 🔴 2026-11-05 新实现 ✓（原来只在 PENDING 里登记 ✗ 永远 pending ✗）
     "H-009": (verify_h009,
@@ -1656,6 +1882,19 @@ CUSTOM = {
     "H-041": (verify_h041,
               "core_position 变化前后 fg_index 振幅缩小",
               "features.csv(core_position + fg_index)"),
+    # 🔴 2026-11-05 P0 批次 ✓（H-017/H-022 **已泛化** ✗ 不写死日期 ✓）
+    "H-017": (verify_h017,
+              "杠杆 ETF 浮亏贡献高于 BTC（相邻配对中位数比较 ✗）",
+              "Data/positions.csv(market_value)"),
+    "H-022": (verify_h022,
+              "杠杆标的浮亏幅度大于 BTC（每日浮亏率比较 ✗）",
+              "Data/positions.csv(price/cost)"),
+    "H-042": (verify_h042,
+              "fg≥68 触发率不高于 fg<60",
+              "features.csv(fg_index + circuit_breaker/extreme)"),
+    "H-049": (verify_h049,
+              "GDXU 占比>20% 期间组合波动显著更高",
+              "Data/positions.csv(market_value) + accounts.net_value"),
     "H-010": (verify_h010, "zone 由 fg_index 固定边界驱动且边界稳定（区间重叠率 ≤20%）",
               "fg_index + zone"),
     "H-012": (verify_h012, "布尔位触发依赖 fg_index 极值（>=80 或 <=35）",
@@ -1752,6 +1991,15 @@ HYPOTHESES = {
               "fields": CUSTOM["H-040"][2]},
     "H-041": {"kind": "custom", "desc": CUSTOM["H-041"][1],
               "fields": CUSTOM["H-041"][2]},
+    # 🔴 2026-11-05 P0 批次 ✓
+    "H-017": {"kind": "custom", "desc": CUSTOM["H-017"][1],
+              "fields": CUSTOM["H-017"][2]},
+    "H-022": {"kind": "custom", "desc": CUSTOM["H-022"][1],
+              "fields": CUSTOM["H-022"][2]},
+    "H-042": {"kind": "custom", "desc": CUSTOM["H-042"][1],
+              "fields": CUSTOM["H-042"][2]},
+    "H-049": {"kind": "custom", "desc": CUSTOM["H-049"][1],
+              "fields": CUSTOM["H-049"][2]},
     "H-010": {"kind": "custom", "desc": CUSTOM["H-010"][1],
               "fields": CUSTOM["H-010"][2]},
     "H-012": {"kind": "custom", "desc": CUSTOM["H-012"][1],
@@ -1809,8 +2057,8 @@ PENDING = {
     "H-008": ('杠杆标的占比 vs 累计盈亏日变动回归（≥40 交易日）', 'Data/positions.csv（本机仅 1 日快照，需 ≥40 交易日）'),
     # 🔴 2026-11-05：`H-009` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
     "H-011": ('信号升降期账户日均浮亏变化绝对值比较', 'Data/accounts.csv / Data/positions.csv（09-25/09-29 快照缺失）'),
-    "H-017": ('杠杆 ETF 组 vs BTC 组市值变动率比较（10-03↔10-07）', 'Data/positions.csv（本机仅 2026-09-22 一日快照）'),
-    "H-022": ('5 只杠杆 ETF vs BTC-USDT 浮亏率比较（10-07/10-08）', 'Data/positions.csv（本机仅 2026-09-22 一日快照）'),
+    # 🔴 2026-11-05：`H-017` / `H-022` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
+    #    （原判据写死 10-03↔10-07 / 10-07/10-08 ✗ 已泛化成「所有相邻配对/每天」✓）
     "H-023": ('半凯利仓位 vs 规则仓位 walk-forward 净值回测', '胜率/盈亏比估计（样本 <60 日，置信度不足）'),
     # 🔴 2026-11-05：`H-040` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
     # 🔴 2026-11-05：`H-028` / `H-038` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
