@@ -468,8 +468,14 @@ def _act_rerun_brief(params):
     # ① pipeline ✓
     if not skip:
         t0 = time.time()
+        # 🔴 2026-11-05：**必须显式加 sys.path** ✗
+        #    实测报 `[warn] 有效敞口计算失败：No module named 'fg_system'` ✗
+        #    因为 `python -c` 的 `sys.path[0]` 是 `""`（cwd ✗）
+        #    而 `cwd=ROOT` 下 `fg_system` **应该能找到** ✗ 但被别的
+        #    路径顺序干扰 ✗ ⇒ 显式 insert ✓
         r = subprocess.run(
             [sys.executable, "-c",
+             "import sys; sys.path.insert(0, '.'); "
              "from fg_system import pipeline; pipeline.run(write=True)"],
             capture_output=True, text=True, encoding="utf-8",
             errors="replace", timeout=900, cwd=ROOT)
@@ -489,16 +495,39 @@ def _act_rerun_brief(params):
         [sys.executable, "scripts/invest_research.py", "--dry-run"],
         capture_output=True, text=True, encoding="utf-8",
         errors="replace", timeout=1200, cwd=ROOT)
-    brief = (r.stdout or "").strip()
+    # 🔴 2026-11-05 **关键**：`--dry-run` 的 **stdout 只有运行日志** ✗
+    #    实测 stdout 只有 1083 字（`[warn]` + `简报已写入: ...` ✗）
+    #    而**完整简报写到了 `Data/invest_brief_<日期>.md`** ✓
+    #    ⇒ 必须**读那个 md 文件** ✗ 不能只取 stdout ✗
+    brief = ""
+    md_path = ""
+    import glob as _g2
+    cands = sorted(_g2.glob(os.path.join(ROOT, "Data", "invest_brief_*.md")),
+                   key=os.path.getmtime, reverse=True)
+    if cands:
+        md_path = cands[0]
+        try:
+            brief = open(md_path, encoding="utf-8",
+                         errors="replace").read()
+        except OSError:
+            brief = ""
+    if not brief:
+        brief = (r.stdout or "").strip()
+
     out["steps"]["brief"] = {
         "rc": r.returncode, "seconds": round(time.time() - t0, 1),
-        "len": len(brief), "stderr": (r.stderr or "")[-500:],
+        "len": len(brief), "md": os.path.relpath(md_path, ROOT) if md_path else "",
+        "stdout_len": len(r.stdout or ""),
+        "stderr": (r.stderr or "")[-500:],
     }
     out["ok"] = r.returncode == 0
-    out["brief"] = brief[-9000:] if brief else "(空 ✗)"
+    out["brief"] = brief[-12000:] if brief else "(空 ✗)"
     # 关键：把「美联储动态」那一段单独摘出来 ✓（用户最关心 ✗）
-    m = re.search(r"🏛️?\s*美联储动态(.{0,1200})", brief, re.S)
-    out["fed_section"] = (m.group(0)[:1200] if m else "(没找到美联储动态段 ✗)")
+    m = re.search(r"美联储动态(.{0,1500})", brief, re.S)
+    out["fed_section"] = (m.group(0)[:1500] if m else "(没找到美联储动态段 ✗)")
+    # 顺带报数据日 ✓
+    m2 = re.search(r"数据日[:：]\s*(\d{4}-\d{2}-\d{2})", brief)
+    out["data_date"] = (m2.group(1) if m2 else "?")
     return out
 
 
