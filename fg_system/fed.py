@@ -273,20 +273,27 @@ def fed_brief_text(ctx):
         ctx["last_decision_txt"],
         ctx["outlook_txt"],
     ]
+    # 🔴 2026-11-05 用户要求：**日期必须标注时区** ✗
+    #    三处来源都是**美东官方日程**（`config.FOMC_MEETINGS_2026` /
+    #    `MACRO_EVENTS_2026` ✗ 来自 federalreserve.gov / FRED ✗）
+    #    ⇒ 标「美东」✓
     if ctx["next_meeting"]:
-        w = ("⚠️ 已进入 FOMC 事件窗口（%d 天内开会）" % ctx["days_to_meeting"]
+        w = ("⚠️ 已进入 FOMC 事件窗口（%d 天内开会，美东）"
+             % ctx["days_to_meeting"]
              if ctx["event_window"] else
-             "下次 FOMC：%s（还有 %d 天）" % (ctx["next_meeting"], ctx["days_to_meeting"]))
+             "下次 FOMC：%s 美东（还有 %d 天）"
+             % (ctx["next_meeting"], ctx["days_to_meeting"]))
         parts.append(w)
     if ctx["next_minutes"]:
-        parts.append("纪要发布：%s（%d 天后）" % (ctx["next_minutes"], ctx["days_to_minutes"]))
+        parts.append("纪要发布：%s 美东（%d 天后）"
+                     % (ctx["next_minutes"], ctx["days_to_minutes"]))
     if ctx["macro_event"]:
-        w = ("⚠️ 宏观事件窗口（%s 明日发布）" % ctx["macro_event"]
+        w = ("⚠️ 宏观事件窗口（%s 明日发布，美东）" % ctx["macro_event"]
              if ctx["macro_window"] and ctx["days_to_macro"] == 1
-             else "⚠️ 宏观事件窗口（%s %d 天后发布，避免重仓押注方向）"
+             else "⚠️ 宏观事件窗口（%s %d 天后发布，美东，避免重仓押注方向）"
              % (ctx["macro_event"], ctx["days_to_macro"])
              if ctx["macro_window"]
-             else "下次宏观数据：%s（%s，%d 天后）"
+             else "下次宏观数据：%s（%s 美东，%d 天后）"
              % (ctx["macro_event"], ctx["macro_date"], ctx["days_to_macro"]))
         parts.append(w)
     if ctx["fw_meeting"]:
@@ -296,10 +303,13 @@ def fed_brief_text(ctx):
         _src = ctx.get("fw_source") or ""
         _tag = (" · **Kalshi 兜底** ✗" if "kalshi" in str(_src).lower()
                 else "")
-        fw = ("市场预期（CME FedWatch %s%s）："
+        # 🔴 2026-11-05：`fw_date` 来自 `fedwatch.csv` 的 `date` 列 ✗
+        #    而富途版写的是 `date.today()` ✗ ⇒ **北京时间** ✓
+        #    （区别于 FOMC / 纪要 / 宏观日历的**美东** ✗）
+        fw = ("市场预期（CME FedWatch %s 北京 · 会议 %s 美东%s）："
               "维持 %.1f%% / 加息25bp %.1f%% / 降息 %.1f%%")
-        fw = fw % (ctx["fw_date"] or "?", _tag,
-                   ctx["fw_hold"], ctx["fw_hike"], ctx["fw_ease"])
+        fw = fw % (ctx["fw_date"] or "?", ctx["fw_meeting"] or "?",
+                   _tag, ctx["fw_hold"], ctx["fw_hike"], ctx["fw_ease"])
         if ctx["fw_delta_1w"] is not None:
             d = ctx["fw_delta_1w"]
             arrow = "↑" if d > 0.05 else ("↓" if d < -0.05 else "→")
