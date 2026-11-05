@@ -153,6 +153,33 @@ def load_existing():
     return a, p
 
 
+def fill_day_pnl(accounts):
+    """**用 `net_value` 的日差分填 `day_pnl`** ✓（2026-11-05 用户要求）。
+
+    🔴 为什么需要 ✗：
+       实测 `accounts.csv` 的 `day_pnl` 列 **只有 1/54 行有值** ✗
+       而 `grep day_pnl scripts/sync_positions.py` 只命中**表头定义**一行 ✗
+       ⇒ **这一列从来没被赋值过** ✗ 那 1 行是历史遗留 ✗
+
+    ⇒ `H-006` 要「账户累计盈亏**日差分** × fg_index 的 Spearman」✗
+      虽然可以用 `net_value` 现算 ✗ 但**留着空列会误导** ✗
+      ⇒ 每天写入 ✓ 让下游直接用 ✓
+
+    ⚠️ 按 **`account` 分组** 再 diff ✗（有 `stock` / `crypto` 两个账户 ✗
+       混在一起 diff 会算出跨账户的假跳变 ✗）
+    """
+    need = {"date", "account", "net_value"}
+    if not need.issubset(accounts.columns) or not len(accounts):
+        return accounts
+    d = accounts.copy()
+    d["_nv"] = pd.to_numeric(d["net_value"], errors="coerce")
+    d = d.sort_values(["account", "date"], kind="stable")
+    # 只在**同账户内**做差分 ✓ 首行自然为 NaN ✓
+    d["day_pnl"] = d.groupby("account", sort=False)["_nv"].diff()
+    return d.drop(columns=["_nv"]).sort_values(["date", "account"],
+                                               kind="stable")
+
+
 def write_snapshot(accounts, positions):
     """原子写（tmp + rename），追加当日行。"""
     tmp_a, tmp_p = config.ACCOUNTS_PATH + ".tmp", config.POSITIONS_PATH + ".tmp"
@@ -539,7 +566,8 @@ def main():
                   f"（account={r['account']}），中止写盘。")
             return 1
 
-    write_snapshot(accounts, positions)
+    # 🔴 2026-11-05：**写盘前填 `day_pnl`** ✓（原来那列从来没人赋值 ✗）
+    write_snapshot(fill_day_pnl(accounts), positions)
     print(f"[sync] 已写入：accounts {len(accounts)} 行（新增 {new_a}）"
           f"/ positions {len(positions)} 行（新增 {new_p}）")
     return 0
