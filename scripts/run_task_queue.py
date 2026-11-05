@@ -438,6 +438,153 @@ def _find_bsk_bin():
 BSK_BIN = _find_bsk_bin()
 
 
+def _act_analyze_png(params):
+    """**分析截图的「文字密度」** ✓（2026-11-05 用户要求「交给 Mac 的 AI 分析」）。
+
+    🔴 为什么用密度而不是 OCR ✗：
+       Mac 上**不一定有 tesseract** ✗ 而 PIL **一定有**（pandas 的依赖链里 ✗）
+       而「有没有数据表格」这个判断 ✗ **密度就够了** ✓：
+         - 数据表格 = **大量密集小字** ✗ ⇒ 暗像素比例高 ✓
+         - 只有框架/图片 = **大片空白** ✗ ⇒ 暗像素比例低 ✓
+
+    【怎么判】
+      ① 全图暗像素比例（`< 2%` ⇒ 基本是空白 ✗）
+      ② 切成 4×4 网格，**每格的暗像素比例** ✓
+         ⇒ 表格通常出现在**中下部**，且**连续几格都很高** ✓
+      ③ **横向连续高密度行数**（表格是横向排列的 ✗）
+      ④ 与「典型表格页」的经验阈值比对 ✓
+
+    参数：`path`（默认 `dist/cme.png`）、`grid`（默认 4）
+    """
+    path = str(params.get("path") or "dist/cme.png")
+    if not os.path.isabs(path):
+        path = os.path.join(ROOT, path)
+    grid = int(params.get("grid") or 4)
+    if not os.path.exists(path):
+        return {"ok": False, "error": "文件不存在：%s ✗" % path}
+
+    try:
+        from PIL import Image
+    except ImportError:
+        return {"ok": False,
+                "error": "**没有 PIL** ✗ 装 `pip install pillow` ✗"}
+
+    try:
+        im = Image.open(path).convert("L")   # 灰度 ✓
+    except Exception as exc:                # noqa: BLE001
+        return {"ok": False, "error": "打开失败：%s" % str(exc)[:150]}
+
+    w, h = im.size
+    px = im.load()
+    # 全图暗像素比例 ✓（阈值 128 ✗ 保守一点用 160 抓浅色字 ✓）
+    dark = 0
+    total = 0
+    step = max(1, min(w, h) // 600)         # 抽样加速 ✓（大图别逐像素 ✗）
+    for y in range(0, h, step):
+        for x in range(0, w, step):
+            if px[x, y] < 160:
+                dark += 1
+            total += 1
+    ratio = (dark / total) if total else 0.0
+
+    # 网格密度 ✓
+    cells = []
+    for gy in range(grid):
+        row = []
+        for gx in range(grid):
+            x0, x1 = gx * w // grid, (gx + 1) * w // grid
+            y0, y1 = gy * h // grid, (gy + 1) * h // grid
+            d = t = 0
+            for y in range(y0, y1, step):
+                for x in range(x0, x1, step):
+                    if px[x, y] < 160:
+                        d += 1
+                    t += 1
+            row.append(round((d / t) if t else 0.0, 4))
+        cells.append(row)
+
+    # 判据 ✓
+    max_cell = max((max(r) for r in cells), default=0.0)
+    hot_rows = sum(1 for r in cells if max(r) > 0.08)
+    verdict = (
+        "✗ **全图几乎空白**（暗像素 %.2f%%）⇒ 页面没渲染出内容 ✗"
+        % (ratio * 100) if ratio < 0.02 else
+        "⚠️ **只有零散文字**（%.1f%%，最高格 %.1f%%）"
+        "⇒ 像「导航+标题」✗ 不像数据表格 ✗"
+        % (ratio * 100, max_cell * 100) if max_cell < 0.10 else
+        "✓ **有密集文字区**（%.1f%%，最高格 %.1f%%，%d 行高密度）"
+        "⇒ **可能有数据表格** ✓ 值得再看 ✓"
+        % (ratio * 100, max_cell * 100, hot_rows))
+
+    return {"ok": True, "path": path, "size_kb": round(
+                os.path.getsize(path) / 1024.0, 1),
+            "image": {"w": w, "h": h},
+            "dark_ratio": round(ratio, 4),
+            "grid": grid, "cells": cells,
+            "max_cell": max_cell, "hot_rows": hot_rows,
+            "verdict": verdict,
+            "note": "⚠️ 密度只能判「有没有密集文字」✗ "
+                    "不能判「是不是 FedWatch 数据」✗ "
+                    "⇒ 若显示「有密集文字区」⇒ 需人工看图确认 ✓"}
+
+
+def _act_restart_queue(params):
+    """**重启任务队列** ✓（2026-11-05 用户要求）。
+
+    🔴 为什么必须重启 ✗：
+       `install_daily_plist` 只**拷贝 plist 文件** ✗ **不重启进程** ✗
+       而任务队列是**常驻进程**（`state = running` ✗）
+       ⇒ **新补的代理（`FG_LLM_PROXY` 等）不会生效** ✗
+       ⇒ 实测：plist 里已有 `http://127.0.0.1:7890` ✓
+         但进程环境里没有 ✗
+
+    🔴 **不能直接 `kickstart -k`** ✗：
+       那会**立即杀掉**本进程 ✗ ⇒ 本动作**自己的结果写不进去** ✗
+       ⇒ 用 `nohup` 起一个**延迟 5 秒**的脚本 ✓
+         它先等本动作写完 result ✓ 再 `kickstart -k` ✓
+
+    ⚠️ 重启后**新进程会读新 plist** ✓ 代理生效 ✓
+    ⚠️ 若队列里有**正在执行**的任务 ⇒ 会被杀 ✗（`delay` 参数可调 ✗）
+    """
+    label = "com.xingguo.fg-task-queue"
+    delay = int(params.get("delay") or 5)
+    uid = os.getuid() if hasattr(os, "getuid") else 501
+    target = "gui/%s/%s" % (uid, label)
+
+    # 写一个延迟脚本 ✓（避免杀自己 ✗）
+    sh = os.path.join(ROOT, "dist", "_restart_queue.sh")
+    os.makedirs(os.path.dirname(sh), exist_ok=True)
+    with open(sh, "w", encoding="utf-8") as f:
+        f.write("#!/bin/bash\n"
+                "sleep %d\n"
+                "launchctl kickstart -k %s >> /tmp/fg_task_queue.log 2>&1\n"
+                "echo \"[restart] $(date '+%%F %%T') kickstart done\" "
+                ">> /tmp/fg_task_queue.log\n" % (delay, target))
+    os.chmod(sh, 0o755)
+
+    # 记录重启前的环境 ✓
+    before = {k: (os.environ.get(k) or "")
+              for k in ("FG_LLM_PROXY", "HTTP_PROXY", "HTTPS_PROXY")}
+
+    try:
+        subprocess.Popen(["nohup", "bash", sh],
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+        ok, err = True, ""
+    except Exception as exc:                # noqa: BLE001
+        ok, err = False, "%s: %s" % (type(exc).__name__, str(exc)[:150])
+
+    return {"ok": ok, "error": err, "label": label, "target": target,
+            "delay_seconds": delay, "script": os.path.relpath(sh, ROOT),
+            "env_before_restart": before,
+            "note": "⚠️ %d 秒后重启 ✓ 重启后**新进程会读新 plist** ✓"
+                    "代理生效 ✓；"
+                    "⚠️ 队列里正在跑的任务会被杀 ✗ "
+                    "⇒ 下次拉取时看 `run_fetch_step` 的 `has_proxy` ✓"
+                    % delay}
+
+
 def _act_bsk_update(params):
     """**升级 bsk CLI** ✓（2026-11-05 用户要求）。
 
@@ -2043,6 +2190,8 @@ ACTIONS = {
     "run_fetch_step": _act_run_fetch_step,
     "update_crypto": _act_update_crypto,
     "bsk_update": _act_bsk_update,
+    "restart_queue": _act_restart_queue,
+    "analyze_png": _act_analyze_png,
     "diagnose_symbols": _act_diagnose_symbols,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
