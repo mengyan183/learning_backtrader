@@ -1,0 +1,11 @@
+{
+  "id": "t-20261105-161059-sync_positions",
+  "action": "sync_positions",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"note\": \"rc=1 多半是恒等式校验拦住了（sec_mv+cash != net）✗\", \"stdout\": \"[sync] FG_SYNC_MODE=live：动态同步 2026-11-04（美东交易日口径，16:00 ET 为收盘线）\\n2026-11-05 16:12:26,715 | 73428 | 140704481268160 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7524020793488881288(1) context=<futu.trade.open_trade_context.OpenSecTradeContext object at 0x7fd78b1b6440>\\n[futu] 使用账户 acc_id=281756479002309614\\n2026-11-05 16:12:26,905 | 73428 | 123145409024000 | [open_context_base.py:521] on_disconnect: Disconnected: conn=0(1) reason=CallClose\\n[okx] details: USDT eq=2857.5738811054916 cashBal=2342.82262378289 avail=1674.3669815463586 frozen=1183.2068995591328 upl=514.7512573226015; BTC eq=0.0000000096786415 cashBal=0.0000000096786415 avail=0.0000000096786415 frozen=0 upl=0; SOL eq=0.0000009376 cashBal=0.0000009376 avail=0.0000009376 frozen=0 upl=0; DOGE eq=0.0000005568 cashBal=0.0000005568 avail=0.0000005568 frozen=0 upl=0\\n[sync] 已写入：accounts 54 行（新增 2）/ positions 162 行（新增 6）\\n\", \"stderr\": \"/Users/xingguo/learning_backtrader/scripts/sync_positions.py:396: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.\\n  accounts.loc[len(accounts)] = [\\n\"}",
+  "started_at": "2026-11-05T16:12:25",
+  "finished_at": "2026-11-05T16:12:28",
+  "duration_s": 2.75
+}
