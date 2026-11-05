@@ -390,6 +390,8 @@ def main():
     # 🔴 2026-11-04：**把 bsk 的工具全跑一遍** ✓（observe/tab/network/evaluate/snapshot）
     ap.add_argument("--diagnose", action="store_true",
                     help="跑 observe+tab+network+evaluate+snapshot，定位数据在哪 ✗")
+    ap.add_argument("--screenshot", metavar="PATH",
+                    help="**截图** ✓ 看人眼可见的页面里有没有数据 ✗（最终判据 ✗）")
     args = ap.parse_args()
 
     if args.diagnose:
@@ -412,6 +414,41 @@ def main():
             f.write(html)
         print("HTML 已存：%s（%.1f KB ✗）"
               % (out_path, len(html) / 1024.0))
+
+    # 🔴 2026-11-05：**截图验证** ✓ —— 人眼看到的页面里到底有没有数据 ✗
+    #    为什么这是**最后也最可信**的判据 ✗：
+    #      `get-html` 489 KB ✗ 零个 `<table>` ✗ 零个百分比 ✗
+    #      `observe` 有框架 ✗ 无数据 ✗
+    #      `click` / `evaluate` 全被拒 ✗
+    #      `iframes: 0` ⇒ 不是 iframe 问题 ✗
+    #    ⇒ **唯一没试过的：截图** ✓
+    #      若截图里**有概率数字** ⇒ 数据在页面上 ✓ 只是抓取手段不对 ✗
+    #      若截图里**也没有** ⇒ **CME 对自动化就是不给数据** ✗ 彻底放弃 ✓
+    if args.screenshot:
+        shot = args.screenshot
+        if not os.path.isabs(shot):
+            shot = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                shot)
+        os.makedirs(os.path.dirname(shot) or ".", exist_ok=True)
+        rc, o, e = _run(["session", "start"], timeout=60)
+        sid2 = (o or "").strip().splitlines()[-1].strip() if o else ""
+        if rc == 0 and sid2:
+            try:
+                _run(["navigate", PAGE, "--session", sid2,
+                      "--timeout", "90s"], timeout=180)
+                _run(["wait-ms", str(args.wait_ms)], timeout=90)
+                src, so2, se2 = _run(["screenshot", "--out", shot,
+                                      "--session", sid2], timeout=120)
+                print("截图 rc=%s → %s（%s）"
+                      % (src, shot,
+                         "成功 ✓" if os.path.exists(shot) else "失败 ✗"))
+                if os.path.exists(shot):
+                    print("  大小：%.1f KB" % (os.path.getsize(shot) / 1024.0))
+                if se2:
+                    print("  stderr：%s" % se2[-300:])
+            finally:
+                _run(["session", "stop", sid2], timeout=60)
 
     # 🔴 2026-11-04：**把 HTML 里的关键片段打出来** ✓
     #    因为 217KB 的文件没法直接看 ✗ 而 `pct_total=0` 需要知道
