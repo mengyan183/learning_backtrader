@@ -1,0 +1,9 @@
+{
+  "id": "t-20261105-091441-bsk_update",
+  "action": "bsk_update",
+  "params": {
+    "proxy": "http://127.0.0.1:7890"
+  },
+  "status": "pending",
+  "created_at": "2026-11-05T09:14:41"
+}
