@@ -1289,11 +1289,164 @@ def verify_h009(df):
     }
 
 
+def _read_accounts():
+    """读 `Data/accounts.csv` ✓（`date`/`account`/`net_value`/`cash`/
+    `unrealized_pnl` ✗）。读不到返回 None ✓。
+    """
+    import pandas as _pd
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    p = os.path.join(root, "Data", "accounts.csv")
+    if not os.path.exists(p):
+        return None
+    d = _pd.read_csv(p)
+    if not {"date", "account"}.issubset(d.columns) or not len(d):
+        return None
+    d["date"] = d["date"].astype(str).str[:10]
+    for c in ("net_value", "cash", "unrealized_pnl"):
+        if c in d.columns:
+            d[c] = _pd.to_numeric(d[c], errors="coerce")
+    return d
+
+
+def verify_h028(df):
+    """H-028：现金 >0 且累计盈亏 <0 的频率**低于 10%** ⇒ 不成立。
+
+    🔴 2026-11-05 新实现 ✓（原来只在 `PENDING` 里登记 ✗ 永远 pending ✗）
+
+    判据（`hypotheses.md` 原文）：
+      检验：统计所有交易日中，现金余额为正且累计盈亏为负的频率。
+      不成立：此类情况频率**低于 10%**。
+
+    ⚠️ 口径限制 ✗：
+      `accounts.csv` 只有 `unrealized_pnl`（**浮动**盈亏 ✗）
+      **没有「累计盈亏」列** ✗
+      ⇒ 用 `unrealized_pnl < 0` 代理 ✓ 并在 note 里显式声明 ✗
+    """
+    a = _read_accounts()
+    if a is None:
+        return {"passed": False, "status": "pending",
+                "reason": "缺 Data/accounts.csv"}
+    need = {"cash", "unrealized_pnl"}
+    if not need.issubset(a.columns):
+        return {"passed": False, "status": "pending",
+                "reason": "accounts.csv 缺列：%s" % sorted(need - set(a.columns))}
+
+    # 按「日 × 账户」判定 ✓（一天两个账户各算一次 ✗）
+    d = a.dropna(subset=["cash", "unrealized_pnl"])
+    if not len(d):
+        return {"passed": False, "status": "pending",
+                "reason": "cash / unrealized_pnl 全为空"}
+    hit = d[(d["cash"] > 0) & (d["unrealized_pnl"] < 0)]
+    n_all, n_hit = int(len(d)), int(len(hit))
+    freq = n_hit / float(n_all) if n_all else 0.0
+
+    # 样本门槛：至少 20 个「日×账户」观测 ✓
+    if n_all < 20:
+        return {"passed": False, "status": "pending",
+                "reason": "样本不足：%d 个日×账户观测（需 ≥20）" % n_all,
+                "freq": round(freq, 4), "n": n_all}
+
+    passed = freq >= 0.10          # 频率 ≥10% ⇒ 假设成立 ✓
+    return {
+        "passed": bool(passed),
+        "freq": round(freq, 4), "n_hit": n_hit, "n_all": n_all,
+        "date_range": "%s → %s" % (d["date"].min(), d["date"].max()),
+        "note": ("现金>0 且浮亏<0：%d/%d = %.1f%%（门槛 10%%）⇒ %s ✗"
+                 "⚠️ 用 unrealized_pnl 代理「累计盈亏」✗"
+                 "accounts.csv 无累计盈亏列 ✗"
+                 % (n_hit, n_all, freq * 100,
+                    "成立" if passed else "不成立")),
+    }
+
+
+def verify_h038(df):
+    """H-038：`zone 2.0` 期间累计盈亏**未扩大** ⇒ 不成立。
+
+    🔴 2026-11-05 新实现 ✓（原来只在 `PENDING` 里登记 ✗）
+
+    判据（`hypotheses.md` 原文）：
+      检验：统计 zone 2.0 期间（**2026-09-25~10-05**）累计盈亏变化。
+      不成立：若该期间累计盈亏**未扩大**（收敛或不变）⇒ 不成立。
+
+    数据：
+      `features.csv` 的 `zone`（`df` 参数 ✓ 已加载 ✗）
+      `Data/accounts.csv` 的 `net_value`（按日聚合 ✗ 跨账户求和 ✓）
+
+    ⚠️ 口径限制 ✗：
+      `features.csv` 与 `accounts.csv` 的**日期范围可能不重叠** ✗
+      （Windows 上 features 到 09-18 ✗ accounts 从 09-22 ✗）
+      ⇒ 不重叠时返回 `pending` ✓ 而不是硬算 ✓
+    """
+    a = _read_accounts()
+    if a is None or "net_value" not in a.columns:
+        return {"passed": False, "status": "pending",
+                "reason": "缺 Data/accounts.csv 或 net_value 列"}
+
+    # ① zone == 2.0 的日期 ✓
+    if "zone" not in df.columns:
+        return {"passed": False, "status": "pending",
+                "reason": "features.csv 无 zone 列"}
+    # 🔴 2026-11-05 踩坑（两次）：
+    #    `load_features()` 用 `set_index("date")` ✗ ⇒ `df["date"]` 抛 KeyError ✗
+    #    而 `reset_index()` 后**索引名未必叫 `date`** ✗（测试 fixture 就不是 ✗）
+    #    ⇒ **完全不依赖索引名** ✓ 用**索引值**当日期 ✓
+    z = df.dropna(subset=["zone"]).copy()
+    if "date" in z.columns:
+        _d = z["date"].astype(str).str[:10]
+    else:
+        _d = pd.Series(z.index.astype(str), index=z.index).str[:10]
+    z = z.assign(_d=_d)
+    z20 = set(z[z["zone"].astype(float) == 2.0]["_d"])
+
+    # ② 账户按日聚合 ✓（跨账户求和 ✗）
+    agg = (a.dropna(subset=["net_value"])
+           .groupby("date", as_index=False)["net_value"].sum()
+           .sort_values("date"))
+    if not len(agg):
+        return {"passed": False, "status": "pending",
+                "reason": "accounts.csv 无可用 net_value"}
+
+    # ③ 取交集 ✓
+    inter = agg[agg["date"].isin(z20)]
+    if len(inter) < 3:
+        return {"passed": False, "status": "pending",
+                "reason": ("zone==2.0 与 accounts 的交集只有 %d 天（需 ≥3）✗ "
+                           "features %s→%s / accounts %s→%s"
+                           % (len(inter), z["_d"].min(), z["_d"].max(),
+                              agg["date"].min(), agg["date"].max())),
+                "zone20_days": len(z20), "accounts_days": len(agg)}
+
+    # ④ 区间内净值的**变化** ✓（首 → 末 ✗）
+    first, last = inter.iloc[0], inter.iloc[-1]
+    delta = float(last["net_value"]) - float(first["net_value"])
+    pct = (delta / float(first["net_value"]) * 100
+           if float(first["net_value"]) else 0.0)
+    passed = delta > 0             # 扩大 ⇒ 成立 ✓
+    return {
+        "passed": bool(passed),
+        "delta": round(delta, 2), "pct": round(pct, 2),
+        "n_days": int(len(inter)),
+        "date_range": "%s → %s" % (first["date"], last["date"]),
+        "note": ("zone 2.0 期间净值 %.2f → %.2f（%+.2f / %+.2f%%，%d 天）"
+                 "⇒ %s ✗"
+                 % (float(first["net_value"]), float(last["net_value"]),
+                    delta, pct, len(inter),
+                    "扩大 ⇒ 成立" if passed else "未扩大 ⇒ 不成立")),
+    }
+
+
 CUSTOM = {
     # 🔴 2026-11-05 新实现 ✓（原来只在 PENDING 里登记 ✗ 永远 pending ✗）
     "H-009": (verify_h009,
               "占比>28% 的标的 T+10 负收益比例 高于 占比<20% 对照组",
               "Data/positions.csv(market_value) + Data/raw/prices.csv(close)"),
+    # 🔴 2026-11-05 新实现 ✓（原来只在 PENDING ✗）
+    "H-028": (verify_h028,
+              "现金>0 且累计盈亏<0 的频率 ≥10%",
+              "Data/accounts.csv(cash + unrealized_pnl)"),
+    "H-038": (verify_h038,
+              "zone 2.0 期间累计盈亏扩大（未扩大 ⇒ 不成立）",
+              "features.csv(zone) + Data/accounts.csv(net_value)"),
     "H-010": (verify_h010, "zone 由 fg_index 固定边界驱动且边界稳定（区间重叠率 ≤20%）",
               "fg_index + zone"),
     "H-012": (verify_h012, "布尔位触发依赖 fg_index 极值（>=80 或 <=35）",
@@ -1380,6 +1533,11 @@ HYPOTHESES = {
     # 🔴 2026-11-05：`H-009` **新注册** ✓（原来只在 PENDING ✗）
     "H-009": {"kind": "custom", "desc": CUSTOM["H-009"][1],
               "fields": CUSTOM["H-009"][2]},
+    # 🔴 2026-11-05 新注册 ✓
+    "H-028": {"kind": "custom", "desc": CUSTOM["H-028"][1],
+              "fields": CUSTOM["H-028"][2]},
+    "H-038": {"kind": "custom", "desc": CUSTOM["H-038"][1],
+              "fields": CUSTOM["H-038"][2]},
     "H-010": {"kind": "custom", "desc": CUSTOM["H-010"][1],
               "fields": CUSTOM["H-010"][2]},
     "H-012": {"kind": "custom", "desc": CUSTOM["H-012"][1],
@@ -1446,10 +1604,9 @@ PENDING = {
     "H-022": ('5 只杠杆 ETF vs BTC-USDT 浮亏率比较（10-07/10-08）', 'Data/positions.csv（本机仅 2026-09-22 一日快照）'),
     "H-023": ('半凯利仓位 vs 规则仓位 walk-forward 净值回测', '胜率/盈亏比估计（样本 <60 日，置信度不足）'),
     "H-040": ('AXTX 浮亏占组合浮亏的比重', 'AXTX 浮亏列不存在（MT-34 / MT-35 实测 ✗）'),
-    "H-028": ('现金>0 且累计盈亏<0 的频率', 'Data/accounts.csv（本机仅 1 日快照）'),
+    # 🔴 2026-11-05：`H-028` / `H-038` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
     "H-030": ('量价-资金背离（价格/成交上涨而 TVL 未跟随）分组对比', 'DeFi TVL 数据源未接入（B 类待数据）'),
     "H-034": ('稳定币使用效率 = 链上月交易量/流通量 的领先性 IC', '稳定币链上交易量数据源未接入（B 类待数据）'),
-    "H-038": ('zone 2.0 期间累计盈亏变化', 'Data/accounts.csv（本机仅 1 日快照）'),
     "H-041": ('position_multiplier 降档前后 fg_index 振幅', 'position_multiplier 列不存在（虚构列）'),
 }
 # 🔴 2026-11-05 **修提示语硬编码** ✗
@@ -1596,7 +1753,11 @@ def _run_custom(df, hid):
         if key in _skip:
             continue
         text.append("- %s：%s" % (key, val))
-    text += ["- 判定：%s" % verdict, "- 口径声明：%s" % result["note"]]
+    # 🔴 2026-11-05 修：pending 分支**不返回 `note`** ✗
+    #    ⇒ `result["note"]` 抛 KeyError ✗ 整个脚本崩 ✗
+    #    ⇒ 改成 `.get()` ✓（新写的 runner 有的分支只有 `reason` ✗）
+    text += ["- 判定：%s" % verdict,
+             "- 口径声明：%s" % (result.get("note") or "（无）")]
     return meta, text
 
 
