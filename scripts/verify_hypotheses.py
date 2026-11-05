@@ -1186,7 +1186,114 @@ def _mk_terminal(state, reason):
     return _r
 
 
+def verify_h009(df):
+    """H-009：占比 >28% 的标的，T+10 负收益概率**高于**占比 <20% 对照组。
+
+    🔴 2026-11-05 新实现 ✓（原来只在 `PENDING` 里登记 ✗ 永远 pending ✗）
+
+    判据（`hypotheses.md`）：
+      占比 >28% 的标的在随后 **10 个交易日**内出现负收益的概率
+      高于占比 <20% 的对照组 ⇒ 成立
+
+    数据：
+      `Data/positions.csv`  —— `date` / `symbol` / `market_value`
+      `Data/raw/prices.csv` —— `symbol` / `date` / `close`
+      ⚠️ `BTC` 不在 `prices.csv`（在 `crypto_prices.csv` ✗）⇒ 自动跳过 ✓
+
+    口径说明：
+      - **占比分母** = 当日**所有持仓标的**的 `market_value` 之和 ✓
+        （不区分 stock/crypto 账户 ✗ 因为假说说的是「单一标的市值占比」✗）
+      - **T+10 收益** = `close[t+10] / close[t] - 1` ✓
+        按**标的自身的交易日序列**取第 10 行 ✓（不是自然日 ✗）
+      - 样本不足（任一组 <20 个观测 ✗）⇒ `status: "pending"`
+    """
+    import pandas as _pd
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    pp = os.path.join(root, "Data", "positions.csv")
+    cp = os.path.join(root, "Data", "raw", "prices.csv")
+    if not (os.path.exists(pp) and os.path.exists(cp)):
+        return {"passed": False, "status": "pending",
+                "reason": "缺 Data/positions.csv 或 Data/raw/prices.csv"}
+
+    pos = _pd.read_csv(pp)
+    px = _pd.read_csv(cp)
+    need_p = {"date", "symbol", "market_value"}
+    need_x = {"date", "symbol", "close"}
+    if not (need_p.issubset(pos.columns) and need_x.issubset(px.columns)):
+        return {"passed": False, "status": "pending",
+                "reason": "列缺失：positions 需 %s / prices 需 %s"
+                          % (sorted(need_p), sorted(need_x))}
+
+    pos["date"] = pos["date"].astype(str).str[:10]
+    pos["market_value"] = _pd.to_numeric(pos["market_value"], errors="coerce")
+    pos = pos.dropna(subset=["market_value"])
+    pos = pos[pos["market_value"] > 0]
+
+    # ① 每日每标的占比 ✓
+    tot = pos.groupby("date")["market_value"].transform("sum")
+    pos = pos.assign(share=pos["market_value"] / tot)
+    shares = pos.groupby(["date", "symbol"], as_index=False)["share"].max()
+
+    # ② 每标的的 T+10 前瞻收益 ✓（按标的自身序列 ✗ 不是自然日 ✗）
+    px["date"] = px["date"].astype(str).str[:10]
+    px["close"] = _pd.to_numeric(px["close"], errors="coerce")
+    fwd = []
+    for sym, sub in px.dropna(subset=["close"]).groupby("symbol"):
+        s = sub.sort_values("date").reset_index(drop=True)
+        if len(s) < 11:
+            continue
+        s["fwd10"] = s["close"].shift(-10) / s["close"] - 1.0
+        for _, r in s.dropna(subset=["fwd10"]).iterrows():
+            fwd.append({"date": r["date"], "symbol": sym,
+                        "fwd10": float(r["fwd10"])})
+    if not fwd:
+        return {"passed": False, "status": "pending",
+                "reason": "prices.csv 无法算 T+10（每个标的需 ≥11 行）"}
+    fwd = _pd.DataFrame(fwd)
+
+    m = shares.merge(fwd, on=["date", "symbol"], how="inner")
+    if not len(m):
+        return {"passed": False, "status": "pending",
+                "reason": "持仓标的与价格序列无交集（BTC 不在 prices.csv ✗）"}
+
+    hi = m[m["share"] > 0.28]      # 高占比组 ✓
+    lo = m[m["share"] < 0.20]      # 对照组 ✓
+
+    def _neg_rate(g):
+        return (float((g["fwd10"] < 0).mean()), int(len(g))) if len(g) else (0.0, 0)
+
+    r_hi, n_hi = _neg_rate(hi)
+    r_lo, n_lo = _neg_rate(lo)
+
+    # 样本门槛：两组各 ≥20 ✓（否则 pending ✗）
+    if n_hi < 20 or n_lo < 20:
+        return {"passed": False, "status": "pending",
+                "reason": ("样本不足：>28%% 组 %d 个观测（需 ≥20）/ "
+                           "<20%% 组 %d 个（需 ≥20）" % (n_hi, n_lo)),
+                "neg_rate_hi": round(r_hi, 4), "neg_rate_lo": round(r_lo, 4),
+                "n_hi": n_hi, "n_lo": n_lo,
+                "note": "口径：占比分母 = 当日全部持仓 market_value 之和 ✗；"
+                        "T+10 按标的自身交易日序列取第 10 行 ✓"}
+
+    passed = r_hi > r_lo
+    return {
+        "passed": bool(passed),
+        "neg_rate_hi": round(r_hi, 4), "neg_rate_lo": round(r_lo, 4),
+        "n_hi": n_hi, "n_lo": n_lo,
+        "diff_pp": round((r_hi - r_lo) * 100, 2),
+        "note": ("占比 >28%% 组 T+10 负收益率 %.1f%%（n=%d）"
+                 " vs <20%% 组 %.1f%%（n=%d）⇒ 差 %.2fpp ✗"
+                 % (r_hi * 100, n_hi, r_lo * 100, n_lo,
+                    (r_hi - r_lo) * 100)),
+    }
+
+
 CUSTOM = {
+    # 🔴 2026-11-05 新实现 ✓（原来只在 PENDING 里登记 ✗ 永远 pending ✗）
+    "H-009": (verify_h009,
+              "占比>28% 的标的 T+10 负收益比例 高于 占比<20% 对照组",
+              "Data/positions.csv(market_value) + Data/raw/prices.csv(close)"),
     "H-010": (verify_h010, "zone 由 fg_index 固定边界驱动且边界稳定（区间重叠率 ≤20%）",
               "fg_index + zone"),
     "H-012": (verify_h012, "布尔位触发依赖 fg_index 极值（>=80 或 <=35）",
@@ -1270,6 +1377,9 @@ HYPOTHESES = {
         "fields": "zone + trend_blocked_us/trend_blocked_crypto",
     },
     # ---------------------------------------------------------- 单独实现（custom）
+    # 🔴 2026-11-05：`H-009` **新注册** ✓（原来只在 PENDING ✗）
+    "H-009": {"kind": "custom", "desc": CUSTOM["H-009"][1],
+              "fields": CUSTOM["H-009"][2]},
     "H-010": {"kind": "custom", "desc": CUSTOM["H-010"][1],
               "fields": CUSTOM["H-010"][2]},
     "H-012": {"kind": "custom", "desc": CUSTOM["H-012"][1],
@@ -1330,7 +1440,7 @@ HYPOTHESES = {
 PENDING = {
     "H-006": ('账户累计盈亏日差分 × fg_index 的 Spearman 相关（≥60 交易日）', 'Data/accounts.csv（本机仅 1 日快照，需 ≥60 交易日）'),
     "H-008": ('杠杆标的占比 vs 累计盈亏日变动回归（≥40 交易日）', 'Data/positions.csv（本机仅 1 日快照，需 ≥40 交易日）'),
-    "H-009": ('占比>28% 标的 T+10 负收益比例 vs 占比<20% 对照组', 'Data/positions.csv（本机仅 1 日快照，需 T+10 前瞻）'),
+    # 🔴 2026-11-05：`H-009` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
     "H-011": ('信号升降期账户日均浮亏变化绝对值比较', 'Data/accounts.csv / Data/positions.csv（09-25/09-29 快照缺失）'),
     "H-017": ('杠杆 ETF 组 vs BTC 组市值变动率比较（10-03↔10-07）', 'Data/positions.csv（本机仅 2026-09-22 一日快照）'),
     "H-022": ('5 只杠杆 ETF vs BTC-USDT 浮亏率比较（10-07/10-08）', 'Data/positions.csv（本机仅 2026-09-22 一日快照）'),

@@ -510,10 +510,27 @@ def test_waiting_data_hypotheses_are_pending():
     已有 fed 列；本机旧数据缺列时由 verify_h031 在运行时返回 pending）。故从
     本清单移除 H-031 —— 其 pending 属**运行时数据判定**，不再是静态分类。
     """
-    for hid in ("H-030", "H-034", "H-006", "H-008", "H-009"):
+    # 🔴 2026-11-05：`H-009` **已实现** ✓ 从本清单移除 ✗ 见下方新测试 ✗
+    for hid in ("H-030", "H-034", "H-006", "H-008"):
         spec = vh.HYPOTHESES[hid]
         assert spec["kind"] == "pending", hid
         assert spec.get("missing_dep"), hid
+
+
+def test_h009_is_custom_not_pending():
+    """`H-009` 现在登记为**单独实现**（custom）✓（2026-11-05）。
+
+    原来它只在 `PENDING` 里登记 ✗ ⇒ **永远 pending** ✗ 即使数据够也跑不了 ✗
+    现在 `verify_h009` 会真的读 `positions.csv` + `prices.csv` 算：
+      占比 >28% 组 vs <20% 组的 T+10 负收益率 ✓
+    样本不足时**运行时**返回 `pending` ✓（不再静态挂起 ✓）
+    """
+    spec = vh.HYPOTHESES["H-009"]
+    assert spec["kind"] == "custom"
+    assert "H-009" in vh.CUSTOM
+    assert callable(vh.CUSTOM["H-009"][0])
+    # 不能同时在 PENDING 里 ✓
+    assert "H-009" not in vh.PENDING
 
 
 def test_h031_is_custom_not_pending():

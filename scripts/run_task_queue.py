@@ -1786,8 +1786,39 @@ def _act_sync_positions(params):
         return {"ok": False, "reason": "超过 300 秒未完成"}
     except (subprocess.SubprocessError, OSError) as exc:
         return {"ok": False, "reason": "执行失败：%s" % exc}
+    # 🔴 2026-11-05：**回报 `day_pnl` 非空统计** ✓（用户要求 ✗）
+    #    为什么需要 ✗：`fill_day_pnl` 刚加上 ✓ 但 stdout 里看不到效果 ✗
+    #    而 `day_pnl` 之前 **54 行里只有 1 行有值** ✗（那列从来没被赋值 ✗）
+    #    ⇒ 必须**直接统计列的非空数** ✗ 才能确认回填成功 ✓
+    stats = {}
+    try:
+        import pandas as _pd
+        p = os.path.join(ROOT, "Data", "accounts.csv")
+        if os.path.exists(p):
+            d = _pd.read_csv(p)
+            stats["accounts_rows"] = int(len(d))
+            if "day_pnl" in d.columns:
+                nn = int(d["day_pnl"].notna().sum())
+                stats["day_pnl_nonnull"] = nn
+                stats["day_pnl_ratio"] = round(
+                    nn / float(len(d)), 3) if len(d) else 0.0
+            if "date" in d.columns:
+                stats["date_unique"] = int(d["date"].nunique())
+                dd = sorted(d["date"].astype(str).unique())
+                stats["date_range"] = "%s → %s" % (dd[0], dd[-1]) if dd else ""
+            # 每账户最近一天的 day_pnl ✓（看是否真的算出来了 ✗）
+            if {"date", "account", "day_pnl"}.issubset(d.columns) and len(d):
+                last = d[d["date"].astype(str) == str(d["date"].max())]
+                stats["last_day"] = {
+                    str(row["account"]): (None if _pd.isna(row["day_pnl"])
+                                          else round(float(row["day_pnl"]), 2))
+                    for _, row in last.iterrows()}
+    except Exception as exc:                # noqa: BLE001
+        stats["error"] = "%s: %s" % (type(exc).__name__, str(exc)[:150])
+
     # 恒等式不成立时脚本 return 1 ✗ —— 那是**保护**不是崩溃 ✓
     return {"ok": r.returncode == 0, "rc": r.returncode,
+            "day_pnl_stats": stats,
             "note": "rc=1 多半是恒等式校验拦住了（sec_mv+cash != net）✗",
             "stdout": (r.stdout or "")[-1500:],
             "stderr": (r.stderr or "")[-600:]}
