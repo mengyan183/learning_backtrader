@@ -492,11 +492,18 @@ def _act_test_futu_fed(params):
         ctx = OpenQuoteContext(host=host, port=port)
         ret, data = ctx.get_fed_watch_target_rate()
         out["ret"] = str(ret)[:80]
-        # `RET_OK` 的字符串形式是 `RET_OK` ✗ 用 `str` 判断更稳 ✓
-        ok = ("RET_OK" in str(ret))
+        # 🔴 2026-11-05 **关键修复**：`futu.RET_OK` **就是整数 0** ✗
+        #    我原来写 `"RET_OK" in str(ret)` ✗
+        #    ⇒ `str(0)` == `"0"` ✗ **永远不含 "RET_OK"** ✗
+        #    ⇒ 接口明明成功了 ✗ 却被判成失败 ✗ 还提前 return 丢掉了 data ✗
+        #    实测：`ret=0` `has_method=True` ⇒ **接口是通的** ✓
+        #    ⇒ 判据改成 `ret == 0` ✓（同时兼容字符串形式 ✗）
+        ok = (ret == 0) or ("RET_OK" in str(ret))
         out["ok"] = ok
         if not ok:
             out["error"] = "接口返回非 OK：%s ✗" % str(ret)[:200]
+            # 即使失败也把 data 打出来 ✓（可能是错误消息 ✗ 有价值 ✗）
+            out["raw"] = str(data)[:600]
             return out
         try:
             out["columns"] = list(data.columns)
