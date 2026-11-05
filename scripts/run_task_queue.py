@@ -448,6 +448,61 @@ def _find_bsk_bin():
 BSK_BIN = _find_bsk_bin()
 
 
+def _act_inspect_snapshots(params):
+    """**核实持仓/账户快照的真实积累情况** ✓（2026-11-05）。
+
+    🔴 为什么要查 ✗：
+       `verify_hypotheses` 在 **Mac** 上跑，却报
+         `[H-006] pending — Data/accounts.csv（本机仅 1 日快照）`
+       而同一天 `sync_positions` 在 **Mac** 上跑，输出
+         `已写入：accounts 54 行（新增 2）/ positions 162 行（新增 6）`
+       ⇒ **两者矛盾** ✗
+       可能：① `verify_hypotheses` 读的路径/判断有 bug ✗
+             ② 它读的是「某列唯一值」而非行数 ✗
+             ③ 文件里 `date` 列只有 1 个值（其余行 date 为 NaN ✗）
+
+    ⇒ 直接把**行数 / date 唯一值 / 各列非空数**打出来 ✓ 一看就清楚 ✓
+    """
+    import pandas as _pd
+    out = {"ok": True, "files": {}}
+    for name in ("accounts", "positions"):
+        p = os.path.join(ROOT, "Data", "%s.csv" % name)
+        rec = {"path": os.path.relpath(p, ROOT)}
+        if not os.path.exists(p):
+            rec["exists"] = False
+            out["files"][name] = rec
+            continue
+        rec["exists"] = True
+        rec["size_kb"] = round(os.path.getsize(p) / 1024.0, 1)
+        try:
+            d = _pd.read_csv(p)
+            rec["rows"] = int(len(d))
+            rec["columns"] = list(d.columns)
+            if "date" in d.columns:
+                dd = d["date"].astype(str)
+                uniq = sorted(dd.dropna().unique())
+                rec["date_unique"] = len(uniq)
+                rec["date_first"] = uniq[0] if uniq else None
+                rec["date_last"] = uniq[-1] if uniq else None
+                rec["date_null"] = int(dd.isna().sum())
+                rec["date_samples"] = uniq[:3] + uniq[-3:] if len(uniq) > 6 else uniq
+            # 每列非空数 ✓（看是不是大部分列都空 ✗）
+            rec["nonnull"] = {c: int(d[c].notna().sum())
+                              for c in d.columns[:12]}
+        except Exception as exc:            # noqa: BLE001
+            rec["error"] = "%s: %s" % (type(exc).__name__, str(exc)[:200])
+        out["files"][name] = rec
+    # 判读 ✓
+    a = out["files"].get("accounts") or {}
+    p2 = out["files"].get("positions") or {}
+    n = max(int(a.get("date_unique") or 0), int(p2.get("date_unique") or 0))
+    out["verdict"] = ("✓ **有 %d 个不同日期** ⇒ 数据够 ✓ "
+                      "那 `verify_hypotheses` 的判断有 bug ✗" % n
+                      if n >= 2 else
+                      "✗ **只有 %d 个日期** ⇒ 确实没积累 ✗" % n)
+    return out
+
+
 def _act_verify_hypotheses(params):
     """**跑 `verify_hypotheses.py` 推进假说验证** ✓（2026-11-05 用户要求）。
 
@@ -2539,6 +2594,7 @@ ACTIONS = {
     "test_futu_fed": _act_test_futu_fed,
     "rerun_brief": _act_rerun_brief,
     "verify_hypotheses": _act_verify_hypotheses,
+    "inspect_snapshots": _act_inspect_snapshots,
     "diagnose_symbols": _act_diagnose_symbols,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
