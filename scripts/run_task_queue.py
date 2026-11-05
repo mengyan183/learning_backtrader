@@ -438,6 +438,93 @@ def _find_bsk_bin():
 BSK_BIN = _find_bsk_bin()
 
 
+def _act_probe_url(params):
+    """**用 bsk 探测任意 URL** ✓（2026-11-05 用户要求分析 `cmegroup.cn`）。
+
+    🔴 为什么需要 ✗：
+       `cmegroup.cn/fed-watch/` 在 **Windows 完全不可达** ✗：
+         DNS 解析 OK（`119.23.206.245` ✗ 阿里云 ✗）
+         但 `ping` 100% 丢包 ✗ 80/443 全超时 ✗ `web_fetch` 也超时 ✗
+       ⇒ 只能让 **Mac** 去试（网络环境不同 ✗）
+
+    【测什么】
+      ① `bsk navigate` 能否打开 ✓
+      ② `get-html` 长度 + 有无 `<table>` + 有无百分比 ✓
+      ③ `observe` 语义视图前 500 字 ✓
+      ④ `network` 里的业务 API（排除字体/脚本/样式 ✗）
+
+    参数：`url`（必填 ✗）、`wait_ms`（默认 15000 ✗）
+    """
+    url = str(params.get("url") or "").strip()
+    if not url:
+        return {"ok": False, "error": "必须给 `url` ✗"}
+    wait_ms = int(params.get("wait_ms") or 15000)
+
+    def _run(args, timeout=120):
+        """跑一条 `bsk` 命令 ✓（本文件的本地 helper ✗）。"""
+        try:
+            r = subprocess.run([BSK_BIN] + list(args), capture_output=True,
+                               text=True, encoding="utf-8",
+                               errors="replace", timeout=timeout)
+            return r.returncode, (r.stdout or ""), (r.stderr or "")
+        except FileNotFoundError:
+            return -1, "", "**找不到 bsk** ✗（BSK_BIN=%s ✗）" % BSK_BIN
+        except subprocess.TimeoutExpired:
+            return -2, "", "bsk 超时（%ds ✗）" % timeout
+
+    rc, o, e = _run(["session", "start"], timeout=60)
+    sid = (o or "").strip().splitlines()[-1].strip() if o else ""
+    if rc != 0 or not sid:
+        return {"ok": False, "error": "session start 失败 ✗",
+                "stderr": e[-300:]}
+    out = {"url": url, "steps": {}}
+    try:
+        rc, o, e = _run(["navigate", url, "--session", sid,
+                         "--timeout", "90s"], timeout=180)
+        out["steps"]["navigate"] = {"rc": rc, "out": o[-250:], "err": e[-250:]}
+        if rc != 0:
+            return out
+        _run(["wait-ms", str(wait_ms)], timeout=90)
+
+        rc, html, e = _run(["get-html", "--session", sid], timeout=120)
+        pcts = re.findall(r"\d{1,3}\.\d\s*%", html or "")
+        out["steps"]["html"] = {
+            "rc": rc, "len": len(html or ""),
+            "has_table_tag": "<table" in (html or "").lower(),
+            "pct_count": len(pcts), "pct_samples": pcts[:15],
+            "has_iframe": "<iframe" in (html or "").lower(),
+        }
+
+        rc, o, e = _run(["observe", "--session", sid], timeout=120)
+        out["steps"]["observe"] = {
+            "rc": rc, "lines": len((o or "").splitlines()),
+            "data_hits": sum(o.count(k) for k in ("%", "ZQ", "利率", "概率")),
+            "head": (o or "")[:600],
+        }
+
+        rc, o, e = _run(["network", "--session", sid, "--json",
+                         "--limit", "200"], timeout=120)
+        urls = re.findall(r"https?://[^\s\"'<>\\]+", o or "")
+        api = [u for u in urls if any(k in u.lower() for k in
+                                      ("cme", "fed", "api/", "json", "watch"))]
+        out["steps"]["network"] = {
+            "rc": rc, "total_urls": len(urls),
+            "api_urls": sorted(set(api))[:20],
+        }
+    finally:
+        _run(["session", "stop", sid], timeout=60)
+
+    h = out["steps"].get("html") or {}
+    out["ok"] = True
+    out["verdict"] = (
+        "✓ **有数据特征**（%d 个百分比 ✗ 有 table=%s ✗）⇒ 值得深挖 ✓"
+        % (h.get("pct_count", 0), h.get("has_table_tag"))
+        if h.get("pct_count", 0) > 0 else
+        "✗ **页面打开了但零个百分比** ✗（HTML %d 字节 ✗）"
+        % h.get("len", 0))
+    return out
+
+
 def _act_analyze_png(params):
     """**分析截图的「文字密度」** ✓（2026-11-05 用户要求「交给 Mac 的 AI 分析」）。
 
@@ -2192,6 +2279,7 @@ ACTIONS = {
     "bsk_update": _act_bsk_update,
     "restart_queue": _act_restart_queue,
     "analyze_png": _act_analyze_png,
+    "probe_url": _act_probe_url,
     "diagnose_symbols": _act_diagnose_symbols,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
