@@ -1,0 +1,13 @@
+{
+  "id": "t-20261105-153432-safe_pull_data",
+  "action": "safe_pull_data",
+  "params": {
+    "keep_backup": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"backup\": \"dist/raw_backup_20261105-153612\", \"backup_kept\": true, \"file_count\": 33, \"steps\": [{\"step\": \"backup\", \"ok\": true, \"files\": 33, \"path\": \"dist/raw_backup_20261105-153612\"}, {\"step\": \"merge\", \"rc\": 0, \"stdout\": \"Already up to date.\", \"stderr\": \"\"}, {\"step\": \"restore\", \"restored\": 0, \"files\": [], \"errors\": []}], \"files_after\": {\"crypto_fng.csv\": \"2026-11-04\", \"crypto_prices.csv\": \"2026-11-03\", \"crypto_underlying.csv\": \"2026-10-29\", \"fedwatch.csv\": \"2026-11-05\", \"fng_altme.csv\": \"2026-11-04\", \"fred_BAA10Y.csv\": \"2026-10-23\", \"fred_DCOILBRENTEU.csv\": \"2026-10-06\", \"fred_DCOILWTICO.csv\": \"2026-10-06\", \"fred_DFF.csv\": \"2026-11-03\", \"fred_DGS10.csv\": \"2026-11-03\", \"fred_T10Y2Y.csv\": \"2026-11-03\", \"fred_baa10y_avail.csv\": \"2026-10-23\", \"funding_rate.csv\": \"2026-11-05\", \"futu_fedwatch_raw.csv\": \"?\", \"kalshi_fed.csv\": \"2026-11-05\", \"news_sentiment.csv\": \"2026-11-05\", \"prices.csv\": \"2026-11-04\", \"putcall.csv\": \"2026-11-04\", \"putcall_daily_1.csv\": \"2025-06-30\", \"putcall_daily_2.csv\": \"2026-10-07\", \"putcall_daily_latest.csv\": \"2026-11-04\", \"sentiment.csv\": \"2026-11-04\", \"shoutu_etf_universe.csv\": \"2026-09-29\", \"shoutu_fng.csv\": \"2026-11-05\", \"shoutu_history.csv\": \"2026-10-14\", \"sp500_cape.csv\": \"2026-10-29\", \"sp500_pe.csv\": \"2026-10-29\", \"splits.csv\": \"2026-10-01\", \"stablecoin_usage.csv\": \"2026-11-05\", \"vix.csv\": \"2026-11-03\", \"vix3m.csv\": \"2026-11-04\", \"vix_history.csv\": \"2026-11-04\", \"watchlist_3x.csv\": \"?\"}, \"note\": \"⚠️ 备份**保留**在 `dist/raw_backup_20261105-153612` ✗ 确认数据无误后可手工删 ✓\"}",
+  "started_at": "2026-11-05T15:36:12",
+  "finished_at": "2026-11-05T15:36:14",
+  "duration_s": 1.75
+}
