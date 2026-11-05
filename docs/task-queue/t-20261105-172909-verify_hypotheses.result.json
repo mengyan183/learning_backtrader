@@ -1,0 +1,13 @@
+{
+  "id": "t-20261105-172909-verify_hypotheses",
+  "action": "verify_hypotheses",
+  "params": {
+    "hypotheses": "H-009"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"seconds\": 10.0, \"hypotheses\": [\"H-009\"], \"dry_run\": false, \"stdout_len\": 290, \"stderr_len\": 0, \"verdict_lines\": [\"- 状态：样本不足：>28% 组 0 个观测（需 ≥20）/ <20% 组 26 个（需 ≥20）\"], \"stdout_tail\": \"样本：1782 行（fg_index + us_core 均非空）\\n\\n=== 修订口径假说（触发率/单独实现/挂起）===\\n[H-009] pending\\n    - 判据：占比>28% 的标的 T+10 负收益比例 高于 占比<20% 对照组\\n    - 状态：样本不足：>28% 组 0 个观测（需 ≥20）/ <20% 组 26 个（需 ≥20）\\n    - 判定：不成立\\n    - 口径声明：口径：占比分母 = 当日全部持仓 market_value 之和 ✗；T+10 按标的自身交易日序列取第 10 行 ✓\\n\\n（默认不写文件；如需落盘请显式传 --out <路径>）\", \"stderr_tail\": \"\", \"verdict\": \"✓ 有 1 条判定：通过 0 / 不通过 0 / 样本不足 1\"}",
+  "started_at": "2026-11-05T17:32:04",
+  "finished_at": "2026-11-05T17:32:14",
+  "duration_s": 9.97
+}
