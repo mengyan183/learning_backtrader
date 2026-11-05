@@ -17,6 +17,38 @@
 
 ---
 
+## 🔴 2026-11-05 裁定：**放弃 CME FedWatch**（已从每日链移除）
+
+### 决定性证据（`bsk --diagnose` 实测）
+
+| # | 证据 | 结论 |
+|---|---|---|
+| ① | `iframes: {count: 0}` | **不是 iframe 问题**（假设被否定）|
+| ② | `has_table_tag: false` / `pct_in_html: 0`（489 KB 主文档）| **零个表格、零个百分比** |
+| ③ | `click` **4 种 CSS 选择器全失败** + `evaluate` 失败 | 全是 `shared page control or observation changed` |
+| ④ | **本机 `example.com` 对照**：`click a` ✓ `evaluate 1+1` ✓ | **bsk 本身没问题**，是 **CME 反自动化** |
+| ⑤ | 唯一业务 API `CmeWS/mvc/quotes/v2/contracts-by-number` = **403** | 纯 HTTP 不通，`network` 也拿不到响应体 |
+
+⇒ **CME 明确在反爬** ✗ 反爬是**不可持续对抗**的 ✗
+⇒ 每天浪费 **288 秒**（Chrome 跑 3 次，2 次超时 180s）
+⇒ **Kalshi 已提供等价数据** ✓（`hike=80.5%` 比 CME 的 10-13 数据新 **23 天**）
+
+### 改了什么
+
+- `scripts/com.xingguo.fg-daily.plist`：**移除** `fetch_fedwatch.py` 那一步
+  （命令长度 3070 → 2956，guard 数 23 → 22）
+- **不改 `drift_monitor.py`** —— 它的 `fed` crosscheck 行为是
+  「任一源缺失 ⇒ 报告明示并跳过」✓ 设计好的 ✓
+- **不改 `check_freshness.py`** —— 它**没有引用 `fedwatch.csv`** ✓
+
+### 仍保留的东西
+
+- `scripts/fetch_fedwatch.py`（headless 版）和 `scripts/fetch_fedwatch_bsk.py`
+  **代码保留** ✗ 只是不进链 ✓ 将来 CME 若开放数据可复用
+- `fg_system/fed.py` 的 **Kalshi 兜底** ✓ 继续生效 ✓
+
+---
+
 ## 🆕 2026-11-05 `fed` 因子的两个真 bug（已修）
 
 ### bug ①：`wk == wk` 挡不住 `None` ⇒ 整个 try 块跳过
