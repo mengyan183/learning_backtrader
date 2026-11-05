@@ -1,9 +1,0 @@
-{
-  "id": "t-20261105-153443-rerun_brief",
-  "action": "rerun_brief",
-  "params": {
-    "skip_pipeline": "1"
-  },
-  "status": "pending",
-  "created_at": "2026-11-05T15:34:43"
-}
