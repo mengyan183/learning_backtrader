@@ -17,7 +17,57 @@
 
 ---
 
-## 🔴 2026-11-05 裁定：**放弃 CME FedWatch**（已从每日链移除）
+## 🎯 2026-11-05 **CME 新入口找到**（`cmegroup.cn` → `quikstrike.net`）
+
+### 关键突破：`insid`/`qsid` 不需要浏览器
+
+**旧方案**（已废弃 ✗）：用 headless Chrome 抓 netlog ✗ 从里面捞 `insid`/`qsid` ✗
+
+**新方案**（纯 HTTP ✓）：
+
+```
+① GET https://cmegroup-tools.quikstrike.net/User/QuikStrikeTools.aspx
+        ?viewitemid=IntegratedFedWatchTool&userId=lwolf
+        &jobRole=&company=&companyType=
+   ⇒ 返回 HTML 里 **`<form action="...&insid=XXX&qsid=YYY">`**
+      `insid`/`qsid` **由服务端自动生成** ✓ **不需要浏览器** ✓
+
+② 从 HTML 提取 `action` + `__VIEWSTATE` + `__VIEWSTATEGENERATOR`
+   + `__EVENTVALIDATION`
+
+③ POST 那个 action URL
+```
+
+### 怎么发现的
+
+```
+cmegroup.cn/fed-watch/ 的 HTML 里嵌了 iframe：
+  <iframe src="https://cmegroup-tools.quikstrike.net/User/QuikStrikeTools.aspx
+               ?viewitemid=IntegratedFedWatchTool&userId=lwolf&...">
+  ⇒ **`userId=lwolf` 是硬编码的** ✓ 不是动态的 ✓
+```
+
+### 两个网络前提（重要）
+
+| 前提 | 说明 |
+|---|---|
+| **必须走公司代理** | `cmegroup.cn` 和 `quikstrike.net` **直连都不通** ✗（`ping` 100% 丢包 ✗）|
+| **必须关证书校验** | 公司代理做 **SSL MITM** ✗ 用**弱 CA 密钥** ✗ ⇒ `CERTIFICATE_VERIFY_FAILED: CA certificate key too weak` ✗<br>⇒ `curl` 报 `(43) bad argument` ✗ 是**同一个根因** ✗<br>⇒ `ssl._create_unverified_context()` ✓ |
+
+### 当前卡点
+
+```
+GET/POST 都只返回 **3395 字节** ✗ 零个百分比 ✗
+  <div style="display:none">Loading View...</div>   ← **JS 异步加载** ✗
+  PageMethods=0  WebMethod=0  iframe=0
+⇒ 纯 HTTP 拿不到最终数据 ✗ 但**入口是对的** ✓
+⇒ 下一步：用 **bsk 打开那个 quikstrike URL** ✓ 让浏览器执行 JS ✓
+   （它是**标准 ASP.NET 页面** ✗ 不是反爬 SPA ✗ ⇒ 可能不拦 ✓）
+```
+
+---
+
+## 🗄️ 2026-11-05 裁定：**暂时放弃 CME FedWatch**（已从每日链移除）
 
 ### 决定性证据（`bsk --diagnose` 实测）
 
