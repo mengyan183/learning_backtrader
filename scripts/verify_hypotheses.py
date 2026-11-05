@@ -75,6 +75,7 @@ WT-05 修订口径（2026-10-10，见 hypotheses.md 五行的 **2026-10-10 WT-01
 """
 import argparse
 import math
+import io
 import os
 import re
 import sys
@@ -1388,6 +1389,70 @@ for _hid, (_desc, _dep) in PENDING.items():
                         "pass_when": "low", "fields": _dep,
                         "missing_dep": _dep}
 
+
+# 🔴 2026-11-05 用户要求：**台账备注列写「等数据：x/y」且动态更新** ✓
+#    为什么只有这两条 ✗：
+#      `H-006` 需要 **≥60 交易日** ✓ `H-008` 需要 **≥40 交易日** ✓
+#      —— 只有它们有**明确的天数阈值** ✓
+#      其余 pending（`H-009` 要 T+10 前瞻 / `H-017`/`H-022` 要特定日期 ✗）
+#      **不是天数** ✗ 写「x/y」没意义 ✗
+_NEED_DAYS = {"H-006": 60, "H-008": 40}
+
+#: 备注里「等数据：…」这段的匹配式 ✓（重复跑要**替换**而非追加 ✗）
+_NOTE_RE = re.compile(r"\s*等数据：\d+/\d+")
+
+
+def pending_note_map():
+    """算每个有阈值的 pending 假说的「等数据：x/y」✓。
+
+    :returns: `{"H-006": "等数据：27/60", "H-008": "等数据：27/40"}`
+    """
+    have = max(_SNAP_DAYS.get("accounts", 0), _SNAP_DAYS.get("positions", 0))
+    return {h: "等数据：%d/%d" % (have, need)
+            for h, need in _NEED_DAYS.items()}
+
+
+def write_pending_notes(path=None):
+    """**把「等数据：x/y」写进 `hypotheses.md` 的备注列** ✓（动态 ✗）。
+
+    🔴 关键设计 ✗：
+      - **只在内容变化时才写回** ✓ 否则每次跑都产生 git diff ✗
+      - 已有的「等数据：x/y」**替换** ✓ 不追加 ✓（避免越滚越长 ✗）
+      - 找不到该行 ⇒ **跳过** ✓ 不报错 ✓
+
+    :returns: `{"changed": [...], "notes": {...}, "written": bool}`
+    """
+    notes = pending_note_map()
+    p = path or os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "evolution", "hypotheses.md")
+    if not os.path.exists(p):
+        return {"changed": [], "notes": notes, "written": False,
+                "error": "台账不存在：%s" % p}
+    lines = io.open(p, encoding="utf-8", errors="replace").read().splitlines()
+    changed = []
+    for i, ln in enumerate(lines):
+        m = re.match(r"\|\s*(H-\d+)\s*\|", ln)
+        if not m or m.group(1) not in notes:
+            continue
+        hid = m.group(1)
+        note = notes[hid]
+        new = _NOTE_RE.sub("", ln)          # 先清掉旧的 ✓
+        if new.rstrip().endswith("|"):
+            # 备注是最后一列 ⇒ 在末尾 `|` 前插入 ✓
+            new = new.rstrip()[:-1].rstrip() + " " + note + " |"
+        else:
+            new = new.rstrip() + " " + note
+        if new != ln:
+            lines[i] = new
+            changed.append(hid)
+    written = False
+    if changed:
+        io.open(p, "w", encoding="utf-8").write("\n".join(lines) + "\n")
+        written = True
+    return {"changed": changed, "notes": notes, "written": written,
+            "path": p}
+
 # 全部支持的假说（含 A-3 原案）——供 --help 与默认运行使用。
 # 顺序：原案（H-005/H-007）→ 触发率类 → 单独实现 → 挂起，均按编号升序。
 _TRIGGER_IDS = sorted(h for h, s in HYPOTHESES.items() if s["kind"] == "trigger")
@@ -1659,6 +1724,9 @@ def build_arg_parser():
     p.add_argument("--out", default=None,
                    help="结果文件路径。**默认不传 ⇒ 只打印 stdout，不写文件**；"
                         "显式传此参数才追加写（不覆盖已有内容）。")
+    # 🔴 2026-11-05 用户要求：**把「等数据：x/y」动态写进台账备注列** ✓
+    p.add_argument("--write-notes", action="store_true",
+                   help="把「等数据：x/y」写进 hypotheses.md 备注列（幂等 ✗）")
     p.add_argument("--check-table", action="store_true",
                    help="只对 evolution/hypotheses.md 做**表格结构自检**"
                         "（列数 == %d / 状态 ∈ 固定枚举 / PENDING 交叉一致），"
@@ -1669,6 +1737,21 @@ def build_arg_parser():
 def main(argv=None):
     args = build_arg_parser().parse_args(argv)
     wanted = args.hypothesis or SUPPORTED
+
+    # 🔴 2026-11-05：**只写备注、不跑假说** ✓（幂等 ✗ 内容没变就不写 ✓）
+    if args.write_notes:
+        r = write_pending_notes()
+        print("[notes] 本机快照天数：accounts %d / positions %d"
+              % (_SNAP_DAYS.get("accounts", 0),
+                 _SNAP_DAYS.get("positions", 0)))
+        for hid, note in (r.get("notes") or {}).items():
+            print("[notes] %s → %s" % (hid, note))
+        if r.get("written"):
+            print("[notes] ✓ 已写入 %s（改动：%s）"
+                  % (r.get("path"), ", ".join(r.get("changed") or [])))
+        else:
+            print("[notes] 无变化 ⇒ 不写盘 ✓（幂等 ✗）")
+        return 0
 
     if args.check_table:
         return _run_check_table()

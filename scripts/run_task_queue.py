@@ -527,9 +527,16 @@ def _act_verify_hypotheses(params):
           if x.strip()]
     dry = str(params.get("dry_run") or "").lower() in ("1", "true", "yes")
 
+    # 🔴 2026-11-05：`write_notes=1` ⇒ **只写备注列** ✓（不跑假说 ✗）
+    #    用户要求「备注列加等数据 x/y，且支持动态更新」✗
+    #    实现放在 `verify_hypotheses.py --write-notes` ✓ 幂等 ✗
+    notes = str(params.get("write_notes") or "").lower() in ("1", "true", "yes")
+
     cmd = [sys.executable, "scripts/verify_hypotheses.py"]
     for h in hs:
         cmd += ["-H", h]
+    if notes:
+        cmd.append("--write-notes")
     if dry:
         cmd.append("--dry-run")
 
