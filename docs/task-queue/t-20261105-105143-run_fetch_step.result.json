@@ -1,0 +1,14 @@
+{
+  "id": "t-20261105-105143-run_fetch_step",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "fetch_putcall.py",
+    "timeout": "900"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"script\": \"fetch_putcall.py\", \"args\": [], \"rc\": 0, \"seconds\": 4.5, \"env_proxy\": {\"FG_LLM_PROXY\": \"\", \"HTTP_PROXY\": \"\", \"HTTPS_PROXY\": \"\", \"http_proxy\": \"\", \"https_proxy\": \"\", \"NO_PROXY\": \"\"}, \"has_proxy\": false, \"changed\": {\"putcall_daily_latest.csv\": {\"before\": \"2026-11-03\", \"after\": \"2026-11-04\"}, \"putcall.csv\": {\"before\": \"2026-11-03\", \"after\": \"2026-11-04\"}}, \"unchanged\": {\"shoutu_etf_universe.csv\": \"2026-09-29\", \"fred_baa10y_avail.csv\": \"2026-10-23\", \"fred_DFF.csv\": \"2026-11-03\", \"splits.csv\": \"2026-10-01\", \"stablecoin_usage.csv\": \"2026-11-04\", \"funding_rate.csv\": \"2026-11-05\", \"fred_BAA10Y.csv\": \"2026-10-23\", \"vix3m.csv\": \"2026-11-04\", \"sp500_pe.csv\": \"2026-10-29\", \"fred_DCOILBRENTEU.csv\": \"2026-10-06\", \"fred_T10Y2Y.csv\": \"2026-11-03\", \"crypto_fng.csv\": \"2026-11-04\", \"prices.csv\": \"2026-11-04\", \"putcall_daily_1.csv\": \"2025-06-30\", \"sentiment.csv\": \"2026-11-04\", \"putcall_daily_2.csv\": \"2026-10-07\", \"fred_DGS10.csv\": \"2026-11-03\", \"shoutu_fng.csv\": \"2026-11-05\", \"fng_altme.csv\": \"2026-11-04\", \"vix_history.csv\": \"2026-11-04\", \"news_sentiment.csv\": \"2026-11-05\", \"kalshi_fed.csv\": \"2026-11-05\", \"fred_DCOILWTICO.csv\": \"2026-10-06\", \"fedwatch.csv\": \"2026-10-13\", \"vix.csv\": \"2026-11-03\", \"crypto_underlying.csv\": \"2026-10-29\", \"crypto_prices.csv\": \"2026-11-03\", \"shoutu_history.csv\": \"2026-10-14\", \"sp500_cape.csv\": \"2026-10-29\"}, \"verdict\": \"rc=0，更新了 2 个文件\", \"stdout\": \"基底（官方 CSV）：3253 条，2006-11-01 → 2019-10-04\\n近期（逐日页面）：713 条，2024-01-02 → 2026-11-04\\n合并 → /Users/xingguo/learning_backtrader/Data/raw/putcall.csv：共 3966 条（2006-11-01 → 2026-11-04）\\ntotal_ratio 非空：3966 条\\nputcall_daily_latest.csv: 53 行（2026-08-21 → 2026-11-04），本次新增 1 行\\n  最新 2026-11-04: total=0.8 equity=0.44 vix=0.38\\nsentiment.csv: 9309 行 (1990-01-02 → 2026-11-04)，8 列\\n  Put-Call 最新 2026-11-04: total=0.80 equity=0.44\\n已重建 putcall.csv 并并入 sentiment.csv\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-05T10:54:07",
+  "finished_at": "2026-11-05T10:54:12",
+  "duration_s": 4.95
+}
