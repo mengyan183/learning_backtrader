@@ -24,6 +24,10 @@ import glob
 import json
 import contextlib
 import os
+# 🔴 2026-11-05：`probe_url` 用 `re.findall` 提取 URL/百分比 ✗
+#    而模块顶部**一直没导入 `re`** ✗
+#    ⇒ 三个 `probe_url` 任务全报 `NameError: name 're' is not defined` ✗
+import re
 import shutil
 import subprocess
 import sys
