@@ -1341,6 +1341,48 @@ PENDING = {
     "H-038": ('zone 2.0 期间累计盈亏变化', 'Data/accounts.csv（本机仅 1 日快照）'),
     "H-041": ('position_multiplier 降档前后 fg_index 振幅', 'position_multiplier 列不存在（虚构列）'),
 }
+# 🔴 2026-11-05 **修提示语硬编码** ✗
+#    症状：`H-006`/`H-008`/`H-009`/`H-017`/`H-022`/`H-028`/`H-038` 全部报
+#      「本机仅 **1 日**快照」/「仅 2026-09-22 一日快照」
+#    而同日 `inspect_snapshots` 实测：
+#      accounts 54 行 / **27 个不同日期**（2026-09-22 → 2026-11-04 ✗）
+#      positions 162 行 / **27 个不同日期**（date_null = 0 ✗）
+#    ⇒ 那句提示是**写死的字符串** ✗ 永远不更新 ✗ 会**误导人以为数据从没积累** ✗
+#    ⇒ 改成**动态读真实天数** ✓（结论仍可能是 pending ✗ 但信息准确 ✓）
+
+
+def _count_snapshot_days():
+    """读 `accounts.csv` / `positions.csv` 的**实际交易日数** ✓。
+
+    :returns: `{"accounts": n, "positions": m}`（读不到则 0 ✓）
+    """
+    import pandas as _pd
+    out = {}
+    for name, path in (("accounts", config.ACCOUNTS_PATH),
+                       ("positions", config.POSITIONS_PATH)):
+        try:
+            d = _pd.read_csv(path)
+            out[name] = (int(d["date"].nunique())
+                         if "date" in d.columns else 0)
+        except Exception:                   # noqa: BLE001
+            out[name] = 0
+    return out
+
+
+_SNAP_DAYS = _count_snapshot_days()
+for _hid, (_desc, _dep) in list(PENDING.items()):
+    if "快照" not in _dep:
+        continue
+    # 取两个文件里**较大的天数** ✓（假说可能只用其中一个 ✓）
+    _n = max(_SNAP_DAYS.get("accounts", 0), _SNAP_DAYS.get("positions", 0))
+    _dep2 = _dep.replace("本机仅 1 日快照", "本机 %d 个交易日" % _n)
+    _dep2 = _dep2.replace("本机仅 2026-09-22 一日快照",
+                          "本机 %d 个交易日" % _n)
+    _dep2 = _dep2.replace("（09-25/09-29 快照缺失）",
+                          "（本机 %d 个交易日 ✗）" % _n)
+    if _dep2 != _dep:
+        PENDING[_hid] = (_desc, _dep2)
+
 for _hid, (_desc, _dep) in PENDING.items():
     HYPOTHESES[_hid] = {"kind": "pending", "desc": _desc, "selector": None,
                         "pass_when": "low", "fields": _dep,
