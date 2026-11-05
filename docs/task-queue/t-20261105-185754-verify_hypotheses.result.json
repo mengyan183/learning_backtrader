@@ -1,0 +1,13 @@
+{
+  "id": "t-20261105-185754-verify_hypotheses",
+  "action": "verify_hypotheses",
+  "params": {
+    "hypotheses": "H-028,H-038"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"seconds\": 0.8, \"hypotheses\": [\"H-028\", \"H-038\"], \"dry_run\": false, \"stdout_len\": 389, \"stderr_len\": 0, \"verdict_lines\": [], \"stdout_tail\": \"样本：1782 行（fg_index + us_core 均非空）\\n\\n=== 修订口径假说（触发率/单独实现/挂起）===\\n[H-028] ok\\n    - 判据：现金>0 且累计盈亏<0 的频率 ≥10%\\n    - 判定：不成立\\n    - 口径声明：现金>0 且浮亏<0：0/28 = 0.0%（门槛 10%）⇒ 不成立 ✗⚠️ 用 unrealized_pnl 代理「累计盈亏」✗accounts.csv 无累计盈亏列 ✗\\n[H-038] ok\\n    - 判据：zone 2.0 期间累计盈亏扩大（未扩大 ⇒ 不成立）\\n    - 判定：不成立\\n    - 口径声明：zone 2.0 期间净值 17519.40 → 13088.88（-4430.52 / -25.29%，8 天）⇒ 未扩大 ⇒ 不成立 ✗\\n\\n（默认不写文件；如需落盘请显式传 --out <路径>）\", \"stderr_tail\": \"\", \"verdict\": \"⚠️ 跑完了但**没有判定行** ✗ 可能全部「样本不足」✗ 见 stdout_tail\"}",
+  "started_at": "2026-11-05T19:01:52",
+  "finished_at": "2026-11-05T19:01:53",
+  "duration_s": 0.84
+}
