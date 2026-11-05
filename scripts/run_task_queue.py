@@ -448,6 +448,60 @@ def _find_bsk_bin():
 BSK_BIN = _find_bsk_bin()
 
 
+def _act_rerun_brief(params):
+    """**重算 features 并生成简报** ✓（2026-11-05 用户要求「重新测试输出的简报」）。
+
+    🔴 为什么不能只跑 `invest_research.py` ✗：
+       简报读的是 `features.csv` ✗ 而它由 `pipeline.run(write=True)` 产出 ✗
+       ⇒ `fedwatch.csv` 更新了 ✗ 但 `features.csv` **还是旧的** ✗
+       ⇒ 必须**先重算 pipeline** ✓ 才能看到 `FED` 因子的变化 ✓
+
+    【两步】
+      ① `pipeline.run(write=True)` —— 重算六因子 ✓
+      ② `invest_research.py --dry-run` —— 生成简报 ✓ **不推送飞书** ✓
+
+    参数：`skip_pipeline`（1=跳过第①步 ✗ 只看现有 features ✗）
+    """
+    skip = str(params.get("skip_pipeline") or "").lower() in ("1", "true", "yes")
+    out = {"steps": {}}
+
+    # ① pipeline ✓
+    if not skip:
+        t0 = time.time()
+        r = subprocess.run(
+            [sys.executable, "-c",
+             "from fg_system import pipeline; pipeline.run(write=True)"],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=900, cwd=ROOT)
+        out["steps"]["pipeline"] = {
+            "rc": r.returncode, "seconds": round(time.time() - t0, 1),
+            "stdout": (r.stdout or "")[-800:],
+            "stderr": (r.stderr or "")[-500:],
+        }
+        if r.returncode != 0:
+            out["ok"] = False
+            out["error"] = "pipeline 失败 ✗ 见 steps.pipeline.stderr"
+            return out
+
+    # ② 简报 ✓（`--dry-run` 不推送 ✓）
+    t0 = time.time()
+    r = subprocess.run(
+        [sys.executable, "scripts/invest_research.py", "--dry-run"],
+        capture_output=True, text=True, encoding="utf-8",
+        errors="replace", timeout=1200, cwd=ROOT)
+    brief = (r.stdout or "").strip()
+    out["steps"]["brief"] = {
+        "rc": r.returncode, "seconds": round(time.time() - t0, 1),
+        "len": len(brief), "stderr": (r.stderr or "")[-500:],
+    }
+    out["ok"] = r.returncode == 0
+    out["brief"] = brief[-9000:] if brief else "(空 ✗)"
+    # 关键：把「美联储动态」那一段单独摘出来 ✓（用户最关心 ✗）
+    m = re.search(r"🏛️?\s*美联储动态(.{0,1200})", brief, re.S)
+    out["fed_section"] = (m.group(0)[:1200] if m else "(没找到美联储动态段 ✗)")
+    return out
+
+
 def _act_test_futu_fed(params):
     """**验证富途 OpenD 的 `get_fed_watch_target_rate`** ✓（2026-11-05）。
 
@@ -2385,6 +2439,7 @@ ACTIONS = {
     "analyze_png": _act_analyze_png,
     "probe_url": _act_probe_url,
     "test_futu_fed": _act_test_futu_fed,
+    "rerun_brief": _act_rerun_brief,
     "diagnose_symbols": _act_diagnose_symbols,
     "fetch_prices": _act_fetch_prices,
     "audit_data": _act_audit_data,
