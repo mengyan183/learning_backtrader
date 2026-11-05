@@ -54,7 +54,32 @@ def _load_fedwatch():
             #    ⇒ 用户看到的「美联储动态」是 **22 天前** 的 ✗
             #    原因：原实现只要文件非空就 `return` ✗ 根本走不到 Kalshi 兜底 ✗
             #    ⇒ 加**新鲜度判断** ✓ 太旧就走兜底 ✓
-            row = df.iloc[-1].to_dict()
+            # 🔴 2026-11-05 **关键修复**：不能取 `iloc[-1]` ✗
+            #    背景：富途版 `fedwatch.csv` **一次写入 9 个会议** ✗
+            #      （2026-12-09 / 2027-01-27 / ... / 2027-12-08 ✗）
+            #    而旧 CME 版**只有一个会议** ✗ ⇒ `iloc[-1]` 恰好是对的 ✗
+            #    ⇒ 富途版下 `iloc[-1]` 拿到 **2027-12-08**（最远 ✗）
+            #    ⇒ 简报显示「维持 6.4% / 加息 93.0%」✗ **错得离谱** ✗
+            #      （正确应是下一次会议 2026-12-09 的 hold=20.5 hike=79.5 ✗）
+            #    ⇒ 必须**筛选「最近的未来会议」** ✓
+            _df = df
+            if "date" in _df.columns and len(_df):
+                # ① 只保留最新抓取日的行 ✓（历史行留着做回溯 ✗ 但别参与取值 ✗）
+                _latest = str(_df["date"].astype(str).max())[:10]
+                _df = _df[_df["date"].astype(str).str[:10] == _latest]
+            if "meeting" in _df.columns and len(_df):
+                # ② 按 meeting 升序 ✓ 取第一个 **>= 今天** 的 ✓
+                _tmp = _df.copy()
+                _tmp["_m"] = pd.to_datetime(_tmp["meeting"], errors="coerce")
+                _tmp = _tmp.dropna(subset=["_m"]).sort_values("_m")
+                _fut = _tmp[_tmp["_m"] >= pd.Timestamp(dt.date.today())]
+                _pick = _fut if len(_fut) else _tmp
+                if len(_pick):
+                    _df = _pick
+            if len(_df):
+                row = _df.iloc[0].to_dict()
+            else:
+                row = df.iloc[-1].to_dict()
             d = str(row.get("date") or row.get("fw_date") or "")[:10]
             fresh = True
             if d:
