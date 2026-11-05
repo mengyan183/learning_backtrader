@@ -17,7 +17,86 @@
 
 ---
 
-## 🎯 2026-11-05 **CME 新入口找到**（`cmegroup.cn` → `quikstrike.net`）
+## ✅ 2026-11-05 **CME FedWatch 最终方案：富途 OpenD 官方接口**
+
+### 结论：**不用爬虫，用富途** ✓
+
+```python
+from futu import OpenQuoteContext
+ctx = OpenQuoteContext(host="127.0.0.1", port=11111)
+ret, data = ctx.get_fed_watch_target_rate()
+# ret == 0（futu.RET_OK 就是整数 0）
+# columns: ['meeting_date', 'target_range', 'probability']
+# rows: 46
+```
+
+**实测数据（2026-11-05）**：
+
+```
+2026-12-09  3.75-4.00%  18.5   ← hold（当前区间）
+2026-12-09  4.00-4.25%  81.5   ← hike 25bp
+2027-01-27  3.75-4.00%  14.2
+2027-01-27  4.00-4.25%  67.1
+2027-01-27  4.25-4.50%  18.7
+```
+
+**与 Kalshi 交叉验证**（2026-12-09）：
+
+| 来源 | ease | hold | hike |
+|---|---|---|---|
+| Kalshi | 1.0 | **18.5** | 80.5 |
+| **富途** | 0（无降息档）| **18.5** | **81.5** |
+
+⇒ **`hold` 完全一致** ✓ `hike` 差 1.0（富途数据里没有 `3.50-3.75%` 档）✓
+
+### 为什么市面其他方案都不行
+
+| 方案 | 结论 |
+|---|---|
+| `cme-fedwatch`（PyPI 0.2.1）| ✗ **已停维护**（2026-10 归档 ✗）|
+| `fed-funds-target.json` | ✗ **404**（GitHub 上的猜测是错的 ✗）|
+| `curl_cffi` / `nodriver` / `FlareSolverr` / Firecrawl | ✗ 解决的是「反爬识别」✗ 而我们卡的是「数据在 QuikStrike iframe + Referer 校验 + ASP.NET JS 渲染」✗ 无解 ✗ |
+| `cmegroup.cn` → `quikstrike.net` | ✗ 入口找对了 ✗ 但纯 HTTP 只返回 3395 字节 `Loading View...` ✗ bsk 直访被 `PerformReferrerCheck` 拒 ✗ |
+| **富途 OpenD** | **✓ 官方接口 ✓ 零新增依赖 ✓** |
+
+### 新脚本 `scripts/fetch_fedwatch_futu.py`
+
+```bash
+python scripts/fetch_fedwatch_futu.py --dry-run   # 只看不写
+python scripts/fetch_fedwatch_futu.py --debug     # 打会议明细
+python scripts/fetch_fedwatch_futu.py             # 写 fedwatch.csv
+```
+
+**转换规则**（`target_range` 分布 ⇒ `ease/hold/hike`）：
+
+```python
+cur = _norm_range(config.FED_RANGE_TXT)   # "3.75%-4.00%" ⇒ (3.75, 4.00)
+hold = prob[区间 == cur]
+hike = Σ prob[区间 > cur]
+ease = Σ prob[区间 < cur]
+```
+
+⚠️ **必须规范化**：富途返回 `"3.75-4.00%"`（**少一个 %** ✗ 用 `-` ✗）
+而 `config.FED_RANGE_TXT` 是 `"3.75%-4.00%"` ✗ ⇒ 不规范化会**匹配不上** ✗
+
+**输出列与旧 `fedwatch.csv` 完全一致** ✓ `fed.py` 不用改 ✓
+唯一损失：`wk_hold_pct` / `wk_hike_pct` / `m_*` 是 `None`（富途无历史 ✗）
+⇒ `fw_delta_1w` / `fw_curve` 为 `None` ✓ 但它们在 `fed_context` 里是**可选** ✓
+
+### 🔴 踩坑：`futu.RET_OK` **就是整数 0**
+
+```python
+# 错的：
+ok = ("RET_OK" in str(ret))    ← str(0) == "0" ✗ 永远 false ✗
+# ⇒ 接口明明成功了 ✗ 却被判失败 ✗ 还提前 return 丢掉了 data ✗
+
+# 对的：
+ok = (ret == 0) or ("RET_OK" in str(ret))
+```
+
+---
+
+## 🗄️ 2026-11-05 CME 新入口（`cmegroup.cn` → `quikstrike.net`，已废弃 ✗）
 
 ### 关键突破：`insid`/`qsid` 不需要浏览器
 

@@ -324,6 +324,13 @@ FETCH_SCRIPTS = (
     "fetch_shoutu_history.py",
     # 🔴 2026-11-04：CME 改用 **bsk**（真实浏览器 ✗ headless 拿不到数据 ✗）
     "fetch_fedwatch_bsk.py",
+    # 🔴 2026-11-05：**最终方案** ✓ 富途 OpenD 官方接口 ✗ 不是爬虫 ✓
+    #    市面调研结论：
+    #      cme-fedwatch（PyPI）⇒ 已停维护 ✗
+    #      fed-funds-target.json ⇒ 404 ✗
+    #      curl_cffi/nodriver/FlareSolverr ⇒ 解决不了 iframe+Referer ✗
+    #    富途 `get_fed_watch_target_rate()` ⇒ **官方** ✓ 零新增依赖 ✓
+    "fetch_fedwatch_futu.py",
 )
 
 
