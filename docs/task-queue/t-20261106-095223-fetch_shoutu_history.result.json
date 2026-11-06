@@ -1,0 +1,11 @@
+{
+  "id": "t-20261106-095223-fetch_shoutu_history",
+  "action": "fetch_shoutu_history",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"stdout\": \"抓取时刻：2026-11-06 09:57:53（本机 +0800）\\n抓取守猪待兔历史：CONL / YINN / GDXU / AXTX / CRCG / TQQQ / SOXL / UPRO\\n\", \"stderr\": \"tch=async function(){const r=await OF.apply(this,arguments);try{const c=r.clone();c.text().then(t=>rec(arguments[0]&&arguments[0].url||arguments[0],t))}catch(e){}return r};}return 'OK';})()\\\"] failed rc=1: error: shared page control or observation changed\\nhint: Use cooperate wait, then cooperate sync. Keep the assigned goal; reconcile the live result before issuing a new action. Never replay an uncertain submission.\\ndetails: This action requires the context returned by the latest cooperate sync\\n\\n\"}",
+  "started_at": "2026-11-06T09:57:52",
+  "finished_at": "2026-11-06T09:58:01",
+  "duration_s": 9.39
+}
