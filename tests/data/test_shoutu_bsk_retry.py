@@ -48,7 +48,7 @@ def test_bsk_eval_passes_context_from_sync(monkeypatch):
 def test_bsk_eval_uses_cached_context_without_resync(monkeypatch):
     """已 sync 过 ⇒ 直接带 context 调，不再多付一次 observe+sync。"""
     fs = _load()
-    fs._CTX["s1"] = "CTX0"
+    fs._CTX["s1"] = ("CTX0", "OBS0")
     calls = []
 
     def fake_bsk(args, session=None):
@@ -57,32 +57,35 @@ def test_bsk_eval_uses_cached_context_without_resync(monkeypatch):
 
     monkeypatch.setattr(fs, "bsk", fake_bsk)
     assert fs.bsk_eval("js", "s1") == "OK"
-    assert calls == [["evaluate", "js", "--context", "CTX0"]]
+    assert calls == [["evaluate", "js", "--context", "CTX0",
+                      "--observation", "OBS0"]]
 
 
 @pytest.mark.parametrize("out,expected", [
-    ('{"context": "CTX9"}', "CTX9"),          # ① JSON
-    ("synced\ncontext: CTX9\n", "CTX9"),      # ② 前缀行
-    ("CTX9", "CTX9"),                          # ③ 裸 token（单行无空格）
-    ("refused\nwait then sync\n", ""),         # 认不出 ⇒ 不硬猜
+    # ① 实测形态（2026-11-06 Mac bsk_probe 回执）：键名是 context_id ✗ 不是 context
+    ('{"context_id": "CTX9", "observation": {"observation_id": "OBS9"}}',
+     ("CTX9", "OBS9")),
+    ("synced\ncontext: CTX9\n", ("CTX9", "")),   # ② 前缀行
+    ("CTX9", ("CTX9", "")),                      # ③ 裸 token（单行无空格）
+    ("refused\nwait then sync\n", ("", "")),     # 认不出 ⇒ 不硬猜
 ])
 def test_parse_context_forms(out, expected):
-    """context 有三种可能形态，都不能盲取最后一行（dsh 提醒）。"""
+    """context 形态：实测是 `context_id`；另两种是兜底。"""
     assert _load()._parse_context(out) == expected
 
 
 def test_bsk_sync_returns_and_caches_context(monkeypatch):
-    """`cooperate sync` 的输出解析成 context 并缓存。"""
+    """`cooperate sync` 的输出解析成 (context, observation) 并缓存。"""
     fs = _load()
 
     def fake_bsk(args, session=None):
         if args[0] == "cooperate":
-            return "context: CTX9\n"
+            return '{"context_id": "CTX9", "observation_id": "OBS9"}'
         return ""
 
     monkeypatch.setattr(fs, "bsk", fake_bsk)
-    assert fs.bsk_sync("s2") == "CTX9"
-    assert fs._CTX["s2"] == "CTX9"
+    assert fs.bsk_sync("s2") == ("CTX9", "OBS9")
+    assert fs._CTX["s2"] == ("CTX9", "OBS9")
 
 
 def test_bsk_sync_swallows_errors(monkeypatch):
@@ -93,7 +96,7 @@ def test_bsk_sync_swallows_errors(monkeypatch):
         raise RuntimeError("unknown command: %s" % args[0])
 
     monkeypatch.setattr(fs, "bsk", fake_bsk)
-    assert fs.bsk_sync("s1") == ""
+    assert fs.bsk_sync("s1") == ("", "")
 
 
 def test_bsk_eval_reraises_unrelated_error(monkeypatch):
@@ -111,11 +114,16 @@ def test_bsk_eval_reraises_unrelated_error(monkeypatch):
     assert calls == [["evaluate", "js"]]
 
 
-def test_bsk_help_prints_cli_surface(monkeypatch, capsys):
-    """失败诊断必须把 CLI 面貌**打到 stdout**（否则任务回执里看不到）。"""
+def test_failure_message_carries_sync_output(monkeypatch):
+    """三次都失败时，异常尾必须带 **sync 的原始输出**（回执只看得到尾部）。"""
     fs = _load()
-    monkeypatch.setattr(fs, "bsk", lambda args, session=None: "usage: bsk ...")
-    fs._bsk_help()
-    out = capsys.readouterr().out
-    assert "### bsk step --help" in out
-    assert "### bsk cooperate --help" in out
+
+    def fake_bsk(args, session=None):
+        if args[0] == "cooperate":
+            return "REFUSED: human hold\n"
+        raise RuntimeError("error: control context is invalid")
+
+    monkeypatch.setattr(fs, "bsk", fake_bsk)
+    with pytest.raises(RuntimeError) as exc:
+        fs.bsk_eval("js", "s1")
+    assert "REFUSED: human hold" in str(exc.value)

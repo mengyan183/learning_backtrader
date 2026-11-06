@@ -36,6 +36,8 @@ from fg_system.data import shoutu                # noqa: E402
 _BSK = "/Users/xingguo/.local/bin/bsk"
 #: session -> `cooperate sync` 返回的控制上下文（`evaluate --context` 必填 ✓）
 _CTX = {}
+#: 最近一次 `cooperate sync` 的**原始输出**（失败时随异常带回 ✓）
+_LAST_SYNC = ""
 UNIVERSE_PAGE = "https://fe.szdt.tech/invest/#/etf"
 SCAN_PAGE = "https://fe.szdt.tech/invest/#/stock_scan"
 
@@ -52,54 +54,44 @@ def bsk(args, session=None):
     return r.stdout
 
 
-def _bsk_help():
-    """把 bsk 的 CLI 面貌**打到 stdout** ✓（失败诊断用，随任务回执带回）。
-
-    🔴 2026-11-06：Mac 上的 bsk 比本地 `browser-skill/SKILL.md` 新 ✗ ——
-       它有 `cooperate` / `step` / `view` / `daemon` 等命令 ✗
-       而 SKILL.md 只列到 `evaluate` ⇒ 脚本用的 `evaluate` 语义已变 ✗
-       ⇒ 必须先把 `step` / `cooperate` 的用法拿回来再改代码 ✓
-    """
-    # ⚠️ 只打**还没拿到**的两条（`--help` / `evaluate --help` 已在回执里 ✓）
-    #    —— 回执的 stdout 有长度上限，全打会把关键部分截掉 ✗
-    texts = []
-    for args in (["step", "--help"], ["cooperate", "--help"]):
-        try:
-            texts.append("### bsk %s\n%s" % (" ".join(args), bsk(args)))
-        except RuntimeError as exc:
-            texts.append("### bsk %s\n(失败：%s)" % (" ".join(args), str(exc)[:300]))
-    blob = "\n".join(texts)
-    print(blob)                        # ← 进任务回执的 stdout ✓
-    return blob[:600]
-
-
 def _parse_context(out):
-    """从 `cooperate sync` 的输出里取控制上下文 ⇒ 取不到返回 `""`。
+    """从 `cooperate sync` 的输出里取 `(context_id, observation_id)`。
 
-    ⚠️ **不能盲取最后一行** ✗（dsh 提醒）：sync 可能多次尝试，最后一行可能是
-       被拒的那次留下的 ✗ ⇒ 按三种形态依次试，都不匹配就当没拿到 ✓
-       ① JSON（`{"context": "..."}`）② `context: xxx` / `context=xxx`
-       ③ 只有一行且无空格（裸 token，与 `session start` 同形态）
+    实测（2026-11-06 Mac `bsk_probe` 回执，`sync --settle --json`）：
+      `{"context_id": "b27de8c5-…", "control_policy": "target",
+        "observation": {"observation_id": "116d2aca-…", …}, …}`
+
+    🔴 原来只找 `context` / `control_context` / `ctx` ✗ —— 真键名是
+       **`context_id`** ✗ ⇒ 解析恒为 `""` ⇒ evaluate 从不带 `--context` ✗
+       ⇒ 五轮都报同一个 `requires a valid control context` ✗
+
+    ⚠️ `observation_id` 也要取 ✓ —— `evaluate --help` 写明「Scripts, untargeted
+       keys and visual clicks require this sync's observation_id」✗
     """
     text = (out or "").strip()
     if not text:
-        return ""
+        return "", ""
     try:
         obj = json.loads(text)
-        if isinstance(obj, dict):
-            for key in ("context", "control_context", "ctx"):
-                val = obj.get(key)
-                if isinstance(val, str) and val.strip():
-                    return val.strip()
     except ValueError:
-        pass
+        obj = None
+    if isinstance(obj, dict):
+        ctx = str(obj.get("context_id") or obj.get("context") or "").strip()
+        obs = obj.get("observation")
+        obs = obs if isinstance(obs, dict) else {}
+        oid = str(obj.get("observation_id")
+                  or obs.get("observation_id") or "").strip()
+        if ctx or oid:
+            return ctx, oid
+    # 非 JSON ⇒ 退回文本形态（`context: xxx` / 裸 token）
     for line in text.splitlines():
-        m = re.match(r"\s*(?:control[ _]?)?context\s*[:=]\s*(\S+)\s*$", line, re.I)
+        m = re.match(r"\s*(?:control[ _]?)?context(?:_id)?\s*[:=]\s*(\S+)\s*$",
+                     line, re.I)
         if m:
-            return m.group(1)
+            return m.group(1), ""
     if len(text.splitlines()) == 1 and " " not in text:
-        return text
-    return ""
+        return text, ""
+    return "", ""
 
 
 def bsk_sync(session):
@@ -119,17 +111,20 @@ def bsk_sync(session):
     except RuntimeError:
         pass                               # 尽力；判据在随后的 evaluate
     out = ""
-    for args in (["cooperate", "sync", "--json"], ["cooperate", "sync"]):
+    for args in (["cooperate", "sync", "--settle", "--json"],
+                 ["cooperate", "sync"]):
         try:
             out = bsk(args, session)
             break
         except RuntimeError:
-            out = ""                      # --json 不支持就退回纯文本 ✓
-    ctx = _parse_context(out)
-    # 🔴 打出来（回执里能看到 sync 到底给了什么 ✗ 否则又是一轮盲猜 ✗）
-    print("[bsk] sync=%r ctx=%r" % (out.strip()[:200], ctx[:40]))
-    _CTX[session] = ctx
-    return ctx
+            out = ""                      # --settle/--json 不支持就退回 ✓
+    ctx, obs = _parse_context(out)
+    # 🔴 打出来 + 存全局（回执只保留尾部 ✗ 早期 print 会被截掉 ✗）
+    global _LAST_SYNC
+    _LAST_SYNC = out.strip()
+    print("[bsk] sync ctx=%r obs=%r" % (ctx[:40], obs[:40]))
+    _CTX[session] = (ctx, obs)
+    return ctx, obs
 
 
 def bsk_eval(js, session):
@@ -155,8 +150,13 @@ def bsk_eval(js, session):
     last = None
     for attempt in range(3):
         # 第 1 次用缓存 context（navigate 后已 sync 过）；失败再 sync 换新的 ✓
-        ctx = _CTX.get(session, "") if attempt == 0 else bsk_sync(session)
-        args = ["evaluate", js] + (["--context", ctx] if ctx else [])
+        ctx, obs = (_CTX.get(session, ("", "")) if attempt == 0
+                    else bsk_sync(session))
+        args = ["evaluate", js]
+        if ctx:
+            args += ["--context", ctx]
+        if obs:                       # 脚本/无目标动作要求本次 sync 的 observation ✓
+            args += ["--observation", obs]
         try:
             return bsk(args, session).strip()
         except RuntimeError as exc:
@@ -165,8 +165,10 @@ def bsk_eval(js, session):
                                           "control context")):
                 raise                      # 非上下文类 ⇒ 原样抛，不重试
             last = exc
-    # 三次都失败 ⇒ 把 bsk 的 CLI 面貌一起带回 ✗（否则只能靠猜子命令名 ✗）
-    raise RuntimeError("%s\n--- bsk --help（诊断用）---\n%s" % (last, _bsk_help()))
+    # 三次都失败 ⇒ 把 **sync 的原始输出**塞进异常尾 ✗
+    # （回执只保留尾部 ✗ 早期 print 会被截掉 ✗ 而 help 已经拿全了 ✗）
+    raise RuntimeError("%s\n--- 最近一次 cooperate sync 原始输出 ---\n%s"
+                       % (last, (_LAST_SYNC or "（空）")[:600]))
 
 
 def _session():
