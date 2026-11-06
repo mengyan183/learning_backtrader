@@ -266,12 +266,13 @@ def _sort_key(name):
     return pkg, int(num) if num.isdigit() else 0
 
 
-def filter_chunks(chunks, pkg=None):
+def filter_chunks(chunks, pkg=None, with_bootstrap=False):
     """按包名过滤分片（`pkg` 为空 ⇒ **不过滤**，保持历史行为）。
 
     `chunks` 是 `(文件名, 文本)` 列表，文件名形如 `minimal-t007.txt`。
-    ⚠️ `bootstrap-*`（引导脚本）**始终保留** —— 它不带 `###FG:` 标记、不属于任何包，
-    但**首次引导必发**（§12.27-③）⇒ 过滤时不能丢。
+    ⚠️ `bootstrap-*`（引导脚本）只在 **`with_bootstrap=True`** 时才带上 ——
+    它**首次引导必发**（§12.27-③），但每次发包都附 5 片纯噪音 ✗
+    （2026-11-06 用户实测：每包必带 `###FGB:1/5`~`5/5`，Mac 侧还得再解一遍 ✗）
 
     背景（2026-09-29 §12.29-②）：原来 `_chunks()` 用 `glob("*-t*.txt")` 收**所有**包，
     目录里一旦混了上一轮构建留下的 keep/tests，就会**一起发出去** ✗
@@ -288,7 +289,8 @@ def filter_chunks(chunks, pkg=None):
             "未知包 %r —— 目录里没有它的分片。可选：%s"
             % (pkg, ", ".join(sorted(names)) or "（目录里没有任何包）"))
     return [c for c in chunks
-            if c[0].startswith("bootstrap-") or _sort_key(c[0])[0] == pkg]
+            if (with_bootstrap and c[0].startswith("bootstrap-"))
+            or _sort_key(c[0])[0] == pkg]
 
 
 def _box_has_text(vom, snippet):
@@ -315,8 +317,10 @@ def main():
     ap.add_argument("--pause", type=float, default=0.6,
                     help="每条之间停多久（秒）；太快可能触发风控")
     ap.add_argument("--pkg", default="", metavar="PKG",
-                    help="只发指定包的分片（`bootstrap-*` 引导脚本始终保留）。"
-                         "例：`--pkg minimal`。默认发全部")
+                    help="只发指定包的分片。例：`--pkg minimal`。默认发全部")
+    ap.add_argument("--with-bootstrap", action="store_true",
+                    help="额外带上 `bootstrap-*` 引导脚本（**只有新 Mac 首次引导才需要**；"
+                         "平时发会多 5 片纯噪音）")
     ap.add_argument("--sent-status", default="", metavar="PKG",
                     help="只查该包的**已发台账**（已发/缺片），不碰浏览器。"
                          "补发前先跑这个 ✓（台账 = 每片成功即落盘 ✓，不受 stdout 截断影响）")
@@ -327,7 +331,7 @@ def main():
         return 0
 
     chunks = sorted(_chunks(), key=lambda kv: _sort_key(kv[0]))
-    chunks = filter_chunks(chunks, args.pkg or None)
+    chunks = filter_chunks(chunks, args.pkg or None, args.with_bootstrap)
     if not chunks:
         raise SystemExit("❌ %s 里没有分片；先跑：\n"
                          "   python scripts/make_feishu_bundle.py --minimal --strip --text"

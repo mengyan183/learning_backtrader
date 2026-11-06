@@ -2672,7 +2672,46 @@ def _scoped_env(action):
         os.environ.update(saved)
 
 
+def _act_render_probe(params):
+    """渲染一次仪表盘并回传**完整 traceback** ✓（2026-11-06）。
+
+    动机：服务端 500 只回 `type: message` ✗ ⇒
+    「must be real number, not complex」查了整轮才定位到 `leverage._annualize` ✗
+    ⇒ 队列直接跑一次，栈一起带回来 ✓
+    """
+    import traceback
+    out = {"ok": True}
+    try:
+        from fg_system.dashboard.server import render_dashboard
+        html = render_dashboard()
+        out["html_len"] = len(html)
+        out["loss_block_ok"] = "损耗归因不可用" not in html
+    except Exception as exc:                     # noqa: BLE001
+        out["ok"] = False
+        out["error"] = "%s: %s" % (type(exc).__name__, exc)
+        out["traceback"] = traceback.format_exc()[-4000:]
+    return out
+
+
+def _act_run_pytest(params):
+    """跑指定测试文件并回传尾部输出 ✓（参数 `files`，逗号分隔，默认全量）。"""
+    files = [x.strip() for x in str(params.get("files") or "tests/").split(",")
+             if x.strip()]
+    try:
+        r = subprocess.run([sys.executable, "-m", "pytest"] + files + ["-q"],
+                           cwd=ROOT, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=900)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "pytest 超过 900 秒"}
+    tail = (r.stdout or "").strip().splitlines()[-40:]
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "failed": [ln for ln in tail if ln.startswith("FAILED")],
+            "tail": "\n".join(tail)}
+
+
 ACTIONS = {
+    "render_probe": _act_render_probe,
+    "run_pytest": _act_run_pytest,
     "cleanup_backlog": _act_cleanup_backlog,
     "sync_runtime": _act_sync_runtime,
     "git_pull": _act_git_pull,

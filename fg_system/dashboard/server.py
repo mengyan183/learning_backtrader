@@ -318,7 +318,13 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         try:
             html = render_dashboard(get_features(), prices_path=prices_path)
         except Exception as exc:      # 渲染失败不能把服务搞挂
-            return Response("渲染失败：%s: %s" % (type(exc).__name__, exc),
+            # 🔴 2026-11-06：只回 type+message ✗ ⇒ 看不到是哪一行炸的 ✗
+            #    实测「must be real number, not complex」查了整轮才定位到
+            #    leverage._annualize ⇒ 把 traceback 尾巴一起回，省一轮
+            import traceback
+            tb = traceback.format_exc().strip().splitlines()[-12:]
+            return Response("渲染失败：%s: %s\n\n%s"
+                            % (type(exc).__name__, exc, "\n".join(tb)),
                             status=500, mimetype="text/plain; charset=utf-8")
         with _cache_lock:
             _cache["html"], _cache["ts"] = html, time.time()
