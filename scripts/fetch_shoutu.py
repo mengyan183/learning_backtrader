@@ -50,7 +50,7 @@ def bsk(args, session=None):
 
 
 def bsk_eval(js, session):
-    """跑 `bsk evaluate` ✓（**失败时先 observe 再重试一次** ✗）。
+    """跑 `bsk evaluate` ✓（`cooperate` 类失败时 observe 后重试一次 ✗）。
 
     🔴 2026-11-06 实测 ✗：
        `fetch_shoutu_history` 在 Mac 上失败 ✗ 报
@@ -58,15 +58,20 @@ def bsk_eval(js, session):
          `details: This action requires the context returned by the
                    latest cooperate sync`
        ⇒ `bsk` 的 `evaluate` **要求「刚 observe 过」** ✗ 否则上下文失效 ✗
-       ⇒ 修法：**失败时补一次 `observe` 再重试** ✓
-         （不无条件 observe ✗ 那会让每次 evaluate 都慢一倍 ✗）
+
+    🔴 2026-11-06 二次修正 ✗：上一版把重试判据写在 `bsk()` 的**返回值**上 ✗，
+       而 `bsk()` 在 rc≠0 时**直接 raise** ✗ ⇒ 重试分支是死代码 ✗
+       （`t-20261106-095223-fetch_shoutu_history` 回执 rc=1 即此 ✗）
+       ⇒ 改成 try/except，按**异常消息**判是否 cooperate 类失败 ✓
     """
-    out = bsk(["evaluate", js], session)
-    low = (out or "").lower()
-    if "cooperate" in low or "shared page control" in low:
+    try:
+        return bsk(["evaluate", js], session).strip()
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if "cooperate" not in msg and "shared page control" not in msg:
+            raise
         bsk(["observe"], session)          # 刷新控制上下文 ✓
-        out = bsk(["evaluate", js], session)
-    return out.strip()
+        return bsk(["evaluate", js], session).strip()
 
 
 def _session():
