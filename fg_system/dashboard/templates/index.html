@@ -1182,13 +1182,18 @@ function loadTasks() {
       var kv = [];
       function add(k, v, cls) { kv.push([k, v, cls || ""]); }
       if (d.packages && d.packages.length) {
+        // 🔴 2026-11-06：原来**每包一行** ✗ ⇒ 一天下发十几个包，页面被
+        //    「分片 fix_1106b / fix_1106c / …」刷满 ✗ 真正要看的「哪包缺片」
+        //    反而被埋掉 ✗ ⇒ 只列**缺片的包**，已收齐的汇总成一行 ✓
+        var okN = 0;
         for (var i = 0; i < d.packages.length; i++) {
           var p = d.packages[i];
+          if (!p.missing.length) { okN++; continue; }
           add("分片 " + p.pkg,
-              p.have + "/" + p.total +
-              (p.missing.length ? " · 缺 " + p.missing.slice(0, 8).join(",") : " ✓"),
-              p.missing.length ? "bad" : "ok");
+              p.have + "/" + p.total + " · 缺 " + p.missing.slice(0, 8).join(","),
+              "bad");
         }
+        if (okN) { add("分片已收齐", okN + " 个包 ✓", "ok"); }
       }
       if (d.last_ingest) {
         add("最近入库", d.last_ingest.name + " · " + d.last_ingest.age_min + " 分钟前", "ok");
