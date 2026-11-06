@@ -1,0 +1,11 @@
+{
+  "id": "t-20261106-092830-inspect_csv",
+  "action": "inspect_csv",
+  "params": {
+    "path": "Data/raw/prices.csv",
+    "symbol": "SOXX,SOXL",
+    "n": "5"
+  },
+  "status": "pending",
+  "created_at": "2026-11-06T09:28:30"
+}
