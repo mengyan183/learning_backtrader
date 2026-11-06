@@ -182,6 +182,10 @@ def fetch_history(symbols, debug=False, ids=None, click_tab=False,
     try:
         fs.bsk(["navigate", APP_PAGE], session)
         time.sleep(6)
+        # 🔴 2026-11-06：navigate 换了文档 ⇒ 旧控制上下文作废 ✗
+        #    必须先 observe + cooperate sync 再 evaluate（否则一直报
+        #    「control context no longer belongs to the current document」✗）
+        fs.bsk_sync(session)
         if fs.bsk_eval(HOOK, session) != "OK":
             raise RuntimeError("挂钩未装成功 —— 页面结构可能已变")
         for sym in symbols:

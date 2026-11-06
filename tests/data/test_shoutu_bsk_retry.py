@@ -36,7 +36,20 @@ def test_bsk_eval_retries_after_cooperate_error(monkeypatch):
 
     monkeypatch.setattr(fs, "bsk", fake_bsk)
     assert fs.bsk_eval("js", "s1") == "OK"
-    assert calls == [["evaluate", "js"], ["observe"], ["evaluate", "js"]]
+    # 重试前必须先重建控制上下文（observe + cooperate sync）再 evaluate
+    assert calls == [["evaluate", "js"], ["observe"], ["cooperate", "sync"],
+                     ["evaluate", "js"]]
+
+
+def test_bsk_sync_swallows_errors(monkeypatch):
+    """重建上下文的子命令失败**不得抛出**（否则会盖住真正的 evaluate 错误）。"""
+    fs = _load()
+
+    def fake_bsk(args, session=None):
+        raise RuntimeError("unknown command: %s" % args[0])
+
+    monkeypatch.setattr(fs, "bsk", fake_bsk)
+    assert fs.bsk_sync("s1") is None
 
 
 def test_bsk_eval_escalates_to_cooperate_sync(monkeypatch):

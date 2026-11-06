@@ -49,6 +49,32 @@ def bsk(args, session=None):
     return r.stdout
 
 
+def _bsk_help():
+    """取 `bsk --help` 前 800 字 ✓（失败诊断用：子命令名只能从这里确认）。"""
+    try:
+        return bsk(["--help"])[:800]
+    except RuntimeError as exc:
+        return "(bsk --help 失败：%s)" % str(exc)[:200]
+
+
+def bsk_sync(session):
+    """**导航之后重建控制上下文** ✓（`observe` + `cooperate sync`，各自尽力）。
+
+    🔴 2026-11-06 三次失败后的结论（含 dsh 独立分析）✗：
+       错误从 `shared page control ... requires the context returned by the
+       latest cooperate sync` 变成 `the control context no longer belongs to
+       the current document` ⇒ **不是缺重试，是缺「导航后重建上下文」** ✗
+       `navigate` 换了文档 ⇒ 旧控制上下文作废 ⇒ 必须先 observe + cooperate sync
+       再 evaluate ✓（dsh：sync 必须在页面 settle 之后、动作之前）
+    ⚠️ 子命令不存在/失败一律吞掉 ✗ —— 这里只是尽力，真正的判据在随后的 evaluate。
+    """
+    for cmd in (["observe"], ["cooperate", "sync"]):
+        try:
+            bsk(cmd, session)
+        except RuntimeError:
+            pass
+
+
 def bsk_eval(js, session):
     """跑 `bsk evaluate` ✓（`cooperate` 类失败时 observe 后重试一次 ✗）。
 
@@ -70,20 +96,19 @@ def bsk_eval(js, session):
          （子命令失败一律吞掉 ✗ 否则会把原错误盖掉 ✗）
     """
     last = None
-    for fix in (None, ["observe"], ["cooperate", "sync"]):
-        if fix is not None:
-            try:
-                bsk(fix, session)
-            except RuntimeError:
-                pass                       # 修复动作失败不该盖住原错误
+    for attempt in range(3):
+        if attempt:
+            bsk_sync(session)              # 重建控制上下文（observe + cooperate sync）
         try:
             return bsk(["evaluate", js], session).strip()
         except RuntimeError as exc:
             msg = str(exc).lower()
-            if "cooperate" not in msg and "shared page control" not in msg:
-                raise                      # 非 cooperate 类 ⇒ 原样抛，不重试
+            if not any(k in msg for k in ("cooperate", "shared page control",
+                                          "control context")):
+                raise                      # 非上下文类 ⇒ 原样抛，不重试
             last = exc
-    raise last
+    # 三次都失败 ⇒ 把 bsk 的 CLI 面貌一起带回 ✗（否则只能靠猜子命令名 ✗）
+    raise RuntimeError("%s\n--- bsk --help（诊断用）---\n%s" % (last, _bsk_help()))
 
 
 def _session():
