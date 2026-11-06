@@ -2672,6 +2672,24 @@ def _scoped_env(action):
         os.environ.update(saved)
 
 
+def _act_bsk_probe(params):
+    """跑 `scripts/bsk_probe.py` ⇒ **一次**拿到 bsk 控制上下文的全部事实 ✓。
+
+    动机：`fetch_shoutu_history` 连挂 5 轮，每轮只带回一条错误 ✗
+    ⇒ 用户要求「避免在 Mac 上反复重试」✗ ⇒ 改成一次跑完全部候选调用 ✓
+    """
+    try:
+        r = subprocess.run(
+            [sys.executable, os.path.join(ROOT, "scripts", "bsk_probe.py")],
+            cwd=ROOT, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=600)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "bsk_probe 超过 600 秒"}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": (r.stdout or "")[-4000:],
+            "stderr": (r.stderr or "")[-800:]}
+
+
 def _act_render_probe(params):
     """渲染一次仪表盘并回传**完整 traceback** ✓（2026-11-06）。
 
@@ -2754,6 +2772,7 @@ def _act_run_pytest(params):
 
 
 ACTIONS = {
+    "bsk_probe": _act_bsk_probe,
     "restart_dashboard": _act_restart_dashboard,
     "render_probe": _act_render_probe,
     "run_pytest": _act_run_pytest,
