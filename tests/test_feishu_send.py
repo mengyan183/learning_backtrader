@@ -56,32 +56,56 @@ def test_box_has_text_empty_vom():
 
 
 def test_send_failure_check_is_not_short_circuited():
-    """⚠️ **变异验证（常驻）**：`if _box_has_text(...)` 不能被短路成 `if False and ...`。
+    """⚠️ **变异验证（常驻）**：发送成功判据不能被短路，失败必须 raise。
 
     **为什么需要它**：先写过一版纯字符串守卫（断言「`press Enter` 之后出现过
     `_box_has_text`」）—— 实测把它改成 `if False and _box_has_text(...)` 后
     **那条断言照样通过** ⇒ 守卫失效（**静默通过 = 最坏的失败模式**，同
     `test_script_only_records_the_history_endpoint` 的教训）。
 
-    ⇒ 走 **AST**：`press Enter` 之后必须存在一个 `if`，其 **test 本身就是**
-    `_box_has_text(...)` 的调用，且**分支体里有 `raise`**（否则失败会被静默吞掉）。
+    🔴 2026-11-06 更新：代码改成**轮询 3 秒等输入框清空**（`cleared` 标志），
+    旧守卫只认「`if _box_has_text(...)` 直连 raise」⇒ 守卫与实际实现脱钩变红 ✗。
+    新判据（两条都必须在 `press Enter` 之后成立）：
+      ① `if not _box_has_text(...)` —— **test 就是它本身**（含 `and` 即算短路 ✗）
+         且分支把 `cleared` 置 True；
+      ② `if not cleared:` 分支里有 `raise`（否则失败被静默吞掉 ✗）。
     """
     import ast
     src = _src()
     idx = src.index('bsk.run("press", "Enter"')
     line0 = src[:idx].count("\n") + 1
+
+    def _sets_cleared_true(node):
+        for n in ast.walk(node):
+            if isinstance(n, ast.Assign) and isinstance(n.value, ast.Constant) \
+                    and n.value.value is True:
+                if any(isinstance(t, ast.Name) and t.id == "cleared"
+                       for t in n.targets):
+                    return True
+        return False
+
+    poll_ok = fail_ok = False
     for node in ast.walk(ast.parse(src)):
         if not (isinstance(node, ast.If) and node.lineno > line0):
             continue
         t = node.test
-        if (isinstance(t, ast.Call) and isinstance(t.func, ast.Name)
-                and t.func.id == "_box_has_text"):
-            assert any(isinstance(n, ast.Raise) for n in ast.walk(node)), \
-                "该 if 分支里必须有 raise —— 否则「没发出去」被静默吞掉"
-            return
-    raise AssertionError(
-        "`press Enter` 之后没有「`if _box_has_text(...)` + raise」的校验"
-        "（注意：被 `and` 短路、或只写了字符串但没真判，都算失败）")
+        # ① 判据本身 = `not _box_has_text(...)`（不套 `and` ⇒ 不会被短路）
+        if (isinstance(t, ast.UnaryOp) and isinstance(t.op, ast.Not)
+                and isinstance(t.operand, ast.Call)
+                and isinstance(t.operand.func, ast.Name)
+                and t.operand.func.id == "_box_has_text"
+                and _sets_cleared_true(node)):
+            poll_ok = True
+        # ② 未清空 ⇒ raise
+        if (isinstance(t, ast.UnaryOp) and isinstance(t.op, ast.Not)
+                and isinstance(t.operand, ast.Name) and t.operand.id == "cleared"
+                and any(isinstance(n, ast.Raise) for n in ast.walk(node))):
+            fail_ok = True
+
+    assert poll_ok, (
+        "`press Enter` 之后的成功判据必须是 `if not _box_has_text(...)` 且把 "
+        "`cleared` 置 True（被 `and` 短路 / 只写字符串 / 换成别的判据都算失败）")
+    assert fail_ok, "「没发出去」必须走 `if not cleared: ... raise`，不得静默吞掉"
 
 
 def test_send_loop_raises_with_resume_hint_on_failure():

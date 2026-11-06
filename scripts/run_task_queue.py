@@ -2693,6 +2693,50 @@ def _act_render_probe(params):
     return out
 
 
+def _act_restart_dashboard(params):
+    """重启仪表盘 launchd 服务并自检首页 ✓（2026-11-06）。
+
+    🔴 为什么必须重启：**刷新页面不会重载 Python 模块** ✗ ——
+    代码入库后不重启，进程里还是旧模块（实测：修完 complex 仍报同一个错 ✗）。
+    重启后**再探一次首页** ✓ 才算验证通过（只 `kickstart` 不看结果等于没验 ✗）。
+    """
+    import subprocess as _sp
+    import time as _t
+    import urllib.error as _ue
+    import urllib.request as _u
+
+    label = str(params.get("label") or "com.xingguo.fg-dashboard")
+    url = str(params.get("url") or "http://127.0.0.1:8000/")
+    uid = os.getuid() if hasattr(os, "getuid") else 501
+    try:
+        r = _sp.run(["launchctl", "kickstart", "-k", "gui/%s/%s" % (uid, label)],
+                    capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", timeout=30)
+    except (OSError, _sp.SubprocessError) as exc:
+        return {"ok": False, "reason": "launchctl 失败：%s" % exc}
+    out = {"ok": r.returncode == 0, "rc": r.returncode,
+           "stderr": (r.stderr or "").strip()[-300:]}
+
+    # 冷启动要跑一次全量渲染（实测近 1 分钟）⇒ 最多等 90 秒
+    for _ in range(45):
+        _t.sleep(2)
+        try:
+            with _u.urlopen(url, timeout=15) as resp:
+                body = resp.read(4000).decode("utf-8", "replace")
+                out.update(http=resp.status, render_error="渲染失败" in body,
+                           html_len=len(body))
+                return out
+        except _ue.HTTPError as exc:          # 500 也算「起来了」，要拿错误正文
+            body = exc.read(4000).decode("utf-8", "replace")
+            out.update(http=exc.code, render_error="渲染失败" in body,
+                       body=body[:1200])
+            return out
+        except Exception as exc:              # noqa: BLE001 —— 还没起来，继续等
+            out["last_error"] = "%s: %s" % (type(exc).__name__, str(exc)[:120])
+    out["ok"] = False
+    return out
+
+
 def _act_run_pytest(params):
     """跑指定测试文件并回传尾部输出 ✓（参数 `files`，逗号分隔，默认全量）。"""
     files = [x.strip() for x in str(params.get("files") or "tests/").split(",")
@@ -2710,6 +2754,7 @@ def _act_run_pytest(params):
 
 
 ACTIONS = {
+    "restart_dashboard": _act_restart_dashboard,
     "render_probe": _act_render_probe,
     "run_pytest": _act_run_pytest,
     "cleanup_backlog": _act_cleanup_backlog,
