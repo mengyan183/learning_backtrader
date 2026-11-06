@@ -2805,8 +2805,12 @@ ACTIONS = {
 }
 
 
+#: **优先执行**的 action（重启类）—— 见 `_load_pending` 的排序说明。
+PRIORITY_ACTIONS = ("restart_dashboard", "restart_queue")
+
+
 def _load_pending():
-    """列出待执行任务（status=pending），按 created_at 升序（先来先做）。"""
+    """列出待执行任务（status=pending）：**重启类优先**，其余按 id 升序。"""
     out = []
     if not os.path.isdir(QUEUE):
         return out
@@ -2840,7 +2844,11 @@ def _load_pending():
     # 🔴 2026-10-29：按 **id** 排序（先进先出）✗ —— id 是
     # `t-YYYYmmdd-HHMMSS-<action>`，字典序**恒等于**时间序 ✓；
     # 而 `created_at` 可能缺失/手写错误（缺失会排最前，抢跑 ✗）。
-    out.sort(key=lambda s: str(s.get("id") or ""))
+    # 🔴 2026-11-06：**重启类提到队首** ✓ —— 队列是串行的，而 `fetch_prices`
+    #    的 timeout 是 1800 秒 ✗ ⇒ 排在它后面的 `restart_dashboard` 白等 16 分钟 ✗
+    #    （实测：12:40 下发，13:55 才执行 ✗）。重启只要几秒且决定页面能不能用 ✓
+    out.sort(key=lambda s: (0 if str(s.get("action") or "") in PRIORITY_ACTIONS
+                            else 1, str(s.get("id") or "")))
     return out
 
 

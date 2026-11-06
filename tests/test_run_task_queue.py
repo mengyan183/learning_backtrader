@@ -40,6 +40,25 @@ def test_runs_whitelisted_action(tmp_path, monkeypatch):
     assert r["status"] == "done" and r["rc"] == 0
 
 
+def test_restart_tasks_run_before_older_slow_tasks(tmp_path, monkeypatch):
+    """**重启类任务必须先跑** —— 队列串行，慢任务会把它堵在后面。
+
+    2026-11-06 实测：`restart_dashboard` 12:40 下发，13:55 才执行 ✗
+    —— 排在 `fetch_prices`（timeout 1800s）后面白等 16 分钟。
+    """
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    order = []
+    monkeypatch.setattr(q, "ACTIONS", {
+        "fetch_prices": lambda p: order.append("fetch") or {"ok": True},
+        "restart_dashboard": lambda p: order.append("restart") or {"ok": True},
+    })
+    _put(str(tmp_path), "t-20261106-100000-fetch_prices", "fetch_prices")
+    _put(str(tmp_path), "t-20261106-100020-restart_dashboard", "restart_dashboard")
+
+    q.run_once(commit=False)
+    assert order == ["restart", "fetch"], "重启类没提到队首 ✗"
+
+
 def test_unknown_action_fails_loudly(tmp_path, monkeypatch):
     """未知 action **不能静默跳过** ✗ —— 否则下发方以为还在排队。"""
     monkeypatch.setattr(q, "QUEUE", str(tmp_path))

@@ -63,15 +63,27 @@ def bsk_eval(js, session):
        而 `bsk()` 在 rc≠0 时**直接 raise** ✗ ⇒ 重试分支是死代码 ✗
        （`t-20261106-095223-fetch_shoutu_history` 回执 rc=1 即此 ✗）
        ⇒ 改成 try/except，按**异常消息**判是否 cooperate 类失败 ✓
+
+    🔴 2026-11-06 三次修正 ✗：补 `observe` 后**仍然失败** ✗（14:08 回执同一错误 ✗）
+       bsk 的提示写明「Use cooperate wait, then cooperate sync」✗
+       ⇒ 升级为**三级退避**：evaluate → observe → `cooperate sync` ✓
+         （子命令失败一律吞掉 ✗ 否则会把原错误盖掉 ✗）
     """
-    try:
-        return bsk(["evaluate", js], session).strip()
-    except RuntimeError as exc:
-        msg = str(exc).lower()
-        if "cooperate" not in msg and "shared page control" not in msg:
-            raise
-        bsk(["observe"], session)          # 刷新控制上下文 ✓
-        return bsk(["evaluate", js], session).strip()
+    last = None
+    for fix in (None, ["observe"], ["cooperate", "sync"]):
+        if fix is not None:
+            try:
+                bsk(fix, session)
+            except RuntimeError:
+                pass                       # 修复动作失败不该盖住原错误
+        try:
+            return bsk(["evaluate", js], session).strip()
+        except RuntimeError as exc:
+            msg = str(exc).lower()
+            if "cooperate" not in msg and "shared page control" not in msg:
+                raise                      # 非 cooperate 类 ⇒ 原样抛，不重试
+            last = exc
+    raise last
 
 
 def _session():

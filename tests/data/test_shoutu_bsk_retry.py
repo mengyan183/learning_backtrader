@@ -39,6 +39,28 @@ def test_bsk_eval_retries_after_cooperate_error(monkeypatch):
     assert calls == [["evaluate", "js"], ["observe"], ["evaluate", "js"]]
 
 
+def test_bsk_eval_escalates_to_cooperate_sync(monkeypatch):
+    """`observe` 也不管用时必须再试 `cooperate sync`（bsk 提示的恢复动作）。
+
+    2026-11-06 实测：只补 `observe` 仍报同一个错 ✗（14:08 回执）。
+    """
+    fs = _load()
+    calls = []
+
+    def fake_bsk(args, session=None):
+        calls.append(list(args))
+        n_eval = sum(1 for c in calls if c[0] == "evaluate")
+        if args[0] == "evaluate" and n_eval <= 2:
+            raise RuntimeError(
+                "error: shared page control or observation changed")
+        return "OK"
+
+    monkeypatch.setattr(fs, "bsk", fake_bsk)
+    assert fs.bsk_eval("js", "s1") == "OK"
+    assert ["cooperate", "sync"] in calls
+    assert sum(1 for c in calls if c[0] == "evaluate") == 3
+
+
 def test_bsk_eval_reraises_unrelated_error(monkeypatch):
     """非 cooperate 类错误 ⇒ **不重试**，原样抛出（避免把真错误吞掉）。"""
     fs = _load()
