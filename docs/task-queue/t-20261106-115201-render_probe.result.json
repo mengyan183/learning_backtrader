@@ -1,0 +1,11 @@
+{
+  "id": "t-20261106-115201-render_probe",
+  "action": "render_probe",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"html_len\": 207637, \"loss_block_ok\": true}",
+  "started_at": "2026-11-06T11:57:53",
+  "finished_at": "2026-11-06T11:57:59",
+  "duration_s": 5.16
+}

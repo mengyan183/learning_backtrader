@@ -1,0 +1,13 @@
+{
+  "id": "t-20261106-115210-run_pytest",
+  "action": "run_pytest",
+  "params": {
+    "files": "tests/data/test_splits.py,tests/test_leverage.py,tests/data/test_shoutu_history.py,tests/backtest/"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"failed\": [\"FAILED tests/test_leverage.py::test_attribution_table_covers_all_symbols - as...\"], \"tail\": \"..................F..................................................... [ 90%]\\n........                                                                 [100%]\\n=================================== FAILURES ===================================\\n__________________ test_attribution_table_covers_all_symbols ___________________\\n\\n    def test_attribution_table_covers_all_symbols():\\n        prices = pd.read_csv(\\\"Data/raw/prices.csv\\\", parse_dates=[\\\"date\\\"])\\n        table = leverage.attribution_table(prices)\\n        assert set(table[\\\"leveraged\\\"]) == {\\\"TQQQ\\\", \\\"SOXL\\\", \\\"UPRO\\\"}\\n        # SOXL 波动率最高，其损耗应显著高于 UPRO\\n        soxl = table.set_index(\\\"leveraged\\\").loc[\\\"SOXL\\\", \\\"total_annual\\\"]\\n        upro = table.set_index(\\\"leveraged\\\").loc[\\\"UPRO\\\", \\\"total_annual\\\"]\\n>       assert soxl > upro\\nE       assert np.float64(0.1051595581005147) > np.float64(0.12376748796802994)\\n\\ntests/test_leverage.py:101: AssertionError\\n=========================== short test summary info ============================\\nFAILED tests/test_leverage.py::test_attribution_table_covers_all_symbols - as...\\n1 failed, 79 passed in 4.79s\"}",
+  "started_at": "2026-11-06T11:57:59",
+  "finished_at": "2026-11-06T11:58:04",
+  "duration_s": 5.56
+}
