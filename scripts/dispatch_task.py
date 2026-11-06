@@ -78,7 +78,9 @@ def main(argv=None):
     r = subprocess.run(
         [sys.executable, os.path.join(ROOT, "scripts", "pack_many.py"), pkg,
          os.path.relpath(p, ROOT), "--patch", "--base-ref", "origin/main"],
-        cwd=ROOT, capture_output=True, text=True)
+        # Windows 默认 GBK 解码 pack_many 的 UTF-8 输出 ⇒ UnicodeDecodeError
+        cwd=ROOT, capture_output=True, text=True,
+        encoding="utf-8", errors="replace")
     sys.stdout.write(r.stdout)
     if r.returncode != 0:
         sys.stderr.write(r.stderr)

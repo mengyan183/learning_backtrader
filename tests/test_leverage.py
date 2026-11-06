@@ -38,6 +38,35 @@ def test_decompose_handles_empty_input():
     assert np.isnan(out["total_annual"])
 
 
+def test_annualize_total_loss_is_minus_one_not_complex():
+    """累计亏到 ≤ -100% ⇒ 年化按 **-100%** 记，**不得**返回复数。
+
+    🔴 2026-11-06 Mac 实测「渲染失败：TypeError: must be real number, not complex」
+    —— 根因：`(1+total) ** (1/years)` 的底数 ≤ 0 ⇒ Python 分数次幂返回 complex
+    """
+    # 300 个周期 ⇒ years=1.19（**非整数**指数才会返回复数，整数指数不会 ✗）
+    assert leverage._annualize(-1.0, 300) == -1.0
+    assert leverage._annualize(-2.5, 300) == -1.0
+
+
+def test_decompose_survives_unadjusted_split_day():
+    """未复权拆股（SOXX 1:3 ⇒ 单日 -71%）时 `1 + 3r` 变负，损耗归因仍须是实数。
+
+    实测数据形态：`und_ret` 单日 -0.70997、其余为 0 ⇒ 3× 再平衡累计 -213%
+    ⇒ 旧实现 `rebalanced_ann` 是复数 ⇒ 仪表盘格式化 `%.1f` 直接抛 TypeError
+    """
+    n_days = 300                      # years=1.19（非整数指数 ⇒ 旧实现必出复数）
+    und_ret = pd.Series([-0.70997] + [0.0] * (n_days - 1))
+    lev_ret = 3 * und_ret
+
+    out = leverage.decompose(und_ret, lev_ret)
+    for key, val in out.items():
+        assert not isinstance(val, complex), key
+    # 线性年化 -193.9% 与 3× 再平衡 -100%（全损）之差
+    assert out["vol_decay_annual"] == pytest.approx(-0.9394, abs=0.01)
+    assert out["product_cost_annual"] == pytest.approx(0.0, abs=1e-9)
+
+
 def test_current_decay_rate_includes_product_rate():
     rng = np.random.RandomState(8)
     ret = pd.Series(0.01 * rng.randn(300))

@@ -30,6 +30,9 @@ def _annualize(total_return, n_periods, periods_per_year=252.0):
     years = n_periods / periods_per_year
     if years <= 0:
         return float("nan")
+    if total_return <= -1.0:
+        # 累计亏光 ⇒ 按 -100% 记（负底数的分数次幂会返回 complex，污染仪表盘）
+        return -1.0
     return (1.0 + total_return) ** (1.0 / years) - 1.0
 
 

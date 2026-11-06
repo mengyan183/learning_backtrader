@@ -22,9 +22,9 @@ def performance_metrics(returns, periods_per_year=252.0):
             "sharpe": float("nan"), "calmar": float("nan"),
         }
     cum = (1.0 + r).cumprod()
-    years = len(r) / periods_per_year
     total = float(cum.iloc[-1] - 1.0)
-    annual = (1.0 + total) ** (1.0 / years) - 1.0 if years > 0 else float("nan")
+    # 走 leverage._annualize ⇒ 累计亏光（total ≤ -100%）时返回 -1.0 而不是复数
+    annual = leverage._annualize(total, len(r), periods_per_year)
     peak = cum.cummax()
     dd = cum / peak - 1.0
     max_dd = float(dd.min())

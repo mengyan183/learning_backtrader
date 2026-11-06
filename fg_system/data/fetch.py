@@ -16,6 +16,7 @@ import urllib.request
 import pandas as pd
 
 from fg_system import config
+from fg_system.data import splits
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -316,6 +317,12 @@ def update_prices(path=None, symbols=None, sleep=1.0):
         time.sleep(sleep)
 
     merged = merge_incremental(old, pd.concat(frames, ignore_index=True) if frames else pd.DataFrame())
+    # 拆股前复权（事件表 + 杠杆确认的自动识别，幂等）—— 未复权的拆股日会让
+    # 下游看到 -71% 的假跌幅（2026-11-05 SOXX 1:3 实测）
+    before = merged["close"].copy()
+    merged = splits.apply(merged, splits.load())
+    for sym in sorted(set(merged.loc[(before != merged["close"]).values, "symbol"])):
+        print("[split] %s: 已按拆股比例前复权历史价格" % sym)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     merged.to_csv(path, index=False, encoding="utf-8")
 

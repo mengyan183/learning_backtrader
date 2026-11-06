@@ -209,7 +209,10 @@ def test_script_only_records_the_history_endpoint():
     for node in ast.walk(tree):
         if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
                              ast.ClassDef)):
-            d = ast.get_docstring(node)
+            # 🔴 clean=False 必须显式传 ✗ —— 默认 clean=True 会经 inspect.cleandoc
+            #    去掉缩进 ⇒ 与 AST 里的原始字面量**不相等** ⇒ 多行缩进文档串
+            #    全部漏出排除集，被禁词扫描误判（2026-11-06 实测的假失败 ✗）
+            d = ast.get_docstring(node, clean=False)
             if d:
                 docs.add(d)
     lits = [n.value for n in ast.walk(tree)
