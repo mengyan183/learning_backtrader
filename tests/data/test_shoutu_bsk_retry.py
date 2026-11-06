@@ -60,13 +60,24 @@ def test_bsk_eval_uses_cached_context_without_resync(monkeypatch):
     assert calls == [["evaluate", "js", "--context", "CTX0"]]
 
 
+@pytest.mark.parametrize("out,expected", [
+    ('{"context": "CTX9"}', "CTX9"),          # ① JSON
+    ("synced\ncontext: CTX9\n", "CTX9"),      # ② 前缀行
+    ("CTX9", "CTX9"),                          # ③ 裸 token（单行无空格）
+    ("refused\nwait then sync\n", ""),         # 认不出 ⇒ 不硬猜
+])
+def test_parse_context_forms(out, expected):
+    """context 有三种可能形态，都不能盲取最后一行（dsh 提醒）。"""
+    assert _load()._parse_context(out) == expected
+
+
 def test_bsk_sync_returns_and_caches_context(monkeypatch):
-    """`cooperate sync` 的最后一行就是 context（与 session id 同一约定）。"""
+    """`cooperate sync` 的输出解析成 context 并缓存。"""
     fs = _load()
 
     def fake_bsk(args, session=None):
         if args[0] == "cooperate":
-            return "some noise\nCTX9\n"
+            return "context: CTX9\n"
         return ""
 
     monkeypatch.setattr(fs, "bsk", fake_bsk)

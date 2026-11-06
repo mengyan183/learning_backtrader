@@ -24,6 +24,7 @@ partner-API 通道替代时删除，导致 `fetch_shoutu_history.py`（全量历
 """
 import json
 import os
+import re
 import sys
 import time
 
@@ -71,6 +72,35 @@ def _bsk_help():
     return blob[:600]
 
 
+def _parse_context(out):
+    """从 `cooperate sync` 的输出里取控制上下文 ⇒ 取不到返回 `""`。
+
+    ⚠️ **不能盲取最后一行** ✗（dsh 提醒）：sync 可能多次尝试，最后一行可能是
+       被拒的那次留下的 ✗ ⇒ 按三种形态依次试，都不匹配就当没拿到 ✓
+       ① JSON（`{"context": "..."}`）② `context: xxx` / `context=xxx`
+       ③ 只有一行且无空格（裸 token，与 `session start` 同形态）
+    """
+    text = (out or "").strip()
+    if not text:
+        return ""
+    try:
+        obj = json.loads(text)
+        if isinstance(obj, dict):
+            for key in ("context", "control_context", "ctx"):
+                val = obj.get(key)
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
+    except ValueError:
+        pass
+    for line in text.splitlines():
+        m = re.match(r"\s*(?:control[ _]?)?context\s*[:=]\s*(\S+)\s*$", line, re.I)
+        if m:
+            return m.group(1)
+    if len(text.splitlines()) == 1 and " " not in text:
+        return text
+    return ""
+
+
 def bsk_sync(session):
     """重建控制上下文 ⇒ **返回并缓存 context** ✓（拿不到返回 `""`）。
 
@@ -91,8 +121,7 @@ def bsk_sync(session):
         out = bsk(["cooperate", "sync"], session).strip()
     except RuntimeError:
         out = ""
-    # context 取最后一行（与 `session start` 取 session id 同一约定）
-    ctx = out.splitlines()[-1].strip() if out else ""
+    ctx = _parse_context(out)
     _CTX[session] = ctx
     return ctx
 
