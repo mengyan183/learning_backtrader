@@ -2247,6 +2247,64 @@ def _act_key_diag(params):
                                    "hits": hits[:40]}}
 
 
+def _act_inspect_csv(params):
+    """**查任意 CSV 的尾部行 / 指定 symbol** ✓（2026-11-06）。
+
+    🔴 为什么要查 ✗：
+       `pipeline.run` 在 Mac 上失败 ✗ 报：
+         `DataQualityError: SOXL 2026-11-05: SOXL 收益 -38.70% 与
+          3×SOXX 收益 -70.97% 偏离 174.21pp`
+       ⇒ **`SOXX` 一天跌 71%** ✗ 不可能 ✗ ⇒ 数据脏了 ✗
+       而 **Windows 的 `prices.csv` 只到 10-12** ✗ 看不到 11-05 ✗
+       ⇒ 必须从 **Mac** 取 ✓
+
+    参数：`path`（默认 `Data/raw/prices.csv` ✗）、`symbol`（逗号分隔 ✗）、
+          `n`（尾部行数 ✗ 默认 5 ✓）
+    """
+    import pandas as _pd
+    path = str(params.get("path") or "Data/raw/prices.csv")
+    if not os.path.isabs(path):
+        path = os.path.join(ROOT, path)
+    n = int(params.get("n") or 5)
+    syms = [x.strip().upper() for x in
+            str(params.get("symbol") or "").split(",") if x.strip()]
+
+    if not os.path.exists(path):
+        return {"ok": False, "error": "文件不存在：%s ✗" % path}
+    out = {"path": os.path.relpath(path, ROOT),
+           "size_kb": round(os.path.getsize(path) / 1024.0, 1)}
+    try:
+        d = _pd.read_csv(path)
+    except Exception as exc:                # noqa: BLE001
+        return {"ok": False, "error": "%s: %s"
+                % (type(exc).__name__, str(exc)[:200])}
+    out["rows"] = int(len(d))
+    out["columns"] = list(d.columns)
+
+    if "symbol" in d.columns and syms:
+        out["symbols"] = {}
+        for s in syms:
+            g = d[d["symbol"].astype(str).str.upper() == s]
+            if not len(g):
+                out["symbols"][s] = "**不存在** ✗"
+                continue
+            g = g.sort_values("date").tail(n)
+            cols = [c for c in ("date", "close", "open", "high", "low")
+                    if c in g.columns]
+            out["symbols"][s] = g[cols].to_dict(orient="records")
+            # 顺带算最近几天的**日收益** ✓（看跳变 ✗）
+            if "close" in g.columns and len(g) > 1:
+                r = g["close"].pct_change().dropna()
+                out["symbols"][s + "_ret"] = [round(float(x), 4)
+                                              for x in r.tail(n - 1)]
+    elif "date" in d.columns:
+        out["tail"] = d.sort_values("date").tail(n).to_dict(orient="records")
+    else:
+        out["tail"] = d.tail(n).to_dict(orient="records")
+    out["ok"] = True
+    return out
+
+
 def _act_run_pipeline(params):
     """重算 `features.csv`（与每日链**同一条**调用序列 ✓）。
 
@@ -2648,6 +2706,7 @@ ACTIONS = {
     "net_probe": _act_net_probe,
     "factor_diag": _act_factor_diag,
     "run_pipeline": _act_run_pipeline,
+    "inspect_csv": _act_inspect_csv,
     "c1_backtest": _act_c1_backtest,
     "c5_backtest": _act_c5_backtest,
     "f_factor_backtest": _act_f_factor_backtest,

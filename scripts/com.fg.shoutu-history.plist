@@ -9,18 +9,18 @@
 		<string>/bin/bash</string>
 		<string>/Users/xingguo/learning_backtrader/scripts/shoutu_history_daily.sh</string>
 	</array>
-	<key>StartCalendarInterval</key>
-	<dict>
-		<key>Hour</key>
-		<integer>6</integer>
-		<key>Minute</key>
-		<integer>35</integer>
-	</dict>
+	<key>RunAtLoad</key>
+	<false/>
 	<key>StandardErrorPath</key>
 	<string>/Users/xingguo/learning_backtrader/logs/shoutu_history_daily.err.log</string>
 	<key>StandardOutPath</key>
 	<string>/Users/xingguo/learning_backtrader/logs/shoutu_history_daily.out.log</string>
-	<key>RunAtLoad</key>
-	<false/>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>9</integer>
+		<key>Minute</key>
+		<integer>35</integer>
+	</dict>
 </dict>
 </plist>
