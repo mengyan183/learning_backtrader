@@ -50,11 +50,23 @@ def bsk(args, session=None):
 
 
 def _bsk_help():
-    """取 `bsk --help` 前 800 字 ✓（失败诊断用：子命令名只能从这里确认）。"""
-    try:
-        return bsk(["--help"])[:800]
-    except RuntimeError as exc:
-        return "(bsk --help 失败：%s)" % str(exc)[:200]
+    """把 bsk 的 CLI 面貌**打到 stdout** ✓（失败诊断用，随任务回执带回）。
+
+    🔴 2026-11-06：Mac 上的 bsk 比本地 `browser-skill/SKILL.md` 新 ✗ ——
+       它有 `cooperate` / `step` / `view` / `daemon` 等命令 ✗
+       而 SKILL.md 只列到 `evaluate` ⇒ 脚本用的 `evaluate` 语义已变 ✗
+       ⇒ 必须先把 `step` / `cooperate` 的用法拿回来再改代码 ✓
+    """
+    texts = []
+    for args in (["--help"], ["step", "--help"], ["cooperate", "--help"],
+                 ["evaluate", "--help"]):
+        try:
+            texts.append("### bsk %s\n%s" % (" ".join(args), bsk(args)))
+        except RuntimeError as exc:
+            texts.append("### bsk %s\n(失败：%s)" % (" ".join(args), str(exc)[:300]))
+    blob = "\n".join(texts)
+    print(blob)                        # ← 进任务回执的 stdout ✓
+    return blob[:600]
 
 
 def bsk_sync(session):

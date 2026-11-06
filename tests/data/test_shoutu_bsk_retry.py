@@ -41,6 +41,16 @@ def test_bsk_eval_retries_after_cooperate_error(monkeypatch):
                      ["evaluate", "js"]]
 
 
+def test_bsk_help_prints_cli_surface(monkeypatch, capsys):
+    """失败诊断必须把 CLI 面貌**打到 stdout**（否则任务回执里看不到）。"""
+    fs = _load()
+    monkeypatch.setattr(fs, "bsk", lambda args, session=None: "usage: bsk ...")
+    fs._bsk_help()
+    out = capsys.readouterr().out
+    assert "### bsk --help" in out
+    assert "### bsk step --help" in out
+
+
 def test_bsk_sync_swallows_errors(monkeypatch):
     """重建上下文的子命令失败**不得抛出**（否则会盖住真正的 evaluate 错误）。"""
     fs = _load()
