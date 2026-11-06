@@ -4,6 +4,133 @@
 
 ---
 
+## 📌 2026-11-06 **交接：新会话从这里开始**
+
+### 未完成的三项（用户已指派，被上下文截断）
+
+| # | 任务 | 状态 | 关键信息 |
+|---|---|---|---|
+| **①** | **实现 `H-009`** | ✗ 未开始 | 现在只在 `PENDING` 字典里登记 ⇒ 永远 pending。要写成 `CUSTOM` runner：按标的算日度占比 → 找 >28% 的日期 → 算 T+10 前瞻收益 → 与 <20% 组对比负收益率 |
+| **②** | **解释 `H-011`/`H-028`/`H-038` 为何无明确阈值** | ✗ 未答 | 三条的 `hypotheses.md` 原文都没写「≥N 交易日」⇒ 不是漏写，是**判据形态不同**（见下） |
+| **③** | **`_act_sync_positions` 加 `day_pnl` 非空统计** | ✗ 未开始 | 该动作只回报 stdout ⇒ 看不到 `fill_day_pnl` 是否生效。加 `day_pnl_nonnull` / `day_pnl_ratio` / `last_day` |
+
+### ① `H-009` 实现的参考坐标
+
+```
+CUSTOM 字典位置：scripts/verify_hypotheses.py 的 `CUSTOM = {`
+runner 签名：    def verify_hNNN(df) -> dict
+返回约定：       {"passed": bool, "status": "ok"|"pending", "note": str, ...}
+                ⚠️ pending 分支**可以不给 note**（`_run_custom` 已用 .get ✓）
+数据源：         Data/positions.csv（date / symbol / market_value）
+                Data/raw/prices.csv（symbol / date / close）
+⚠️ BTC 不在 prices.csv（在 crypto_prices.csv）⇒ 要跳过
+```
+
+### ② 三条假说的判据形态（这才是「没阈值」的原因）
+
+| 假说 | 原文检验方法 | 为什么不是天数 |
+|---|---|---|
+| **H-011** | 「以信号方向（上升/下降）分组，比较各组日均浮亏变化绝对值；**样本不足则先累积至 3 组以上**」| 门槛是**信号升降周期数 ≥3** ✗ 不是交易日 |
+| **H-028** | 「统计**所有交易日**中，现金余额为正且累计盈亏为负的频率」+「频率**低于 10%** 则不成立」| 用**频率阈值** ✗ 根本没设样本量门槛 |
+| **H-038** | 「统计 zone 2.0 期间（**2026-09-25~10-05**）累计盈亏变化」| 用**固定日期区间** ✗ 不是滑动窗口 |
+
+⇒ **只有 `H-006`(≥60) / `H-008`(≥40) 写的是「≥N 交易日」** ✓ 所以只有它们能写「等数据：x/y」
+
+### 当前数据状态（2026-11-06 实测）
+
+```
+accounts.csv   54 行  date_unique 27  2026-09-22 → 2026-11-04
+positions.csv 162 行  date_unique 27  2026-09-22 → 2026-11-04
+day_pnl       已修（fill_day_pnl 按 account 分组 diff）但**尚未验证回填结果**
+```
+
+### 假说台账状态（19 条待验证）
+
+```
+verifying       3 条  H-006(27/60) H-008(27/40) H-009
+open           15 条
+pending-revise  1 条  H-085
+```
+
+### 已交付但**未验证**的改动
+
+| 改动 | 包 | 需验证什么 |
+|---|---|---|
+| 拆股识别（`loader.py`）| `sync_1106e` | `run_pipeline` 是否不再中止 ✗ |
+| `bsk_eval` 补 observe（`fetch_shoutu.py`）| `sync_1106e` | `fetch_shoutu_history` 是否成功 ✗ |
+| `--write-notes`（`verify_hypotheses.py`）| `sync_1105ay` | 台账备注是否写入「等数据：27/60」✗ |
+
+### 开新会话的第一句话建议
+
+```
+@command://using-superpowers  1:从gitee拉取最新代码
+2：实现 H-009
+3：_act_sync_positions 加 day_pnl 非空统计
+```
+
+---
+
+## 🔴 2026-11-06 **拆股被当成数据错误**（`SOXX 1:3`，pipeline 全链中止）
+
+**症状**：`pipeline.run` 在 Mac 上 **rc=1（1 秒）** ✗ `features.csv` 停在 11-04 ✗
+
+```
+DataQualityError: 异常跳变（疑似未复权或数据错误），pipeline 中止：
+  SOXL 2026-11-05: SOXL 收益 -38.70% 与 3×SOXX 收益 -70.97% 偏离 174.21pp
+  SOXL 2026-11-05: 3×SOXX 收益 +212.91% 超绝对兜底阈值
+```
+
+**真相**（用户指出 ✓）：**`SOXX` 2026-11-05 做 1 股拆 3 股** ✗ 不是脏数据 ✓
+
+```
+SOXX: 11-04 close 451.06 → 11-05 close 130.94（-70.997%）
+     130.94 × 3 = 392.82 ⇒ 392.82/451.06 - 1 = **-12.9%**
+SOXL: 66.75 → 40.915（-38.7%）≈ 3 × (-12.9%) ✓ 完全吻合
+```
+
+**修法**：`check_split_anomalies` 加**拆股识别** ✓
+
+```python
+SPLIT_REL_TOL = 0.25
+for dt, v in und_r.dropna().items():
+    if v > -0.30:                  # 只有大跌才可能是拆股
+        continue
+    implied = 1.0 / (1.0 + v)      # 隐含「1 股拆成几股」
+    nearest = round(implied)
+    if nearest >= 2 and abs(implied - nearest) < SPLIT_REL_TOL * nearest:
+        skip.add(dt)               # 拆股日不算异常
+```
+
+**踩坑**：`1/(1-0.70997) = 3.448` ✗（混了当天跌 12.9% ✗）
+⇒ 绝对容差 0.15 ⇒ `|3.448-3| = 0.448` ✗ **识别失败** ✗
+⇒ 必须**相对** `0.25 × 3 = 0.75` ✓ ⇒ `0.448 < 0.75` ✓ **成功** ✓
+
+**验证** ✓：
+```
+[loader] WARN SOXX 2026-11-05: 疑似 3:1 拆股（标的收益 -70.97%，隐含 3.44:1）
+        ⇒ 已跳过该日检查，数据需复权
+✓ 通过（拆股被识别，未中止）: True
+```
+
+⚠️ **遗留**：数据**仍未复权** ✗ `SOXX` 的 `close` 还是拆股后的 ✗
+⇒ 依赖 `SOXX` 的因子/回测会**看到 -71% 的假跌幅** ✗
+⇒ 需在 `fetch.update_prices` 里加复权 ✓（下一轮）
+
+### 顺带：`bsk_eval` 的 cooperate 问题
+
+`fetch_shoutu_history` 在 Mac 上失败 ✗ 报 `shared page control or observation changed`
+⇒ `bsk evaluate` **要求「刚 observe 过」** ✗
+⇒ 修法：**失败时补一次 `observe` 再重试** ✓（不无条件 observe ✗ 会慢一倍 ✗）
+
+### 教训：**不要用 `git stash` 验证「是否既有失败」**
+
+2026-11-06 我用 `git stash` + `pytest` 判断某测试是否既有失败 ✗
+⇒ `stash pop` 后**未提交的改动全丢了** ✗（拆股修复 + bsk_eval + 文档 ✗）
+⇒ 正确做法：**先 `git diff > /tmp/x.patch` 再 stash** ✓
+   或**直接看 `git log` 的基线提交** ✓ 或**只读不改地跑一次** ✓
+
+---
+
 ## 一句话现状
 
 - **同步链路已全通** ✓：公司 Windows → 飞书「海外投资助手」机器人 → OpenClaw(Mac) `fg-sync` skill → 贪恐仓库（详见 `docs/dual-end-workflow.md`）
