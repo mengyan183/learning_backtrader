@@ -33,6 +33,8 @@ from fg_system import config                     # noqa: E402
 from fg_system.data import shoutu                # noqa: E402
 
 _BSK = "/Users/xingguo/.local/bin/bsk"
+#: session -> `cooperate sync` 返回的控制上下文（`evaluate --context` 必填 ✓）
+_CTX = {}
 UNIVERSE_PAGE = "https://fe.szdt.tech/invest/#/etf"
 SCAN_PAGE = "https://fe.szdt.tech/invest/#/stock_scan"
 
@@ -70,21 +72,29 @@ def _bsk_help():
 
 
 def bsk_sync(session):
-    """**导航之后重建控制上下文** ✓（`observe` + `cooperate sync`，各自尽力）。
+    """重建控制上下文 ⇒ **返回并缓存 context** ✓（拿不到返回 `""`）。
 
-    🔴 2026-11-06 三次失败后的结论（含 dsh 独立分析）✗：
-       错误从 `shared page control ... requires the context returned by the
-       latest cooperate sync` 变成 `the control context no longer belongs to
-       the current document` ⇒ **不是缺重试，是缺「导航后重建上下文」** ✗
-       `navigate` 换了文档 ⇒ 旧控制上下文作废 ⇒ 必须先 observe + cooperate sync
-       再 evaluate ✓（dsh：sync 必须在页面 settle 之后、动作之前）
-    ⚠️ 子命令不存在/失败一律吞掉 ✗ —— 这里只是尽力，真正的判据在随后的 evaluate。
+    🔴 2026-11-06 四轮失败的最终结论 ✗（`bsk evaluate --help` 实测原文 ✗）：
+        `--context <CONTEXT>  Control context returned by cooperate sync.
+                             **Required for shared-tab actions**` ✗
+       ⇒ 真正的缺失环节不是「调不调 sync」，而是 **sync 返回的 context 要
+         通过 `--context` 传给每一次 evaluate** ✗
+         而原实现把 sync 的 stdout **直接丢掉了** ✗
+    ⚠️ `cooperate sync` 失败/无 context（人占着页面时按 help 会「returns
+       without a context」）⇒ 返回 `""`，evaluate 不带该参数（退回旧行为）。
     """
-    for cmd in (["observe"], ["cooperate", "sync"]):
-        try:
-            bsk(cmd, session)
-        except RuntimeError:
-            pass
+    try:
+        bsk(["observe"], session)
+    except RuntimeError:
+        pass                               # 尽力；判据在随后的 evaluate
+    try:
+        out = bsk(["cooperate", "sync"], session).strip()
+    except RuntimeError:
+        out = ""
+    # context 取最后一行（与 `session start` 取 session id 同一约定）
+    ctx = out.splitlines()[-1].strip() if out else ""
+    _CTX[session] = ctx
+    return ctx
 
 
 def bsk_eval(js, session):
@@ -109,10 +119,11 @@ def bsk_eval(js, session):
     """
     last = None
     for attempt in range(3):
-        if attempt:
-            bsk_sync(session)              # 重建控制上下文（observe + cooperate sync）
+        # 第 1 次用缓存 context（navigate 后已 sync 过）；失败再 sync 换新的 ✓
+        ctx = _CTX.get(session, "") if attempt == 0 else bsk_sync(session)
+        args = ["evaluate", js] + (["--context", ctx] if ctx else [])
         try:
-            return bsk(["evaluate", js], session).strip()
+            return bsk(args, session).strip()
         except RuntimeError as exc:
             msg = str(exc).lower()
             if not any(k in msg for k in ("cooperate", "shared page control",
