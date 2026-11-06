@@ -50,7 +50,22 @@ def bsk(args, session=None):
 
 
 def bsk_eval(js, session):
+    """跑 `bsk evaluate` ✓（**失败时先 observe 再重试一次** ✗）。
+
+    🔴 2026-11-06 实测 ✗：
+       `fetch_shoutu_history` 在 Mac 上失败 ✗ 报
+         `error: shared page control or observation changed`
+         `details: This action requires the context returned by the
+                   latest cooperate sync`
+       ⇒ `bsk` 的 `evaluate` **要求「刚 observe 过」** ✗ 否则上下文失效 ✗
+       ⇒ 修法：**失败时补一次 `observe` 再重试** ✓
+         （不无条件 observe ✗ 那会让每次 evaluate 都慢一倍 ✗）
+    """
     out = bsk(["evaluate", js], session)
+    low = (out or "").lower()
+    if "cooperate" in low or "shared page control" in low:
+        bsk(["observe"], session)          # 刷新控制上下文 ✓
+        out = bsk(["evaluate", js], session)
     return out.strip()
 
 

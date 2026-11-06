@@ -5,6 +5,8 @@
 """
 import os
 
+import sys
+
 import pandas as pd
 
 from fg_system import config
@@ -110,6 +112,20 @@ def check_split_anomalies(df):
     绝对兜底只作用于"3×标的"一侧，即标的自身单日出现 >70% 跳变时兜底拦截。
     """
     problems = []
+    # 🔴 2026-11-06：**拆股识别** ✓（用户指出 `SOXX 2026-11-05 1:3 拆股` ✗）
+    #    症状：`SOXX` 11-04 close 451.06 → 11-05 close 130.94（-70.997% ✗）
+    #          而 `SOXL` 只有 -38.7% ✗ ⇒ `3×SOXX = -212.9%` 偏离 174pp ✗
+    #          ⇒ 原逻辑**直接 raise** ✗ **整个 pipeline 中止** ✗
+    #          ⇒ `features.csv` 停在 11-04 ✗ 简报全用旧数据 ✗
+    #    真相：**拆股不是数据错误** ✓
+    #          130.94 × 3 = 392.82 ⇒ 392.82/451.06 - 1 = -12.9% ✓
+    #          而 `SOXL -38.7% ≈ 3 × (-12.9%)` ✓ **完全吻合** ✓
+    #    ⚠️ 容差必须**相对** ✗ 绝对容差识别不了 ✗
+    #       `1/(1-0.70997) = 3.448` ✗（混了当天跌 12.9% ✗）
+    #       绝对 0.15 ⇒ `|3.448-3| = 0.448` ✗ 失败 ✗
+    #       相对 0.25×3 = 0.75 ⇒ `0.448 < 0.75` ✓ 成功 ✓
+    SPLIT_REL_TOL = 0.25
+    splits = []
     for lev, und in config.UNDERLYING_MAP.items():
         n = config.LEVERAGE_RATIO[lev]
         sub = df[df["symbol"].isin([lev, und])]
@@ -121,8 +137,24 @@ def check_split_anomalies(df):
         lev_r = lev_s.pct_change()
         und_r = und_s.reindex(lev_r.index).pct_change(fill_method=None)
 
+        # ① 先识别拆股日 ✓（标的收益 ≈ 1/N - 1 ✗）
+        skip = set()
+        for dt, v in und_r.dropna().items():
+            if v > -0.30:                  # 只有大跌才可能是拆股 ✓
+                continue
+            implied = 1.0 / (1.0 + v)      # 隐含「1 股拆成几股」✓
+            nearest = round(implied)
+            if nearest >= 2 and abs(implied - nearest) < SPLIT_REL_TOL * nearest:
+                skip.add(dt)
+                splits.append(
+                    "%s %s: 疑似 %d:1 拆股 ✓（标的收益 %+.2f%% ✗ 隐含 %.2f:1 ✗）"
+                    "⇒ 已跳过该日检查，**数据需复权** ✓"
+                    % (und, dt.date(), nearest, v * 100, implied))
+
         dev = (lev_r - n * und_r).abs()
         for dt, v in dev[dev > config.SPLIT_DEVIATION_THRESHOLD].items():
+            if dt in skip:                 # 拆股日**不算异常** ✓
+                continue
             problems.append(
                 "%s %s: %s 收益 %+.2f%% 与 %d×%s 收益 %+.2f%% 偏离 %.2fpp"
                 % (
@@ -132,10 +164,16 @@ def check_split_anomalies(df):
             )
         jump = (n * und_r).abs()
         for dt, v in jump[jump > config.SPLIT_JUMP_THRESHOLD].items():
+            if dt in skip:                 # 拆股日**不算异常** ✓
+                continue
             problems.append(
                 "%s %s: %d×%s 收益 %+.2f%% 超绝对兜底阈值（标的自身异常跳变）"
                 % (lev, dt.date(), n, und, v * 100)
             )
+
+    # 拆股告警 ✓（不中止 ✓ 但必须让人看到 ✗）
+    for s in splits:
+        print("[loader] WARN " + s, file=sys.stderr)
 
     if problems:
         raise DataQualityError(
