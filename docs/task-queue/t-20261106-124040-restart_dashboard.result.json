@@ -1,0 +1,11 @@
+{
+  "id": "t-20261106-124040-restart_dashboard",
+  "action": "restart_dashboard",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"stderr\": \"\", \"last_error\": \"URLError: <urlopen error [Errno 61] Connection refused>\", \"http\": 401, \"render_error\": false, \"body\": \"需要登录。\\n\"}",
+  "started_at": "2026-11-06T13:55:29",
+  "finished_at": "2026-11-06T13:55:33",
+  "duration_s": 4.09
+}
