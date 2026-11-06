@@ -1,9 +1,0 @@
-{
-  "id": "t-20261106-115210-run_pytest",
-  "action": "run_pytest",
-  "params": {
-    "files": "tests/data/test_splits.py,tests/test_leverage.py,tests/data/test_shoutu_history.py,tests/backtest/"
-  },
-  "status": "pending",
-  "created_at": "2026-11-06T11:52:10"
-}

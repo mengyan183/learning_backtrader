@@ -1,0 +1,11 @@
+{
+  "id": "t-20261106-162711-bsk_update",
+  "action": "bsk_update",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"seconds\": 0.2, \"proxy\": \"http://127.0.0.1:7890\", \"dry_run\": false, \"version_before\": \"bsk 0.4.2\", \"version_after\": \"bsk 0.4.2\", \"changed\": false, \"stdout\": \"bsk 0.4.2 is already up to date\\nrelease: https://github.com/Tencent/BrowserSkill/releases/tag/cli-v0.4.2\\n\", \"stderr\": \"\", \"note\": \"⚠️ 升级后要**重启 daemon** 才生效 ✗（`bsk daemon restart` 或重启 Chrome ✗）；⚠️ 升级可能改变 CLI 行为 ✗ `fetch_shoutu_history.py` 依赖它 ✓ 要回归 ✓\"}",
+  "started_at": "2026-11-06T16:29:04",
+  "finished_at": "2026-11-06T16:29:04",
+  "duration_s": 0.2
+}
