@@ -1009,9 +1009,15 @@ def _act_bsk_update(params):
     参数：
       - `proxy`：默认 `http://127.0.0.1:7890` ✓
       - `dry_run`：`1` = 只查不升 ✓
+      - `daemon`：`restart` = 升完**停掉旧 daemon** 并回读 `bsk status --json` ✓
+        🔴 2026-11-06 实测：CLI 二进制已是 **0.4.2**（`bsk update` 说 up to date）
+           但 `bsk status` 仍报 `CLI v0.2.0` ⇒ **daemon 是旧进程** ✗
+           ⇒ 只升级不重启 daemon = 白升 ✗（协议仍 1.1，扩展是 1.3）
     """
     proxy = str(params.get("proxy") or "http://127.0.0.1:7890")
     dry = str(params.get("dry_run") or "").lower() in ("1", "true", "yes")
+    restart_daemon = str(params.get("daemon") or "").lower() in ("restart", "1",
+                                                                "true", "yes")
 
     # ① 升级前版本 ✓
     def _ver():
@@ -1048,16 +1054,33 @@ def _act_bsk_update(params):
     secs = time.time() - t0
 
     after = _ver()
-    return {"ok": rc == 0, "rc": rc, "seconds": round(secs, 1),
-            "proxy": proxy, "dry_run": dry,
-            "version_before": before, "version_after": after,
-            "changed": before != after,
-            "stdout": so[-3000:], "stderr": se[-1500:],
-            "note": ("⚠️ 升级后要**重启 daemon** 才生效 ✗"
-                     "（`bsk daemon restart` 或重启 Chrome ✗）；"
-                     "⚠️ 升级可能改变 CLI 行为 ✗ "
-                     "`fetch_shoutu_history.py` 依赖它 ✓ 要回归 ✓")
-            if rc == 0 and not dry else ""}
+
+    def _run(args, timeout=90):
+        """跑一条 bsk 子命令并回显（daemon 操作用）✓。"""
+        try:
+            r = subprocess.run([BSK_BIN] + list(args), capture_output=True,
+                               text=True, encoding="utf-8", errors="replace",
+                               timeout=timeout, env=env, cwd=ROOT)
+            return {"rc": r.returncode,
+                    "out": (r.stdout or r.stderr or "").strip()[:1500]}
+        except Exception as exc:            # noqa: BLE001
+            return {"rc": -1, "out": str(exc)[:200]}
+
+    out = {"ok": rc == 0, "rc": rc, "seconds": round(secs, 1),
+           "proxy": proxy, "dry_run": dry,
+           "version_before": before, "version_after": after,
+           "changed": before != after,
+           "stdout": so[-3000:], "stderr": se[-1500:],
+           "note": ("⚠️ 升级后要**重启 daemon** 才生效 ✗"
+                    "（`bsk daemon restart` 或重启 Chrome ✗）；"
+                    "⚠️ 升级可能改变 CLI 行为 ✗ "
+                    "`fetch_shoutu_history.py` 依赖它 ✓ 要回归 ✓")
+           if rc == 0 and not dry else ""}
+    if restart_daemon:
+        # stop 之后**不需要** start：任何 bsk 命令都会自动拉起（SKILL.md）
+        out["daemon_stop"] = _run(["daemon", "stop"])
+        out["status_after"] = _run(["status", "--json"])
+    return out
 
 
 def _act_update_crypto(params):
