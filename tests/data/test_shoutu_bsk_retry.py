@@ -117,5 +117,5 @@ def test_bsk_help_prints_cli_surface(monkeypatch, capsys):
     monkeypatch.setattr(fs, "bsk", lambda args, session=None: "usage: bsk ...")
     fs._bsk_help()
     out = capsys.readouterr().out
-    assert "### bsk --help" in out
     assert "### bsk step --help" in out
+    assert "### bsk cooperate --help" in out

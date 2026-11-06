@@ -60,9 +60,10 @@ def _bsk_help():
        而 SKILL.md 只列到 `evaluate` ⇒ 脚本用的 `evaluate` 语义已变 ✗
        ⇒ 必须先把 `step` / `cooperate` 的用法拿回来再改代码 ✓
     """
+    # ⚠️ 只打**还没拿到**的两条（`--help` / `evaluate --help` 已在回执里 ✓）
+    #    —— 回执的 stdout 有长度上限，全打会把关键部分截掉 ✗
     texts = []
-    for args in (["--help"], ["step", "--help"], ["cooperate", "--help"],
-                 ["evaluate", "--help"]):
+    for args in (["step", "--help"], ["cooperate", "--help"]):
         try:
             texts.append("### bsk %s\n%s" % (" ".join(args), bsk(args)))
         except RuntimeError as exc:
@@ -117,11 +118,16 @@ def bsk_sync(session):
         bsk(["observe"], session)
     except RuntimeError:
         pass                               # 尽力；判据在随后的 evaluate
-    try:
-        out = bsk(["cooperate", "sync"], session).strip()
-    except RuntimeError:
-        out = ""
+    out = ""
+    for args in (["cooperate", "sync", "--json"], ["cooperate", "sync"]):
+        try:
+            out = bsk(args, session)
+            break
+        except RuntimeError:
+            out = ""                      # --json 不支持就退回纯文本 ✓
     ctx = _parse_context(out)
+    # 🔴 打出来（回执里能看到 sync 到底给了什么 ✗ 否则又是一轮盲猜 ✗）
+    print("[bsk] sync=%r ctx=%r" % (out.strip()[:200], ctx[:40]))
     _CTX[session] = ctx
     return ctx
 
