@@ -1,0 +1,11 @@
+{
+  "id": "t-20261109-113639-hermes_probe",
+  "action": "hermes_probe",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"url\": \"http://127.0.0.1:8642\", \"key_len\": 64, \"tcp\": {\"ok\": true, \"ms\": 0}, \"models\": {\"ok\": true, \"status\": 200, \"ms\": 13, \"body\": \"{\\\"object\\\": \\\"list\\\", \\\"data\\\": [{\\\"id\\\": \\\"hermes-agent\\\", \\\"object\\\": \\\"model\\\", \\\"created\\\": 1794195553, \\\"owned_by\\\": \\\"hermes\\\", \\\"permission\\\": [], \\\"root\\\": \\\"hermes-agent\\\", \\\"parent\\\": null}]}\"}, \"chat\": {\"ok\": true, \"status\": 200, \"ms\": 988, \"body\": \"{\\\"id\\\": \\\"chatcmpl-aebeb55669084fe09e91417b43560\\\", \\\"object\\\": \\\"chat.completion\\\", \\\"created\\\": 1794195553, \\\"model\\\": \\\"hermes-agent\\\", \\\"choices\\\": [{\\\"index\\\": 0, \\\"message\\\": {\\\"role\\\": \\\"assistant\\\", \\\"content\\\": \\\"pong \\\\u2014 \\\\u6211\\\\u5728\\\\u8fd9\\\\u513f\\\\u3002\\\\u6709\\\\u4ec0\\\\u4e48\\\\u8981\\\\u505a\\\\u7684\\\\uff1f\\\", \\\"reasoning_content\\\": \\\"The user sent \\\\\\\"ping\\\\\\\". Simple reply. No tools needed. Maybe just \\\\\\\"pong\\\\\\\". Match brevity.\\\\n\\\\nC\"}}",
+  "started_at": "2026-11-09T11:39:13",
+  "finished_at": "2026-11-09T11:39:14",
+  "duration_s": 1.05
+}
