@@ -223,10 +223,10 @@ def preview_index():
 
 
 def _nim_preview_reason(preview, factor_row, feat_last):
-    """NVIDIA NIM 一句话归因（复用 invest_research 的 NIM 通道）。"""
+    """一句话归因（复用 invest_research 的 NIM 通道，2026-11-09 起指向本地 Hermes）。"""
     try:
         from scripts.invest_research import (NIM_URL, NIM_MODEL, PROXY, _chat,
-                                            _read_nim_key)
+                                            _read_llm_key)
         movers = [f"{k} {v.get('day_chg_pct'):+.1f}%" for k, v in
                   state["prices"].items() if isinstance(v, dict)
                   and v.get("day_chg_pct") is not None
@@ -238,7 +238,7 @@ def _nim_preview_reason(preview, factor_row, feat_last):
                 f"price={factor_row['price']:.1f}, breadth={factor_row['breadth']:.1f}, "
                 f"fed={factor_row['fed']:.1f}。异动标的：{'、'.join(movers) or '无'}。"
                 "一句话归因（≤80字，直接给结论，不解释过程）：")
-        out = _chat(NIM_URL, _read_nim_key(), NIM_MODEL, system, user,
+        out = _chat(NIM_URL, _read_llm_key(), NIM_MODEL, system, user,
                     max_tokens=200, proxy=PROXY, timeout=90, retries=1)
         return (out or "").strip().replace("\n", " ")[:120]
     except Exception as e:

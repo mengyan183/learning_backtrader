@@ -2456,7 +2456,8 @@ def _act_net_probe(params):
             if os.path.join(ROOT, "scripts") not in sys.path:
                 sys.path.insert(0, os.path.join(ROOT, "scripts"))
             import invest_research as ir
-            headers["Authorization"] = "Bearer " + ir._read_nim_key()
+            # 按 URL 选 key（本地 ⇒ Hermes 的 key）✓ 2026-11-09 统一走 Hermes
+            headers["Authorization"] = "Bearer " + (ir._read_llm_key() or "")
         except Exception as exc:                   # noqa: BLE001
             out["auth"] = "读 key 失败：%s" % exc
 
@@ -2509,7 +2510,7 @@ def _act_net_probe(params):
                 sys.path.insert(0, os.path.join(ROOT, "scripts"))
             import invest_research as ir
             # `model` 可覆盖 ⇒ 换模型前先单测候选 ✓（2026-10-29）
-            reply = ir._chat(ir.NIM_URL, ir._read_nim_key(),
+            reply = ir._chat(ir.NIM_URL, ir._read_llm_key(),
                              str(params.get("model") or ir.NIM_MODEL),
                              "你是连通性探针。", "只回复 OK", max_tokens=8,
                              proxy=ir.PROXY, timeout=60, retries=1)
