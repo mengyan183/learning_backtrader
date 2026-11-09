@@ -39,6 +39,9 @@ POSITIONS = os.path.join(BASE, "Data", "positions.csv")
 HERMES_URL = "http://127.0.0.1:8642/v1/chat/completions"
 HERMES_KEY = os.environ.get("API_SERVER_KEY", "32b64f3f308f403fffbe1c989acd9a9af32743a9a5e35d7a7b4d293e566f6ddc")
 NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+#: 兜底通道的输出上限。1600 实测不够 ✗（2026-11-09：JSON 断在 char 2796，
+#: `finish_reason=length` ⇒ `json.loads` 报 Unterminated string ✗）
+NV_MAX_TOKENS = 4000
 NVIDIA_PROXY = "http://127.0.0.1:7890"
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) curl/8.4.0"  # NVIDIA WAF 拦截无 UA 的 urllib 请求
 
@@ -173,7 +176,7 @@ def call_llm(prompt, timeout=240):
         "model": "deepseek-ai/deepseek-v4.1-flash",
         "messages": [{"role": "user", "content": prompt}],
         "chat_template_kwargs": {"thinking": False},
-        "max_tokens": 1600,
+        "max_tokens": NV_MAX_TOKENS,
     })
     tmp = os.path.join(tempfile.gettempdir(), f"nv_req_{os.getpid()}.json")
     # G-5（WT-12 审查）：NVIDIA key 原本作为 curl `-H` 参数 ⇒ 出现在进程
@@ -198,7 +201,14 @@ def call_llm(prompt, timeout=240):
     if out.returncode != 0:
         raise RuntimeError(f"NVIDIA curl 失败 rc={out.returncode}: {out.stderr[:200]}")
     d = json.loads(out.stdout)
-    return d["choices"][0]["message"]["content"], "nvidia-direct"
+    choice = d["choices"][0]
+    # 🔴 2026-11-09 实测：被 max_tokens 截断时只表现为
+    #    `json.loads → Unterminated string` ✗ 看不出是 token 不够 ✗
+    if choice.get("finish_reason") == "length":
+        raise RuntimeError(
+            "NVIDIA 输出被 max_tokens=%d 截断（finish_reason=length）⇒ "
+            "JSON 必然不完整，调大 NV_MAX_TOKENS" % NV_MAX_TOKENS)
+    return choice["message"]["content"], "nvidia-direct"
 
 
 def extract_json(text):
