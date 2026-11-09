@@ -1,0 +1,14 @@
+{
+  "id": "t-20261109-220053-rerun_brief",
+  "action": "rerun_brief",
+  "params": {
+    "push": "1",
+    "skip_pipeline": "1"
+  },
+  "status": "failed",
+  "rc": -1,
+  "output": "TimeoutExpired: Command '['/Users/xingguo/learning_backtrader/.venv/bin/python', 'scripts/invest_research.py']' timed out after 1200 seconds",
+  "started_at": "2026-11-09T22:03:21",
+  "finished_at": "2026-11-09T22:23:21",
+  "duration_s": 1200.1
+}
