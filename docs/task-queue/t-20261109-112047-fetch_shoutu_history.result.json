@@ -1,0 +1,11 @@
+{
+  "id": "t-20261109-112047-fetch_shoutu_history",
+  "action": "fetch_shoutu_history",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"stdout\": \"obs='0a3668e6-ba55-4714-a98b-acf0c32770a4'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='74502614-d1e9-47c9-a9d4-7a776461eb22'\\n  GDXU  ⚠️ 服务端无历史（data: []）—— 跳过\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='6ae9a809-47a8-4522-b802-2a5ca11a769e'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='615c4ddc-56c1-4ba5-aa5d-e88c7ac2723b'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='a90691ee-309a-4e79-975f-0d1f00fdd029'\\n  AXTX  ⚠️ 服务端无历史（data: []）—— 跳过\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='63af84a1-b095-4328-982b-57f9e98c24ad'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='c5fe8e0a-b7c3-4567-85f5-78875423cfdd'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='178f9598-3491-423c-b14b-7441da089893'\\n  CRCG  ⚠️ 服务端无历史（data: []）—— 跳过\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='ee0176ae-1ea4-4151-8dec-fd8c292dcb2b'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='19da7532-9a49-4ccf-9b93-759350cffa35'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='04b89b23-dd72-479d-acfb-52a5eda06222'\\n  TQQQ  ⚠️ 服务端无历史（data: []）—— 跳过\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='5d87d6eb-c13f-4ad1-a493-7a7dead12814'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='63820aa8-d92f-4be0-9f08-9b1ad6c9b5ca'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='c8add175-1dd5-4e54-8c4b-28f27fe89872'\\n  SOXL  ⚠️ 服务端无历史（data: []）—— 跳过\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='2056603a-40f5-4fd9-bb95-425a1ab942e2'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='b559d4f1-4093-401b-a1b8-dce933a09bb9'\\n[bsk] sync ctx='c432014b-f07a-4918-bf88-dcdbac311a0e' obs='7b166c5d-53c5-4999-92aa-99257fcdf3cd'\\n  UPRO  ⚠️ 服务端无历史（data: []）—— 跳过\\n已写入：/Users/xingguo/learning_backtrader/Data/raw/shoutu_history.csv\\n⚠️ 服务端无历史的标的：CONL / YINN / GDXU / AXTX / CRCG / TQQQ / SOXL / UPRO\\n合计：CONL 0 / YINN 0 / GDXU 0 / AXTX 0 / CRCG 0 / TQQQ 0 / SOXL 0 / UPRO 0\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-09T11:24:05",
+  "finished_at": "2026-11-09T11:25:14",
+  "duration_s": 69.47
+}
