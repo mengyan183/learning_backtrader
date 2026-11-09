@@ -170,10 +170,10 @@ def test_llm_defaults_unchanged_without_env(monkeypatch):
 
     m = _load()
 
-    # 2026-11-09 用户裁定：主通道**统一走本地 Hermes** ✓（原来 NVIDIA NIM → 后试
-    # 直连 api.deepseek.com，实测 Mac 无 sk- key ⇒ 401 ⇒ 回落到 Hermes）
-    assert "127.0.0.1:8642" in m.NIM_URL
-    assert m.NIM_MODEL == "hermes-agent"
+    # 2026-11-09 用户裁定：主通道**切回 DeepSeek 云端** ✓
+    # （NVIDIA NIM → 试云端但缺 key 401 → 临时回 Hermes → 补上 .env key 后 200）
+    assert "api.deepseek.com" in m.NIM_URL
+    assert m.NIM_MODEL == "deepseek-flash"
     assert "127.0.0.1:8642" in m.HERMES_URL
 
 

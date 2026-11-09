@@ -36,13 +36,14 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 DATA = REPO / "Data"
 
-# ── LLM 通道（读配置 ✓；2026-11-09 主通道**统一走本地 Hermes** ✓）──────────
-# 背景：Mac 上 openclaw / hermes / deepseek-harness 三个 agent 已统一走 DeepSeek
-# 的 API，而 **Hermes 内部已经配好 DeepSeek** ✓
-# 🔴 2026-11-09 实测：直连 `api.deepseek.com` 在 Mac 上**不可用** ✗ ——
-#    `deepseek_probe` 回执 `_read_nim_key` 返回空（`~/.dsh/.credentials.yaml`
-#    里没有任何 `sk-` key ✗），三个候选模型全是 401 `api key ****6ddc is invalid` ✗
-#    ⇒ 主通道也指向本地 Hermes ✓（与 2026-10-31 那条教训一致 ✓）
+# ── LLM 通道（读配置 ✓；2026-11-09 主通道**切回 DeepSeek 云端** ✓）──────────
+# 🔴 演进（三轮实测，别只看最后一条 ✗）：
+#   ① 原默认 NVIDIA NIM ✗
+#   ② 11-09 改 `api.deepseek.com` ⇒ **全 401** ✗ 因为 `_read_nim_key` 只读
+#      `~/.dsh/.credentials.yaml`（里面没有 `sk-` ✗），key 其实在
+#      `~/.hermes/.env`（`deepseek_key_hunt` 扫 17 个文件唯一命中 ✓）
+#   ③ 补上 `.env` 来源后重测 ⇒ **200** ✓（`deepseek_probe` 11-09 21:53）
+#   ⇒ 默认值定在云端；`_read_llm_key()` 按 URL 选 key（非本机 ⇒ `_read_nim_key`）✓
 #
 # 覆盖方式（不用改代码）：
 #   export FG_LLM_URL="..."  FG_LLM_MODEL="..."  FG_LLM_KEY="sk-..."
@@ -52,9 +53,15 @@ HERMES_URL = os.environ.get(
     "FG_HERMES_URL", "http://127.0.0.1:8642/v1/chat/completions")
 HERMES_MODEL = os.environ.get("FG_HERMES_MODEL", "hermes-agent")
 NIM_URL = os.environ.get(
-    "FG_LLM_URL", "http://127.0.0.1:8642/v1/chat/completions")
+    "FG_LLM_URL", "https://api.deepseek.com/v1/chat/completions")
+#: 🔴 模型名**实测**（2026-11-09 `deepseek_probe` 回执）：
+#:   `deepseek/deepseek-flash` ⇒ **400**，服务端原文：
+#:     "The supported API model names are **deepseek-flash**, **deepseek-v4-pro**,
+#:      but you passed deepseek/deepseek-flash"
+#:   `deepseek-chat` / `deepseek-reasoner` ⇒ 200（但响应 `model` 都是 `deepseek-flash`）
+#: ⇒ 用服务端**明确支持**的 `deepseek-flash` ✓
 NIM_MODEL = os.environ.get(
-    "FG_LLM_MODEL", "hermes-agent")
+    "FG_LLM_MODEL", "deepseek-flash")
 
 # ── 模块 → agent 通道 ✓（2026-11-09 用户要求：不同模块用不同 agent）──────
 # 🔴 背景：Mac 上有 **openclaw / deepseek-harness(dsh) / hermes** 三个 agent ✗
