@@ -2695,6 +2695,59 @@ def _scoped_env(action):
         os.environ.update(saved)
 
 
+def _act_run_task_monitor(params):
+    """手动跑一次 `scripts/task_monitor.py` ✓（2026-11-09 用户要求）。
+
+    🔴 为什么需要：改了新鲜度白名单后要等下一次定时才生效 ✗
+       ⇒ 手动触发一次，直接看判定结果（默认**不推飞书** ✓）
+
+    参数：`push=1` 才带 `--push-alert`
+    退出码语义：0 = 全绿；1 = **有异常项**（脚本跑成功了 ✗ 不算任务失败 ✓）
+    """
+    args = [sys.executable, os.path.join(ROOT, "scripts", "task_monitor.py")]
+    if str(params.get("push") or "").lower() in ("1", "true", "yes"):
+        args.append("--push-alert")
+    try:
+        r = subprocess.run(args, cwd=ROOT, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=300)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "task_monitor 超过 300 秒"}
+    return {"ok": r.returncode in (0, 1),          # 1 = 有异常项，不是跑挂
+            "rc": r.returncode,
+            "stdout": (r.stdout or "")[-3000:],
+            "stderr": (r.stderr or "")[-800:]}
+
+
+def _resolve_llm_key():
+    """逐个来源找 LLM key ⇒ `(key, 明细)` ✓（**不再静默吞异常** ✗）。
+
+    2026-11-09 实测：第一次探针 `key_len=0` ✗ 但看不出是「文件不存在」还是
+    「文件里没有 sk- key」还是「yaml 没装」✗ ⇒ 现在每个来源都回报状态 ✓
+    """
+    detail = {}
+    key = os.environ.get("FG_LLM_KEY", "")
+    detail["env_FG_LLM_KEY"] = bool(key)
+
+    if os.path.join(ROOT, "scripts") not in sys.path:
+        sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    for name, fn in (("invest_research._read_nim_key", "_read_nim_key"),
+                     ("invest_research._read_hermes_key", "_read_hermes_key")):
+        try:
+            mod = __import__("invest_research", fromlist=[fn])
+            got = getattr(mod, fn)() or ""
+            detail[name] = {"ok": bool(got), "len": len(got)}
+            if got and not key:
+                key = got
+        except Exception as exc:            # noqa: BLE001
+            detail[name] = {"error": "%s: %s" % (type(exc).__name__, str(exc)[:120])}
+
+    home = os.path.expanduser("~")
+    for rel in (".dsh/.credentials.yaml", ".hermes/config.yaml", ".hermes/.env"):
+        p = os.path.join(home, rel)
+        detail[rel] = {"exists": os.path.exists(p)}
+    return key, detail
+
+
 def _act_deepseek_probe(params):
     """探 **DeepSeek 云端**：哪个 `model` id 被接受 ✓（2026-11-09 用户要求）。
 
@@ -2714,17 +2767,10 @@ def _act_deepseek_probe(params):
         or "deepseek/deepseek-flash,deepseek-chat,deepseek-reasoner"
     ).split(",") if m.strip()]
 
-    key = os.environ.get("FG_LLM_KEY", "")
-    if not key:
-        try:
-            if os.path.join(ROOT, "scripts") not in sys.path:
-                sys.path.insert(0, os.path.join(ROOT, "scripts"))
-            from invest_research import _read_nim_key      # noqa: E402
-            key = _read_nim_key() or ""
-        except Exception:                       # noqa: BLE001
-            key = ""
+    key, key_detail = _resolve_llm_key()
 
-    out = {"url": url, "key_len": len(key), "results": {}}
+    out = {"url": url, "key_len": len(key), "key_sources": key_detail,
+           "results": {}}
     for model in models:
         payload = json.dumps({"model": model,
                               "messages": [{"role": "user", "content": "ping"}],
@@ -2914,6 +2960,7 @@ def _act_run_pytest(params):
 
 
 ACTIONS = {
+    "run_task_monitor": _act_run_task_monitor,
     "deepseek_probe": _act_deepseek_probe,
     "hermes_probe": _act_hermes_probe,
     "bsk_probe": _act_bsk_probe,
