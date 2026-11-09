@@ -2758,6 +2758,89 @@ def _resolve_llm_key():
     return key, detail
 
 
+#: 三个 agent 的候选端点 ✓（2026-11-09 `agent_probe` 实测端口）
+#: 用户确认：三个都配的是 **deepseek 云端 deepseek-flash** ⇒ 模型名统一 ✓
+AGENT_CANDIDATES = (
+    ("hermes", 8642),
+    ("dsh", 8326),
+    ("openclaw", 18789),
+)
+
+
+def _openclaw_key():
+    """从 `~/.openclaw/openclaw.json` 里捞 `sk-` 开头的 key ✓（不打印）。"""
+    import glob as _g
+    p = os.path.join(os.path.expanduser("~"), ".openclaw", "openclaw.json")
+    if not os.path.exists(p):
+        return ""
+    try:
+        obj = json.load(open(p, encoding="utf-8", errors="replace"))
+    except Exception:                     # noqa: BLE001
+        return ""
+    found = []
+
+    def walk(d):
+        if isinstance(d, dict):
+            for v in d.values():
+                walk(v)
+        elif isinstance(d, list):
+            for v in d:
+                walk(v)
+        elif isinstance(d, str) and d.startswith("sk-") and len(d) > 20:
+            found.append(d)
+
+    walk(obj)
+    return found[0] if found else ""
+
+
+def _act_agent_chat_probe(params):
+    """逐个 agent 发一次最小 chat ✓ —— 定死「哪条通道真能用」。
+
+    🔴 用户确认三个 agent 都配 `deepseek-flash` ✗
+       ⇒ 模型名统一，只需确认**端点 + key** 是否可用 ✓
+       2026-11-09 `agent_probe` 已知端口：hermes 8642 / dsh 8326 / openclaw 18789
+    """
+    import urllib.error as _ue
+    import urllib.request as _u
+
+    model = str(params.get("model") or "deepseek-flash")
+    if os.path.join(ROOT, "scripts") not in sys.path:
+        sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    try:
+        import invest_research as ir
+        keys = {"hermes": ir._read_hermes_key() or "",
+                "dsh": ir._read_nim_key() or "",
+                "openclaw": _openclaw_key()}
+    except Exception as exc:              # noqa: BLE001
+        return {"ok": False, "reason": "读 key 失败：%s" % str(exc)[:200]}
+
+    out = {"model": model, "results": {}}
+    for name, port in AGENT_CANDIDATES:
+        url = "http://127.0.0.1:%d/v1/chat/completions" % port
+        key = keys.get(name) or ""
+        payload = json.dumps({"model": model,
+                              "messages": [{"role": "user", "content": "ping"}],
+                              "max_tokens": 8}).encode()
+        req = _u.Request(url, data=payload, method="POST",
+                         headers={"Authorization": "Bearer %s" % key,
+                                  "Content-Type": "application/json"})
+        try:
+            with _u.urlopen(req, timeout=60) as resp:
+                body = resp.read(200).decode("utf-8", "replace")
+                out["results"][name] = {"url": url, "key_len": len(key),
+                                        "status": resp.status, "body": body}
+        except _ue.HTTPError as exc:
+            out["results"][name] = {
+                "url": url, "key_len": len(key), "status": exc.code,
+                "body": exc.read(200).decode("utf-8", "replace")}
+        except Exception as exc:          # noqa: BLE001
+            out["results"][name] = {"url": url, "key_len": len(key),
+                                    "error": "%s: %s" % (type(exc).__name__,
+                                                         str(exc)[:120])}
+    out["ok"] = True
+    return out
+
+
 def _act_agent_probe(params):
     """发现本机三个 agent（openclaw / deepseek-harness / hermes）的地址与端口 ✓。
 
@@ -3060,6 +3143,7 @@ def _act_run_pytest(params):
 
 
 ACTIONS = {
+    "agent_chat_probe": _act_agent_chat_probe,
     "agent_probe": _act_agent_probe,
     "run_task_monitor": _act_run_task_monitor,
     "deepseek_probe": _act_deepseek_probe,
