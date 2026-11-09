@@ -36,23 +36,22 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 DATA = REPO / "Data"
 
-# ── LLM 通道（2026-10-30 改成**读配置** ✓，全部可用环境变量覆盖）──────────
-# 背景：Mac 上 openclaw / hermes / deepseek-harness 三个 agent 已统一走
-# DeepSeek 的 API ✗，而这里还硬编码 NVIDIA NIM 的地址与模型 ✗ ⇒ 换一次改一次代码 ✗。
+# ── LLM 通道（读配置 ✓；2026-11-09 默认**切到 DeepSeek 云端** ✓）──────────
+# 背景：Mac 上 openclaw / hermes / deepseek-harness 三个 agent 已统一走 DeepSeek
+# 的 API ⇒ 这里的主通道也切过去 ✓（原来硬编码 NVIDIA NIM ✗，与那三个不一致 ✗）。
 #
-# 切换方式（Mac 上设环境变量，不用改代码）：
-#   export FG_LLM_URL="https://api.deepseek.com/v1/chat/completions"
-#   export FG_LLM_MODEL="deepseek/deepseek-flash"
-#   export FG_LLM_KEY="sk-..."          # 不设则回落到 ~/.dsh/.credentials.yaml
-#   export FG_LLM_PROXY=""              # 官方 API 国内直连，不用代理
-# 默认值**保持原样** ✓ —— 不设环境变量时行为完全不变（避免静默改变生产链路 ✗）。
+# 覆盖方式（不用改代码）：
+#   export FG_LLM_URL="..."  FG_LLM_MODEL="..."  FG_LLM_KEY="sk-..."
+#   export FG_LLM_PROXY="http://127.0.0.1:7890"   # 留空 = 直连
+# 注：`PROXY` 同时被知识库（YouTube）抓取复用 ⇒ 默认仍走 7890，
+#     DeepSeek 官方 API 经代理也能通 ✓（不单独拆，避免 KB 段直连不通 ✗）。
 HERMES_URL = os.environ.get(
     "FG_HERMES_URL", "http://127.0.0.1:8642/v1/chat/completions")
 HERMES_MODEL = os.environ.get("FG_HERMES_MODEL", "hermes-agent")
 NIM_URL = os.environ.get(
-    "FG_LLM_URL", "https://integrate.api.nvidia.com/v1/chat/completions")
+    "FG_LLM_URL", "https://api.deepseek.com/v1/chat/completions")
 NIM_MODEL = os.environ.get(
-    "FG_LLM_MODEL", "deepseek-ai/deepseek-v4.1-flash")
+    "FG_LLM_MODEL", "deepseek/deepseek-flash")
 #: LLM 调用走的本地代理（Mac 上是 Clash 默认端口）✓
 #: 🔴 2026-10-29：原来**硬编码** ✗ —— Clash 换端口就得改代码 ✗；
 #: 现在可用 `FG_LLM_PROXY` 覆盖（空串 = 不用代理）✓

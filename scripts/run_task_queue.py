@@ -2757,6 +2757,8 @@ def _act_hermes_probe(params):
                           "messages": [{"role": "user", "content": "ping"}],
                           "max_tokens": 8}).encode()
     out["chat"] = _call("/v1/chat/completions", payload, timeout=120)
+    # ⚠️ `ok` 表示**探针跑完了**（不是「网关可用」✗）—— 缺它队列会把任务判 failed ✗
+    out["ok"] = True
     return out
 
 

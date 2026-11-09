@@ -170,8 +170,9 @@ def test_llm_defaults_unchanged_without_env(monkeypatch):
 
     m = _load()
 
-    assert "integrate.api.nvidia.com" in m.NIM_URL
-    assert m.NIM_MODEL == "deepseek-ai/deepseek-v4.1-flash"
+    # 2026-11-09 用户裁定：主通道**默认切到 DeepSeek 云端** ✓（原来是 NVIDIA NIM）
+    assert "api.deepseek.com" in m.NIM_URL
+    assert m.NIM_MODEL == "deepseek/deepseek-flash"
     assert "127.0.0.1:8642" in m.HERMES_URL
 
 
