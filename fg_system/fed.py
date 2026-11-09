@@ -252,6 +252,26 @@ def fed_context(today=None):
             ctx["macro_window"] = 0 <= ctx["days_to_macro"] <= config.MACRO_EVENT_WINDOW_DAYS
             break
 
+    # 🔴 2026-11-09 用户实测：简报一直写「**10月预计维持**」✗ ——
+    #    那是 `config.FED_OUTLOOK_TXT` 里**冻结**的字符串 ✗，10-28 的会议早开完了 ✗
+    #    ⇒ 前瞻文案改成**按下次会议 + FedWatch 隐含概率动态生成** ✓
+    #    ⇒ 再也不会把已开的会议写成「预计」✓
+    if next_meeting is not None:
+        nm = "%d月" % next_meeting.month
+        # 🔴 **必须核对 FedWatch 指向哪次会议** ✗ —— 实测本地 fedwatch 停在
+        #    2026-10-13（会议 2026-10-28，早已开完）✗ 若把它的 78% 挂到 12 月
+        #    头上就是**假数据** ✗ ⇒ 只比「年月」（`FOMC_MEETINGS_2026` 存的是
+        #    会议**开始日**，而 fedwatch 的 meeting 是**结束日**，差一天 ✗）
+        fw_month = str(ctx.get("fw_meeting") or "")[:7]
+        same = bool(fw_month) and fw_month == next_meeting.strftime("%Y-%m")
+        hike, hold = ctx.get("fw_hike"), ctx.get("fw_hold")
+        if same and hike is not None and hike == hike and hike >= 50:
+            ctx["outlook_txt"] = "%s预计加息（市场隐含 %.0f%%）" % (nm, hike)
+        elif same and hold is not None and hold == hold and hold >= 50:
+            ctx["outlook_txt"] = "%s预计维持（市场隐含 %.0f%%）" % (nm, hold)
+        else:
+            ctx["outlook_txt"] = "%s待定（无对应会议预期数据）" % nm
+
     # 环境温度修正：加息周期压制风险偏好，贪婪档位需谨慎；
     # 降息周期支撑，恐惧档位可视为更好机会。
     if config.FED_STANCE == "加息周期":
