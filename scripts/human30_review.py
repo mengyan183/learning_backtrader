@@ -10,7 +10,7 @@
 - 无调参：prompt 固定规则模板，不随会话漂移
 
 用法：
-  python scripts/human30_review.py [--days 7] [--model qwen2.5-coder:3b]
+  python scripts/human30_review.py [--days 7]   # 走本地 Hermes(8642)
 """
 import argparse
 import json
@@ -49,17 +49,17 @@ def _build_data_lines(days=7):
     return "\n".join(lines)
 
 
-def _ollama_generate(prompt, model, host="http://localhost:11434", timeout=45):
-    req = urllib.request.Request(
-        host + "/api/generate",
-        data=json.dumps({"model": model, "prompt": prompt,
-                         "stream": False, "options": {"temperature": 0.3}}).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        resp = json.loads(r.read())
-    text = (resp.get("response") or "").strip()
-    return text
+def _hermes_generate(prompt, timeout=60):
+    """走**本地 Hermes**（127.0.0.1:8642）生成建议 ✓（2026-11-09 用户要求）。
+
+    🔴 原来走 Ollama（`localhost:11434`）✗ —— Mac 上 Ollama 常年没起 ⇒
+       每天降级成「模型暂不可用」✗（2026-11-09 16:54 简报实测）✗
+       ⇒ 改走 Hermes：简报三节 AI 已在用同一条通道，已验证可用 ✓
+    ⚠️ 边界不变：仍只出「成长建议」，`_guard_filter` 照样剔交易字眼 ✓
+    """
+    from fg_system.human30 import llm as _h30_llm
+    text, _via = _h30_llm.call_llm(prompt, timeout=timeout)
+    return (text or "").strip()
 
 
 _TRADE_WORDS = ("交易策略", "仓位", "买入", "卖出", "止损", "加仓", "减仓",
@@ -102,7 +102,7 @@ def _facts_line(days=7):
                 days, w["records"], latest["mind"], latest["body"],
                 latest["spirit"], latest["vocation"], agg["avg"],
                 agg["level_name"].split(" ")[0], agg["weakest_label"], lv_txt))
-def review(days=7, model="qwen2.5-coder:3b-64k", host="http://localhost:11434"):
+def review(days=7):
     """生成 AI 复盘（≤260 字）：确定性事实句 + LLM 建议。
 
     架构（防 3b 模型数字错位/概括漂移）：
@@ -115,7 +115,7 @@ def review(days=7, model="qwen2.5-coder:3b-64k", host="http://localhost:11434"):
         return PREFIX + "：尚无自评记录，无法复盘（数据从打卡开始积累）。"
     data = _build_data_lines(days)
     try:
-        suggestion = _ollama_generate(SUGGEST_PROMPT.format(data=data), model, host)
+        suggestion = _hermes_generate(SUGGEST_PROMPT.format(data=data))
         if not suggestion:
             raise RuntimeError("empty response")
         suggestion = _guard_filter(suggestion)
@@ -140,10 +140,8 @@ def review(days=7, model="qwen2.5-coder:3b-64k", host="http://localhost:11434"):
 def main():
     p = argparse.ArgumentParser(description="Human 3.0 AI 复盘（只读自评，不判交易）")
     p.add_argument("--days", type=int, default=7)
-    p.add_argument("--model", default="qwen2.5-coder:3b")
-    p.add_argument("--host", default="http://localhost:11434")
     args = p.parse_args()
-    print(review(args.days, args.model, args.host))
+    print(review(args.days))
 
 
 if __name__ == "__main__":

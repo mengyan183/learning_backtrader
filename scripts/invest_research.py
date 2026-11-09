@@ -55,6 +55,40 @@ NIM_URL = os.environ.get(
     "FG_LLM_URL", "http://127.0.0.1:8642/v1/chat/completions")
 NIM_MODEL = os.environ.get(
     "FG_LLM_MODEL", "hermes-agent")
+
+# ── 模块 → agent 通道 ✓（2026-11-09 用户要求：不同模块用不同 agent）──────
+# 🔴 背景：Mac 上有 **openclaw / deepseek-harness(dsh) / hermes** 三个 agent ✗
+#    而三节 AI 现在**全走同一条** ✗ ⇒ 需要按模块分流 ✓
+# ⚠️ openclaw / dsh 的地址**尚未实测** ✗ ⇒ 默认值仍指向现状（hermes）✓
+#    拿到实测地址后：只改这里的默认值，或用 `FG_AGENT_*_URL` 覆盖 ✓
+#    调用点不用动 ✓
+# 结构：模块 -> (url 环境变量, model 环境变量, 默认 url, 默认 model)
+AGENT_ROUTES = {
+    "sentiment": ("FG_AGENT_SENTIMENT_URL", "FG_AGENT_SENTIMENT_MODEL",
+                  HERMES_URL, HERMES_MODEL),
+    "attribution": ("FG_AGENT_ATTRIBUTION_URL", "FG_AGENT_ATTRIBUTION_MODEL",
+                    NIM_URL, NIM_MODEL),
+    "judge": ("FG_AGENT_JUDGE_URL", "FG_AGENT_JUDGE_MODEL",
+              NIM_URL, NIM_MODEL),
+}
+
+
+def agent_route(module):
+    """取模块对应的 `(url, model)` ✓（未配置则回落到现状）。"""
+    url_env, model_env, url0, model0 = AGENT_ROUTES[module]
+    return (os.environ.get(url_env) or url0,
+            os.environ.get(model_env) or model0)
+
+
+def _key_for(url):
+    """按 **URL** 选 key ✓（本机 ⇒ Hermes 的 key，远端 ⇒ NIM 的 key）。"""
+    u = str(url or "")
+    if "127.0.0.1" in u or "localhost" in u:
+        try:
+            return _read_hermes_key()
+        except Exception:            # noqa: BLE001 —— 读不到就回落
+            pass
+    return _read_nim_key()
 #: LLM 调用走的本地代理（Mac 上是 Clash 默认端口）✓
 #: 🔴 2026-10-29：原来**硬编码** ✗ —— Clash 换端口就得改代码 ✗；
 #: 现在可用 `FG_LLM_PROXY` 覆盖（空串 = 不用代理）✓
@@ -496,7 +530,8 @@ def stage_sentiment(hermes_key, snap):
     """Hermes(GLM) 情绪/新闻面分析"""
     system = "你是资深美股情绪分析师。基于给定的市场数据快照，用中文输出≤500字的情绪面分析：市场整体情绪定性、仓位拥挤度、需要关注的新闻催化方向。只做分析，不给交易指令。"
     user = f"以下是今日市场快照：\n{snapshot_text(snap)}\n\n请输出情绪面分析。"
-    return _chat(HERMES_URL, hermes_key, HERMES_MODEL, system, user,
+    _u, _m = agent_route("sentiment")
+    return _chat(_u, hermes_key, _m, system, user,
                  max_tokens=800)
 
 
@@ -594,12 +629,14 @@ def stage_attribution(nim_key, snap, kb=None):
     kb_txt = _kb_context(kb) if kb else ""
     user = f"{kb_txt}以下是今日持仓快照：\n{snapshot_text(snap)}\n\n请输出深度归因分析。"
     try:
-        out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
+        _u, _m = agent_route("attribution")
+        out = _chat(_u, nim_key, _m, system, user,
                     max_tokens=4096, proxy=PROXY, timeout=120, retries=2)
         clean = _clean_attribution(out)
         if clean is None:
             # 疑似 prompt 回显/思考 → 重试一次（NIM 偶发）
-            out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
+            _u, _m = agent_route("attribution")
+            out = _chat(_u, nim_key, _m, system, user,
                         max_tokens=4096, proxy=PROXY, timeout=120, retries=1)
             clean = _clean_attribution(out)
         return clean
@@ -642,11 +679,13 @@ def stage_judge(nim_key, snap, sentiment, attribution):
     user = (f"数据:\n{compact}\n\n情绪分析:\n{sent_short}\n\n归因分析:\n{attr_short}\n\n"
             "请直接输出三行裁决文本。")
     try:
-        out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
+        _u, _m = agent_route("judge")
+        out = _chat(_u, nim_key, _m, system, user,
                     max_tokens=400, proxy=PROXY, timeout=120, retries=1)
         v = _validate_judge(out)
         if v is None:
-            out = _chat(NIM_URL, nim_key, NIM_MODEL, system, user,
+            _u, _m = agent_route("judge")
+            out = _chat(_u, nim_key, _m, system, user,
                         max_tokens=400, proxy=PROXY, timeout=120, retries=1)
             v = _validate_judge(out)
         if v is None:
@@ -1455,8 +1494,45 @@ def _data_health_block(snap, sentiment=None, attribution=None, judge=None):
     return "\n".join(lines)
 
 
+#: AI 段与「动作」段脱钩的说明 ✓（2026-11-09 用户要求）。
+#: 🔴 背景：过渡期内名单内标的全是「持有/持有观望」✗ 而三节 AI 仍写
+#:    「强烈减仓 / 结构性错配」✗ ⇒ 读者会以为简报自相矛盾 ✗
+#:    ⇒ 每节 AI 顶部标明「动作由第 4.6 条决定，与本段无关」✓
+_AI_ACTION_NOTE = ("⚠️ 本段是 AI 分析，**不产生动作**；当前动作由交易纪律"
+                   "第 4.6 条（存量仓过渡期）决定，与本段建议无关。")
+
+#: LLM 输出的**噪音行**形态 ✓（2026-11-09 用户要求剥离）
+_ARTIFACT_RE = re.compile(r"^\s*[A-Za-z_]\w*(\.[A-Za-z_]\w*)+\s*$")
+_SELFCHECK_RE = re.compile(r"(符合上限|核验|字数|已按去空白)")
+
+
+def _strip_llm_artifacts(text):
+    """剥掉 LLM 吐出来的**伪键名**与**字数自检**行 ✓。
+
+    实测两类（2026-11-09 简报）：
+      ① 伪键名占位符 —— `explainer.file_mutation.header`
+         （代码里搜不到，是模型自己编的键名）
+      ② 字数自检 —— `495字，符合上限。` / `（498字，已按去空白字符核验）`
+         （模型把自我校验当正文输出）
+    """
+    if not text:
+        return text
+    keep = []
+    for ln in str(text).splitlines():
+        t = ln.strip()
+        if _ARTIFACT_RE.match(t):
+            continue
+        if len(t) <= 30 and "字" in t and _SELFCHECK_RE.search(t):
+            continue
+        keep.append(ln)
+    return "\n".join(keep).strip()
+
+
 def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     """结构化简报（飞书富文本 post 用）：[ ("标题", "正文"), "hr", ... ]"""
+    sentiment = _strip_llm_artifacts(sentiment)
+    attribution = _strip_llm_artifacts(attribution)
+    judge = _strip_llm_artifacts(judge)
     from fg_system import fed as _fed
     _fctx = _fed.fed_context()
     secs = []
@@ -1503,7 +1579,8 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     _sent_tag = _llm_tag(HERMES_URL, HERMES_MODEL)
     _attr_tag = _llm_tag(NIM_URL, NIM_MODEL)
     secs.append(("📰 情绪面 · %s" % _sent_tag,
-                 (sentiment or "（不可用）").strip()[:1200]))
+                 _AI_ACTION_NOTE + "\n"
+                 + (sentiment or "（不可用）").strip()[:1200]))
     secs.append("hr")
     _mc = _major_contradiction()
     # 🔴 2026-10-31 精简：2600 → **1200** 字 ✗ ——
@@ -1511,10 +1588,11 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     # 截断后仍保留「逐标的 + 风险点 + 仓位合理性」三段主干 ✓
     _attr_txt = ((_mc + "\n\n" if _mc else "")
                  + (attribution or "（归因生成失败，已降级跳过）").strip()[:1200])
-    secs.append(("🔍 深度归因 · %s" % _attr_tag, _attr_txt))
+    secs.append(("🔍 深度归因 · %s" % _attr_tag, _AI_ACTION_NOTE + "\n" + _attr_txt))
     secs.append("hr")
     secs.append(("⚖️ 裁判裁决 · %s【研究参考】" % _attr_tag,
-                 (judge or "（裁判未生成，已降级；以风控/归因结论为准）").strip()[:1200]))
+                 _AI_ACTION_NOTE + "\n"
+                 + (judge or "（裁判未生成，已降级；以风控/归因结论为准）").strip()[:1200]))
     secs.append("hr")
     secs.append(("🧠 知识库观点佐证 · YouTube 9频道【研究参考】", _kb_brief_text(kb_evidence(snap))))
     secs.append("hr")
@@ -1772,16 +1850,19 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         news_text(news) if news else "（新闻源不可用）",
         "",
         "## 情绪面分析（%s）" % _llm_tag(HERMES_URL, HERMES_MODEL),
-        (sentiment or "（跳过：Hermes 不可用）").strip()[:1500],
+        _AI_ACTION_NOTE + "\n"
+        + (sentiment or "（跳过：Hermes 不可用）").strip()[:1500],
         "",
         "## 深度归因（%s）" % _llm_tag(NIM_URL, NIM_MODEL),
-        ((_major_contradiction() or "") + "\n\n" if _major_contradiction() else "")
+        _AI_ACTION_NOTE + "\n"
+        + ((_major_contradiction() or "") + "\n\n" if _major_contradiction() else "")
         + (attribution or "（跳过：%s 不可用）"
            % _llm_tag(NIM_URL, NIM_MODEL)).strip()[:3000],
         "",
         "## 裁判裁决（%s）【研究参考，非实盘指令】"
         % _llm_tag(NIM_URL, NIM_MODEL),
-        (judge or "（跳过：裁判不可用）").strip()[:1200],
+        _AI_ACTION_NOTE + "\n"
+        + (judge or "（跳过：裁判不可用）").strip()[:1200],
         "",
         "## 🧠 知识库观点佐证（YouTube 9频道）【研究参考，非实盘指令】",
         _kb_brief_text(kb_evidence(snap)),
