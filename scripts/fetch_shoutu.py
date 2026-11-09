@@ -34,8 +34,6 @@ from fg_system import config                     # noqa: E402
 from fg_system.data import shoutu                # noqa: E402
 
 _BSK = "/Users/xingguo/.local/bin/bsk"
-#: session -> `cooperate sync` 返回的控制上下文（`evaluate --context` 必填 ✓）
-_CTX = {}
 #: 最近一次 `cooperate sync` 的**原始输出**（失败时随异常带回 ✓）
 _LAST_SYNC = ""
 UNIVERSE_PAGE = "https://fe.szdt.tech/invest/#/etf"
@@ -77,10 +75,11 @@ def _parse_context(out):
         obj = None
     if isinstance(obj, dict):
         ctx = str(obj.get("context_id") or obj.get("context") or "").strip()
-        obs = obj.get("observation")
-        obs = obs if isinstance(obs, dict) else {}
-        oid = str(obj.get("observation_id")
-                  or obs.get("observation_id") or "").strip()
+        # 🔴 只认**顶层** `observation_id` ✗（2026-11-09 实测报错原文）：
+        #    「pass the sync reply's **top-level** observation_id,
+        #      **not** observation.observation_id」
+        #    ⇒ 嵌套那份是给 visual/untargeted 动作用的，脚本类动作不认 ✗
+        oid = str(obj.get("observation_id") or "").strip()
         if ctx or oid:
             return ctx, oid
     # 非 JSON ⇒ 退回文本形态（`context: xxx` / 裸 token）
@@ -123,7 +122,7 @@ def bsk_sync(session):
     global _LAST_SYNC
     _LAST_SYNC = out.strip()
     print("[bsk] sync ctx=%r obs=%r" % (ctx[:40], obs[:40]))
-    _CTX[session] = (ctx, obs)
+
     return ctx, obs
 
 
@@ -148,14 +147,14 @@ def bsk_eval(js, session):
          （子命令失败一律吞掉 ✗ 否则会把原错误盖掉 ✗）
     """
     last = None
-    for attempt in range(3):
-        # 第 1 次用缓存 context（navigate 后已 sync 过）；失败再 sync 换新的 ✓
-        ctx, obs = (_CTX.get(session, ("", "")) if attempt == 0
-                    else bsk_sync(session))
+    for _attempt in range(2):
+        # 🔴 每次 evaluate 前都要**重新 sync** ✗ —— bsk 要求
+        #    「an **unused** strict observation」⇒ 上一轮的 observation 用一次就废 ✗
+        ctx, obs = bsk_sync(session)
         args = ["evaluate", js]
         if ctx:
             args += ["--context", ctx]
-        if obs:                       # 脚本/无目标动作要求本次 sync 的 observation ✓
+        if obs:
             args += ["--observation", obs]
         try:
             return bsk(args, session).strip()

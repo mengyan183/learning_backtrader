@@ -2695,6 +2695,61 @@ def _scoped_env(action):
         os.environ.update(saved)
 
 
+def _act_hermes_probe(params):
+    """探本机 **Hermes 网关**（127.0.0.1:8642）✓（2026-11-09 用户要求排查）。
+
+    回答三件事，区分「网关死」和「模型慢」：
+      ① TCP 端口通不通
+      ② `/v1/models` 是否 200（网关进程活着）
+      ③ 最小 chat 请求（max_tokens=8）延迟
+    """
+    import socket
+    import time as _t
+    import urllib.error as _ue
+    import urllib.request as _u
+
+    base = str(params.get("url") or "http://127.0.0.1:8642").rstrip("/")
+    key = os.environ.get("API_SERVER_KEY", "")
+    out = {"url": base}
+
+    t0 = _t.time()
+    sk = socket.socket()
+    sk.settimeout(3)
+    try:
+        sk.connect(("127.0.0.1", 8642))
+        out["tcp"] = {"ok": True, "ms": round((_t.time() - t0) * 1000)}
+    except OSError as exc:
+        out["tcp"] = {"ok": False, "error": str(exc)[:120]}
+    finally:
+        sk.close()
+
+    def _call(path, payload=None, timeout=120):
+        t = _t.time()
+        try:
+            req = _u.Request(base + path, data=payload, method="POST" if payload else "GET",
+                             headers={"Authorization": "Bearer %s" % key,
+                                      "Content-Type": "application/json"})
+            with _u.urlopen(req, timeout=timeout) as r:
+                return {"ok": True, "status": r.status,
+                        "ms": round((_t.time() - t) * 1000),
+                        "body": r.read(400).decode("utf-8", "replace")}
+        except _ue.HTTPError as exc:
+            return {"ok": False, "status": exc.code,
+                    "ms": round((_t.time() - t) * 1000),
+                    "body": exc.read(400).decode("utf-8", "replace")}
+        except Exception as exc:            # noqa: BLE001
+            return {"ok": False, "ms": round((_t.time() - t) * 1000),
+                    "error": str(exc)[:200]}
+
+    out["models"] = _call("/v1/models", timeout=10)
+    # 只生成 8 token ⇒ 若这里就慢/超时，说明是模型侧而不是网关
+    payload = json.dumps({"model": "hermes-agent",
+                          "messages": [{"role": "user", "content": "ping"}],
+                          "max_tokens": 8}).encode()
+    out["chat"] = _call("/v1/chat/completions", payload, timeout=120)
+    return out
+
+
 def _act_bsk_probe(params):
     """跑 `scripts/bsk_probe.py` ⇒ **一次**拿到 bsk 控制上下文的全部事实 ✓。
 
@@ -2795,6 +2850,7 @@ def _act_run_pytest(params):
 
 
 ACTIONS = {
+    "hermes_probe": _act_hermes_probe,
     "bsk_probe": _act_bsk_probe,
     "restart_dashboard": _act_restart_dashboard,
     "render_probe": _act_render_probe,

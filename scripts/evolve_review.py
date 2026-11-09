@@ -9,7 +9,7 @@ evolve_review.py — LLM 体检与假说登记自动化（进化闭环 ③→④
 
 流程：
   1. 组装"判据先行"prompt（只报现象 → 候选假说；强制 JSON schema）
-  2. 调用 Hermes API server(8642)（GLM 主 + NVIDIA fallback）；失败降级 NVIDIA 直连
+  2. 调用 Hermes API server(8642)；**不再降级云端**（2026-11-09 用户要求 ✓）
   3. 解析并校验：候选假说三要素（假设/检验方法/不成立判据）缺一作废
   4. 登记新假说（自动编号 H-xxx，按 assumption 去重）到 evolution/hypotheses.md
   5. 体检报告追加到 evolution/memory/YYYY-MM-DD.md
@@ -23,8 +23,6 @@ import sys
 import csv
 import urllib.request
 import urllib.error
-import subprocess
-import tempfile
 from datetime import date, datetime, timedelta
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,12 +36,7 @@ POSITIONS = os.path.join(BASE, "Data", "positions.csv")
 
 HERMES_URL = "http://127.0.0.1:8642/v1/chat/completions"
 HERMES_KEY = os.environ.get("API_SERVER_KEY", "32b64f3f308f403fffbe1c989acd9a9af32743a9a5e35d7a7b4d293e566f6ddc")
-NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-#: 兜底通道的输出上限。1600 实测不够 ✗（2026-11-09：JSON 断在 char 2796，
-#: `finish_reason=length` ⇒ `json.loads` 报 Unterminated string ✗）
-NV_MAX_TOKENS = 4000
-NVIDIA_PROXY = "http://127.0.0.1:7890"
-UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) curl/8.4.0"  # NVIDIA WAF 拦截无 UA 的 urllib 请求
+
 
 
 def _read_secret_env():
@@ -65,8 +58,6 @@ def _read_secret_env():
     return env
 
 
-_SECRETS = _read_secret_env()
-NVIDIA_KEY = os.environ.get("NVIDIA_API_KEY") or _SECRETS.get("NVIDIA_API_KEY", "")
 
 SCHEMA_HINT = """输出必须是合法 JSON，结构如下（字段名勿改，缺字段即失败）：
 {
@@ -156,7 +147,13 @@ def build_prompt():
 
 
 def call_llm(prompt, timeout=240):
-    """先 Hermes 8642；失败/超时降级 NVIDIA 直连（curl 子进程，WAF 对 urllib 拦截）。返回 (text, via)。"""
+    """调**本机 Hermes 网关**（127.0.0.1:8642）⇒ 返回 (text, via)。
+
+    🔴 2026-11-09 用户要求：**取消 NVIDIA 云端兜底** ✗ ——
+       云端降级会掩盖 Hermes 自己的故障 ✗（11-09 实测：Hermes 超时被静默换通道，
+       云端输出又被 max_tokens 截断，最后报了个看不懂的 JSONDecodeError ✗）
+       ⇒ Hermes 挂了就**响亮失败** ✓
+    """
     body = json.dumps({
         "model": "hermes-agent",
         "messages": [{"role": "user", "content": prompt}],
@@ -167,48 +164,9 @@ def call_llm(prompt, timeout=240):
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             d = json.loads(r.read())
-            return d["choices"][0]["message"]["content"], "hermes(8642)"
-    except Exception as e:
-        print(f"[evolve_review] Hermes 失败：{e}，降级 NVIDIA 直连", file=sys.stderr)
-    if not NVIDIA_KEY:
-        raise RuntimeError("Hermes 不可用且无 NVIDIA_API_KEY")
-    nv_body = json.dumps({
-        "model": "deepseek-ai/deepseek-v4.1-flash",
-        "messages": [{"role": "user", "content": prompt}],
-        "chat_template_kwargs": {"thinking": False},
-        "max_tokens": NV_MAX_TOKENS,
-    })
-    tmp = os.path.join(tempfile.gettempdir(), f"nv_req_{os.getpid()}.json")
-    # G-5（WT-12 审查）：NVIDIA key 原本作为 curl `-H` 参数 ⇒ 出现在进程
-    # 命令行（同机可读）。改写入 0600 的 `--config` 临时文件。
-    # G-2 余项：原来写死 `/tmp`，Windows 上不存在 ⇒ 改用 tempfile.gettempdir()。
-    fd, cfg = tempfile.mkstemp(prefix="nv_curl_", suffix=".cfg")
-    try:
-        os.chmod(cfg, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write('header = "Authorization: Bearer %s"\n'
-                    'header = "Content-Type: application/json"\n'
-                    % NVIDIA_KEY.replace("\\", "\\\\").replace('"', '\\"'))
-        with open(tmp, "w") as f:
-            f.write(nv_body)
-        out = subprocess.run(
-            ["curl", "-s", "-m", "300", "-x", NVIDIA_PROXY,
-             "--config", cfg, NVIDIA_URL, "--data-binary", f"@{tmp}"],
-            capture_output=True, text=True, timeout=320)
-    finally:
-        os.remove(tmp)
-        os.remove(cfg)
-    if out.returncode != 0:
-        raise RuntimeError(f"NVIDIA curl 失败 rc={out.returncode}: {out.stderr[:200]}")
-    d = json.loads(out.stdout)
-    choice = d["choices"][0]
-    # 🔴 2026-11-09 实测：被 max_tokens 截断时只表现为
-    #    `json.loads → Unterminated string` ✗ 看不出是 token 不够 ✗
-    if choice.get("finish_reason") == "length":
-        raise RuntimeError(
-            "NVIDIA 输出被 max_tokens=%d 截断（finish_reason=length）⇒ "
-            "JSON 必然不完整，调大 NV_MAX_TOKENS" % NV_MAX_TOKENS)
-    return choice["message"]["content"], "nvidia-direct"
+    except Exception as exc:
+        raise RuntimeError("Hermes(8642) 调用失败：%s" % exc) from exc
+    return d["choices"][0]["message"]["content"], "hermes(8642)"
 
 
 def extract_json(text):
