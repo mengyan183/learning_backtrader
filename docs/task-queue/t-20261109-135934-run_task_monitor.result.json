@@ -1,0 +1,11 @@
+{
+  "id": "t-20261109-135934-run_task_monitor",
+  "action": "run_task_monitor",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"stdout\": \"[监控] 2026-11-09 全部正常：15 项数据新鲜，9 个定时任务注册在位\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-09T14:02:10",
+  "finished_at": "2026-11-09T14:02:11",
+  "duration_s": 0.82
+}
