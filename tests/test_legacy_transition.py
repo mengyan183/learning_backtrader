@@ -65,6 +65,19 @@ def test_legacy_still_reduces_when_coefficient_is_greedy(monkeypatch):
     assert "减仓（系数贪婪" in txt
 
 
+def test_legacy_never_suggests_adding(monkeypatch):
+    """过渡期内**不得出现「可加」** ✓（第 4.6.6 条：加仓侧不变）。
+
+    🔴 2026-11-09 实测事故：16:41 的简报对 CRCG(-60%)/AXTX(-93%) 写
+       「持有/可加（恐慌买入区）」，而同页「建仓/加仓计划」写「禁止加仓」✗
+       —— 因为原实现把「敞口合规」这个前提丢了（存量仓恰恰超 250%）。
+    """
+    monkeypatch.setattr(ir, "_is_legacy", lambda s, t=None: s == LEGACY)
+    txt = ir.action_brief_text(_snap(shoutu=-95.0))      # 恐慌买入区
+    assert "可加" not in txt, "存量仓不得出现「可加」（敞口超标，加仓仍冻结）"
+    assert "加仓仍冻结" in txt
+
+
 def test_non_legacy_still_uses_hard_cap(monkeypatch):
     """名单外标的照旧：超上限 ⇒ 减仓至上限 ✓（规则没被整体放宽）."""
     monkeypatch.setattr(ir, "_is_legacy", lambda s, t=None: False)

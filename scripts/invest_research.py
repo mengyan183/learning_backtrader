@@ -963,7 +963,12 @@ def action_brief_text(snap):
             if greedy:
                 act = "减仓（系数贪婪，存量仓过渡期）"
             elif fearful:
-                act = "持有/可加（恐慌买入区，存量仓过渡期）"
+                # 🔴 2026-11-09 修正 ✗：**不能写「可加」** ✗
+                #    非名单分支的「可加」前提是「敞口合规」（`over` 为假）✗
+                #    而存量仓恰恰**敞口超标**（250% vs 目标 58.3%）✗
+                #    ⇒ 写成「可加」会与同页「浮亏>60% 禁止加仓」直接打架 ✗
+                #      （第 4.6.6 条明写「加仓侧不变」✓）
+                act = "持有（恐慌买入区；加仓仍冻结）"
             else:
                 act = "持有观望（存量仓过渡期）"
         elif over and greedy:
@@ -1035,6 +1040,12 @@ def action_brief_text(snap):
     # 2026-11-02 实测：塞进 `head` 会让 ENE 段跑到逐标的行**前面** ✗
     # （`head + "\n" + out` 的顺序决定的 ✗）
     ene_line = _ene_reduce_line(snap)
+    # 🔴 2026-11-09：ENE 只认价格通道，**不知道过渡期** ✗
+    #    名单内标的动作是「持有观望」而 ENE 写「支持减仓」⇒ 同页自相矛盾 ✗
+    if ene_line and any(_is_legacy(r.get("symbol") or "")
+                        for r in snap.get("positions", [])):
+        ene_line += ("\n⚠️ 存量仓过渡期内上述 ENE 确认**仅供参考** ✗ —— "
+                     "名单内标的减仓与否只按贪恐系数（第 4.6 条）")
     tail = ("\n" + ene_line) if ene_line else ""
     return head + "\n" + "\n".join(out) + tail
 
@@ -1158,6 +1169,11 @@ def position_plan_brief(snap):
                pp.PLAN["first"] * 100, pp.PLAN["adds"][0] * 100,
                len(pp.PLAN["adds"]), pp.PLAN["atr_k"],
                pp.PLAN["min_gap_days"], abs(pp.PLAN["hard_stop"]) * 100))
+    # 🔴 2026-11-09：名单内标的的 1% 上限在过渡期**不参与减仓判定** ✗
+    #    但本节的逐条仍会写「上限 $1159（1% 规则更严）」⇒ 读者会当成硬约束 ✗
+    if any(_is_legacy(r.get("symbol") or "") for r in pos):
+        head += ("\n⚠️ 存量仓过渡期内，名单内标的的 **1% 上限仅供参考** ✗ "
+                 "（不参与减仓判定，第 4.6 条）；**加仓仍按上述规则冻结** ✓")
     # 🔴 2026-10-31 精简：**全部不可操作** ⇒ 压成一行 ✓
     # 原来 5 行全是「已到单标的上限」/「禁止加仓」，占 5 行但零信息量 ✗
     # （用户实测：简报太长，且这三节在重复列同一批标的 ✗）
