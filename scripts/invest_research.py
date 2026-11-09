@@ -190,10 +190,35 @@ def _read_hermes_key():
     return cfg.get("platforms", {}).get("api_server", {}).get("key")
 
 
+#: `.env` 里的 key 形态（`sk-` = DeepSeek 官方 / `nvapi-` = NVIDIA）
+_DOTENV_KEY_RE = re.compile(r"(sk-[A-Za-z0-9_\-]{16,}|nvapi-[A-Za-z0-9_\-]{16,})")
+
+
+def _read_dotenv_key(path):
+    """从 `.env` 里捞第一把 key ⇒ 没有返回 `None` ✓（2026-11-09）。
+
+    🔴 实测：`deepseek_key_hunt` 扫 17 个文件，**唯一命中**是
+       `~/.hermes/.env` 里的 `sk-…(35)` ✗ 而 `_read_nim_key` 只看
+       `~/.dsh/.credentials.yaml` ⇒ 一直读不到 ⇒ 401 ✗
+    """
+    try:
+        txt = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    m = _DOTENV_KEY_RE.search(txt)
+    return m.group(1) if m else None
+
+
 def _read_nim_key():
     # 2026-10-30：`FG_LLM_KEY` 优先 ✓ —— 换供应商时只改环境变量，不动代码 ✓
     if os.environ.get("FG_LLM_KEY"):
         return os.environ["FG_LLM_KEY"]
+    # 2026-11-09：**先看 `~/.hermes/.env`** ✓ —— DeepSeek 的 key 实测在这里 ✗
+    #             （`~/.dsh/.credentials.yaml` 里没有 `sk-` ✗）
+    for rel in ((".hermes", ".env"), (".dsh", ".env")):
+        got = _read_dotenv_key(Path.home() / rel[0] / rel[1])
+        if got:
+            return got
     import yaml
     cred = yaml.safe_load(open(Path.home() / ".dsh" / ".credentials.yaml"))
     # 2026-10-30：**优先 `sk-`（DeepSeek 官方）** ✓，其次 `nvapi-`（NVIDIA）✓
