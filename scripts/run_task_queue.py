@@ -2793,6 +2793,97 @@ def _openclaw_key():
     return found[0] if found else ""
 
 
+def _mask(v):
+    """脱敏：只回前 4 + 后 4 + 长度 ✓（**绝不回明文** ✗）。"""
+    s = str(v)
+    if len(s) <= 10:
+        return "*" * len(s) + "(%d)" % len(s)
+    return "%s…%s(%d)" % (s[:4], s[-4:], len(s))
+
+
+def _walk_shape(obj, prefix="", out=None, depth=0):
+    """把嵌套结构压成 `a.b.c = 脱敏值` 列表 ✓（只收 key/token/url/model 类）。"""
+    if out is None:
+        out = []
+    if depth > 6:
+        return out
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            _walk_shape(v, "%s.%s" % (prefix, k) if prefix else str(k), out,
+                        depth + 1)
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj[:5]):
+            _walk_shape(v, "%s[%d]" % (prefix, i), out, depth + 1)
+    else:
+        low = prefix.lower()
+        hit = any(t in low for t in ("key", "token", "secret", "url", "base",
+                                     "port", "model", "host", "endpoint",
+                                     "provider", "agent"))
+        looks_token = isinstance(obj, str) and len(obj) >= 20 and " " not in obj
+        if hit or looks_token:
+            out.append("%s = %s" % (prefix, _mask(obj)))
+    return out
+
+
+def _act_key_shape_probe(params):
+    """**只列键名与脱敏值** ✓ —— 找出 dsh 的 key 到底叫什么（2026-11-09 用户选 A）。
+
+    🔴 背景：`agent_chat_probe` 显示 `dsh` 的 `key_len=0` ✗
+       —— 我从 `~/.dsh/.credentials.yaml` 里只找 `sk-` 开头 ✗ 可能前缀不对 ✗
+       ⇒ 把**结构与键名**摆出来，绝不回明文 ✓
+    """
+    import glob as _g
+
+    home = os.path.expanduser("~")
+    out = {"files": {}, "dirs": {}}
+
+    # ① 目录清单（只看文件名）
+    for rel in (".dsh", ".openclaw", ".hermes"):
+        p = os.path.join(home, rel)
+        try:
+            out["dirs"][rel] = sorted(os.path.basename(x) for x in _g.glob(p + "/*"))
+        except Exception as exc:          # noqa: BLE001
+            out["dirs"][rel] = {"error": str(exc)[:80]}
+
+    # ② 配置文件结构（脱敏）
+    targets = [".dsh/.credentials.yaml", ".dsh/credentials.yaml",
+               ".dsh/config.yaml", ".hermes/config.yaml",
+               ".openclaw/openclaw.json"]
+    for rel in targets:
+        p = os.path.join(home, rel)
+        if not os.path.exists(p):
+            out["files"][rel] = {"exists": False}
+            continue
+        try:
+            raw = open(p, encoding="utf-8", errors="replace").read()
+        except OSError as exc:
+            out["files"][rel] = {"error": str(exc)[:80]}
+            continue
+        obj = None
+        if rel.endswith(".json"):
+            try:
+                obj = json.loads(raw)
+            except ValueError:
+                obj = None
+        else:
+            try:
+                import yaml
+                obj = yaml.safe_load(raw)
+            except Exception:             # noqa: BLE001
+                obj = None
+        if obj is None:
+            # yaml 不可用时退回：只回**键名**（`k:` 行），不回值 ✓
+            names = [ln.split(":")[0].strip() for ln in raw.splitlines()
+                     if ":" in ln and not ln.strip().startswith("#")]
+            out["files"][rel] = {"exists": True, "parse": "text",
+                                 "keys": names[:30]}
+        else:
+            out["files"][rel] = {"exists": True, "parse": "ok",
+                                 "shape": _walk_shape(obj)[:40]}
+    out["ok"] = True
+    return out
+
+
 def _act_agent_chat_probe(params):
     """逐个 agent 发一次最小 chat ✓ —— 定死「哪条通道真能用」。
 
@@ -3143,6 +3234,7 @@ def _act_run_pytest(params):
 
 
 ACTIONS = {
+    "key_shape_probe": _act_key_shape_probe,
     "agent_chat_probe": _act_agent_chat_probe,
     "agent_probe": _act_agent_probe,
     "run_task_monitor": _act_run_task_monitor,
