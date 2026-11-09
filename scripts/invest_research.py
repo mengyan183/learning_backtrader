@@ -869,19 +869,47 @@ def risk_brief_text(snap):
     # 2026-10-29：**只给汇总** ✓ —— 逐标的的「市值/上限」在下面「减仓操作」里
     # 已经逐条列过一次 ✗，两节重复同一批数字纯属噪音 ✗。
     pos = snap.get("positions", [])
-    over = [r for r in pos if r.get("risk_limit") and r["risk_over"]]
+    # 🔴 2026-11-09 用户裁定（第 4.6 条）：存量仓过渡期内**不计入** 1% 超限统计 ✗
+    #    否则汇总里仍写「6/6 个标的超出上限（需减 9379）」⇒ 与减仓节自相矛盾 ✗
+    legacy_syms = {r.get("symbol") for r in pos
+                   if _is_legacy(r.get("symbol") or "")}
+    over = [r for r in pos
+            if r.get("risk_limit") and r["risk_over"]
+            and r.get("symbol") not in legacy_syms]
     if over:
         lines.append("⚠ %d/%d 个标的超出 1%% 风险上限（合计需减 %.0f）—— 逐标的见「减仓操作」"
                      % (len(over), len(pos),
                         sum(r["mv"] - r["risk_limit"] for r in over)))
-    elif pos:
+    elif pos and not legacy_syms:
         lines.append("✓ 全部标的未超 1%% 风险上限")
+    if legacy_syms:
+        from fg_system import config as _cfg3
+        lines.append("ℹ️ 存量仓过渡期（至 %s）：%d 个标的（%s）不适用 1%% 硬上限"
+                     " ⇒ 只按贪恐系数减仓"
+                     % (_cfg3.LEGACY_TRANSITION_UNTIL, len(legacy_syms),
+                        "、".join(sorted(s for s in legacy_syms if s))))
     ks = snap.get("kill_switch")
     if ks:
         lines.append("🔴 连亏保护触发：当日亏损 %s (%.1f%%) ≥ 2%%净值，"
                      "建议停止开新仓/当日收工（Peter Brandt 风控）"
                      % (ks["day_pnl"], ks["pct"]))
     return "\n".join(lines) if lines else None
+
+
+def _is_legacy(sym, today=None):
+    """存量仓过渡期内 ⇒ True ✓（交易纪律第 4.6 条）。
+
+    期内**跳过引擎 A**（1% 风险硬上限），只按贪恐系数决定减仓 ✗
+    ⇒ 这批仓位建于系统之前，ATR 口径套不上（减完只剩 31.7% ✗）。
+    """
+    import datetime as _dt
+    from fg_system import config as _cfg
+    today = today or _dt.date.today()
+    try:
+        until = _dt.date.fromisoformat(_cfg.LEGACY_TRANSITION_UNTIL)
+    except (TypeError, ValueError):
+        return False
+    return today <= until and sym in set(_cfg.LEGACY_POSITIONS or ())
 
 
 def action_brief_text(snap):
@@ -928,7 +956,17 @@ def action_brief_text(snap):
         greedy = ((sys_fg is not None and sys_fg >= 60)
                   or (st_val is not None and st_val >= sell_line))
         fearful = (st_val is not None and st_val <= buy_line)
-        if over and greedy:
+        legacy = _is_legacy(sym)
+        if legacy:
+            # 🔴 2026-11-09 用户裁定（第 4.6 条）：过渡期内**不适用引擎 A** ✗
+            #    只按引擎 B（贪恐系数）定方向 ⇒ 不产生「减仓至上限」✓
+            if greedy:
+                act = "减仓（系数贪婪，存量仓过渡期）"
+            elif fearful:
+                act = "持有/可加（恐慌买入区，存量仓过渡期）"
+            else:
+                act = "持有观望（存量仓过渡期）"
+        elif over and greedy:
             act = "减仓（价格风控+贪婪双触发，优先级最高）"
         elif over:
             # 2026-10-29：后缀从**每条**挪到段首 ✗ —— 原来 6 条各带一遍
@@ -939,8 +977,10 @@ def action_brief_text(snap):
         else:
             act = "持有观望"
         if lim is not None:
-            out.append("· %s 市值%.0f/上限%.0f | %s | %s → %s"
-                       % (sym, mv, lim, sys_desc, st_desc, act))
+            out.append("· %s 市值%.0f/上限%.0f%s | %s | %s → %s"
+                       % (sym, mv, lim,
+                          "（存量仓，仅供参考）" if legacy else "",
+                          sys_desc, st_desc, act))
         else:
             out.append("· %s 市值%.0f（无上限） | %s | %s → %s"
                        % (sym, mv, sys_desc, st_desc, act))
@@ -953,6 +993,12 @@ def action_brief_text(snap):
     # —— 原来 6 条各带一遍同样的后缀 ✗
     if any("减仓至上限" in ln for ln in out):
         head += ("\n标注「减仓至上限」= 仅价格风控触发（系数非贪婪）⇒ 只降敞口、不追方向。")
+    # 🔴 2026-11-09 用户裁定（第 4.6 条）：存量仓过渡期内只按系数减仓
+    if any(_is_legacy(r.get("symbol") or "") for r in snap.get("positions", [])):
+        from fg_system import config as _cfg2
+        head += ("\n存量仓过渡期（至 %s）：名单内标的**不适用** 1%% 硬上限 ✗ ——"
+                 " 只按贪恐系数定方向，上限仅供参照 ✓"
+                 % _cfg2.LEGACY_TRANSITION_UNTIL)
     # 🔴 2026-10-31 用户裁定：**减仓顺序要写进简报** ✗
     # 排序 = 浮亏深度 × 杠杆倍数（越大越先减）✓ 依据：
     #   ① 浮亏深 ⇒ 回本数学**指数级**恶化（-83% 要 +488%，几乎不可能）

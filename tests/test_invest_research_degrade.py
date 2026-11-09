@@ -223,10 +223,12 @@ def test_reduce_suffix_is_stated_once():
     2026-10-29 实测：6 条减仓各带一遍同样的后缀 ✗。
     """
     m = _load()
+    # ⚠️ 2026-11-09：改用**非存量仓**标的 —— YINN/GDXU 已进过渡期名单
+    #    （第 4.6 条）⇒ 不再产生「减仓至上限」，本条守卫就测不到后缀 ✗
     snap = {"positions": [
-        {"symbol": "YINN", "mv": 3341, "risk_limit": 1255, "risk_over": True,
+        {"symbol": "SOXL", "mv": 3341, "risk_limit": 1255, "risk_over": True,
          "sys_fg": 25.9, "sys_fg_note": "个股级"},
-        {"symbol": "GDXU", "mv": 3393, "risk_limit": 487, "risk_over": True,
+        {"symbol": "TQQQ", "mv": 3393, "risk_limit": 487, "risk_over": True,
          "sys_fg": 32.8, "sys_fg_note": "个股级"},
     ], "shoutu": {}}
 
