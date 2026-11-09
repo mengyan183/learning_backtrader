@@ -1,0 +1,10 @@
+{
+  "id": "t-20261109-090200-daily_log_tail",
+  "action": "daily_log_tail",
+  "params": {
+    "which": "daily",
+    "lines": "120"
+  },
+  "status": "pending",
+  "created_at": "2026-11-09T09:02:00"
+}
