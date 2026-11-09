@@ -1,0 +1,11 @@
+{
+  "id": "t-20261109-172537-agent_probe",
+  "action": "agent_probe",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"listening\": [], \"probes\": {}, \"configs\": {\".openclaw/openclaw.json\": {\"exists\": true, \"hits\": [\"18789\", \"http://127.0.0.1:11434\", \"https://api.deepseek.com/v1\", \"{\"]}, \".dsh/config.yaml\": {\"exists\": false}, \".dsh/config.yml\": {\"exists\": false}, \".hermes/config.yaml\": {\"exists\": true, \"hits\": []}}, \"listening_error\": \"FileNotFoundError: [Errno 2] No such file or directory: 'lsof'\"}",
+  "started_at": "2026-11-09T18:49:40",
+  "finished_at": "2026-11-09T18:49:40",
+  "duration_s": 0.07
+}
