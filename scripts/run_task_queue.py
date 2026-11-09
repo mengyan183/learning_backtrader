@@ -591,9 +591,13 @@ def _act_rerun_brief(params):
       ① `pipeline.run(write=True)` —— 重算六因子 ✓
       ② `invest_research.py --dry-run` —— 生成简报 ✓ **不推送飞书** ✓
 
-    参数：`skip_pipeline`（1=跳过第①步 ✗ 只看现有 features ✗）
+    参数：
+      - `skip_pipeline`：1 = 跳过第①步 ✗ 只看现有 features ✗
+      - `push`：1 = **推飞书** ✓（默认 `--dry-run` 不推 ✗）
+        🔴 2026-11-09 用户要求「把这份简报推飞书」⇒ 加此开关 ✓
     """
     skip = str(params.get("skip_pipeline") or "").lower() in ("1", "true", "yes")
+    push = str(params.get("push") or "").lower() in ("1", "true", "yes")
     out = {"steps": {}}
 
     # ① pipeline ✓
@@ -622,9 +626,11 @@ def _act_rerun_brief(params):
 
     # ② 简报 ✓（`--dry-run` 不推送 ✓）
     t0 = time.time()
+    cmd = [sys.executable, "scripts/invest_research.py"]
+    if not push:
+        cmd.append("--dry-run")        # 不加 --dry-run 才会推飞书 ✓
     r = subprocess.run(
-        [sys.executable, "scripts/invest_research.py", "--dry-run"],
-        capture_output=True, text=True, encoding="utf-8",
+        cmd, capture_output=True, text=True, encoding="utf-8",
         errors="replace", timeout=1200, cwd=ROOT)
     # 🔴 2026-11-05 **关键**：`--dry-run` 的 **stdout 只有运行日志** ✗
     #    实测 stdout 只有 1083 字（`[warn]` + `简报已写入: ...` ✗）
@@ -652,6 +658,9 @@ def _act_rerun_brief(params):
         "stderr": (r.stderr or "")[-500:],
     }
     out["ok"] = r.returncode == 0
+    out["push"] = push
+    m3 = re.search(r"飞书富文本推送[:：]\s*(.+)", r.stdout or "")
+    out["push_result"] = m3.group(1).strip()[:120] if m3 else "(未见推送结果)"
     out["brief"] = brief[-12000:] if brief else "(空 ✗)"
     # 关键：把「美联储动态」那一段单独摘出来 ✓（用户最关心 ✗）
     m = re.search(r"美联储动态(.{0,1500})", brief, re.S)
