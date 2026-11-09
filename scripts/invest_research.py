@@ -775,6 +775,34 @@ def _rss_titles(url, limit, timeout=20):
         return []
 
 
+def _rss_sources(query, ticker=None):
+    """按优先级给出**候选 RSS 地址** ✓（2026-11-09 用户要求加备用源）。
+
+    🔴 背景：22:07 简报「市场快讯（新闻源不可用）」✗ ——
+       主源是富途 OpenAPI（依赖 OpenD ✗ 当天 OpenD 挂了 ✗），
+       兜底只有 Google News RSS 一家 ✗ ⇒ 两个都挂就全空 ✗
+       ⇒ 加 Bing News + Yahoo Finance 两个免 key 源 ✓
+    """
+    q = urllib.parse.quote(query)
+    urls = [
+        "https://news.google.com/rss/search?q=%s&hl=en-US&gl=US&ceid=US:en" % q,
+        "https://www.bing.com/news/search?q=%s&format=RSS&setlang=en" % q,
+    ]
+    if ticker:
+        urls.append("https://feeds.finance.yahoo.com/rss/2.0/headline?s=%s"
+                    "&region=US&lang=en-US" % urllib.parse.quote(ticker))
+    return urls
+
+
+def _rss_titles_any(urls, limit, timeout=15):
+    """依次尝试多个源，**第一个有结果的**胜出 ⇒ 全失败返回 `[]` ✓。"""
+    for u in urls:
+        t = _rss_titles(u, limit, timeout=timeout)
+        if t:
+            return t
+    return []
+
+
 def fetch_news(snap):
     """大盘 + 持仓标的相关新闻。
     主源: 富途 OpenAPI GetSearchNews(本地 OpenD, 中文资讯, 无需代理)
@@ -841,7 +869,7 @@ def fetch_news(snap):
     # --- Google News 兜底（补富途缺失的区） ---
     gnews = {}
     if not out.get("_market"):
-        t = _rss_titles("https://news.google.com/rss/search?q=US+stock+market+today&hl=en-US&gl=US&ceid=US:en", 3)
+        t = _rss_titles_any(_rss_sources("US stock market today", "^GSPC"), 3)
         if t:
             gnews["_market"] = t
     for r in snap["positions"]:
@@ -849,7 +877,9 @@ def fetch_news(snap):
         if sym in out:
             continue
         q = {"BTC": "bitcoin price", "ETH": "ethereum price"}.get(sym, f"{sym} stock")
-        t = _rss_titles(f"https://news.google.com/rss/search?q={urllib.parse.quote(q)}&hl=en-US&gl=US&ceid=US:en", 2)
+        # 加密标的用中文/英文查询词即可（Yahoo 的 `s=` 要股票代码，加密不传 ✓）
+        tick = None if sym in ("BTC", "ETH") else sym
+        t = _rss_titles_any(_rss_sources(q, tick), 2)
         if t:
             gnews[sym] = t
     # 富途完全失败时整体用 gnews；否则仅补缺失

@@ -849,3 +849,34 @@ def test_validate_judge_accepts_three_clean_lines():
     out = m._validate_judge(ok)
     assert out.startswith("评级: 强烈减仓")
     assert "\n理由: " in out and "\n风险: " in out
+
+
+def test_rss_sources_has_multiple_fallbacks():
+    """必须给出**多个**候选源（2026-11-09 用户要求加备用源）。"""
+    m = _load()
+    urls = m._rss_sources("US stock market today", "^GSPC")
+    assert len(urls) >= 3
+    assert any("news.google.com" in u for u in urls)
+    assert any("bing.com" in u for u in urls)
+    assert any("yahoo.com" in u for u in urls)
+
+
+def test_rss_titles_any_falls_back_to_next_source(monkeypatch):
+    """第一个源返回空 ⇒ 自动试下一个 ✓（22:07 简报「新闻源不可用」的修复）。"""
+    m = _load()
+    calls = []
+
+    def fake(url, limit, timeout=15):
+        calls.append(url)
+        return ["ok"] if "bing.com" in url else []
+
+    monkeypatch.setattr(m, "_rss_titles", fake)
+    got = m._rss_titles_any(m._rss_sources("x", None), 3)
+    assert got == ["ok"]
+    assert len(calls) >= 2, "没有尝试备用源"
+
+
+def test_rss_titles_any_all_fail_returns_empty(monkeypatch):
+    m = _load()
+    monkeypatch.setattr(m, "_rss_titles", lambda *a, **kw: [])
+    assert m._rss_titles_any(["a", "b"], 3) == []
