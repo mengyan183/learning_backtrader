@@ -2758,6 +2758,75 @@ def _resolve_llm_key():
     return key, detail
 
 
+def _act_agent_probe(params):
+    """发现本机三个 agent（openclaw / deepseek-harness / hermes）的地址与端口 ✓。
+
+    🔴 2026-11-09 用户要求「简报不同模块用不同 agent」✗，但仓库里**只有 hermes
+       的 8642** ✗ —— openclaw / dsh 的端口代码里查不到 ✗
+       ⇒ 一次探完，避免猜端口（bsk 那 6 轮的教训）✓
+
+    三段：
+      ① `lsof` 列本机 LISTEN 端口
+      ② 逐个 `GET /v1/models`（2 秒超时）—— 谁回 OpenAI 风格就说明是 agent
+      ③ 读 `~/.openclaw/openclaw.json`、`~/.dsh/*.yaml` 里的 url/port 键
+    ⚠️ **只回端口与状态**，绝不回 key/secret ✗
+    """
+    import socket
+    import urllib.error as _ue
+    import urllib.request as _u
+
+    out = {"listening": [], "probes": {}, "configs": {}}
+
+    # ① 监听端口
+    try:
+        r = subprocess.run(["lsof", "-nP", "-iTCP", "-sTCP:LISTEN"],
+                           capture_output=True, text=True, timeout=20)
+        ports = set()
+        for ln in (r.stdout or "").splitlines()[1:]:
+            parts = ln.split()
+            if len(parts) >= 9:
+                tail = parts[8].rsplit(":", 1)[-1]
+                if tail.isdigit():
+                    ports.add(int(tail))
+        out["listening"] = sorted(ports)
+    except Exception as exc:              # noqa: BLE001
+        out["listening_error"] = "%s: %s" % (type(exc).__name__, str(exc)[:150])
+
+    # ② 逐个探 /v1/models（只探本机监听端口，2 秒超时）
+    for port in out["listening"]:
+        if not (1024 <= port <= 65535):
+            continue
+        url = "http://127.0.0.1:%d/v1/models" % port
+        try:
+            with _u.urlopen(url, timeout=2) as resp:
+                body = resp.read(300).decode("utf-8", "replace")
+                out["probes"][str(port)] = {"status": resp.status, "body": body}
+        except _ue.HTTPError as exc:
+            out["probes"][str(port)] = {"status": exc.code,
+                                        "body": exc.read(200).decode("utf-8",
+                                                                     "replace")}
+        except Exception as exc:          # noqa: BLE001 —— 不是 HTTP 服务，正常
+            out["probes"][str(port)] = {"error": type(exc).__name__}
+
+    # ③ 配置文件里的 url / port（**不取 secret** ✗）
+    home = os.path.expanduser("~")
+    for rel in (".openclaw/openclaw.json", ".dsh/config.yaml",
+                ".dsh/config.yml", ".hermes/config.yaml"):
+        p = os.path.join(home, rel)
+        if not os.path.exists(p):
+            out["configs"][rel] = {"exists": False}
+            continue
+        try:
+            txt = open(p, encoding="utf-8", errors="replace").read()
+        except OSError as exc:
+            out["configs"][rel] = {"error": str(exc)[:100]}
+            continue
+        hits = re.findall(r'"?[\w.-]*(?:url|base|endpoint|port|host)'
+                          r'"?\s*[:=]\s*"?([^"\s,}]{1,80})', txt, re.I)
+        out["configs"][rel] = {"exists": True, "hits": sorted(set(hits))[:12]}
+    return out
+
+
 def _act_deepseek_probe(params):
     """探 **DeepSeek 云端**：哪个 `model` id 被接受 ✓（2026-11-09 用户要求）。
 
@@ -2970,6 +3039,7 @@ def _act_run_pytest(params):
 
 
 ACTIONS = {
+    "agent_probe": _act_agent_probe,
     "run_task_monitor": _act_run_task_monitor,
     "deepseek_probe": _act_deepseek_probe,
     "hermes_probe": _act_hermes_probe,
