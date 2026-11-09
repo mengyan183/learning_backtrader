@@ -63,6 +63,59 @@ def test_missing_file_reported(tmp_path, monkeypatch, capsys):
     assert "文件缺失" in capsys.readouterr().out
 
 
+def _make_symbols(tmp_path, rel, rows):
+    """造一个带 symbol 列的守猪待兔长表：`rows = [(date, symbol), ...]`。"""
+    p = tmp_path / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    body = "date,symbol,score\n" + "".join("%s,%s,1\n" % r for r in rows)
+    p.write_text(body, encoding="utf-8")
+
+
+def _stub_launchctl(monkeypatch):
+    monkeypatch.setattr(tm.subprocess, "run",
+                        lambda *a, **k: type("R", (), {"stdout": ""})())
+
+
+def test_shoutu_history_empty_whitelist_skips_stale_alert(tmp_path, monkeypatch):
+    """白名单为空 ⇒ **不判停更**（服务端对这些标的本来就没有历史）。
+
+    2026-11-09 实测：8 个美股标的服务端全返回 `data: []` ⇒ 尾行永远停在
+    2026-10-14 ⇒ 每天报「停更 26 天」的假告警。
+    """
+    monkeypatch.setattr(tm, "REPO", tmp_path)
+    monkeypatch.setattr(tm, "STATE_FILE", tmp_path / "s.json")
+    monkeypatch.setattr(tm, "DATA_CHECKS",
+                        [("shoutu_history", "Data/raw/sh.csv", "date", 7)])
+    monkeypatch.setattr(tm, "SHOUTU_HISTORY_WHITELIST", [])
+    monkeypatch.setattr(tm, "TASKS", [])
+    _stub_launchctl(monkeypatch)
+    _make_symbols(tmp_path, "Data/raw/sh.csv", [("2020-01-01", "CONL")])
+
+    st = tm.collect_status()
+    assert st["data"][0]["ok"] is True
+    assert not any("shoutu_history" in i for i in st["issues"])
+
+
+def test_shoutu_history_whitelist_only_counts_listed_symbols(tmp_path, monkeypatch):
+    """白名单非空 ⇒ 只看白名单内标的的日期（白名单外的停更不算异常）。"""
+    monkeypatch.setattr(tm, "REPO", tmp_path)
+    monkeypatch.setattr(tm, "STATE_FILE", tmp_path / "s.json")
+    monkeypatch.setattr(tm, "DATA_CHECKS",
+                        [("shoutu_history", "Data/raw/sh.csv", "date", 7)])
+    monkeypatch.setattr(tm, "TASKS", [])
+    _stub_launchctl(monkeypatch)
+    _make_symbols(tmp_path, "Data/raw/sh.csv",
+                  [("2020-01-01", "CONL"), (date.today().isoformat(), "YINN")])
+
+    monkeypatch.setattr(tm, "SHOUTU_HISTORY_WHITELIST", ["YINN"])
+    assert tm.collect_status()["data"][0]["ok"] is True
+
+    monkeypatch.setattr(tm, "SHOUTU_HISTORY_WHITELIST", ["CONL"])
+    st = tm.collect_status()
+    assert st["data"][0]["ok"] is False
+    assert any("shoutu_history" in i for i in st["issues"])
+
+
 def test_missing_task_reported(tmp_path, monkeypatch, capsys):
     """定时任务未注册 → 退出 1 且输出任务名。"""
     monkeypatch.setattr(tm, "REPO", tmp_path)

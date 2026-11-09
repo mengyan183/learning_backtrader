@@ -2695,6 +2695,58 @@ def _scoped_env(action):
         os.environ.update(saved)
 
 
+def _act_deepseek_probe(params):
+    """探 **DeepSeek 云端**：哪个 `model` id 被接受 ✓（2026-11-09 用户要求）。
+
+    🔴 为什么要探：`invest_research` 默认已切到 `api.deepseek.com`，但模型名
+       用的是内部约定的 `deepseek/deepseek-flash` ✗ —— 官方只保证
+       `deepseek-chat` / `deepseek-reasoner` ✓ ⇒ 必须实测，不能猜 ✗
+
+    参数：`url`（默认官方端点）、`models`（逗号分隔，默认三个候选）
+    每个候选只发 `max_tokens=8` 的 ping ⇒ 便宜且快 ✓
+    """
+    import urllib.error as _ue
+    import urllib.request as _u
+
+    url = str(params.get("url") or "https://api.deepseek.com/v1/chat/completions")
+    models = [m.strip() for m in str(
+        params.get("models")
+        or "deepseek/deepseek-flash,deepseek-chat,deepseek-reasoner"
+    ).split(",") if m.strip()]
+
+    key = os.environ.get("FG_LLM_KEY", "")
+    if not key:
+        try:
+            if os.path.join(ROOT, "scripts") not in sys.path:
+                sys.path.insert(0, os.path.join(ROOT, "scripts"))
+            from invest_research import _read_nim_key      # noqa: E402
+            key = _read_nim_key() or ""
+        except Exception:                       # noqa: BLE001
+            key = ""
+
+    out = {"url": url, "key_len": len(key), "results": {}}
+    for model in models:
+        payload = json.dumps({"model": model,
+                              "messages": [{"role": "user", "content": "ping"}],
+                              "max_tokens": 8}).encode()
+        req = _u.Request(url, data=payload, method="POST",
+                         headers={"Authorization": "Bearer %s" % key,
+                                  "Content-Type": "application/json"})
+        try:
+            with _u.urlopen(req, timeout=60) as resp:
+                out["results"][model] = {
+                    "ok": True, "status": resp.status,
+                    "body": resp.read(300).decode("utf-8", "replace")}
+        except _ue.HTTPError as exc:
+            out["results"][model] = {
+                "ok": False, "status": exc.code,
+                "body": exc.read(300).decode("utf-8", "replace")}
+        except Exception as exc:            # noqa: BLE001
+            out["results"][model] = {"ok": False, "error": str(exc)[:200]}
+    out["ok"] = True
+    return out
+
+
 def _act_hermes_probe(params):
     """探本机 **Hermes 网关**（127.0.0.1:8642）✓（2026-11-09 用户要求排查）。
 
@@ -2862,6 +2914,7 @@ def _act_run_pytest(params):
 
 
 ACTIONS = {
+    "deepseek_probe": _act_deepseek_probe,
     "hermes_probe": _act_hermes_probe,
     "bsk_probe": _act_bsk_probe,
     "restart_dashboard": _act_restart_dashboard,

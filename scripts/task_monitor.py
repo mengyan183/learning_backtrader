@@ -33,6 +33,12 @@ sys.path.insert(0, str(REPO))
 
 STATE_FILE = REPO / "Data" / "monitor_state.json"
 
+#: `shoutu_history` 的**标的白名单** ✓ —— 只有服务端确实提供历史的标的才参与
+#: 停更判定 ✗。2026-11-09 实测：8 个美股标的服务端全部返回 `data: []`
+#: ⇒ 文件尾行永远停在 2026-10-14 ⇒ 天天报「停更 26 天」的**假告警** ✗
+#: 空列表 = 当前无任何标的被服务端提供历史 ⇒ **跳过停更判定**（仍显示真实尾行）✓
+SHOUTU_HISTORY_WHITELIST = []
+
 # (名称, 相对路径, date 列, 容忍自然日)
 DATA_CHECKS = [
     ("features",        "Data/features.csv",              "date", 3),
@@ -125,8 +131,11 @@ def _task_last_run(label: str):
     return datetime.fromtimestamp(best_mt).strftime("%Y-%m-%d %H:%M"), best_p
 
 
-def _last_date_csv(path: Path, col: str):
-    """全量扫描取 date 列最大值（文件按日期追加，仍取 max 防乱序）。"""
+def _last_date_csv(path: Path, col: str, symbols=None):
+    """全量扫描取 date 列最大值（文件按日期追加，仍取 max 防乱序）。
+
+    `symbols` 非空 ⇒ **只看这些标的** ✓（守猪待兔白名单，见 `SHOUTU_HISTORY_WHITELIST`）
+    """
     if not path.exists():
         return None
     with open(path, newline="", encoding="utf-8", errors="replace") as f:
@@ -135,6 +144,8 @@ def _last_date_csv(path: Path, col: str):
             return None
         mx = None
         for row in reader:
+            if symbols and (row.get("symbol") or "").strip() not in symbols:
+                continue
             v = (row.get(col) or "").strip()[:10]
             if v:
                 mx = v if mx is None else max(mx, v)
@@ -177,7 +188,17 @@ def collect_status(today=None):
             issues.append("%s：文件缺失 %s" % (name, rel))
             keys.append("%s:missing" % name)
             continue
-        dmax = _last_date_csv(p, col)
+        if name == "shoutu_history":
+            wl = [s for s in SHOUTU_HISTORY_WHITELIST if s]
+            if not wl:
+                # 服务端对这些标的没有历史 ⇒ 尾行不动是**正常**的 ✗ 不算异常 ✓
+                data_rows.append({"name": name, "last": _last_date_csv(p, col),
+                                  "lag": None, "tol": tol, "ok": True,
+                                  "note": "白名单为空 ⇒ 不判停更"})
+                continue
+            dmax = _last_date_csv(p, col, symbols=wl)
+        else:
+            dmax = _last_date_csv(p, col)
         if dmax:
             lag = (today - date.fromisoformat(dmax)).days
             data_rows.append({"name": name, "last": dmax, "lag": lag,
