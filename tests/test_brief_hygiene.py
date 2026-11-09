@@ -34,6 +34,14 @@ def test_strip_keeps_legit_text_with_zi():
     assert ir._strip_llm_artifacts(raw) == raw
 
 
+def test_strip_removes_trailing_zi_suffix():
+    """行尾的「（48字）」只削后缀，正文保留 ✓（2026-11-09 18:49 实测）。"""
+    raw = "建议：每天固定20分钟写意义笔记，两周后对照精神分值。（48字）"
+    out = ir._strip_llm_artifacts(raw)
+    assert out.endswith("分值。")
+    assert "48字" not in out
+
+
 def test_strip_handles_none():
     assert ir._strip_llm_artifacts(None) is None
 

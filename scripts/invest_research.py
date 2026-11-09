@@ -1352,7 +1352,8 @@ def _human30_brief():
     # 🟡 AI 复盘（H-REV-001）：明标研究参考；内部失败已降级，不阻塞简报 ✓
     try:
         from human30_review import review as _h30_review
-        out.append(_h30_review(days=7))
+        # ⚠️ human30 建议同样要剥噪音（实测带「（48字）」后缀 ✗）
+        out.append(_strip_llm_artifacts(_h30_review(days=7)))
     except Exception:
         pass
     out.append("（自评打卡：页面表单 或 scripts/human30_cli.py --set --mind .. "
@@ -1519,12 +1520,14 @@ def _strip_llm_artifacts(text):
         return text
     keep = []
     for ln in str(text).splitlines():
-        t = ln.strip()
-        if _ARTIFACT_RE.match(t):
+        # 🔴 行尾的字数自检 `（48字）` ⇒ 只削后缀，不删整行 ✓
+        #    （2026-11-09 18:49 简报：human30 建议末尾带「（48字）」✗）
+        t = re.sub(r"[（(]\s*\d+\s*字\s*[)）]\s*$", "", ln.rstrip()).rstrip()
+        if _ARTIFACT_RE.match(t.strip()):
             continue
-        if len(t) <= 30 and "字" in t and _SELFCHECK_RE.search(t):
+        if len(t.strip()) <= 30 and "字" in t and _SELFCHECK_RE.search(t):
             continue
-        keep.append(ln)
+        keep.append(t)
     return "\n".join(keep).strip()
 
 
