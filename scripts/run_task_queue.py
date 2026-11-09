@@ -3022,6 +3022,61 @@ def _act_agent_probe(params):
     return out
 
 
+def _act_deepseek_key_hunt(params):
+    """在 Mac 家目录里**找 `sk-` 开头的 key** ✓（2026-11-09 用户选方案 B）。
+
+    🔴 背景：方案 B = 保留 `api.deepseek.com` 直连，但需要有效 key ✗
+       `deepseek_probe` 显示 `~/.dsh/.credentials.yaml` 里**没有** `sk-` ✗
+       而用户说三个 agent 都配了 DeepSeek 云端 ⇒ key **一定在某个文件里** ✓
+       ⇒ 扫一遍候选位置，只回**文件 + 脱敏值 + 长度**，绝不回明文 ✗
+
+    ⚠️ 不扫业务数据目录（`Data/`、`docs/`），只看配置类路径 ✓
+    """
+    import glob as _g
+    import re as _re
+
+    home = os.path.expanduser("~")
+    patterns = [
+        ".hermes/*.yaml", ".hermes/*.yml", ".hermes/.env", ".hermes/*.json",
+        ".hermes/profiles/*", ".dsh/*.yaml", ".dsh/*.yml", ".dsh/*.json",
+        ".dsh/profiles/*", ".dsh/openai-gateway/*",
+        ".openclaw/*.json", ".openclaw/credentials/*", ".openclaw/agents/*",
+        ".config/deepseek/*", ".deepseek/*", ".env", ".zshrc", ".bash_profile",
+    ]
+    # `sk-` 后至少 16 位字母数字（DeepSeek 官方格式）
+    pat = _re.compile(r"sk-[A-Za-z0-9_\-]{16,}")
+
+    hits, scanned = [], []
+    for pattern in patterns:
+        for path in _g.glob(os.path.join(home, pattern)):
+            if not os.path.isfile(path):
+                continue
+            scanned.append(os.path.relpath(path, home))
+            try:
+                txt = open(path, encoding="utf-8", errors="replace").read()
+            except OSError:
+                continue
+            for m in pat.finditer(txt):
+                val = m.group(0)
+                hits.append({"file": os.path.relpath(path, home),
+                             "mask": _mask(val), "len": len(val)})
+
+    # 去重（同一条 key 可能出现在多处）
+    seen, uniq = set(), []
+    for h in hits:
+        if h["mask"] in seen:
+            continue
+        seen.add(h["mask"])
+        uniq.append(h)
+
+    # 环境变量里有没有（只看名字，不回值）
+    env_names = [k for k in os.environ
+                 if "DEEPSEEK" in k.upper() or k.upper().endswith("_API_KEY")]
+    return {"ok": True, "files_scanned": len(scanned), "hits": uniq[:30],
+            "hit_count": len(uniq), "env_names": env_names[:20],
+            "note": "只回脱敏值；若 hit_count=0 说明 key 不在这些路径"}
+
+
 def _act_deepseek_probe(params):
     """探 **DeepSeek 云端**：哪个 `model` id 被接受 ✓（2026-11-09 用户要求）。
 
@@ -3238,6 +3293,7 @@ ACTIONS = {
     "agent_chat_probe": _act_agent_chat_probe,
     "agent_probe": _act_agent_probe,
     "run_task_monitor": _act_run_task_monitor,
+    "deepseek_key_hunt": _act_deepseek_key_hunt,
     "deepseek_probe": _act_deepseek_probe,
     "hermes_probe": _act_hermes_probe,
     "bsk_probe": _act_bsk_probe,
