@@ -2778,19 +2778,40 @@ def _act_agent_probe(params):
     out = {"listening": [], "probes": {}, "configs": {}}
 
     # ① 监听端口
-    try:
-        r = subprocess.run(["lsof", "-nP", "-iTCP", "-sTCP:LISTEN"],
-                           capture_output=True, text=True, timeout=20)
-        ports = set()
-        for ln in (r.stdout or "").splitlines()[1:]:
-            parts = ln.split()
-            if len(parts) >= 9:
-                tail = parts[8].rsplit(":", 1)[-1]
-                if tail.isdigit():
-                    ports.add(int(tail))
-        out["listening"] = sorted(ports)
-    except Exception as exc:              # noqa: BLE001
-        out["listening_error"] = "%s: %s" % (type(exc).__name__, str(exc)[:150])
+    # 🔴 2026-11-09 实测：launchd 的 PATH 里**没有** /usr/sbin ✗ ⇒ `lsof` 找不到 ✗
+    #    （回执 `FileNotFoundError: 'lsof'`）⇒ 用绝对路径 + netstat 兜底 ✓
+    ports, errs = set(), []
+    for cmd in (["/usr/sbin/lsof", "-nP", "-iTCP", "-sTCP:LISTEN"],
+                ["lsof", "-nP", "-iTCP", "-sTCP:LISTEN"]):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+            for ln in (r.stdout or "").splitlines()[1:]:
+                parts = ln.split()
+                if len(parts) >= 9:
+                    tail = parts[8].rsplit(":", 1)[-1]
+                    if tail.isdigit():
+                        ports.add(int(tail))
+            break
+        except Exception as exc:          # noqa: BLE001
+            errs.append("%s: %s" % (cmd[0], type(exc).__name__))
+    if not ports:                          # 兜底：netstat
+        try:
+            r = subprocess.run(["netstat", "-an", "-p", "tcp"],
+                               capture_output=True, text=True, timeout=20)
+            for ln in (r.stdout or "").splitlines():
+                if "LISTEN" not in ln:
+                    continue
+                # macOS 是 `127.0.0.1.8642`，Windows 是 `0.0.0.0:135` ⇒ 两种都认 ✓
+                for tok in ln.split()[:5]:
+                    m = re.search(r"[:.](\d{2,5})$", tok)
+                    if m:
+                        ports.add(int(m.group(1)))
+                        break
+        except Exception as exc:          # noqa: BLE001
+            errs.append("netstat: %s" % type(exc).__name__)
+    out["listening"] = sorted(ports)
+    if errs:
+        out["listening_error"] = "; ".join(errs)
 
     # ② 逐个探 /v1/models（只探本机监听端口，2 秒超时）
     for port in out["listening"]:
