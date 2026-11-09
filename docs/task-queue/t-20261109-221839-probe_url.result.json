@@ -1,0 +1,14 @@
+{
+  "id": "t-20261109-221839-probe_url",
+  "action": "probe_url",
+  "params": {
+    "url": "https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT",
+    "proxy": "http://127.0.0.1:7890"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"url\": \"https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT\", \"steps\": {\"navigate\": {\"rc\": 4, \"out\": \"tab=9587911 reached=timeout\\nurl=https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT\\n\", \"err\": \"warning: timed out waiting for lifecycle \\\"load\\\" after 90000ms; last observed \\\"DOMContentLoaded\\\"\\n\"}}}",
+  "started_at": "2026-11-09T22:43:35",
+  "finished_at": "2026-11-09T22:45:14",
+  "duration_s": 99.48
+}
