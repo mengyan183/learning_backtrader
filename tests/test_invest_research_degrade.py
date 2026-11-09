@@ -822,3 +822,30 @@ def test_judge_must_cover_all_losers():
     assert "禁止" in src and "权重已经很小" in src
     # 必须说明「权重小是深亏的结果」
     assert "权重小恰恰是深亏的结果" in src
+
+
+def test_validate_judge_rejects_reasoning_text():
+    """思维链里恰好含「评级/理由/风险」三词，**不得**被判为合格。
+
+    2026-11-09 22:07 实测：裁判段 `max_tokens=400` 被思维链吃光，
+    `content` 为空 ⇒ 回退到 `reasoning_content` ⇒ 简报印出整段推理 ✗
+    而旧的 `_validate_judge` 只查「文中出现过三个词」⇒ 判为合格 ✗
+    """
+    m = _load()
+    reasoning = (
+        "我需要按约束输出三行。评级要判断。系统贪恐14.2恐惧，目标仓位0.583。\n"
+        "应减仓/强烈减仓？考虑恐惧区、仓位远超目标。评级强烈减仓或减仓。\n"
+        "理由必须点名全部浮亏持仓，按浮亏深度×杠杆倍数从大到小排列。\n"
+        "风险1条。评级：强烈减仓？ 目标仓位0.583 实际86%，杠杆252%。\n")
+    assert m._validate_judge(reasoning) is None
+
+
+def test_validate_judge_accepts_three_clean_lines():
+    """标准三行输出必须通过，且归一化成固定格式。"""
+    m = _load()
+    ok = ("评级: 强烈减仓\n"
+          "理由: AXTX 亏 92.5%，杠杆放大。\n"
+          "风险: 恐惧转恐慌，同向因子同步回撤。")
+    out = m._validate_judge(ok)
+    assert out.startswith("评级: 强烈减仓")
+    assert "\n理由: " in out and "\n风险: " in out

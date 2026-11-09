@@ -525,7 +525,8 @@ def snapshot_text(snap):
 
 
 # ---------------------------------------------------------------- LLM 调用
-def _chat(url, key, model, system, user, max_tokens=1200, proxy=None, timeout=120, retries=2):
+def _chat(url, key, model, system, user, max_tokens=1200, proxy=None,
+          timeout=120, retries=2, reasoning_fallback=True):
     body = {
         "model": model,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -546,7 +547,13 @@ def _chat(url, key, model, system, user, max_tokens=1200, proxy=None, timeout=12
             resp = json.loads(opener.open(req, timeout=timeout).read())
             msg = resp["choices"][0]["message"]
             # 推理模型：content 为空时回退 reasoning_content
-            out = msg.get("content") or msg.get("reasoning_content") or ""
+            # 🔴 2026-11-09 实测：`deepseek-flash` 是推理模型 ✗ —— 裁判段
+            #    `max_tokens=400` 被**思维链**吃光 ⇒ `content` 为空 ⇒ 回退到
+            #    `reasoning_content` ⇒ 简报里印出一大段「我需要按约束输出三行…」✗
+            #    ⇒ 需要**确定格式**的调用方（裁判）显式关闭回退 ✓
+            out = msg.get("content") or ""
+            if not out.strip() and reasoning_fallback:
+                out = msg.get("reasoning_content") or ""
             if out.strip():
                 return out
             last = "空响应"
@@ -596,12 +603,20 @@ def _validate_judge(text):
     import re
     if not text:
         return None
-    t = text.strip().replace("\n\n", "\n")
-    if not re.search(r"评级\s*[:：]\s*(强烈减仓|减仓|持有|加仓|强烈加仓)", t):
+    # 🔴 2026-11-09 实测（22:07 简报）：旧实现只查「文中出现过 评级/理由/风险」✗
+    #    ⇒ 模型输出的**思维链**里恰好有「评级：强烈减仓？」「理由必须…」「风险1条」
+    #    就被判为合格 ✗ ⇒ 简报印出一整段推理过程 ✗
+    #    ⇒ 改为**逐行行首**匹配 + 评级值必须**恰好**是五个枚举之一 ✓
+    got = {}
+    for ln in str(text).splitlines():
+        m = re.match(r"^\s*(评级|理由|风险)\s*[:：]\s*(.+?)\s*$", ln)
+        if m and m.group(1) not in got:
+            got[m.group(1)] = m.group(2)
+    if set(got) != {"评级", "理由", "风险"}:
         return None
-    if "理由" not in t or "风险" not in t:
+    if not re.match(r"^(强烈减仓|减仓|持有|加仓|强烈加仓)$", got["评级"]):
         return None
-    return t[:800]
+    return "评级: %s\n理由: %s\n风险: %s" % (got["评级"], got["理由"], got["风险"])
 
 
 def _kb_context(query, n=3):
@@ -712,13 +727,17 @@ def stage_judge(nim_key, snap, sentiment, attribution):
             "请直接输出三行裁决文本。")
     try:
         _u, _m = agent_route("judge")
+        # 🔴 `max_tokens=400` 实测不够 ✗ —— 推理模型先写思维链，正文还没开始
+        #    就被截断 ⇒ 提到 2000，并**关闭 reasoning 回退**（宁可降级也不印思考过程）
         out = _chat(_u, nim_key, _m, system, user,
-                    max_tokens=400, proxy=PROXY, timeout=120, retries=1)
+                    max_tokens=2000, proxy=PROXY, timeout=120, retries=1,
+                    reasoning_fallback=False)
         v = _validate_judge(out)
         if v is None:
             _u, _m = agent_route("judge")
             out = _chat(_u, nim_key, _m, system, user,
-                        max_tokens=400, proxy=PROXY, timeout=120, retries=1)
+                        max_tokens=2000, proxy=PROXY, timeout=120, retries=1,
+                        reasoning_fallback=False)
             v = _validate_judge(out)
         if v is None:
             return "（裁判未按三行格式输出，本次以归因/风控结论为准。）"
