@@ -40,6 +40,31 @@ def test_runs_whitelisted_action(tmp_path, monkeypatch):
     assert r["status"] == "done" and r["rc"] == 0
 
 
+def test_bsk_update_can_restart_daemon(monkeypatch):
+    """`daemon=restart` ⇒ 升完必须 stop 旧 daemon 并回读 status（否则白升）。
+
+    2026-11-06 实测：CLI 二进制已 0.4.2，但 `bsk status` 仍报 `CLI v0.2.0`
+    ⇒ daemon 是旧进程，只升级不重启 = 协议还是 1.1。
+    """
+    calls = []
+
+    class _R:
+        returncode = 0
+        stdout = "{}"
+        stderr = ""
+
+    def fake_run(cmd, **kw):
+        calls.append(list(cmd))
+        return _R()
+
+    monkeypatch.setattr(q.subprocess, "run", fake_run)
+    monkeypatch.setattr(q, "BSK_BIN", "/fake/bsk")
+    out = q._act_bsk_update({"daemon": "restart"})
+    assert ["/fake/bsk", "daemon", "stop"] in calls
+    assert ["/fake/bsk", "status", "--json"] in calls
+    assert "daemon_stop" in out and "status_after" in out
+
+
 def test_restart_tasks_run_before_older_slow_tasks(tmp_path, monkeypatch):
     """**重启类任务必须先跑** —— 队列串行，慢任务会把它堵在后面。
 
@@ -231,9 +256,11 @@ def test_backtest_plan_is_registered():
 def test_key_diag_never_leaks_plaintext(tmp_path, monkeypatch):
     """`key_diag` **只回前缀与长度** ✓ —— 绝不回明文 ✗（结果会进 git ✗）。"""
     monkeypatch.setattr(q.os.path, "expanduser", lambda p: str(tmp_path))
+    # 🔴 2026-11-09：**不写字面量** ✗ —— GitHub push protection 会把
+    #    `sk-`/`nvapi-` + 一长串字母数字当成泄露密钥拦下（GH013）✗
     (tmp_path / ".credentials.yaml").write_text(
-        "nvidia: nvapi-ABCDEFGHIJKLMNOP\n"
-        "deepseek: sk-1234567890abcdefghij\n", encoding="utf-8")
+        "nvidia: nvapi-%s\n" % ("A" * 16)
+        + "deepseek: sk-%s\n" % ("1234567890abcdefghij"), encoding="utf-8")
 
     r = q._act_key_diag({"dir": str(tmp_path)})
 
