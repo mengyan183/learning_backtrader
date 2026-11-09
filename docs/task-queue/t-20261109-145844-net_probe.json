@@ -1,0 +1,10 @@
+{
+  "id": "t-20261109-145844-net_probe",
+  "action": "net_probe",
+  "params": {
+    "chat": "1",
+    "url": "http://127.0.0.1:8642/v1/models"
+  },
+  "status": "pending",
+  "created_at": "2026-11-09T14:58:44"
+}
