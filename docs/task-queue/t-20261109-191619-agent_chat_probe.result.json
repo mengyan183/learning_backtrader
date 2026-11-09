@@ -1,0 +1,11 @@
+{
+  "id": "t-20261109-191619-agent_chat_probe",
+  "action": "agent_chat_probe",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"model\": \"deepseek-flash\", \"results\": {\"hermes\": {\"url\": \"http://127.0.0.1:8642/v1/chat/completions\", \"key_len\": 64, \"status\": 200, \"body\": \"{\\\"id\\\": \\\"chatcmpl-15455f4f09db4c05a303a2e69dbab\\\", \\\"object\\\": \\\"chat.completion\\\", \\\"created\\\": 1794223141, \\\"model\\\": \\\"deepseek-flash\\\", \\\"choices\\\": [{\\\"index\\\": 0, \\\"message\\\": {\\\"role\\\": \\\"assistant\\\", \\\"content\\\": \\\"po\"}, \"dsh\": {\"url\": \"http://127.0.0.1:8326/v1/chat/completions\", \"key_len\": 0, \"status\": 401, \"body\": \"{\\\"error\\\":{\\\"message\\\":\\\"Missing or invalid API key\\\",\\\"type\\\":\\\"authentication_error\\\",\\\"code\\\":\\\"invalid_api_key\\\"}}\"}, \"openclaw\": {\"url\": \"http://127.0.0.1:18789/v1/chat/completions\", \"key_len\": 35, \"status\": 404, \"body\": \"Not Found\"}}, \"ok\": true}",
+  "started_at": "2026-11-09T19:19:01",
+  "finished_at": "2026-11-09T19:19:03",
+  "duration_s": 2.0
+}
