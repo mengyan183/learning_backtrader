@@ -13,8 +13,6 @@
 """
 import json
 import os
-import subprocess
-import tempfile
 import urllib.request
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -22,11 +20,7 @@ DECISION_LOG = os.path.join(_REPO, "docs", "decision-log.md")
 EXCEPTION_ID = "H-REV-001"
 
 HERMES_URL = "http://127.0.0.1:8642/v1/chat/completions"
-NVIDIA_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-NVIDIA_PROXY = "http://127.0.0.1:7890"
-NVIDIA_MODEL = "deepseek-ai/deepseek-v4.1-flash"
-# NVIDIA WAF 拦截无 UA 的 urllib 请求（照 scripts/evolve_review.py ✓）
-UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) curl/8.4.0"
+# 🔴 2026-11-09 用户要求：**取消 NVIDIA 云端兜底** ✗（本层只留 Hermes 一条路 ✓）
 
 
 def is_exception_registered(path=None):
@@ -67,11 +61,6 @@ def _hermes_key():
             or _read_secret_env().get("API_SERVER_KEY"))
 
 
-def _nvidia_key():
-    return (os.environ.get("NVIDIA_API_KEY")
-            or _read_secret_env().get("NVIDIA_API_KEY"))
-
-
 def _post_json(url, body, headers, timeout):
     req = urllib.request.Request(url, data=json.dumps(body).encode(),
                                  method="POST", headers=headers)
@@ -88,59 +77,19 @@ def _hermes(prompt, timeout=240):
     return d["choices"][0]["message"]["content"]
 
 
-def _nvidia(prompt, timeout=300):
-    """NVIDIA 直连降级（照 scripts/evolve_review.py:168-199 移植 ✓）。
-
-    🔴 key **不得**出现在命令行 ✗ ⇒ 写 0600 的 `--config` 临时文件 ✓。
-    """
-    key = _nvidia_key()
-    if not key:
-        raise RuntimeError("Hermes 不可用且无 NVIDIA_API_KEY")
-    body = {"model": NVIDIA_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "chat_template_kwargs": {"thinking": False},
-            "max_tokens": 1600}
-    tmp = os.path.join(tempfile.gettempdir(), "nv_h30_req_%d.json" % os.getpid())
-    fd, cfg = tempfile.mkstemp(prefix="nv_h30_curl_", suffix=".cfg")
-    try:
-        os.chmod(cfg, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write('header = "Authorization: Bearer %s"\n'
-                    'header = "Content-Type: application/json"\n'
-                    'header = "User-Agent: %s"\n'
-                    % (key.replace("\\", "\\\\").replace('"', '\\"'), UA))
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(json.dumps(body))
-        out = subprocess.run(
-            ["curl", "-s", "-m", "300", "-x", NVIDIA_PROXY,
-             "--config", cfg, NVIDIA_URL, "--data-binary", "@" + tmp],
-            capture_output=True, text=True, timeout=320)
-    finally:
-        for p in (tmp, cfg):
-            try:
-                os.remove(p)
-            except OSError:
-                pass
-    if out.returncode != 0:
-        raise RuntimeError("NVIDIA curl 失败 rc=%s: %s"
-                           % (out.returncode, (out.stderr or "")[:200]))
-    return json.loads(out.stdout)["choices"][0]["message"]["content"]
 
 
-def call_llm(prompt, client=None, timeout=240, allow_nvidia=True):
-    """调用 LLM，返回 `(text, via)`。
+def call_llm(prompt, client=None, timeout=240):
+    """调用 **Hermes(8642)**，返回 `(text, via)`。
 
     `client` 可注入 ✓（`client(prompt) -> str`）⇒ 测试无需网络 ✓。
-    🔴 **不吞异常** ⇒ 两路都失败时 raise，由上层降级 ✓。
+    🔴 2026-11-09 用户要求：**取消 NVIDIA 云端兜底** ✗ ——
+       云端降级会掩盖 Hermes 自己的故障 ✗（11-09 就是超时被静默换通道）✗
+       ⇒ 失败直接抛，由**上层**确定性降级 ✓（本层仍不吞异常 ✓）
     """
     if client is not None:
         return client(prompt), "injected"
-    try:
-        return _hermes(prompt, timeout=timeout), "hermes(8642)"
-    except Exception:
-        if not allow_nvidia:
-            raise
-    return _nvidia(prompt), "nvidia-direct"
+    return _hermes(prompt, timeout=timeout), "hermes(8642)"
 
 
 def extract_json(text):

@@ -2709,8 +2709,18 @@ def _act_hermes_probe(params):
     import urllib.request as _u
 
     base = str(params.get("url") or "http://127.0.0.1:8642").rstrip("/")
+    # ⚠️ key 必须与 `evolve_review` 用的**同一把** ✗ ——
+    #    2026-11-09 首次探针用了空 key ⇒ 401「Invalid gateway API key」✗ 假阴性 ✗
     key = os.environ.get("API_SERVER_KEY", "")
-    out = {"url": base}
+    if not key:
+        try:
+            if os.path.join(ROOT, "scripts") not in sys.path:
+                sys.path.insert(0, os.path.join(ROOT, "scripts"))
+            from evolve_review import HERMES_KEY as _hk     # noqa: E402
+            key = _hk or ""
+        except Exception:                    # noqa: BLE001
+            key = ""
+    out = {"url": base, "key_len": len(key)}
 
     t0 = _t.time()
     sk = socket.socket()
