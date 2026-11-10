@@ -325,11 +325,16 @@ def build_snapshot():
     #           ③ prices.csv 最新收盘价（fallback）
     # 选定后 **mv / pnl / pnl_pct 全部按该价重算**，保证同一简报内自洽。
     rt_prices = {}
+    rt_updated = ""
     try:
         with open(DATA / "realtime_state.json", encoding="utf-8") as _f:
-            rt_prices = json.load(_f).get("prices") or {}
+            _rs = json.load(_f)
+        rt_prices = _rs.get("prices") or {}
+        rt_updated = str(_rs.get("updated") or "")
     except Exception:
         rt_prices = {}
+        rt_updated = ""
+    snap["_rt_updated"] = rt_updated
 
     px = pd.read_csv(DATA / "raw" / "prices.csv", parse_dates=["date"])
     last_px = px.sort_values("date").groupby("symbol").tail(1)
@@ -341,7 +346,17 @@ def build_snapshot():
             _rt = rt_prices.get("BTC") or {}
             if _rt.get("price"):
                 r["last_close"] = float(_rt["price"])
-                r["px_source"] = "OKX实时"
+                # 🔴 2026-11-10 用户反馈「BTC 价格不刷新」✗ ——
+                #    实测 11-10 16:20 的简报里 BTC 仍是 **11-09 22:07 的 83489.7** ✗
+                #    而其他 5 个标的都更新了 ⇒ `realtime_state` 的 BTC 段没刷新 ✗
+                #    ⇒ 至少要把**时间戳**显示出来 ✓ 让陈旧可见 ✗
+                _ts = str(_rt.get("ts") or rt_updated or "")[:16].replace("T", " ")
+                _age = _minutes_since(_ts)
+                if _age is not None and _age > 30:
+                    r["px_source"] = ("OKX实时·⚠️ **%s 的旧值**（%.0f 分钟前）"
+                                      % (_ts or "?", _age))
+                else:
+                    r["px_source"] = "OKX实时"
             else:
                 r["last_close"] = float(r["price"])
                 r["px_source"] = "positions快照"
@@ -519,6 +534,23 @@ def snapshot_text(snap):
     eff = snap.get("eff_exposure")
     if eff:
         lines.append("有效名义敞口（含杠杆倍数，**直接引用**）: %s" % eff)
+    # 🔴 2026-11-10：**集中度占比必须代码算好** ✗ —— 情绪面已连续 4 次算错：
+    #    11-09 16:54 说 YINN 41% / GDXU 38% / 合计 78%（实际 36.6 / 33.9 / 70.5）
+    #    11-10 16:20 说 GDXU 40% / YINN 38% / 近八成（实际 36.3 / 34.6 / 70.9）
+    #    而**深度归因每次都算对** ⇒ 不是数据问题，是情绪面那一段没拿到确切值 ✗
+    #    ⇒ 直接给每个标的的「占证券市值」+ 前两大合计 ✓
+    _pos = [r for r in snap.get("positions", [])
+            if str(r.get("account")) == "stock"]
+    if _pos and stock_mv > 0:
+        _sorted = sorted(_pos, key=lambda x: -(float(x.get("mv") or 0)))
+        _parts = ["%s %.1f%%" % (r.get("symbol"),
+                                 float(r.get("mv") or 0) / stock_mv * 100)
+                  for r in _sorted]
+        lines.append("集中度（**直接引用，不要自己重算**；分母=证券市值 %.0f）: %s"
+                     % (stock_mv, " · ".join(_parts)))
+        _top2 = sum(float(r.get("mv") or 0) for r in _sorted[:2])
+        lines.append("前两大合计 %.1f%%（分母同上，**直接引用**）"
+                     % (_top2 / stock_mv * 100))
     # 无交易记录 ⇒ 禁止推断「是否减过仓」✗（2026-10-31 实测的错误归因）
     lines.append("持仓变动: 快照**只有当前持仓**，无买卖流水 ⇒ "
                  "**禁止推断某标的「是否减过仓/是残余仓位」** ✗")
@@ -580,7 +612,12 @@ def stage_sentiment(hermes_key, snap):
               "① 情绪定性（1-2 句）② 仓位拥挤度（1-2 句）③ 催化方向（1 句）。"
               "只做分析，不给交易指令。"
               "【硬性约束】同一组数字**只许出现一次** ✗；"
-              "禁止复述「目标仓位 vs 实际仓位」的缺口超过一次 ✗。")
+              "禁止复述「目标仓位 vs 实际仓位」的缺口超过一次 ✗。"
+              # 🔴 2026-11-10：占比**不许自己算** ✗ —— 已连续 4 次算错
+              #    （41/38/78、40/38/近八成，实际 36.3/34.6/70.9）
+              "【数字纪律】快照里标了「**直接引用**」的占比、敞口、集中度，"
+              "**必须原样引用** ✗ 禁止自己乘除重算 ✗；"
+              "若某个数字快照里没有，就**不写这个数字** ✓。")
     user = f"以下是今日市场快照：\n{snapshot_text(snap)}\n\n请输出情绪面分析。"
     _u, _m = agent_route("sentiment")
     return _chat(_u, hermes_key, _m, system, user,
@@ -1635,6 +1672,15 @@ def _data_health_block(snap, sentiment=None, attribution=None, judge=None):
             lines.append("⚠️ 持仓快照 **%s**（%d 天前）—— 数据可能未同步 ✗ "
                          "本简报的市值/浮亏/仓位比例均按该日数据 ✓"
                          % (_pos_date, _lag))
+    # 🔴 2026-11-10 用户反馈「BTC 价格不刷新」✗ ——
+    #    `realtime_state` 停在 11-09 22:07，简报却把它当实时价 ✗
+    #    ⇒ 顶部显式告警 ✓（单看持仓行里的时间戳容易被忽略 ✗）
+    _rt_ts = str(snap.get("_rt_updated") or "")
+    _rt_age = _minutes_since(_rt_ts)
+    if _rt_age is not None and _rt_age > 30:
+        lines.append("⚠️ 实时价 `realtime_state` 停在 **%s**（%.0f 分钟前）"
+                     "—— 加密仓位现价可能是旧值 ✗"
+                     % (_rt_ts[:16].replace("T", " "), _rt_age))
     miss = [n for n, ok in (("情绪", bool(sentiment)),
                             ("归因", bool(attribution)),
                             ("裁判", _judge_ok(judge))) if not ok]
@@ -1971,6 +2017,26 @@ def _kb_brief_text(hits):
         date = h["date"] if h["date"] and h["date"] != "NA" else "日期NA"
         lines.append(f"【{h['channel']}】《{h['title']}》（{date}, 相关度{h['score']}）\n“{snip}”")
     return "\n\n".join(lines)
+
+
+def _minutes_since(ts):
+    """`YYYY-MM-DDTHH:MM[:SS]` 距今**多少分钟** ✓（解析失败返回 `None`）。
+
+    用途：判断 `realtime_state.json` 里的价格是不是**旧值** ✓
+    （2026-11-10：BTC 停在 11-09 22:07 的 83489.7 却当成实时价 ✗）
+    """
+    s = str(ts or "").strip()
+    if not s:
+        return None
+    import datetime as _dt
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%d %H:%M"):
+        try:
+            t = _dt.datetime.strptime(s[:19], fmt)
+            return (_dt.datetime.now() - t).total_seconds() / 60.0
+        except ValueError:
+            continue
+    return None
 
 
 def _date_label(snap):
