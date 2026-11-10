@@ -985,9 +985,42 @@ def _act_dsh_webauth_find(params):
         if len(out["hits"]) >= 40:
             break
 
+    # ④ 找 **app 本体** ✓（2026-11-10 用户要求「更新 deepseek harness 应用」）
+    #    回执里 `sessions/--Users-xingguo-Documents-deepseek-harness-default-workspace--`
+    #    ⇒ 工作区在 `~/Documents/deepseek-harness/` ⇒ app 可能也在那附近 ✓
+    out["app_search"] = {}
+    for rel in ("Documents/deepseek-harness", "Applications",
+                "Applications/Utilities", "Downloads"):
+        d = os.path.join(home, rel)
+        try:
+            names = sorted(os.listdir(d))[:25]
+            out["app_search"][rel] = [n for n in names
+                                      if n.lower().endswith(".app")
+                                      or "harness" in n.lower()
+                                      or "deepseek" in n.lower()
+                                      or "dsh" in n.lower()] or names[:12]
+        except OSError:
+            out["app_search"][rel] = "(不可读)"
+    # 读 app 版本（Info.plist）
+    for rel, names in list(out["app_search"].items()):
+        if not isinstance(names, list):
+            continue
+        for n in names:
+            if not n.lower().endswith(".app"):
+                continue
+            pl = os.path.join(home, rel, n, "Contents", "Info.plist")
+            if not os.path.exists(pl):
+                continue
+            try:
+                r = subprocess.run(["/usr/bin/plutil", "-p", pl],
+                                   capture_output=True, text=True, timeout=20)
+                out["app_search"]["%s 版本" % n] = (r.stdout or "")[:600]
+            except Exception:             # noqa: BLE001
+                pass
+
     out["ok"] = True
     out["hint"] = ("`hits` 里形如 `url` 的那条就是 dsh web 的鉴权地址 ✓ "
-                   "（token 已脱敏，你在 Mac 上打开同目录文件取完整值）")
+                   "（token 已脱敏）；`app_search` 里是 app 位置与版本 ✓")
     return out
 
 
@@ -1666,20 +1699,36 @@ def _act_restart_queue(params):
     ⚠️ 重启后**新进程会读新 plist** ✓ 代理生效 ✓
     ⚠️ 若队列里有**正在执行**的任务 ⇒ 会被杀 ✗（`delay` 参数可调 ✗）
     """
-    label = "com.xingguo.fg-task-queue"
+    # 🔴 2026-11-10：支持 `label` 参数 ✓ —— 原来写死 `fg-task-queue` ✗
+    #    实测 `fg-realtime` 从 **10-12** 起就在无限重连（日志里 `conn=0(7475)` ✗）
+    #    进程还活着（PID 707）但数据 29 天没更新 ✗ ⇒ 需要能重启它 ✓
+    #    ⚠️ 白名单，不接受任意 label ✗
+    _ALLOWED = ("com.xingguo.fg-task-queue",
+                "com.xingguo.fg-realtime",
+                "com.xingguo.fg-dashboard",
+                "com.xingguo.fg-sync-watcher")
+    label = str(params.get("label") or "com.xingguo.fg-task-queue").strip()
+    if label not in _ALLOWED:
+        return {"ok": False,
+                "error": "不允许的 label：`%s` ✗（白名单：%s）"
+                         % (label, ", ".join(_ALLOWED))}
     delay = int(params.get("delay") or 5)
     uid = os.getuid() if hasattr(os, "getuid") else 501
     target = "gui/%s/%s" % (uid, label)
 
     # 写一个延迟脚本 ✓（避免杀自己 ✗）
-    sh = os.path.join(ROOT, "dist", "_restart_queue.sh")
+    # 🔴 2026-11-10：日志路径按 label 推导 ✓ —— 原来写死 `fg_task_queue.log` ✗
+    #    重启 `fg-realtime` 时也写进队列日志 ⇒ 两边的日志混在一起 ✗
+    _short = label.replace("com.xingguo.", "").replace("com.fg.", "")
+    _log = "/tmp/fg_%s.log" % _short.replace("-", "_")
+    sh = os.path.join(ROOT, "dist", "_restart_%s.sh" % _short.replace("-", "_"))
     os.makedirs(os.path.dirname(sh), exist_ok=True)
     with open(sh, "w", encoding="utf-8") as f:
         f.write("#!/bin/bash\n"
                 "sleep %d\n"
-                "launchctl kickstart -k %s >> /tmp/fg_task_queue.log 2>&1\n"
-                "echo \"[restart] $(date '+%%F %%T') kickstart done\" "
-                ">> /tmp/fg_task_queue.log\n" % (delay, target))
+                "launchctl kickstart -k %s >> %s 2>&1\n"
+                "echo \"[restart] $(date '+%%F %%T') kickstart %s done\" "
+                ">> %s\n" % (delay, target, _log, label, _log))
     os.chmod(sh, 0o755)
 
     # 记录重启前的环境 ✓
