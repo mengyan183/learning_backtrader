@@ -702,6 +702,126 @@ def _call_with_timeout(fn, seconds=90):
     return True, box.get("v")
 
 
+def _act_futu_opend_update(params):
+    """用 OpenD **内置 `update` 命令**升级 ✓（2026-11-10 用户提供官方用法）。
+
+    官方用法（用户截图）：
+      `./FutuOpenD -cfg_file <OpenD.xml 绝对路径> update`
+      ⚠️ 更新会**重启 OpenD** ⇒ 必须先停掉，否则端口占用导致更新失败
+      ⚠️ Mac 下系统随机路径会导致找不到配置 ⇒ 必须 `-cfg_file` 显式指定
+
+    流程：
+      ① 找 CLI 二进制（`FutuOpenD` / `OpenD`）+ `OpenD.xml`
+      ② `pkill -f OpenD` + 等端口释放（最多 15s）
+      ③ `FutuOpenD -cfg_file <xml> update`（超时 600s，它会下载）
+      ④ 启动回 OpenD（GUI `open -a` 优先，否则直接跑二进制）
+      ⑤ 等端口 + 回执带 update 的完整输出
+    ⚠️ 找不到二进制时**不猜**，直接回报候选路径清单 ✓
+    """
+    import socket
+    out = {"steps": {}}
+
+    def _port_open(host="127.0.0.1", port=11111, t=2.0):
+        try:
+            s = socket.create_connection((host, port), t)
+            s.close()
+            return True
+        except OSError:
+            return False
+
+    # ① 找二进制与配置
+    cands = [
+        os.path.expanduser("~/futu_OpenD/FutuOpenD"),
+        os.path.expanduser("~/futu_OpenD/OpenD"),
+        "/Applications/FutuOpenD.app/Contents/MacOS/FutuOpenD",
+        "/Applications/FutuOpenD.app/Contents/MacOS/OpenD",
+    ]
+    bin_path = next((c for c in cands if os.path.isfile(c)), None)
+    out["steps"]["binary"] = bin_path or "(未找到)"
+    if not bin_path:
+        out["ok"] = False
+        out["error"] = ("找不到 OpenD 的**命令行二进制** ✗ "
+                        "（GUI 版 .app 里也可能有 Contents/MacOS/）")
+        out["candidates"] = cands
+        out["hint"] = ("在 Mac 上跑 `ls /Applications/FutuOpenD.app/Contents/MacOS/` "
+                       "和 `ls ~/futu_OpenD/` 把结果贴给我")
+        return out
+
+    # 找 OpenD.xml（同目录 / 上级目录）
+    base = os.path.dirname(bin_path)
+    xml = None
+    for rel in ("OpenD.xml", "../OpenD.xml", "../../OpenD.xml"):
+        p = os.path.normpath(os.path.join(base, rel))
+        if os.path.isfile(p):
+            xml = p
+            break
+    out["steps"]["cfg_file"] = xml or "(未找到，将不带 -cfg_file 运行)"
+
+    # ② 停 OpenD
+    try:
+        r = subprocess.run(["pkill", "-f", "OpenD"], capture_output=True,
+                           text=True, timeout=30)
+        out["steps"]["kill"] = "pkill rc=%s" % r.returncode
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["kill"] = "pkill err %s" % str(exc)[:80]
+    for _ in range(15):
+        if not _port_open():
+            break
+        time.sleep(1)
+    out["steps"]["port_freed"] = not _port_open()
+
+    # ③ 跑 update
+    cmd = [bin_path] + (["-cfg_file", xml] if xml else []) + ["update"]
+    out["steps"]["cmd"] = " ".join(cmd)
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace",
+                           timeout=600, cwd=base)
+        out["steps"]["update"] = {
+            "rc": r.returncode,
+            "stdout": (r.stdout or "").strip()[-1200:],
+            "stderr": (r.stderr or "").strip()[-600:],
+        }
+    except subprocess.TimeoutExpired:
+        out["steps"]["update"] = {"rc": -1, "stdout": "update 超过 600 秒"}
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["update"] = {"rc": -2,
+                                  "stdout": "%s: %s" % (type(exc).__name__,
+                                                        str(exc)[:200])}
+
+    # ④ 启动回来
+    started = []
+    for c in (["open", "-a", "FutuOpenD"], [bin_path] + (["-cfg_file", xml] if xml else [])):
+        try:
+            if c[0] == "open":
+                r = subprocess.run(c, capture_output=True, text=True, timeout=30)
+                started.append({"cmd": " ".join(c), "rc": r.returncode})
+                if r.returncode == 0:
+                    break
+            else:
+                # 后台起，不等它退出
+                subprocess.Popen(c, cwd=base, stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL, start_new_session=True)
+                started.append({"cmd": " ".join(c), "rc": 0, "bg": True})
+                break
+        except Exception as exc:          # noqa: BLE001
+            started.append({"cmd": " ".join(c), "err": str(exc)[:100]})
+    out["steps"]["start"] = started
+
+    ok = False
+    for _ in range(15):
+        time.sleep(1)
+        if _port_open():
+            ok = True
+            break
+    out["steps"]["port_after"] = ok
+    out["ok"] = ok
+    if not ok:
+        out["hint"] = ("OpenD 没起来 ✗ ⇒ 看 `update` 的 stdout："
+                       "若它已把旧版删掉但新版没下完，需要手动从官网重装")
+    return out
+
+
 def _act_futu_opend_info(params):
     """**探测 FutuOpenD 版本/路径 + 抓官网下载链接** ✓（2026-11-10 用户要求升级 OpenD）。
 
@@ -3721,6 +3841,7 @@ ACTIONS = {
     "futu_upgrade_restart": _act_futu_upgrade_restart,
     "dsh_web_open": _act_dsh_web_open,
     "futu_opend_info": _act_futu_opend_info,
+    "futu_opend_update": _act_futu_opend_update,
     "run_invest_research": _act_run_invest_research,
     "install_daily_plist": _act_install_daily_plist,
     "eval_baa10y": _act_eval_baa10y,
