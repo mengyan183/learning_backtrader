@@ -671,6 +671,37 @@ def _act_rerun_brief(params):
     return out
 
 
+def _call_with_timeout(fn, seconds=90):
+    """在**守护线程**里跑 `fn`，超时返回 `(False, None)` ✓（2026-11-10）。
+
+    🔴 为什么必须有：OpenD 进入**无限重连循环**时，`futu` 的 SDK 调用
+       **永不返回** ✗ —— 实测把队列卡死 **100+ 分钟** ✗
+       （`t-20261110-0904xx-test_futu_fed.running` 从 09:02 一直挂到 10:4x）
+       ⇒ 队列是**单线程串行**，一个动作卡住 ⇒ 后面全部排队不动 ✗
+       ⇒ 用守护线程 + `result(timeout)` ✓：超时就让那条线程自生自灭 ✓
+         （daemon=True ⇒ 进程退出时自动清理 ✓ 不会阻止退出 ✓）
+
+    ⚠️ 这不是「取消」✗ —— 卡住的线程仍在跑，只是**不再阻塞队列** ✓
+    """
+    import threading
+    box = {}
+
+    def _run():
+        try:
+            box["v"] = fn()
+        except Exception as exc:              # noqa: BLE001
+            box["e"] = exc
+
+    th = threading.Thread(target=_run, daemon=True)
+    th.start()
+    th.join(seconds)
+    if th.is_alive():
+        return False, None
+    if "e" in box:
+        raise box["e"]
+    return True, box.get("v")
+
+
 def _act_test_futu_fed(params):
     """**验证富途 OpenD 的 `get_fed_watch_target_rate`** ✓（2026-11-05）。
 
@@ -717,9 +748,28 @@ def _act_test_futu_fed(params):
         return out
 
     ctx = None
+
+    def _probe():
+        c = OpenQuoteContext(host=host, port=port)
+        try:
+            return c.get_fed_watch_target_rate()
+        finally:
+            try:
+                c.close()
+            except Exception:                 # noqa: BLE001
+                pass
+
     try:
-        ctx = OpenQuoteContext(host=host, port=port)
-        ret, data = ctx.get_fed_watch_target_rate()
+        # 🔴 2026-11-10：**必须加超时** ✗ —— OpenD 重连循环时 SDK 永不返回 ✗
+        #    实测把队列卡死 100+ 分钟 ✗（守护线程兜底见 `_call_with_timeout`）
+        alive, res = _call_with_timeout(_probe, seconds=90)
+        if not alive:
+            out["ok"] = False
+            out["error"] = ("**futu SDK 90 秒无响应** ✗ —— OpenD 疑似进入"
+                            "无限重连循环（日志里 `list context failed` 刷屏）"
+                            "⇒ 需重启 OpenD，不是本脚本的问题 ✓")
+            return out
+        ret, data = res
         out["ret"] = str(ret)[:80]
         # 🔴 2026-11-05 **关键修复**：`futu.RET_OK` **就是整数 0** ✗
         #    我原来写 `"RET_OK" in str(ret)` ✗
@@ -756,12 +806,8 @@ def _act_test_futu_fed(params):
         out["error"] = "%s: %s" % (type(exc).__name__, str(exc)[:300])
         out["hint"] = ("⚠️ 若是连接失败 ⇒ **OpenD 没开** ✗ "
                        "（`~/futu_OpenD/OpenD` 或 GUI 版 ✗）")
-    finally:
-        if ctx is not None:
-            try:
-                ctx.close()
-            except Exception:               # noqa: BLE001
-                pass
+    # ⚠️ `ctx` 已在 `_probe()` 内部关闭 ✓（超时时由守护线程持有，
+    #    进程退出自动清理 ✓）⇒ 这里不再需要 finally 兜底 ✓
     return out
 
 
@@ -3022,6 +3068,62 @@ def _act_agent_probe(params):
     return out
 
 
+def _act_git_state(params):
+    """**只读**诊断 Mac 的 git 状态 ✓（2026-11-09 用户报 `GH013` 推送被拦）。
+
+    🔴 为什么要看：Mac 说「已推送 90287a0」，但本机 `origin` 是 **gitee**，
+       而 gitee 上**没有** 90287a0 ✗ —— 说明 Mac 的 remote 可能不是 gitee ✗
+       `GH013: Repository rule violations` 是 **GitHub** 的报错 ✗
+       ⇒ 先看清 remote 指向、哪些提交没推上去 ✓
+
+    ⚠️ **只跑只读命令** ✗ 绝不 reset / push / 改工作区 ✓
+    """
+    cmds = [
+        ["git", "remote", "-v"],
+        ["git", "status", "-sb"],
+        ["git", "log", "--oneline", "-6"],
+        ["git", "log", "--oneline", "origin/main..HEAD"],
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        # 🔴 2026-11-09：查「含 sk- 字面量的提交是否还在历史里」✗
+        #    GH013 若是 push protection ⇒ 这条必须有输出 ✗
+        ["git", "log", "--all", "--oneline", "-S", "sk-0123456789"],
+        ["git", "log", "--all", "--oneline", "-S", "nvapi-0123456789"],
+    ]
+    out = {}
+    for c in cmds:
+        key = " ".join(c[1:])
+        try:
+            r = subprocess.run(c, cwd=ROOT, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=30)
+            out[key] = (r.stdout or r.stderr or "").strip()[:1500] or "(空)"
+        except Exception as exc:          # noqa: BLE001
+            out[key] = "ERR %s" % str(exc)[:120]
+
+    # ② 真正推一次 ⇒ 拿**完整**服务端报错（现在本来就推不上去 ✗ 无副作用 ✓）
+    #    成功则顺手把积压推掉 ✓ 失败则把 GH013 的第 2 行起带回来 ✓
+    if str(params.get("push") or "1").lower() not in ("0", "false", "no"):
+        try:
+            r = subprocess.run(["git", "push", "origin", "main"], cwd=ROOT,
+                               capture_output=True, text=True, encoding="utf-8",
+                               errors="replace", timeout=180)
+            out["push"] = {
+                "rc": r.returncode,
+                "stdout": (r.stdout or "").strip()[-1500:],
+                "stderr": (r.stderr or "").strip()[-2500:],
+            }
+        except Exception as exc:          # noqa: BLE001
+            out["push"] = {"error": "%s: %s" % (type(exc).__name__, str(exc)[:150])}
+        try:
+            r2 = subprocess.run(["git", "status", "-sb"], cwd=ROOT,
+                                capture_output=True, text=True, encoding="utf-8",
+                                errors="replace", timeout=30)
+            out["status_after_push"] = (r2.stdout or "").strip()[:400]
+        except Exception:                 # noqa: BLE001
+            pass
+    out["ok"] = True
+    return out
+
+
 def _act_deepseek_key_hunt(params):
     """在 Mac 家目录里**找 `sk-` 开头的 key** ✓（2026-11-09 用户选方案 B）。
 
@@ -3293,6 +3395,7 @@ ACTIONS = {
     "agent_chat_probe": _act_agent_chat_probe,
     "agent_probe": _act_agent_probe,
     "run_task_monitor": _act_run_task_monitor,
+    "git_state": _act_git_state,
     "deepseek_key_hunt": _act_deepseek_key_hunt,
     "deepseek_probe": _act_deepseek_probe,
     "hermes_probe": _act_hermes_probe,

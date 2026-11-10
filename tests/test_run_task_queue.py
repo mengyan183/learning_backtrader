@@ -271,7 +271,9 @@ def test_key_diag_never_leaks_plaintext(tmp_path, monkeypatch):
     blob = json.dumps(r, ensure_ascii=False)
     assert "ABCDEFGHIJKLMNOP" not in blob, "把 NVIDIA key 明文回传了 ✗"
     assert "1234567890abcdefghij" not in blob, "把 DeepSeek key 明文回传了 ✗"
-    assert "nvapi-ABCD…" in blob, "前缀也没回（10 字符 + 省略号）"
+    # ⚠️ 2026-11-10：夹具已改成 `"nvapi-" + "A"*16`（避开 GitHub push protection）
+    #    ⇒ 前缀变成 `nvapi-AAAA…` ✓（判据不变：只回前缀 + 长度 ✓）
+    assert "nvapi-AAAA…" in blob, "前缀也没回（10 字符 + 省略号）"
 
 
 def test_key_diag_missing_dir(tmp_path):
