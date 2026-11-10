@@ -839,6 +839,96 @@ def _act_futu_opend_update(params):
     return out
 
 
+def _act_autostart_list(params):
+    """列出 Mac 上**所有开机自启项** ✓（2026-11-10 用户问「有没有自动拉起 dsh 的程序」）。
+
+    🔴 为什么需要：仓库里 15 个 plist 全是贪恐系统的 ✓
+       但 **Mac 上还可能有 dsh 自己装的 LaunchAgent**（`~/.dsh/` 那套 ✗）
+       ⇒ 只看仓库会漏 ✗ ⇒ 必须看 `~/Library/LaunchAgents/` 实际内容 ✓
+
+    查四处：
+      ① `~/Library/LaunchAgents/*.plist` —— 逐个数 Label + 程序路径
+      ② `/Library/LaunchAgents/*.plist`（系统级）
+      ③ 登录项（`osascript` 读 `login item`）
+      ④ 当前跑着的 dsh / harness 进程
+    """
+    import glob as _g
+    home = os.path.expanduser("~")
+    out = {"user_agents": [], "system_agents": [], "login_items": [],
+           "running": [], "dsh_related": []}
+
+    def _read_plist(p):
+        """读 Label 与 ProgramArguments（用 plutil -p，纯文本输出好解析）。"""
+        info = {"path": os.path.relpath(p, home)}
+        try:
+            r = subprocess.run(["/usr/bin/plutil", "-p", p],
+                               capture_output=True, text=True, timeout=15)
+            txt = r.stdout or ""
+        except Exception as exc:              # noqa: BLE001
+            info["error"] = str(exc)[:100]
+            return info
+        import re as _re
+        m = _re.search(r'"Label"\s*=>\s*"([^"]+)"', txt)
+        if m:
+            info["label"] = m.group(1)
+        # ProgramArguments 是个数组，取其中含 / 的前 3 项
+        args = _re.findall(r'^\s*"\s*([^"]*\/[^"]*)"\s*$', txt, _re.M)
+        if args:
+            info["args"] = args[:3]
+        m2 = _re.search(r'"Program"\s*=>\s*"([^"]+)"', txt)
+        if m2:
+            info["program"] = m2.group(1)
+        m3 = _re.search(r'"RunAtLoad"\s*=>\s*(true|TRUE|1)', txt)
+        info["run_at_load"] = bool(m3)
+        m4 = _re.search(r'"KeepAlive"\s*=>\s*(true|TRUE|1)', txt)
+        info["keep_alive"] = bool(m4)
+        return info
+
+    for base, key in ((os.path.join(home, "Library", "LaunchAgents"), "user_agents"),
+                      ("/Library/LaunchAgents", "system_agents")):
+        for p in sorted(_g.glob(os.path.join(base, "*.plist"))):
+            out[key].append(_read_plist(p))
+
+    # ③ 登录项
+    try:
+        r = subprocess.run(
+            ["osascript", "-e",
+             'tell application "System Events" to get the name of every login item'],
+            capture_output=True, text=True, timeout=20)
+        out["login_items"] = [x.strip() for x in (r.stdout or "").split(",")
+                              if x.strip()]
+    except Exception as exc:                  # noqa: BLE001
+        out["login_items"] = ["ERR %s" % str(exc)[:100]]
+
+    # ④ 正在跑的进程（dsh / harness / deepseek）
+    try:
+        r = subprocess.run(["/bin/sh", "-c",
+                            "ps ax -o pid,comm | grep -i -E "
+                            "'dsh|harness|deepseek' | grep -v grep | head -15"],
+                           capture_output=True, text=True, timeout=20)
+        out["running"] = [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
+    except Exception as exc:                  # noqa: BLE001
+        out["running"] = ["ERR %s" % str(exc)[:100]]
+
+    # ⑤ 汇总：哪些自启项跟 dsh 有关
+    _kw = ("dsh", "harness", "deepseek")
+    for item in out["user_agents"] + out["system_agents"]:
+        blob = " ".join(str(item.get(k) or "") for k in ("label", "program", "args"))
+        if any(k in blob.lower() for k in _kw):
+            out["dsh_related"].append(item)
+
+    out["ok"] = True
+    out["summary"] = {
+        "user_agent_count": len(out["user_agents"]),
+        "system_agent_count": len(out["system_agents"]),
+        "dsh_related_count": len(out["dsh_related"]),
+        "running_count": len(out["running"]),
+    }
+    out["hint"] = ("`dsh_related` 非空 ⇒ 有 dsh 自启项 ✓；"
+                   "为空 ⇒ **没有任何程序自动拉起 dsh** ✗")
+    return out
+
+
 def _act_realtime_diag(params):
     """排查 `com.xingguo.fg-realtime` 为什么没更新 BTC 价 ✓（2026-11-10 用户要求）。
 
@@ -4177,6 +4267,7 @@ ACTIONS = {
     "dsh_web_open": _act_dsh_web_open,
     "futu_opend_info": _act_futu_opend_info,
     "realtime_diag": _act_realtime_diag,
+    "autostart_list": _act_autostart_list,
     "dsh_webauth_find": _act_dsh_webauth_find,
     "futu_opend_update": _act_futu_opend_update,
     "run_invest_research": _act_run_invest_research,
