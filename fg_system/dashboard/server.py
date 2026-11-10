@@ -656,15 +656,27 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
                     pass
             if tid not in merged or status != "pending":
                 merged[tid] = item
-        items = sorted(merged.values(), key=lambda x: str(x.get("at") or ""),
-                       reverse=True)[:10]
+        # 🔴 2026-11-10 用户反馈「同步页面看不到待执行的任务」✗
+        #    根因：原来只按 `at` 倒序取前 10 ✗ —— 待执行任务的 `at` 是 `created_at`，
+        #    一旦排到后面（或 `at` 缺失被排到末尾）就被 `[:10]` 截掉了 ✗
+        #    ⇒ **待执行/执行中的永远置顶** ✓，再补历史 ✓
+        _all = sorted(merged.values(),
+                      key=lambda x: str(x.get("at") or ""), reverse=True)
+        _live = [x for x in _all if x.get("status") in ("pending", "running")]
+        _hist = [x for x in _all if x.get("status") not in ("pending", "running")]
+        items = (_live + _hist)[:12]
         agent = {}
         try:
             from scripts import run_task_queue as _rtq
             agent = _rtq.agent_status()
         except Exception:
             pass
-        resp = Response(_json_ok({"items": items, "agent": agent}),
+        # 待执行计数单独给出 ✓ —— 页面顶部直接显示「待执行 N 个」，
+        # 不用去翻列表才知道有没有积压 ✓（2026-11-10 用户反馈）
+        _cnt = {"pending": sum(1 for x in _live if x.get("status") == "pending"),
+                "running": sum(1 for x in _live if x.get("status") == "running")}
+        resp = Response(_json_ok({"items": items, "agent": agent,
+                                  "count": _cnt}),
                         mimetype="application/json")
         resp.headers["Cache-Control"] = "no-store"
         return resp

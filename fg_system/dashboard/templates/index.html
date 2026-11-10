@@ -1130,9 +1130,16 @@ function loadTasks() {
       }
       // 2026-10-28：原来是「✅ 动作 · 时间 · 0s」一行纯文本 ✗
       // ⇒ 状态用文字药丸 + 结果单独一行 ✓（emoji 当图标不算图标系统 ✗）
-      var ST = { done: "完成", failed: "失败", running: "执行中" };
-      var rows = ["<div class='task-head'>最近任务</div>"];
-      for (var i = 0; i < Math.min(it.length, 5); i++) {
+      var ST = { done: "完成", failed: "失败", running: "执行中", pending: "排队中" };
+      // 🔴 2026-11-10：标题直接带「待执行 N」✓ —— 之前要翻列表才知道有没有积压 ✗
+      var _c = d.count || {};
+      var _head = "最近任务";
+      if (_c.pending || _c.running) {
+        _head += "（待执行 " + (_c.pending || 0) +
+                 (_c.running ? " · 执行中 " + _c.running : "") + "）";
+      }
+      var rows = ["<div class='task-head'>" + _head + "</div>"];
+      for (var i = 0; i < Math.min(it.length, 8); i++) {
         var x = it[i];
         var meta = String(x.at || "").replace("T", " ").slice(5, 16);
         // 执行中要显示**已跑多久** ✓ —— 只写「排队中」看不出是在跑还是卡住 ✗
