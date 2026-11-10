@@ -1213,12 +1213,24 @@ def _act_test_futu_fed(params):
                             "无限重连循环（已 kill 子进程，不会残留重连线程 ✓）"
                             "⇒ 需重启/升级 OpenD，不是本脚本的问题 ✓")
             return out
-        try:
-            _res = json.loads((so or "").strip().splitlines()[-1])
-        except (ValueError, IndexError):
+        # 🔴 2026-11-10 实测：futu SDK 的日志**打到 stdout** ✗ ——
+        #    `2026-11-10 14:55:17,234 | 76790 | ... | New connect ready: ...`
+        #    ⇒ 原来取 `splitlines()[-1]` 拿到的是**日志行** ✗ 解析必失败 ✗
+        #    ⇒ 改成**从后往前找第一行能解析成 JSON 的** ✓
+        _res = None
+        for _ln in reversed((so or "").strip().splitlines()):
+            _ln = _ln.strip()
+            if not _ln.startswith("{"):
+                continue
+            try:
+                _res = json.loads(_ln)
+                break
+            except ValueError:
+                continue
+        if _res is None:
             out["ok"] = False
-            out["error"] = ("子进程输出无法解析 ✗：%s | stderr=%s"
-                            % ((so or "")[:200], (se or "")[:200]))
+            out["error"] = ("子进程输出里找不到 JSON ✗（futu 日志混在 stdout）"
+                            "：%s" % (so or "")[-400:])
             return out
         if _res.get("error"):
             out["ok"] = False
