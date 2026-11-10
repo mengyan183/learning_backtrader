@@ -308,13 +308,21 @@ def fed_brief_text(ctx):
         parts.append("纪要发布：%s 美东（%d 天后）"
                      % (ctx["next_minutes"], ctx["days_to_minutes"]))
     if ctx["macro_event"]:
-        w = ("⚠️ 宏观事件窗口（%s 明日发布，美东）" % ctx["macro_event"]
-             if ctx["macro_window"] and ctx["days_to_macro"] == 1
-             else "⚠️ 宏观事件窗口（%s %d 天后发布，美东，避免重仓押注方向）"
-             % (ctx["macro_event"], ctx["days_to_macro"])
-             if ctx["macro_window"]
-             else "下次宏观数据：%s（%s 美东，%d 天后）"
-             % (ctx["macro_event"], ctx["macro_date"], ctx["days_to_macro"]))
+        # 🔴 2026-11-10 用户反馈「CPI『0 天后发布』」✗ ——
+        #    原来只判 `== 1`（明日），`0` 掉进通用分支 ⇒ 印出「0 天后发布」✗
+        #    ⇒ 拆成 今日 / 明日 / N 天后 / 非窗口 四档 ✓（嵌套三元改成 if/elif ✓）
+        _dm = int(ctx["days_to_macro"])
+        if ctx["macro_window"] and _dm <= 0:
+            w = ("⚠️ 宏观事件窗口（%s **今日发布**，美东，"
+                 "避免重仓押注方向）" % ctx["macro_event"])
+        elif ctx["macro_window"] and _dm == 1:
+            w = "⚠️ 宏观事件窗口（%s 明日发布，美东）" % ctx["macro_event"]
+        elif ctx["macro_window"]:
+            w = ("⚠️ 宏观事件窗口（%s %d 天后发布，美东，"
+                 "避免重仓押注方向）" % (ctx["macro_event"], _dm))
+        else:
+            w = ("下次宏观数据：%s（%s 美东，%d 天后）"
+                 % (ctx["macro_event"], ctx["macro_date"], _dm))
         parts.append(w)
     if ctx["fw_meeting"]:
         # 🔴 2026-11-05：**标注数据来源** ✓

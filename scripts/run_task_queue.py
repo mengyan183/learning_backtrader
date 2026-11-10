@@ -839,6 +839,158 @@ def _act_futu_opend_update(params):
     return out
 
 
+def _act_realtime_diag(params):
+    """排查 `com.xingguo.fg-realtime` 为什么没更新 BTC 价 ✓（2026-11-10 用户要求）。
+
+    🔴 现象：简报里 BTC 现价停在 **11-09 22:07 的 83489.7**（18 小时前）✗
+       而其他 5 个美股标的都正常更新 ⇒ 怀疑常驻服务挂了或 OKX 段没在跑 ✗
+
+    查四件事：
+      ① `launchctl list` 里 `fg-realtime` 的 PID / 最后退出码
+      ② 日志尾巴（`/tmp/fg_realtime.log` 或 plist 里的 StandardOutPath）
+      ③ `Data/realtime_state.json` 的 `updated` 与 `prices.BTC.ts`
+      ④ plist 里的 ProgramArguments（看它到底启了什么）
+    """
+    out = {"steps": {}}
+
+    # ① launchctl
+    try:
+        r = subprocess.run(["launchctl", "list"], capture_output=True, text=True,
+                           timeout=20)
+        hits = [ln for ln in (r.stdout or "").splitlines()
+                if "realtime" in ln.lower()]
+        out["steps"]["launchctl"] = hits[:5] or ["(launchctl list 里没有 realtime 相关项)"]
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["launchctl"] = "ERR %s" % str(exc)[:120]
+
+    # ② 日志
+    logs = ["/tmp/fg_realtime.log", "/tmp/fg-realtime.log",
+            os.path.join(ROOT, "logs", "realtime.log")]
+    found = {}
+    for p in logs:
+        if not os.path.exists(p):
+            continue
+        try:
+            with open(p, encoding="utf-8", errors="replace") as fh:
+                lines = fh.readlines()
+            age = int(time.time() - os.path.getmtime(p))
+            found[p] = {"age_sec": age, "size": len(lines),
+                        "tail": "".join(lines[-25:])[-1800:]}
+        except OSError as exc:
+            found[p] = {"error": str(exc)[:100]}
+    out["steps"]["logs"] = found or "(三个候选日志都不存在)"
+
+    # ③ realtime_state.json
+    try:
+        with open(os.path.join(ROOT, "Data", "realtime_state.json"),
+                  encoding="utf-8") as fh:
+            st = json.load(fh)
+        pr = st.get("prices") or {}
+        out["steps"]["state"] = {
+            "updated": st.get("updated"),
+            "btc": pr.get("BTC"),
+            "symbols": sorted(pr.keys())[:15],
+            "symbol_count": len(pr),
+        }
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["state"] = "ERR %s" % str(exc)[:150]
+
+    # ④ plist
+    pl = os.path.join(ROOT, "scripts", "com.xingguo.fg-realtime.plist")
+    try:
+        out["steps"]["plist"] = open(pl, encoding="utf-8").read()[:2500]
+    except OSError as exc:
+        out["steps"]["plist"] = "ERR %s" % str(exc)[:100]
+
+    out["ok"] = True
+    return out
+
+
+def _act_dsh_webauth_find(params):
+    """找 dsh（DeepSeek Harness GUI）**最新生成的 web token** ✓（2026-11-10 用户要求）。
+
+    🔴 背景：`dsh web authentication required; reopen the URL printed by dsh web.`
+       而 `dsh` 是 **GUI app**（无 CLI ✗）⇒ 拿不到 stdout ✗
+       ⇒ 只能从它的**数据目录**里找：`~/.dsh/sessions/`、`profiles/`、`logs/`
+       ⇒ 扫最近修改的文件，grep `token` / `http://127.0.0.1` 关键字 ✓
+
+    ⚠️ **token 值脱敏** ✓（只回前 8 位 + 长度），绝不回明文 ✗
+    """
+    import re as _re
+
+    home = os.path.expanduser("~")
+    base = os.path.join(home, ".dsh")
+    out = {"dirs": {}, "recent_files": [], "hits": []}
+
+    # ① 目录清单
+    for sub in ("", "sessions", "profiles", "logs", "storages"):
+        p = os.path.join(base, sub) if sub else base
+        try:
+            out["dirs"][sub or "(root)"] = sorted(os.listdir(p))[:15]
+        except OSError:
+            out["dirs"][sub or "(root)"] = "(不可读)"
+
+    # ② 最近 2 小时修改的文件（最多 25 个）
+    cutoff = time.time() - 7200
+    files = []
+    for root, _dirs, names in os.walk(base):
+        for n in names:
+            fp = os.path.join(root, n)
+            try:
+                mt = os.path.getmtime(fp)
+                if mt < cutoff:
+                    continue
+                files.append((mt, fp, os.path.getsize(fp)))
+            except OSError:
+                continue
+    files.sort(reverse=True)
+    for mt, fp, sz in files[:25]:
+        out["recent_files"].append({
+            "path": os.path.relpath(fp, home),
+            "age_min": int((time.time() - mt) / 60),
+            "size": sz,
+        })
+
+    # ③ 在这些文件里 grep token / 本地 URL（脱敏）
+    _pat_tok = _re.compile(r"(token|secret|key|auth)[\"'\s:=]+([A-Za-z0-9_\-\.]{12,})",
+                           _re.I)
+    _pat_url = _re.compile(r"https?://(?:127\.0\.0\.1|localhost)[:\d]*[^\s\"'<>]*")
+    for mt, fp, sz in files[:25]:
+        if sz > 2_000_000:                # 跳过超大文件
+            continue
+        try:
+            txt = open(fp, encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        rel = os.path.relpath(fp, home)
+        for m in _pat_url.finditer(txt):
+            u = m.group(0)
+            # 打码 query 里的敏感段
+            _b, _, _q = u.partition("?")
+            if _q:
+                _parts = []
+                for kv in _q.split("&"):
+                    _k, _, _v = kv.partition("=")
+                    if any(t in _k.lower() for t in
+                           ("token", "key", "secret", "auth")):
+                        _parts.append("%s=%s…(%d)" % (_k, _v[:8], len(_v)))
+                    else:
+                        _parts.append(kv)
+                u = _b + "?" + "&".join(_parts)
+            out["hits"].append({"file": rel, "type": "url", "value": u[:220]})
+        for m in _pat_tok.finditer(txt):
+            v = m.group(2)
+            out["hits"].append({"file": rel, "type": m.group(1).lower(),
+                                "value": "%s…(%d)" % (v[:8], len(v))})
+        if len(out["hits"]) >= 40:
+            break
+
+    out["ok"] = True
+    out["hint"] = ("`hits` 里形如 `url` 的那条就是 dsh web 的鉴权地址 ✓ "
+                   "（token 已脱敏，你在 Mac 上打开同目录文件取完整值）")
+    return out
+
+
 def _act_futu_opend_info(params):
     """**探测 FutuOpenD 版本/路径 + 抓官网下载链接** ✓（2026-11-10 用户要求升级 OpenD）。
 
@@ -3975,6 +4127,8 @@ ACTIONS = {
     "futu_upgrade_restart": _act_futu_upgrade_restart,
     "dsh_web_open": _act_dsh_web_open,
     "futu_opend_info": _act_futu_opend_info,
+    "realtime_diag": _act_realtime_diag,
+    "dsh_webauth_find": _act_dsh_webauth_find,
     "futu_opend_update": _act_futu_opend_update,
     "run_invest_research": _act_run_invest_research,
     "install_daily_plist": _act_install_daily_plist,
