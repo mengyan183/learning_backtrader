@@ -1,0 +1,11 @@
+{
+  "id": "t-20261110-141131-futu_opend_info",
+  "action": "futu_opend_info",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"candidates\": [{\"path\": \"/Applications/FutuOpenD.app\", \"CFBundleShortVersionString\": \"6.8\", \"CFBundleVersion\": \"0\", \"macos_dir\": [\"FutuOpenD\"]}], \"downloads\": [], \"notes\": [\"PyPI 只有 10.12.7208 / 10.11.7108，**没有 10.11.7188**\"], \"dirs\": {\"/Users/xingguo/futu_OpenD\": \"(不可读)\", \"/Applications\": [\"FutuOpenD.app\"]}, \"pages\": [{\"url\": \"https://www.futunn.com/download/OpenAPI\", \"ok\": true, \"len\": 14004}, {\"url\": \"https://openapi.futunn.com/futu-api-doc/quick/opend-base.html\", \"ok\": true, \"len\": 48382}], \"ok\": true}",
+  "started_at": "2026-11-10T14:29:57",
+  "finished_at": "2026-11-10T14:29:58",
+  "duration_s": 0.81
+}
