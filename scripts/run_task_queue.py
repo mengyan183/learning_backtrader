@@ -702,6 +702,109 @@ def _call_with_timeout(fn, seconds=90):
     return True, box.get("v")
 
 
+def _act_futu_upgrade_restart(params):
+    """**升级 futu-api + 重启 OpenD** ✓（2026-11-10 用户要求）。
+
+    🔴 背景：`test_futu_fed` 回执显示
+       `futu_version = 10.11.7108` ✗ 而 OpenD 是 `10.11.7188` ✗
+       ⇒ SDK 比服务端旧 ⇒ 握手失败 ⇒ `on_disconnect` 刷屏 ⇒ 无限重连 ✗
+
+    步骤（每步都回报 rc/输出，失败不中断后续 ✓）：
+      ① 记录当前 futu-api 版本
+      ② `pip install -U futu-api`（超时 300s）
+      ③ 记录新版本
+      ④ `pkill -f OpenD` + 等端口释放（最多 15s）
+      ⑤ 启动 OpenD（`open -a` 优先，其次已知路径）
+      ⑥ 等 12s 再探端口
+    ⚠️ 本动作**会杀掉 OpenD 进程** ✗ —— 属于用户明确要求的运维操作 ✓
+    """
+    import socket
+    out = {"steps": {}}
+
+    def _ver():
+        try:
+            r = subprocess.run([sys.executable, "-m", "pip", "show", "futu-api"],
+                               capture_output=True, text=True, timeout=60)
+            for ln in (r.stdout or "").splitlines():
+                if ln.lower().startswith("version:"):
+                    return ln.split(":", 1)[1].strip()
+        except Exception:                 # noqa: BLE001
+            pass
+        return "?"
+
+    def _port_open(host="127.0.0.1", port=11111, t=2.0):
+        try:
+            s = socket.create_connection((host, port), t)
+            s.close()
+            return True
+        except OSError:
+            return False
+
+    out["steps"]["version_before"] = _ver()
+
+    # ② 升级（超时 300s；pip 有时会卡在编译 ⇒ 必须设上限 ✓）
+    try:
+        r = subprocess.run([sys.executable, "-m", "pip", "install", "-U", "futu-api"],
+                           capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=300)
+        out["steps"]["pip"] = {"rc": r.returncode,
+                               "tail": (r.stdout or r.stderr or "").strip()[-500:]}
+    except subprocess.TimeoutExpired:
+        out["steps"]["pip"] = {"rc": -1, "tail": "pip 超过 300 秒"}
+
+    out["steps"]["version_after"] = _ver()
+
+    # ④ 杀 OpenD
+    killed = []
+    try:
+        r = subprocess.run(["pkill", "-f", "OpenD"], capture_output=True,
+                           text=True, timeout=30)
+        killed.append("pkill rc=%s" % r.returncode)
+    except Exception as exc:              # noqa: BLE001
+        killed.append("pkill err %s" % str(exc)[:80])
+    out["steps"]["kill"] = killed
+
+    # 等端口释放（最多 15s）
+    freed = False
+    for _ in range(15):
+        if not _port_open():
+            freed = True
+            break
+        time.sleep(1)
+    out["steps"]["port_freed"] = freed
+
+    # ⑤ 启动（多路径兜底）
+    started = []
+    for cmd in (["open", "-a", "FutuOpenD"],
+                ["open", os.path.expanduser("~/futu_OpenD/OpenD.app")],
+                [os.path.expanduser("~/futu_OpenD/OpenD")]):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            started.append({"cmd": " ".join(cmd), "rc": r.returncode,
+                            "err": (r.stderr or "").strip()[:150]})
+            if r.returncode == 0:
+                break
+        except Exception as exc:          # noqa: BLE001
+            started.append({"cmd": " ".join(cmd),
+                            "err": "%s: %s" % (type(exc).__name__,
+                                               str(exc)[:100])})
+    out["steps"]["start"] = started
+
+    # ⑥ 等它起来
+    ok = False
+    for _ in range(12):
+        time.sleep(1)
+        if _port_open():
+            ok = True
+            break
+    out["steps"]["port_after_start"] = ok
+    out["ok"] = ok
+    if not ok:
+        out["hint"] = ("OpenD 没能起来 ✗ ⇒ 大概率是**登录态失效**，"
+                       "需要你在 Mac 上手动打开 OpenD 并重新登录富途账号")
+    return out
+
+
 def _act_test_futu_fed(params):
     """**验证富途 OpenD 的 `get_fed_watch_target_rate`** ✓（2026-11-05）。
 
@@ -3430,6 +3533,7 @@ ACTIONS = {
     "daily_log_tail": _act_daily_log_tail,
     "install_evolve_tasks": _act_install_evolve_tasks,
     "futu_preflight": _act_futu_preflight,
+    "futu_upgrade_restart": _act_futu_upgrade_restart,
     "run_invest_research": _act_run_invest_research,
     "install_daily_plist": _act_install_daily_plist,
     "eval_baa10y": _act_eval_baa10y,
@@ -3808,10 +3912,42 @@ def _git_commit(done):
         print("[warn] 结果提交/推送失败：%s" % exc)
 
 
+def _acquire_lock():
+    """`flock` 排他锁 ✓ —— 防止 launchd **每 10 秒起一个实例**并发抢同一任务 ✗。
+
+    🔴 2026-11-10 实测事故（用户反馈「任务一直显示排队中」）：
+       plist 是 `StartInterval = 10` ✗ 而 `run_once()` **没有并发保护** ✗
+       ⇒ 只要某个任务跑超过 10 秒（`test_futu_fed` 要 90 秒 ✗），
+         launchd 就会**再起一个实例** ⇒ 多个进程同时 `_load_pending()` 抢同一个
+         task json ⇒ `.running` 标记互相覆盖、结果文件互相覆盖 ✗
+       ⇒ 更糟：多个实例**同时调 futu SDK** ⇒ 直接加重 OpenD 重连循环 ✗
+    拿不到锁就**直接退出**（本次跳过，10 秒后自然重试 ✓），不阻塞 ✓
+    """
+    try:
+        import fcntl
+    except ImportError:                    # 非 POSIX ⇒ 退化为无锁 ✓
+        return object()
+    p = os.path.join(QUEUE, ".queue.lock")
+    try:
+        fh = open(p, "w")
+    except OSError:
+        return object()
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return fh
+    except OSError:
+        fh.close()
+        return None
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Mac 侧任务队列执行器")
     ap.add_argument("--no-commit", action="store_true", help="只执行不提交（调试）")
     args = ap.parse_args(argv)
+    lock = _acquire_lock()
+    if lock is None:
+        print("[skip] 上一轮仍在执行（flock 未释放）⇒ 本轮跳过")
+        return 0
     done = run_once(commit=not args.no_commit)
     for i, s in done:
         print("%s -> %s" % (i, s))
