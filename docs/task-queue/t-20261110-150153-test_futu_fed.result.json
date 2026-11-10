@@ -1,0 +1,11 @@
+{
+  "id": "t-20261110-150153-test_futu_fed",
+  "action": "test_futu_fed",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"host\": \"127.0.0.1\", \"port\": 11111, \"futu_version\": \"10.12.7208\", \"has_method\": true, \"ret\": \"0\", \"ok\": false, \"error\": \"接口返回非 OK：0 ✗\", \"raw\": \"\"}",
+  "started_at": "2026-11-10T15:04:36",
+  "finished_at": "2026-11-10T15:04:38",
+  "duration_s": 1.28
+}
