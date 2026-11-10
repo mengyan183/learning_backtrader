@@ -1674,8 +1674,12 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     # 🔴 2026-10-31 精简：2600 → **1200** 字 ✗ ——
     # prompt 要求 ≤800 字，模型实际写 1500+ ✗ ⇒ 简报被归因吃掉 25 行 ✗
     # 截断后仍保留「逐标的 + 风险点 + 仓位合理性」三段主干 ✓
+    # 🔴 2026-11-10 用户反馈「深度归因被截断」✗ —— 查证后**不是 `max_tokens`
+    #    不够**（归因已是 4096 ✓，模型写得完）✗ 而是这里的**展示层截断** `[:1200]` ✗
+    #    （markdown 版早就是 `[:3000]` ⇒ 两个出口不一致 ✗）
+    #    ⇒ 飞书版提到 3000，与 markdown 对齐 ✓
     _attr_txt = ((_mc + "\n\n" if _mc else "")
-                 + (attribution or "（归因生成失败，已降级跳过）").strip()[:1200])
+                 + (attribution or "（归因生成失败，已降级跳过）").strip()[:3000])
     secs.append(("🔍 深度归因 · %s" % _attr_tag, _AI_ACTION_NOTE + "\n" + _attr_txt))
     secs.append("hr")
     secs.append(("⚖️ 裁判裁决 · %s【研究参考】" % _attr_tag,
