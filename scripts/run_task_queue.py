@@ -747,15 +747,27 @@ def _act_futu_opend_update(params):
                        "和 `ls ~/futu_OpenD/` 把结果贴给我")
         return out
 
-    # 找 OpenD.xml（同目录 / 上级目录）
+    # 找 OpenD.xml ✓
+    # 🔴 2026-11-10 `futu_opend_info` 回执：GUI 版装在 `/Applications/FutuOpenD.app`，
+    #    而 `~/futu_OpenD` **不可读**（不存在）✗ ⇒ 配置多半在 GUI 版自己的目录里 ✓
+    #    ⇒ 除同目录外，再扫三处 GUI 版常见位置 ✓
     base = os.path.dirname(bin_path)
     xml = None
-    for rel in ("OpenD.xml", "../OpenD.xml", "../../OpenD.xml"):
-        p = os.path.normpath(os.path.join(base, rel))
+    cands_xml = [os.path.join(base, r) for r in
+                 ("OpenD.xml", "../OpenD.xml", "../../OpenD.xml")]
+    cands_xml += [
+        os.path.expanduser("~/.com.futunn.FutuOpenD/OpenD.xml"),
+        os.path.expanduser("~/Library/Application Support/FutuOpenD/OpenD.xml"),
+        os.path.expanduser("~/futu_OpenD/OpenD.xml"),
+        "/Applications/FutuOpenD.app/Contents/Resources/OpenD.xml",
+    ]
+    for p in cands_xml:
+        p = os.path.normpath(p)
         if os.path.isfile(p):
             xml = p
             break
     out["steps"]["cfg_file"] = xml or "(未找到，将不带 -cfg_file 运行)"
+    out["steps"]["cfg_searched"] = [os.path.normpath(p) for p in cands_xml]
 
     # ② 停 OpenD
     try:
