@@ -1,0 +1,11 @@
+{
+  "id": "t-20261110-145351-test_futu_fed",
+  "action": "test_futu_fed",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"host\": \"127.0.0.1\", \"port\": 11111, \"futu_version\": \"10.12.7208\", \"has_method\": true, \"ok\": false, \"error\": \"子进程输出无法解析 ✗：2026-11-10 14:55:17,234 | 76790 | 140704410952128 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7525813315363975118(1) context=<futu.quote.open_quote_context.OpenQuoteContex | stderr=\"}",
+  "started_at": "2026-11-10T14:55:15",
+  "finished_at": "2026-11-10T14:55:17",
+  "duration_s": 1.58
+}
