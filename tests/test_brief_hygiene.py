@@ -61,3 +61,22 @@ def test_agent_route_defaults_and_override(monkeypatch):
 
 def test_agent_route_covers_three_modules():
     assert set(ir.AGENT_ROUTES) == {"sentiment", "attribution", "judge"}
+
+
+def test_clip_at_sentence_cuts_at_period():
+    """超长文本必须在**句号处**收尾，不能砍半句（2026-11-10 实测）。"""
+    body = "第一句讲归因。" * 30
+    out = ir._clip_at_sentence(body, 1200)
+    assert len(out) <= 1200
+    assert out.endswith("。"), "截断点不在句号处"
+
+
+def test_clip_at_sentence_keeps_short_text():
+    assert ir._clip_at_sentence("很短的一句。", 1200) == "很短的一句。"
+
+
+def test_clip_at_sentence_falls_back_when_no_period():
+    """全篇没有句号 ⇒ 退化为 `…` 收尾，不硬切出半句感。"""
+    out = ir._clip_at_sentence("啊" * 2000, 1200)
+    assert len(out) <= 1201
+    assert out.endswith("…")

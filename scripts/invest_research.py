@@ -1592,6 +1592,21 @@ _ARTIFACT_RE = re.compile(r"^\s*[A-Za-z_]\w*(\.[A-Za-z_]\w*)+\s*$")
 _SELFCHECK_RE = re.compile(r"(符合上限|核验|字数|已按去空白)")
 
 
+def _clip_at_sentence(text, limit):
+    """在**句号处**收尾，不把话砍半句 ✓（2026-11-10 用户反馈「归因被截断」）。
+
+    🔴 原来是裸 `text[:1200]` ✗ —— 断在「每日重置的复利损耗也会让组合持」这种
+       半句上，读者以为是模型没写完 ✗（实际是代码切的 ✗）
+    """
+    s = str(text or "")
+    if len(s) <= limit:
+        return s
+    cut = max(s.rfind("。", 0, limit), s.rfind("\n", 0, limit))
+    if cut > limit * 0.6:                 # 收尾点足够靠后 ⇒ 用句号
+        return s[:cut + 1]
+    return s[:limit].rstrip() + "…"
+
+
 def _strip_llm_artifacts(text):
     """剥掉 LLM 吐出来的**伪键名**与**字数自检**行 ✓。
 
@@ -1674,12 +1689,12 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     # 🔴 2026-10-31 精简：2600 → **1200** 字 ✗ ——
     # prompt 要求 ≤800 字，模型实际写 1500+ ✗ ⇒ 简报被归因吃掉 25 行 ✗
     # 截断后仍保留「逐标的 + 风险点 + 仓位合理性」三段主干 ✓
-    # 🔴 2026-11-10 用户反馈「深度归因被截断」✗ —— 查证后**不是 `max_tokens`
-    #    不够**（归因已是 4096 ✓，模型写得完）✗ 而是这里的**展示层截断** `[:1200]` ✗
-    #    （markdown 版早就是 `[:3000]` ⇒ 两个出口不一致 ✗）
-    #    ⇒ 飞书版提到 3000，与 markdown 对齐 ✓
+    # 🔴 2026-11-10：截断问题**不是 max_tokens**（已 4096）而是展示层硬切 ✗
+    #    ⇒ 改用「**句号处收尾**」的软截断：既不半句断掉，也不让简报无限长 ✓
+    #    （prompt 已要求 ≤800 字；1200 是留给模型超写的缓冲 ✓）
     _attr_txt = ((_mc + "\n\n" if _mc else "")
-                 + (attribution or "（归因生成失败，已降级跳过）").strip()[:3000])
+                 + _clip_at_sentence(
+                     (attribution or "（归因生成失败，已降级跳过）").strip(), 1200))
     secs.append(("🔍 深度归因 · %s" % _attr_tag, _AI_ACTION_NOTE + "\n" + _attr_txt))
     secs.append("hr")
     secs.append(("⚖️ 裁判裁决 · %s【研究参考】" % _attr_tag,
