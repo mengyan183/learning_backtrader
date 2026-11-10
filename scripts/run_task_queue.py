@@ -330,6 +330,11 @@ FETCH_SCRIPTS = (
     #      curl_cffi/nodriver/FlareSolverr ⇒ 解决不了 iframe+Referer ✗
     #    富途 `get_fed_watch_target_rate()` ⇒ **官方** ✓ 零新增依赖 ✓
     "fetch_fedwatch_futu.py",
+    # 🔴 2026-11-10：补 `sync_positions.py` ✓ —— 持仓停更 4 天（11-06）
+    #    根因是 OpenD 挂了 ✗ 现在 OpenD 已恢复（`test_futu_fed` ret=0 / 1.28s）✓
+    #    ⇒ 需要手动触发一次把 `positions.csv` 推到最新 ✓
+    #    ⚠️ 它**不在每日链的 fetch 段**，而是由 `fg-daily` 串在 pipeline 之后 ✓
+    "sync_positions.py",
 )
 
 
@@ -1704,7 +1709,11 @@ def _act_run_fetch_step(params):
     def _snap():
         import glob as _g
         snap = {}
-        for p in _g.glob(os.path.join(ROOT, "Data", "raw", "*.csv")):
+        # 🔴 2026-11-10：原来只扫 `Data/raw/*.csv` ✗
+        #    而 `sync_positions.py` 写的是 **`Data/positions.csv`**（顶层 ✗）
+        #    ⇒ 快照漏掉它 ⇒ 跑完看不出「有没有更新」✗ ⇒ 两层都扫 ✓
+        for p in (_g.glob(os.path.join(ROOT, "Data", "raw", "*.csv"))
+                  + _g.glob(os.path.join(ROOT, "Data", "*.csv"))):
             name = os.path.basename(p)
             try:
                 import pandas as _pd
