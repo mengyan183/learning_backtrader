@@ -3927,9 +3927,11 @@ PRIORITY_ACTIONS = ("restart_dashboard", "restart_queue")
 #:    的 json 留在队列里、但 `.result.json` 在 `git reset` 时被丢了 ✗
 #:    ⇒ `_load_pending` 每一轮都把它们当新任务**重跑** ✗
 #:    ⇒ 队列每 10 秒的窗口全被老任务吃掉 ⇒ 新任务看起来「一直排队中」✗
-#: ⚠️ 阈值取 **24 小时**（原 6 小时）✓ —— 6 小时太激进：队列一停 2 小时，
-#:    恢复后就会把「刚下发但还没跑」的任务一起归档掉 ✗（2026-11-10 实测）
-STALE_PENDING_HOURS = 24
+#: ⚠️ 阈值 **6 小时**（曾改 24，已改回）✓
+#:    24h 的问题：11-09 那批僵尸任务才 18 小时 ⇒ 逃过归档 ✗ 继续每轮重跑 ✗
+#:    6h 当初误伤「刚下发」的原因不是阈值，而是**判据用了 mtime** ✗
+#:    ⇒ 判据改成 `created_at`（见 `_archive_stale_pending`）后，6h 是安全的 ✓
+STALE_PENDING_HOURS = 6
 
 
 def _archive_stale_pending(hours=STALE_PENDING_HOURS):
@@ -3967,8 +3969,13 @@ def _archive_stale_pending(hours=STALE_PENDING_HOURS):
                     t_created = time.mktime(time.strptime(_c, "%Y-%m-%dT%H:%M:%S"))
             except (OSError, ValueError, KeyError):
                 t_created = 0.0
-            newest = max(t_created, os.path.getmtime(p))
-            if newest > cutoff:
+            # 🔴 2026-11-10 第二次修正：**只用 `created_at`**（权威）✓
+            #    上一版用 `max(created_at, mtime)` ✗ —— 老任务被重新检出后
+            #    mtime 变新 ⇒ 看起来像新任务 ⇒ 永远归档不掉 ✗
+            #    （实测：11-09 那批 5 个任务在 11-10 15:20 仍 pending ✗）
+            #    `created_at` 缺失时才退回 mtime ✓
+            _age_base = t_created or os.path.getmtime(p)
+            if _age_base > cutoff:
                 continue
             os.makedirs(dst, exist_ok=True)
             shutil.move(p, os.path.join(dst, name))
