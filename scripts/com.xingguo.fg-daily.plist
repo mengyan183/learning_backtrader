@@ -11,11 +11,11 @@
 		<key>FG_HERMES_URL</key>
 		<string>http://127.0.0.1:8642/v1/chat/completions</string>
 		<key>FG_LLM_MODEL</key>
-		<string>deepseek/deepseek-flash</string>
+		<string>deepseek-flash</string>
 		<key>FG_LLM_PROXY</key>
 		<string>http://127.0.0.1:7890</string>
 		<key>FG_LLM_URL</key>
-		<string>http://127.0.0.1:8642/v1/chat/completions</string>
+		<string>https://api.deepseek.com/v1/chat/completions</string>
 		<key>HTTPS_PROXY</key>
 		<string>http://127.0.0.1:7890</string>
 		<key>HTTP_PROXY</key>

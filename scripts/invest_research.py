@@ -555,7 +555,11 @@ def _chat(url, key, model, system, user, max_tokens=1200, proxy=None,
             if not out.strip() and reasoning_fallback:
                 out = msg.get("reasoning_content") or ""
             if out.strip():
-                return out
+                # 🔴 2026-11-10 实测：`explainer.file_mutation.header/entry`
+                #    这类**伪键名**又出现了 ✗ —— 之前在 `build_brief_sections`
+                #    里剥，但那只覆盖飞书富文本一条路径 ✗
+                #    ⇒ 挪到 `_chat` 出口，所有调用方（含 markdown / 盘中归因）都干净 ✓
+                return _strip_llm_artifacts(out)
             last = "空响应"
         except Exception as e:
             last = e
