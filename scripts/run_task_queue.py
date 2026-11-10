@@ -1736,12 +1736,27 @@ def _act_run_fetch_step(params):
                 snap[name] = "?"
         return snap
 
+    # 🔴 2026-11-10：新增 `env` 参数 ✓ —— 有些脚本靠**环境变量**切模式 ✗
+    #    实测 `sync_positions.py` 默认 `FG_SYNC_MODE=static`（公司电脑模式 ✗）
+    #    ⇒ 完全不调富途 API ⇒ 持仓永远停在旧快照 ✗
+    #    ⇒ 必须能传 `env=FG_SYNC_MODE=live` 才能真同步 ✓
+    raw_env = str(params.get("env") or "").strip()
+    extra_env = {}
+    for kv in raw_env.split(","):
+        if "=" in kv:
+            _k, _v = kv.split("=", 1)
+            if _k.strip():
+                extra_env[_k.strip()] = _v.strip()
+    run_env = dict(os.environ)
+    run_env.update(extra_env)
+
     before = _snap()
     t0 = time.time()
     cmd = [sys.executable, os.path.join(ROOT, "scripts", script)] + extra
     try:
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=limit)
+                           encoding="utf-8", errors="replace", timeout=limit,
+                           env=run_env)
         rc, so, se = r.returncode, r.stdout or "", r.stderr or ""
     except subprocess.TimeoutExpired:
         rc, so, se = 124, "", "超过 %d 秒被强杀" % limit
@@ -1769,6 +1784,9 @@ def _act_run_fetch_step(params):
 
     return {"ok": rc == 0, "script": script, "args": extra, "rc": rc,
             "seconds": round(secs, 1),
+            # 🔴 2026-11-10：把本次**额外注入的环境变量**回显 ✓
+            #    否则「static 模式不调 API」这种坑看不出来 ✗
+            "env_extra": extra_env,
             "env_proxy": env_proxy,
             "has_proxy": bool(env_proxy.get("FG_LLM_PROXY")
                               or env_proxy.get("HTTPS_PROXY")
