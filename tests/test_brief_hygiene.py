@@ -80,3 +80,12 @@ def test_clip_at_sentence_falls_back_when_no_period():
     out = ir._clip_at_sentence("啊" * 2000, 1200)
     assert len(out) <= 1201
     assert out.endswith("…")
+
+
+def test_strip_removes_markdown_heading():
+    """模型吐的 `## 一、逐标的归因` 必须去掉 `##`（飞书不解析 markdown）。"""
+    raw = "## 一、逐标的归因\nAXTX 亏 92.5%。\n### 二、组合风险点\n现金 -884。"
+    out = ir._strip_llm_artifacts(raw)
+    assert "##" not in out
+    assert "一、逐标的归因" in out
+    assert "二、组合风险点" in out
