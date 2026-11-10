@@ -1244,7 +1244,13 @@ def _act_test_futu_fed(params):
         #    ⇒ 接口明明成功了 ✗ 却被判成失败 ✗ 还提前 return 丢掉了 data ✗
         #    实测：`ret=0` `has_method=True` ⇒ **接口是通的** ✓
         #    ⇒ 判据改成 `ret == 0` ✓（同时兼容字符串形式 ✗）
-        ok = (ret == 0) or ("RET_OK" in str(ret))
+        # 🔴 2026-11-10 第三次修正：**`ret` 现在是字符串** ✗
+        #    改成子进程后，子进程里做了 `str(ret)[:80]` ⇒ 回到父进程是 `"0"` ✗
+        #    而 `"0" == 0` 是 **False** ✗ ⇒ 接口明明成功（`ret=0`）却报
+        #    「接口返回非 OK：0」✗（15:01 那份回执就是这样）
+        #    ⇒ 统一转成字符串再比 ✓
+        _ret_s = str(ret).strip()
+        ok = _ret_s in ("0", "RET_OK") or ("RET_OK" in _ret_s)
         out["ok"] = ok
         if not ok:
             out["error"] = "接口返回非 OK：%s ✗" % str(ret)[:200]
