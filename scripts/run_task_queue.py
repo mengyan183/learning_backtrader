@@ -3665,7 +3665,9 @@ PRIORITY_ACTIONS = ("restart_dashboard", "restart_queue")
 #:    的 json 留在队列里、但 `.result.json` 在 `git reset` 时被丢了 ✗
 #:    ⇒ `_load_pending` 每一轮都把它们当新任务**重跑** ✗
 #:    ⇒ 队列每 10 秒的窗口全被老任务吃掉 ⇒ 新任务看起来「一直排队中」✗
-STALE_PENDING_HOURS = 6
+#: ⚠️ 阈值取 **24 小时**（原 6 小时）✓ —— 6 小时太激进：队列一停 2 小时，
+#:    恢复后就会把「刚下发但还没跑」的任务一起归档掉 ✗（2026-11-10 实测）
+STALE_PENDING_HOURS = 24
 
 
 def _archive_stale_pending(hours=STALE_PENDING_HOURS):
@@ -3690,7 +3692,21 @@ def _archive_stale_pending(hours=STALE_PENDING_HOURS):
         if os.path.exists(os.path.join(QUEUE, tid + ".result.json")):
             continue
         try:
-            if os.path.getmtime(p) > cutoff:
+            # 🔴 2026-11-10 实测事故：**只看 mtime 会把刚到的新任务归档掉** ✗
+            #    （13:49 下发的 `test_futu_fed` 在 13:53 就被归档 ✗）
+            #    原因：文件是 fg-sync **重新检出**的，mtime 可能被刷新成旧值/不一致 ✗
+            #    ⇒ 改用 `created_at`（任务 json 里的权威字段）+ mtime，**取较新者** ✓
+            t_created = 0.0
+            try:
+                with open(p, encoding="utf-8") as _fh:
+                    _spec = json.load(_fh)
+                _c = str(_spec.get("created_at") or "")
+                if _c:
+                    t_created = time.mktime(time.strptime(_c, "%Y-%m-%dT%H:%M:%S"))
+            except (OSError, ValueError, KeyError):
+                t_created = 0.0
+            newest = max(t_created, os.path.getmtime(p))
+            if newest > cutoff:
                 continue
             os.makedirs(dst, exist_ok=True)
             shutil.move(p, os.path.join(dst, name))
@@ -3935,7 +3951,7 @@ def run_once(commit=True):
               % (auto["moved"], auto.get("dest")))
     # 🔴 2026-11-10：先把「超时无回执」的失效任务归档 ✓
     #    否则它们每轮都被当新任务重跑，新任务永远排不上 ✗
-    _archive_stale_pending()
+    _moved = _archive_stale_pending()
     done = []
     for spec in _load_pending():
         action = str(spec.get("action") or "")
@@ -3986,14 +4002,19 @@ def run_once(commit=True):
             _clear_running(spec["id"])
 
     # 只有重装结果回写、没有新任务时也要提交 ✓（否则结果永远留在 Mac 本地 ✗）
-    if commit and (done or reinstalled):
+    # 🔴 2026-11-10：**归档也要提交** ✗ —— 原来只在 `done or reinstalled` 时提交 ✗
+    #    ⇒ 归档只发生在 Mac 本地 ⇒ origin 上任务 json 还在 ⇒ 两边分叉 ✗
+    #    （实测：Mac 显示「待执行 0」，origin 上仍有 2 个）
+    if commit and (done or reinstalled or _moved):
         if done:
             # 2026-10-29：顺带瘦身 ✓ —— 每个任务两个 json 永不清理会无限涨 ✗
             dropped = _prune_queue()
             if dropped:
                 print("[prune] 清理 %d 个旧任务文件（只留最近 %d 个）"
                       % (len(dropped), KEEP_TASKS))
-        _git_commit(done or [(t, "reinstall") for t in reinstalled])
+        _git_commit(done
+                    or [(t, "reinstall") for t in reinstalled]
+                    or [("stale", "archived%d" % len(_moved))])
     return done
 
 
