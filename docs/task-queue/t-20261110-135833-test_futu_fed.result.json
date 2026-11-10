@@ -1,0 +1,11 @@
+{
+  "id": "t-20261110-135833-test_futu_fed",
+  "action": "test_futu_fed",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"host\": \"127.0.0.1\", \"port\": 11111, \"futu_version\": \"10.12.7208\", \"has_method\": true, \"ok\": false, \"error\": \"**futu SDK 90 秒无响应** ✗ —— OpenD 疑似进入无限重连循环（日志里 `list context failed` 刷屏）⇒ 需重启 OpenD，不是本脚本的问题 ✓\"}",
+  "started_at": "2026-11-10T14:01:03",
+  "finished_at": "2026-11-10T14:02:34",
+  "duration_s": 90.71
+}
