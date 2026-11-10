@@ -702,6 +702,106 @@ def _call_with_timeout(fn, seconds=90):
     return True, box.get("v")
 
 
+def _act_dsh_web_open(params):
+    """**自动打开 dsh web 的鉴权 URL** ✓（2026-11-10 用户要求「提供自动化方案」）。
+
+    🔴 现象：`dsh web authentication required; reopen the URL printed by dsh web.`
+       ⇒ 手工做法是「跑 `dsh web`，把打印的 URL 复制到浏览器」✗
+       ⇒ 这里自动做：跑 → 抓 stdout 里的 URL → `open <url>` ✓
+
+    步骤：
+      ① 找 `dsh` 可执行文件（PATH / `~/.local/bin` / `/usr/local/bin` / `/opt/homebrew/bin`）
+      ② `Popen(["dsh","web"])`，读前 40 行 stdout（最多 20 秒）
+      ③ 正则抓第一个 `http://…` / `https://…`
+      ④ `open <url>`（macOS 默认浏览器）
+      ⑤ 杀掉子进程（避免它前台常驻）
+    ⚠️ 回执里的 URL **token 段已脱敏** ✓（只回 host+port+前 8 位）
+    """
+    import re as _re
+    import shutil
+
+    exe = shutil.which("dsh")
+    if not exe:
+        for cand in (os.path.expanduser("~/.local/bin/dsh"),
+                     "/usr/local/bin/dsh", "/opt/homebrew/bin/dsh",
+                     os.path.expanduser("~/.dsh/bin/dsh")):
+            if os.path.exists(cand):
+                exe = cand
+                break
+    out = {"exe": exe, "url": None, "opened": False, "lines": []}
+    if not exe:
+        out["error"] = ("找不到 `dsh` 可执行文件 ✗ ⇒ 请在 Mac 上确认它装在哪"
+                        "（`which dsh`），或把路径告诉我")
+        return out
+
+    def _mask_url(u):
+        """把 query 里的 token 打码 ✓（回执会进 git ✗）。"""
+        try:
+            base, _, q = u.partition("?")
+            if not q:
+                return base
+            parts = []
+            for kv in q.split("&"):
+                k, _, v = kv.partition("=")
+                if any(t in k.lower() for t in ("token", "key", "secret", "auth")):
+                    parts.append("%s=%s…(%d)" % (k, v[:8], len(v)))
+                else:
+                    parts.append(kv)
+            return base + "?" + "&".join(parts)
+        except Exception:                     # noqa: BLE001
+            return u[:120]
+
+    proc = None
+    try:
+        proc = subprocess.Popen([exe, "web"], stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True,
+                                encoding="utf-8", errors="replace", cwd=ROOT)
+        deadline = time.time() + 20
+        url = None
+        while time.time() < deadline:
+            line = proc.stdout.readline()
+            if not line:
+                if proc.poll() is not None:
+                    break
+                time.sleep(0.2)
+                continue
+            line = line.rstrip()
+            out["lines"].append(line[:200])
+            if len(out["lines"]) >= 40:
+                break
+            m = _re.search(r"https?://[^\s\"'<>]+", line)
+            if m:
+                url = m.group(0)
+                break
+        if url:
+            out["url"] = _mask_url(url)
+            try:
+                r = subprocess.run(["open", url], capture_output=True,
+                                   text=True, timeout=20)
+                out["opened"] = r.returncode == 0
+                if r.returncode != 0:
+                    out["open_err"] = (r.stderr or "").strip()[:150]
+            except Exception as exc:          # noqa: BLE001
+                out["open_err"] = "%s: %s" % (type(exc).__name__, str(exc)[:120])
+        else:
+            out["error"] = ("`dsh web` 20 秒内没打印出 URL ✗ ⇒ "
+                            "看 lines 里的原始输出定位")
+    except Exception as exc:                  # noqa: BLE001
+        out["error"] = "%s: %s" % (type(exc).__name__, str(exc)[:200])
+    finally:
+        if proc is not None:
+            try:
+                proc.terminate()
+                proc.wait(timeout=5)
+            except Exception:                 # noqa: BLE001
+                try:
+                    proc.kill()
+                except Exception:             # noqa: BLE001
+                    pass
+    out["ok"] = bool(out.get("opened"))
+    return out
+
+
 def _act_futu_upgrade_restart(params):
     """**升级 futu-api + 重启 OpenD** ✓（2026-11-10 用户要求）。
 
@@ -3534,6 +3634,7 @@ ACTIONS = {
     "install_evolve_tasks": _act_install_evolve_tasks,
     "futu_preflight": _act_futu_preflight,
     "futu_upgrade_restart": _act_futu_upgrade_restart,
+    "dsh_web_open": _act_dsh_web_open,
     "run_invest_research": _act_run_invest_research,
     "install_daily_plist": _act_install_daily_plist,
     "eval_baa10y": _act_eval_baa10y,

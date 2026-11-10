@@ -25,6 +25,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import date, datetime
 from pathlib import Path
 
@@ -71,7 +72,22 @@ TASKS = [
     "com.fg.quarterly-walkforward",   # 季度首日 08:00 重标定
     "com.xingguo.fg-evolve-verify",   # 每日 06:10 假说验证（数据过期闸门 return2 不回写）
     "com.xingguo.fg-evolve-weekly",   # 每周一 07:00 进化周报（默认不推飞书）
+    # 🔴 2026-11-10 补：下面四个**早已部署但没被监控** ✗
+    #    ⇒ 队列卡死 100 分钟、watcher 停了，任务页照样显示「全部正常」✗
+    "com.xingguo.fg-task-queue",      # 每 10 秒 任务队列（fg-sync 执行端）
+    "com.xingguo.fg-sync-watcher",    # 常驻 飞书分片 watcher（fg-sync 入口）
+    "com.xingguo.fg-realtime",        # 常驻 盘中实时行情
+    "com.xingguo.fg-weekly-review",   # 每周一 07:30 周报
 ]
+
+#: 🔴 高频/常驻任务的**活性阈值**（秒）✓（2026-11-10 新增）
+#: 为什么单独处理：「注册了」≠「活着」✗ —— 队列 plist 一直在，进程却可能卡死 ✗
+#: ⇒ 这些任务额外检查「日志文件 mtime 距今多少秒」✓
+HEARTBEAT_TASKS = {
+    "com.xingguo.fg-task-queue":   300,    # 每 10 秒跑一次 ⇒ 5 分钟没动静就是卡了
+    "com.xingguo.fg-sync-watcher": 1800,   # 常驻，收分片才写日志 ⇒ 30 分钟
+    "com.xingguo.fg-realtime":     1800,   # 常驻，盘中才写 ⇒ 30 分钟
+}
 
 #: 任务频率（2026-10-28 新增展示）。
 #: 为什么需要：页面只显示「最后日期」，于是**每周日**跑的 kb-update（10-25）、
@@ -87,6 +103,10 @@ TASK_SCHEDULE = {
     "com.fg.quarterly-walkforward":  "每季度首日 08:00",
     "com.xingguo.fg-evolve-verify":  "每日 06:10",
     "com.xingguo.fg-evolve-weekly":  "每周一 07:00",
+    "com.xingguo.fg-task-queue":     "每 10 秒（常驻）",
+    "com.xingguo.fg-sync-watcher":   "常驻（收分片即触发）",
+    "com.xingguo.fg-realtime":       "常驻（盘中）",
+    "com.xingguo.fg-weekly-review":  "每周一 07:30",
 }
 
 # 任务 → 日志文件候选（plist StandardOutPath）。launchd 不暴露"最后运行时间"，
@@ -129,6 +149,24 @@ def _task_last_run(label: str):
     if best_mt is None:
         return None, None
     return datetime.fromtimestamp(best_mt).strftime("%Y-%m-%d %H:%M"), best_p
+
+
+def _task_log_age(label: str):
+    """日志 mtime 距今**多少秒** ✓（`None` = 一个候选日志文件都不存在）。
+
+    给 `HEARTBEAT_TASKS` 用 —— 「注册了」不等于「活着」✗
+    """
+    best_mt = None
+    for rel in TASK_LOG.get(label) or []:
+        p = Path(rel) if rel.startswith("/") else REPO / rel
+        if not p.exists():
+            continue
+        mt = p.stat().st_mtime
+        if best_mt is None or mt > best_mt:
+            best_mt = mt
+    if best_mt is None:
+        return None
+    return int(time.time() - best_mt)
 
 
 def _last_date_csv(path: Path, col: str, symbols=None):
@@ -226,15 +264,30 @@ def collect_status(today=None):
                   if line.split() and len(line.split()) >= 3}
     task_rows = []
     for t in TASKS:
-        ok = t in registered
+        is_reg = t in registered
         last_run, last_run_file = _task_last_run(t)
-        task_rows.append({"label": t, "registered": ok, "ok": ok,
+        # 🔴 2026-11-10：`HEARTBEAT_TASKS` 额外查「日志多久没动」✗
+        #    「注册了」≠「活着」✗ —— 队列 plist 一直在，进程却可能卡死 ✗
+        #    （实测：队列卡了 100 分钟，任务页仍显示「全部正常」✗）
+        age = _task_log_age(t) if t in HEARTBEAT_TASKS else None
+        tol = HEARTBEAT_TASKS.get(t)
+        alive = True
+        if tol is not None and age is not None:
+            alive = age <= tol
+        ok = is_reg and alive
+        task_rows.append({"label": t, "registered": is_reg, "ok": ok,
                           "schedule": TASK_SCHEDULE.get(t, "—"),
                           "last_run": last_run,
+                          "heartbeat_age": age,
+                          "heartbeat_tol": tol,
                           "last_run_file": str(last_run_file) if last_run_file else None})
-        if not ok:
+        if not is_reg:
             issues.append("定时任务未注册：%s" % t)
             keys.append("task:%s" % t)
+        elif not alive:
+            issues.append("%s：日志 %d 秒没动静（阈值 %d 秒）⇒ 进程疑似卡死"
+                          % (t, age, tol))
+            keys.append("task:%s:stale%d" % (t, age // 60))
 
     return {"data": data_rows, "tasks": task_rows,
             "issues": issues, "keys": keys, "all_ok": not issues}
