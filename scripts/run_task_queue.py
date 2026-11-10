@@ -952,8 +952,42 @@ def _act_dsh_web_open(params):
                 break
     out = {"exe": exe, "url": None, "opened": False, "lines": []}
     if not exe:
-        out["error"] = ("找不到 `dsh` 可执行文件 ✗ ⇒ 请在 Mac 上确认它装在哪"
-                        "（`which dsh`），或把路径告诉我")
+        # 🔴 2026-11-10 第一次跑就「找不到 dsh」✗ —— 只查了 5 个固定路径 ✗
+        #    ⇒ 改做**广谱搜索** ✓（不猜，靠系统自己说它在哪）
+        #    ① `mdfind`（Spotlight 索引）② `~/.dsh` 下找可执行文件
+        #    ③ npm 全局 bin ④ /Applications 里的 app ⑤ `which -a` 多个别名
+        out["search"] = {}
+        _cmds = {
+            "mdfind": ["/usr/bin/mdfind", "-name", "dsh"],
+            "which_all": ["/usr/bin/which", "-a", "dsh", "dsh-cli", "dshweb"],
+            "npm_global": ["/bin/sh", "-c",
+                           "npm root -g 2>/dev/null; npm bin -g 2>/dev/null"],
+            "find_dot_dsh": ["/bin/sh", "-c",
+                             "find \"$HOME/.dsh\" -maxdepth 3 -type f "
+                             "-perm -u+x 2>/dev/null | head -20"],
+            "apps": ["/bin/sh", "-c",
+                     "ls /Applications 2>/dev/null | grep -i -E 'dsh|deepseek'"],
+            "brew": ["/bin/sh", "-c",
+                     "ls /opt/homebrew/bin /usr/local/bin 2>/dev/null "
+                     "| grep -i dsh | head -10"],
+        }
+        for k, c in _cmds.items():
+            try:
+                r = subprocess.run(c, capture_output=True, text=True,
+                                   encoding="utf-8", errors="replace",
+                                   timeout=25)
+                out["search"][k] = ((r.stdout or "").strip()[:800] or "(空)")
+            except Exception as exc:      # noqa: BLE001
+                out["search"][k] = "ERR %s" % str(exc)[:100]
+        # `~/.dsh` 目录结构（键名探针里已知它存在）
+        try:
+            d = os.path.expanduser("~/.dsh")
+            out["search"]["dot_dsh_tree"] = sorted(os.listdir(d))[:20] \
+                if os.path.isdir(d) else "(不存在)"
+        except OSError as exc:
+            out["search"]["dot_dsh_tree"] = "ERR %s" % str(exc)[:80]
+        out["error"] = ("找不到 `dsh` 可执行文件 ✗ —— 已做广谱搜索，"
+                        "结果见 `search` 字段；把其中非空的那几项贴给我")
         return out
 
     def _mask_url(u):
