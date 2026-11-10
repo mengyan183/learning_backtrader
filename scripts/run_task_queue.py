@@ -3559,6 +3559,50 @@ ACTIONS = {
 PRIORITY_ACTIONS = ("restart_dashboard", "restart_queue")
 
 
+#: 待执行任务超过这么久还没回执 ⇒ 视为**失效**，自动归档 ✓（2026-11-10）
+#: 🔴 事故：11-09 那批任务（`deepseek_probe` / `git_state` ×3 / `clean_sync_partial`）
+#:    的 json 留在队列里、但 `.result.json` 在 `git reset` 时被丢了 ✗
+#:    ⇒ `_load_pending` 每一轮都把它们当新任务**重跑** ✗
+#:    ⇒ 队列每 10 秒的窗口全被老任务吃掉 ⇒ 新任务看起来「一直排队中」✗
+STALE_PENDING_HOURS = 6
+
+
+def _archive_stale_pending(hours=STALE_PENDING_HOURS):
+    """把**超时仍无回执**的任务 json 挪进 `_stale/` ✓（不删，可人工恢复）。
+
+    判据：json 的 mtime 早于 `hours` 前，且**没有**同名 `.result.json`。
+    ⚠️ 只挪 `docs/task-queue/*.json`，不碰 `.result.json` / `.running` ✓
+    """
+    import shutil
+    dst = os.path.join(QUEUE, "_stale")
+    moved = []
+    try:
+        names = sorted(os.listdir(QUEUE))
+    except OSError:
+        return moved
+    cutoff = time.time() - hours * 3600
+    for name in names:
+        if not name.endswith(".json") or name.endswith(".result.json"):
+            continue
+        p = os.path.join(QUEUE, name)
+        tid = name[:-len(".json")]
+        if os.path.exists(os.path.join(QUEUE, tid + ".result.json")):
+            continue
+        try:
+            if os.path.getmtime(p) > cutoff:
+                continue
+            os.makedirs(dst, exist_ok=True)
+            shutil.move(p, os.path.join(dst, name))
+            moved.append(name)
+        except OSError:
+            continue
+    if moved:
+        print("[stale] 已归档 %d 个超时无回执的任务 -> _stale/" % len(moved))
+        for m in moved:
+            print("   %s" % m)
+    return moved
+
+
 def _load_pending():
     """列出待执行任务（status=pending）：**重启类优先**，其余按 id 升序。"""
     out = []
@@ -3788,6 +3832,9 @@ def run_once(commit=True):
     if auto and auto.get("moved"):
         print("[auto-clean] 已归档 %d 个插件层文件 -> %s"
               % (auto["moved"], auto.get("dest")))
+    # 🔴 2026-11-10：先把「超时无回执」的失效任务归档 ✓
+    #    否则它们每轮都被当新任务重跑，新任务永远排不上 ✗
+    _archive_stale_pending()
     done = []
     for spec in _load_pending():
         action = str(spec.get("action") or "")
