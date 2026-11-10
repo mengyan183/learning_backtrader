@@ -702,6 +702,91 @@ def _call_with_timeout(fn, seconds=90):
     return True, box.get("v")
 
 
+def _act_futu_opend_info(params):
+    """**探测 FutuOpenD 版本/路径 + 抓官网下载链接** ✓（2026-11-10 用户要求升级 OpenD）。
+
+    🔴 为什么需要：
+       `futu-api` 在 PyPI 上只有 `10.12.7208`（最新）和 `10.11.7108`（旧）✗
+       **没有 `10.11.7188`** ✗ —— 而 Mac 上的 OpenD 正是 `10.11.7188` ✗
+       ⇒ 无法用「降级 SDK」对齐 ⇒ 只能**升级 OpenD 到 7208 同代** ✓
+
+    三段（全部只读 ✓）：
+      ① 找 OpenD app / 二进制，读版本（Info.plist 或可执行文件 --version）
+      ② 列 `~/futu_OpenD` 与 `/Applications` 下的相关目录
+      ③ 抓官网 OpenAPI 下载页，正则提取 `.dmg` / `.zip` 链接
+    ⚠️ **不下载、不安装** ✗ —— 安装要替换 app，风险高，等用户确认 URL ✓
+    """
+    import re as _re
+    import urllib.request
+    out = {"candidates": [], "downloads": [], "notes": []}
+
+    # ① 找 app
+    cands = ["/Applications/FutuOpenD.app",
+             os.path.expanduser("~/Applications/FutuOpenD.app"),
+             os.path.expanduser("~/futu_OpenD/OpenD.app"),
+             "/Applications/FutuOpenD.app"]
+    seen = set()
+    for c in cands:
+        if c in seen:
+            continue
+        seen.add(c)
+        if not os.path.exists(c):
+            continue
+        info = {"path": c}
+        plist = os.path.join(c, "Contents", "Info.plist")
+        if os.path.exists(plist):
+            try:
+                r = subprocess.run(["/usr/bin/plutil", "-p", plist],
+                                   capture_output=True, text=True, timeout=20)
+                txt = r.stdout or ""
+                for k in ("CFBundleShortVersionString", "CFBundleVersion"):
+                    m = _re.search(r'"%s"\s*=>\s*"([^"]+)"' % k, txt)
+                    if m:
+                        info[k] = m.group(1)
+            except Exception:             # noqa: BLE001
+                pass
+        # 可执行文件
+        exe = os.path.join(c, "Contents", "MacOS")
+        try:
+            info["macos_dir"] = sorted(os.listdir(exe))[:5]
+        except OSError:
+            pass
+        out["candidates"].append(info)
+
+    # ② 目录
+    for d in (os.path.expanduser("~/futu_OpenD"), "/Applications"):
+        try:
+            names = [n for n in os.listdir(d) if "utu" in n or "OpenD" in n]
+            out.setdefault("dirs", {})[d] = sorted(names)[:10]
+        except OSError:
+            out.setdefault("dirs", {})[d] = "(不可读)"
+
+    # ③ 官网下载页
+    for url in ("https://www.futunn.com/download/OpenAPI",
+                "https://openapi.futunn.com/futu-api-doc/quick/opend-base.html"):
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"})
+            opener = urllib.request.build_opener()
+            proxy = os.environ.get("https_proxy") or os.environ.get("HTTPS_PROXY")
+            if proxy:
+                opener = urllib.request.build_opener(
+                    urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
+            body = opener.open(req, timeout=25).read().decode("utf-8", "ignore")
+            links = set(_re.findall(r"https?://[^\s\"'<>]+?\.(?:dmg|zip)", body))
+            out["downloads"].extend(sorted(links)[:10])
+            out.setdefault("pages", []).append({"url": url, "ok": True,
+                                                "len": len(body)})
+        except Exception as exc:          # noqa: BLE001
+            out.setdefault("pages", []).append(
+                {"url": url, "ok": False,
+                 "err": "%s: %s" % (type(exc).__name__, str(exc)[:120])})
+
+    out["notes"].append("PyPI 只有 10.12.7208 / 10.11.7108，**没有 10.11.7188**")
+    out["ok"] = True
+    return out
+
+
 def _act_dsh_web_open(params):
     """**自动打开 dsh web 的鉴权 URL** ✓（2026-11-10 用户要求「提供自动化方案」）。
 
@@ -3635,6 +3720,7 @@ ACTIONS = {
     "futu_preflight": _act_futu_preflight,
     "futu_upgrade_restart": _act_futu_upgrade_restart,
     "dsh_web_open": _act_dsh_web_open,
+    "futu_opend_info": _act_futu_opend_info,
     "run_invest_research": _act_run_invest_research,
     "install_daily_plist": _act_install_daily_plist,
     "eval_baa10y": _act_eval_baa10y,
