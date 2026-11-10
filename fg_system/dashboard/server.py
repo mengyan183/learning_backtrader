@@ -714,6 +714,142 @@ def make_handler(get_features, prices_path=None, apk_path=None, auth=None):
         out.update(r)
         return _json_ok(out)
 
+    def _queue_dir():
+        return os.path.join(config.ROOT, "docs", "task-queue")
+
+    @app.route("/api/queue_diag")
+    def _queue_diag():
+        """任务队列**只读诊断** ✓（2026-11-10 用户要求：页面自己看队列为什么卡）。
+
+        回答四个问题：
+          ① 有几个待执行（没有 `.result.json`）
+          ② 有没有残留的 `.running` 标记（>20 分钟 ⇒ 进程已死）
+          ③ 有几个队列进程（>1 个 ⇒ 并发抢任务 ✗）
+          ④ 日志最后几行说什么
+        ⚠️ **纯只读**，不改任何文件 ✓
+        """
+        import glob as _g
+        import subprocess as _sp
+        import time as _t
+
+        qdir = _queue_dir()
+        out = {"ok": True, "queue_dir": qdir}
+
+        pend = []
+        try:
+            for p in sorted(_g.glob(os.path.join(qdir, "*.json"))):
+                b = os.path.basename(p)
+                if b.endswith(".result.json"):
+                    continue
+                tid = b[:-len(".json")]
+                if not os.path.exists(os.path.join(qdir, tid + ".result.json")):
+                    pend.append(tid)
+        except OSError:
+            pass
+        out["pending"] = pend[-12:]
+        out["pending_count"] = len(pend)
+
+        runs = []
+        for p in _g.glob(os.path.join(qdir, "*.running")):
+            try:
+                age = int(_t.time() - os.path.getmtime(p))
+            except OSError:
+                age = -1
+            runs.append({"id": os.path.basename(p)[:-len(".running")],
+                         "age_sec": age, "stale": age > 1200})
+        out["running"] = runs
+
+        out["lock_exists"] = os.path.exists(os.path.join(qdir, ".queue.lock"))
+
+        try:
+            r = _sp.run(["pgrep", "-fl", "run_task_queue"],
+                        capture_output=True, text=True, timeout=10)
+            out["processes"] = [ln for ln in (r.stdout or "").splitlines() if ln][:6]
+        except Exception:                       # noqa: BLE001
+            out["processes"] = []
+
+        try:
+            with open("/tmp/fg_task_queue.log", encoding="utf-8",
+                      errors="replace") as fh:
+                out["log_tail"] = "".join(fh.readlines()[-12:])
+        except OSError:
+            out["log_tail"] = "(读不到 /tmp/fg_task_queue.log)"
+
+        verdict = []
+        if out["pending_count"] and not out["processes"]:
+            verdict.append("有 %d 个待执行，但**队列进程没在跑** ⇒ 点「修复队列」"
+                           % out["pending_count"])
+        if any(x["stale"] for x in runs):
+            verdict.append("有 %d 个残留 `.running` 标记（>20 分钟）⇒ 需清理"
+                           % sum(1 for x in runs if x["stale"]))
+        if len(out["processes"]) > 1:
+            verdict.append("检测到 **%d 个队列进程并发** ⇒ 会互相抢任务 ✗"
+                           % len(out["processes"]))
+        out["verdict"] = verdict or ["队列状态正常 ✓"]
+        return _json_ok(out)
+
+    @app.route("/api/queue_repair", methods=["POST"])
+    def _queue_repair():
+        """任务队列**修复** ✓：清残留标记 + 重启进程（2026-11-10 用户要求）。
+
+        🔴 安全（本服务默认无鉴权）：
+          ① 必须带 `{"confirm": "repair"}` 二次确认；
+          ② 只做三件事：删 >20 分钟的 `.running`、删 `.queue.lock`、
+             `launchctl kickstart` —— **不删任务 json** ✗、不碰 Data/ ✓；
+          ③ 不接受的用户参数（无注入面 ✓）。
+        """
+        payload = request.get_json(force=True, silent=True) or {}
+        if str(payload.get("confirm") or "") != "repair":
+            return Response('需要二次确认：POST {"confirm": "repair"}',
+                            status=400, mimetype="text/plain; charset=utf-8")
+        import glob as _g
+        import subprocess as _sp
+        import time as _t
+
+        qdir = _queue_dir()
+        out = {"ok": True, "removed_running": [], "removed_lock": False,
+               "kickstart": None}
+
+        # ① 删残留 .running（>20 分钟）
+        for p in _g.glob(os.path.join(qdir, "*.running")):
+            try:
+                if _t.time() - os.path.getmtime(p) <= 1200:
+                    continue
+                os.remove(p)
+                out["removed_running"].append(os.path.basename(p))
+            except OSError:
+                pass
+
+        # ② 删锁（进程已死时锁文件无意义；活进程会立刻重建 ✓）
+        lk = os.path.join(qdir, ".queue.lock")
+        if os.path.exists(lk):
+            try:
+                os.remove(lk)
+                out["removed_lock"] = True
+            except OSError:
+                pass
+
+        # ③ 重启队列（launchctl）
+        try:
+            uid = os.getuid()
+            r = _sp.run(["launchctl", "kickstart", "-k",
+                         "gui/%d/com.xingguo.fg-task-queue" % uid],
+                        capture_output=True, text=True, timeout=30)
+            out["kickstart"] = {"rc": r.returncode,
+                                "err": (r.stderr or "").strip()[:200]}
+        except Exception as exc:                # noqa: BLE001
+            out["kickstart"] = {"error": "%s: %s" % (type(exc).__name__,
+                                                     str(exc)[:150])}
+
+        # ④ 回读进程状态
+        try:
+            r2 = _sp.run(["pgrep", "-fl", "run_task_queue"],
+                         capture_output=True, text=True, timeout=10)
+            out["processes"] = [ln for ln in (r2.stdout or "").splitlines() if ln][:6]
+        except Exception:                       # noqa: BLE001
+            out["processes"] = []
+        return _json_ok(out)
+
     @app.route("/api/deploy", methods=["POST"])
     def _deploy():
         """一键部署：`git fetch origin main` + `git merge --ff-only origin/main`，再重启看板。

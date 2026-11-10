@@ -310,7 +310,13 @@
     <button id="agentBtn" class="btn-xs btn-danger" type="button" hidden>安装队列定时器</button>
     <button id="deployBtn" class="btn-xs btn-danger" type="button">一键部署最新代码</button>
     <button id="restartBtn" class="btn-xs" type="button">重启服务</button>
+    <span class="sync-sep" aria-hidden="true"></span>
+    <!-- 🔴 2026-11-10 用户要求：任务队列诊断与修复 -->
+    <button id="qDiagBtn" class="btn-xs" type="button">队列诊断</button>
+    <button id="qRepairBtn" class="btn-xs btn-danger" type="button">修复队列</button>
   </div>
+  <!-- 队列诊断结果（点「队列诊断」后填充；默认隐藏） -->
+  <pre id="qDiagOut" hidden style="margin:8px 0;padding:10px;border-radius:8px;background:rgba(0,0,0,.28);color:#d8e2ea;font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-all;max-height:340px;overflow:auto"></pre>
 
   <!-- 事实：标签 + 值（两列，窄屏单列） -->
   <div id="syncDetail" class="kv-list"></div>
@@ -1351,6 +1357,87 @@ function loadTasks() {
         }).then(function () { cb.disabled = false; });
       });
     }
+    // ── 任务队列诊断 / 修复 ✓（2026-11-10 用户要求）────────────────
+    var qd = document.getElementById("qDiagBtn");
+    var qr = document.getElementById("qRepairBtn");
+    var qo = document.getElementById("qDiagOut");
+
+    function renderDiag(d) {
+      if (!qo) { return; }
+      var lines = [];
+      lines.push("待执行 " + d.pending_count + " 个"
+                 + (d.pending_count ? "：" + (d.pending || []).join(", ") : ""));
+      if (d.running && d.running.length) {
+        d.running.forEach(function (x) {
+          lines.push("执行中标记 " + x.id + "（" + x.age_sec + " 秒前"
+                     + (x.stale ? "，**已残留**" : "") + "）");
+        });
+      } else {
+        lines.push("执行中标记：无");
+      }
+      lines.push("队列进程 " + ((d.processes || []).length) + " 个"
+                 + ((d.processes || []).length ? "：" + d.processes.join(" | ") : ""));
+      lines.push("锁文件：" + (d.lock_exists ? "存在" : "无"));
+      lines.push("");
+      (d.verdict || []).forEach(function (v) { lines.push("▶ " + v); });
+      lines.push("");
+      lines.push("── 日志尾巴 ──");
+      lines.push(d.log_tail || "(空)");
+      qo.textContent = lines.join("\n");
+      qo.hidden = false;
+    }
+
+    if (qd) {
+      qd.addEventListener("click", function () {
+        qd.disabled = true;
+        if (qo) { qo.hidden = false; qo.textContent = "诊断中…"; }
+        fetch("/api/queue_diag")
+          .then(function (r) { return r.json(); })
+          .then(function (d) { renderDiag(d); })
+          .catch(function (e) {
+            if (qo) { qo.textContent = "❌ " + e; }
+          })
+          .then(function () { qd.disabled = false; });
+      });
+    }
+
+    if (qr) {
+      qr.addEventListener("click", function () {
+        if (!window.confirm("修复任务队列？\n" +
+            "会做三件事：① 删 20 分钟前的 .running 残留标记  " +
+            "② 删 .queue.lock  ③ 重启队列进程。\n" +
+            "不会删任何任务 json。")) {
+          return;
+        }
+        qr.disabled = true;
+        if (qo) { qo.hidden = false; qo.textContent = "修复中…"; }
+        fetch("/api/queue_repair", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirm: "repair" })
+        }).then(function (r) {
+          return r.text().then(function (t) {
+            if (!r.ok) { throw new Error(t); }
+            return JSON.parse(t);
+          });
+        }).then(function (d) {
+          var parts = [];
+          parts.push("清理 .running：" + (d.removed_running || []).length + " 个");
+          parts.push("删锁：" + (d.removed_lock ? "是" : "否"));
+          parts.push("kickstart：" + JSON.stringify(d.kickstart));
+          parts.push("当前进程：" + ((d.processes || []).length) + " 个");
+          if (qo) { qo.textContent = "✅ 修复完成\n" + parts.join("\n"); }
+          setTimeout(function () {
+            fetch("/api/queue_diag")
+              .then(function (r) { return r.json(); })
+              .then(function (x) { renderDiag(x); });
+          }, 3000);
+        }).catch(function (e) {
+          if (qo) { qo.textContent = "❌ " + e; }
+        }).then(function () { qr.disabled = false; });
+      });
+    }
+
     // 安装队列定时器（看板跑在 Mac 上，有 launchctl 权限 ✓）
     var ab = document.getElementById("agentBtn");
     if (ab) {
