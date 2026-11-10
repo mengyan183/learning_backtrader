@@ -463,18 +463,15 @@ def test_judge_error_message_is_not_hardcoded():
     assert "（跳过：NIM 不可用）" not in src
 
 
-def test_reduce_order_is_written():
+def test_reduce_order_is_written(monkeypatch):
     """「减仓操作」必须给出**减仓顺序** ✓（2026-10-31 用户裁定）。
 
-    排序 = 浮亏深度 × 杠杆倍数（越大越先减）✓ 依据：
-      ① 浮亏深 ⇒ 回本数学指数级恶化（-83% 要 +488%）
-      ② 杠杆高 ⇒ 日重置损耗更快
-      ③ 盈利仓 ⇒ 不减 ✓
-
-    ⚠️ 不排序的话，照「逐标的减到上限」平均减会先砍 YINN
-    （方向最对、亏得最少）而留着 AXTX（已废）⇒ **减反了** ✗
+    ⚠️ 2026-11-10：本测试的标的（YINN/GDXU/…）已全部进**存量仓名单**
+    ⇒ 过渡期内不产生减仓 ⇒ 「减仓顺序」按设计**不再输出** ✗
+    ⇒ 这里显式模拟「过渡期外」，保住原判据 ✓
     """
     m = _load()
+    monkeypatch.setattr(m, "_is_legacy", lambda s, t=None: False)
     snap = {
         "accounts": {"stock": 9584.6},
         "positions": [

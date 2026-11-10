@@ -1115,6 +1115,20 @@ def action_brief_text(snap):
                        % (sym, mv, sys_desc, st_desc, act))
     if not out:
         return None
+    # 🔴 2026-11-10 简报瘦身 P1：**没有任何标的触发减仓**时，逐标的 6 行
+    #    全是「持有 / 持有观望」⇒ 纯冗余 ✗（实测占 ~660 字）⇒ 压成一行 ✓
+    #    ⚠️ 判据用「行里有没有『减仓』」—— 任何超硬上限的非名单标的都会产生
+    #    「减仓至上限」⇒ 有它就不折叠 ✓（不会把该减的藏起来 ✗）
+    _any_reduce = any("减仓" in ln for ln in out)
+    if not _any_reduce:
+        _brief = []
+        for _r in snap.get("positions", []):
+            _s0 = str(_r.get("symbol") or "").replace("-USDT", "")
+            _v = (snap.get("shoutu") or {}).get(_s0)
+            _brief.append("%s(%s)" % (_s0, "—" if _v is None else "%.0f" % _v))
+        out = ["· 全部**无减仓触发** ⇒ 持有观望：" + " ".join(_brief)
+               + "（括号内为守猪待兔系数）\n"
+               "· ⚠️ 名单内标的**加仓仍冻结**（第 4.6.6 条：豁免的是减仓，不是加仓）"]
     head = ("引擎A=价格风控(P1 1%规则)：市值超上限必须减到上限（硬敞口）；"
             "引擎B=贪恐系数：只定方向不动手；A+B 同时贪婪=最高减仓优先级。"
             "🟡 研究参考，实盘需人工确认。")
@@ -1145,7 +1159,9 @@ def action_brief_text(snap):
         ranked.append((abs(float(pnl)) * lev, str(r.get("symbol")),
                        float(pnl), lev))
     ranked.sort(reverse=True)
-    if len(ranked) >= 2:
+    # 🔴 2026-11-10 瘦身 P1：**没有任何标的要减**时，「减仓顺序」是纯噪音 ✗
+    #    （写着「越大越先减」，而实际一个都不减 ⇒ 读者会困惑 ✗）
+    if len(ranked) >= 2 and _any_reduce:
         head += ("\n**减仓顺序**（浮亏深度×杠杆倍数，越大越先减；"
                  "盈利仓不减）：%s"
                  % " > ".join("%s（%.0f%%×%dx）" % (s, p, l)
@@ -1732,20 +1748,20 @@ def _factor_breakdown():
         # ⇒ 回退用**最近一个非空值**并标注 `T-n` ✓
         # 比「数据缺失」有用，且**不编造**（标了差几天 ✓）
         whole = pd.read_csv(path)
+        # 🔴 2026-11-10 简报瘦身 P1：原来**每因子一行 + 权重 + 箭头** ✗
+        #    6 行 ≈ 250 字，而权重/箭头对决策没有增量信息 ✗
+        #    ⇒ 压成一行「VIX 32.6 恐惧 · TERM 6.8 极恐 · …」✓（约 110 字）
+        toks = []
         for k, s in summary.items():
             if s["score"] is None:
                 prev, lag = _prev_factor_value(whole, k)
                 if prev is None:
-                    lines.append(f"{labels[k]:8s}  —  数据缺失")
+                    toks.append("%s —" % labels[k])
                 else:
-                    lines.append(
-                        f"{labels[k]:8s}  {prev:6.2f}  ←  "
-                        f"**T-{lag}**（源数据未更新，非当日值 ✗）")
+                    toks.append("%s %.1f(T-%d)" % (labels[k], prev, lag))
                 continue
-            arrow = "→" if s["direction"] == "贪婪向" else "↓"
-            lines.append(f"{labels[k]:8s}  {s['score']:6.2f}  {arrow}  "
-                         f"{s['zone_name']}（权重 {s['weight']:.3f}）")
-        return "\n".join(lines)
+            toks.append("%s %.1f %s" % (labels[k], s["score"], s["zone_name"]))
+        return lines[0] + "\n" + " · ".join(toks)
     except Exception:
         return None
 
