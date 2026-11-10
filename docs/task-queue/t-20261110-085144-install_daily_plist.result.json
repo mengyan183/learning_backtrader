@@ -1,0 +1,11 @@
+{
+  "id": "t-20261110-085144-install_daily_plist",
+  "action": "install_daily_plist",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"result\": {\"com.xingguo.fg-daily.plist\": \"ok\", \"com.xingguo.fg-task-queue.plist\": \"已拷贝（8 秒后重装，结果下轮回写）\", \"com.xingguo.fg-weekly-review.plist\": \"ok\"}, \"verify\": {\"com.xingguo.fg-daily.plist\": {\"proxy_in_file\": {\"FG_LLM_PROXY\": \"http://127.0.0.1:7890\", \"HTTP_PROXY\": \"http://127.0.0.1:7890\", \"HTTPS_PROXY\": \"http://127.0.0.1:7890\", \"NO_PROXY\": \"127.0.0.1,localhost,::1\"}, \"env_keys\": [\"ALL_PROXY\", \"FG_HERMES_MODEL\", \"FG_HERMES_URL\", \"FG_LLM_MODEL\", \"FG_LLM_PROXY\", \"FG_LLM_URL\", \"HTTPS_PROXY\", \"HTTP_PROXY\", \"NO_PROXY\", \"all_proxy\", \"http_proxy\", \"https_proxy\", \"no_proxy\"], \"launchd\": \"path = /Users/xingguo/Library/LaunchAgents/com.xingguo.fg-daily.plist | state = not running | stdout path = /tmp/fg_daily.log | stderr path = /tmp/fg_daily.log\"}, \"com.xingguo.fg-task-queue.plist\": {\"proxy_in_file\": {\"FG_LLM_PROXY\": \"http://127.0.0.1:7890\", \"HTTP_PROXY\": \"http://127.0.0.1:7890\", \"HTTPS_PROXY\": \"http://127.0.0.1:7890\", \"NO_PROXY\": \"127.0.0.1,localhost,::1\"}, \"env_keys\": [\"ALL_PROXY\", \"FG_HERMES_MODEL\", \"FG_HERMES_URL\", \"FG_LLM_MODEL\", \"FG_LLM_PROXY\", \"FG_LLM_URL\", \"GIT_TERMINAL_PROMPT\", \"HTTPS_PROXY\", \"HTTP_PROXY\", \"NO_PROXY\", \"PATH\", \"all_proxy\", \"http_proxy\", \"https_proxy\", \"no_proxy\"], \"launchd\": \"path = /Users/xingguo/Library/LaunchAgents/com.xingguo.fg-task-queue.plist | state = running | stdout path = /tmp/fg_task_queue.log | stderr path = /tmp/fg_task_queue.log\"}, \"com.xingguo.fg-weekly-review.plist\": {\"proxy_in_file\": {}, \"env_keys\": [], \"launchd\": \"path = /Users/xingguo/Library/LaunchAgents/com.xingguo.fg-weekly-review.plist | state = not running | stdout path = /tmp/fg_weekly_review.out | stderr path = /tmp/fg_weekly_review.err\"}}, \"note\": \"⚠️ `launchctl print` **不显示 EnvironmentVariables** ✗ ⇒ 代理是否生效看 `verify.*.proxy_in_file` ✓；真实生效要等下次链跑（看 fetch 耗时）✓\"}",
+  "started_at": "2026-11-10T08:53:00",
+  "finished_at": "2026-11-10T08:53:00",
+  "duration_s": 0.09
+}
