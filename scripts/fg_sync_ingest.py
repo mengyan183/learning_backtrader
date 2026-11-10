@@ -627,7 +627,25 @@ def main():
             print("❌ git add 失败：" + r.stderr.strip()); return 2
         r = _git(args.repo, "commit", "-m", args.commit)
         if r.returncode != 0:
-            print("⚠️ commit 失败（可能无变更可提交）：" + r.stderr.strip())
+            # 🔴 2026-11-10 用户反馈：`fix_1111a` 报「⚠️ commit 失败（可能无变更可提交）」
+            #    但**改动其实早就在 origin 上** ✗ —— 这是**幂等 patch** ✓
+            #    成因：patch 基准与工作区一致 ⇒ `git apply` 不改文件 ⇒ 无变更可提交 ✗
+            #    而原提示与真正的失败（patch 冲突 / add 失败）看起来一样 ⇒ 误导 ✓
+            #    ⇒ 区分「无变更」与「真失败」✓，前者报 ✅ 并继续补推 ✓
+            _out = ((r.stdout or "") + (r.stderr or "")).strip()
+            _nochange = any(k in _out for k in (
+                "nothing to commit", "nothing added to commit",
+                "working tree clean", "无文件要提交", "没有要提交"))
+            if _nochange:
+                print("✅ 内容与现有文件一致，无需提交（幂等应用，非失败）")
+                _ok, _err = _push_with_retry(args.repo)
+                if _ok:
+                    print("✅ 已推送 origin/main（本次无新变更，历史积压已同步）")
+                else:
+                    print("⚠️ 无新变更，但补推失败：%s" % (_err or "")[:200])
+            else:
+                print("❌ commit 失败：" + _out[:400])
+                return 3
         else:
             sha = _head_short(args.repo)
             ok, err = _push_with_retry(args.repo)
