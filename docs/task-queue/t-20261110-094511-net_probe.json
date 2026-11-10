@@ -1,0 +1,9 @@
+{
+  "id": "t-20261110-094511-net_probe",
+  "action": "net_probe",
+  "params": {
+    "url": "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
+  },
+  "status": "pending",
+  "created_at": "2026-11-10T09:45:11"
+}
