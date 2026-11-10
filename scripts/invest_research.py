@@ -1579,6 +1579,20 @@ def _data_health_block(snap, sentiment=None, attribution=None, judge=None):
             lines.append("⚠️ 富途 OpenD：**不可用** —— %s（%s 检查；"
                          "持仓/成交可能停留在上一交易日 ✗ 本简报已按现有数据生成 ✓）"
                          % (st.get("reason") or "未知原因", at))
+    # 🔴 2026-11-10 实测：`futu_preflight` **只探端口**就把 `ok=True` 写进状态文件 ✗
+    #    ⇒ 简报写「富途正常」而**持仓其实停在 4 天前** ✗（11-10 那份就是这样）✗
+    #    ⇒ 健康块必须**独立核对持仓快照日期** ✓，不能只信状态文件 ✓
+    _pos_date = str(snap.get("date") or "")[:10]
+    if _pos_date:
+        try:
+            import datetime as _dt
+            _lag = (_dt.date.today() - _dt.date.fromisoformat(_pos_date)).days
+        except (TypeError, ValueError):
+            _lag = 0
+        if _lag >= 3:
+            lines.append("⚠️ 持仓快照 **%s**（%d 天前）—— 数据可能未同步 ✗ "
+                         "本简报的市值/浮亏/仓位比例均按该日数据 ✓"
+                         % (_pos_date, _lag))
     miss = [n for n, ok in (("情绪", bool(sentiment)),
                             ("归因", bool(attribution)),
                             ("裁判", _judge_ok(judge))) if not ok]
