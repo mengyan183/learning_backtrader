@@ -1723,15 +1723,27 @@ def _act_run_fetch_step(params):
                 #    ⇒ 误判「`fetch_fred` 静默成功、无文件更新」✗（实际抓成功了 ✗）
                 #    ⇒ 依次尝试 `date` / `observation_date` ✓
                 last = None
-                for col in ("date", "observation_date"):
+                # 🔴 2026-11-10：补 `snapshot_date` / `as_of` ✗ ——
+                #    `positions.csv` 的日期列**不叫 `date`** ✗ ⇒ 两个快照都记 `"?"` ✗
+                #    ⇒ 明明写入了（`已写入 accounts 60 行 / positions 180 行`）✗
+                #    却判「没有任何文件更新」✗（15:41 回执实测）
+                for col in ("date", "observation_date", "snapshot_date", "as_of"):
                     try:
                         d = _pd.read_csv(p, usecols=[col], parse_dates=[col])
                         last = d[col].max()
                         break
                     except Exception:       # noqa: BLE001
                         continue
-                snap[name] = (str(last.date())
-                              if last is not None and _pd.notna(last) else "?")
+                # 🔴 再加**行数** ✓ —— 追加式文件（positions/accounts）日期列
+                #    可能读不出，但行数一定变 ⇒ 用它兜底 ✓
+                try:
+                    rows = sum(1 for _ in open(p, encoding="utf-8",
+                                               errors="replace")) - 1
+                except OSError:
+                    rows = -1
+                _d = (str(last.date())
+                      if last is not None and _pd.notna(last) else "?")
+                snap[name] = "%s|%d" % (_d, rows)
             except Exception:               # noqa: BLE001
                 snap[name] = "?"
         return snap
