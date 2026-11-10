@@ -1157,27 +1157,62 @@ def _act_test_futu_fed(params):
 
     ctx = None
 
-    def _probe():
-        c = OpenQuoteContext(host=host, port=port)
-        try:
-            return c.get_fed_watch_target_rate()
-        finally:
-            try:
-                c.close()
-            except Exception:                 # noqa: BLE001
-                pass
+    # 🔴 2026-11-10 第二次修正：**必须用子进程**，不能用守护线程 ✗
+    #    实测：`_call_with_timeout` 超时后线程**杀不掉** ✗ ⇒ 它持有的
+    #    `OpenQuoteContext` 继续重连 ⇒ 日志里 `on_disconnect` 刷屏到
+    #    `conn=0(79)`（重连 79 次 ✗），并持续占用队列进程资源 ✗
+    #    ⇒ 改子进程：超时 `proc.kill()` **连线程一起杀干净** ✓
+    _code = (
+        "import json\n"
+        "try:\n"
+        "    from futu import OpenQuoteContext\n"
+        "    c = OpenQuoteContext(host=%r, port=%d)\n"
+        "    try:\n"
+        "        ret, data = c.get_fed_watch_target_rate()\n"
+        "        d = {'ret': str(ret)[:80]}\n"
+        "        try:\n"
+        "            d['columns'] = [str(x) for x in list(data.columns)]\n"
+        "            d['rows'] = int(len(data))\n"
+        "            d['head'] = data.head(20).to_dict(orient='records')\n"
+        "        except Exception:\n"
+        "            d['raw'] = str(data)[:1500]\n"
+        "        print(json.dumps(d, ensure_ascii=False, default=str))\n"
+        "    finally:\n"
+        "        try:\n"
+        "            c.close()\n"
+        "        except Exception:\n"
+        "            pass\n"
+        "except Exception as e:\n"
+        "    print(json.dumps({'error': '%%s: %%s' %% (type(e).__name__, str(e)[:200])}))\n"
+    ) % (host, port)
 
     try:
-        # 🔴 2026-11-10：**必须加超时** ✗ —— OpenD 重连循环时 SDK 永不返回 ✗
-        #    实测把队列卡死 100+ 分钟 ✗（守护线程兜底见 `_call_with_timeout`）
-        alive, res = _call_with_timeout(_probe, seconds=90)
-        if not alive:
+        proc = subprocess.Popen([sys.executable, "-c", _code],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, encoding="utf-8", errors="replace",
+                                cwd=ROOT)
+        try:
+            so, se = proc.communicate(timeout=90)
+        except subprocess.TimeoutExpired:
+            proc.kill()                       # ← 真正杀掉，线程一起没 ✓
+            proc.communicate()
             out["ok"] = False
             out["error"] = ("**futu SDK 90 秒无响应** ✗ —— OpenD 疑似进入"
-                            "无限重连循环（日志里 `list context failed` 刷屏）"
-                            "⇒ 需重启 OpenD，不是本脚本的问题 ✓")
+                            "无限重连循环（已 kill 子进程，不会残留重连线程 ✓）"
+                            "⇒ 需重启/升级 OpenD，不是本脚本的问题 ✓")
             return out
-        ret, data = res
+        try:
+            _res = json.loads((so or "").strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            out["ok"] = False
+            out["error"] = ("子进程输出无法解析 ✗：%s | stderr=%s"
+                            % ((so or "")[:200], (se or "")[:200]))
+            return out
+        if _res.get("error"):
+            out["ok"] = False
+            out["error"] = "子进程报错：%s" % _res["error"]
+            return out
+        ret = _res.get("ret")
         out["ret"] = str(ret)[:80]
         # 🔴 2026-11-05 **关键修复**：`futu.RET_OK` **就是整数 0** ✗
         #    我原来写 `"RET_OK" in str(ret)` ✗
@@ -1189,23 +1224,20 @@ def _act_test_futu_fed(params):
         out["ok"] = ok
         if not ok:
             out["error"] = "接口返回非 OK：%s ✗" % str(ret)[:200]
-            # 即使失败也把 data 打出来 ✓（可能是错误消息 ✗ 有价值 ✗）
-            out["raw"] = str(data)[:600]
+            out["raw"] = str(_res.get("raw") or "")[:600]
             return out
-        try:
-            out["columns"] = list(data.columns)
-            out["rows"] = int(len(data))
-            out["head"] = data.head(20).to_dict(orient="records")
-        except Exception:                   # noqa: BLE001
-            out["raw"] = str(data)[:1500]
+        if _res.get("columns"):
+            out["columns"] = _res["columns"]
+            out["rows"] = _res.get("rows")
+            out["head"] = _res.get("head")
+        else:
+            out["raw"] = str(_res.get("raw") or "")[:1500]
             return out
 
         # 可选写盘 ✓（统一成 `fedwatch.csv` 的列名 ✗ 让 `fed.py` 直接消费 ✓）
-        if write and len(data):
+        if write and out.get("head"):
             import pandas as _pd
-            d = data.copy()
-            # 取**最近一次会议**的分布 ✓ 聚合成 ease/hold/hike ✓
-            # ⚠️ 这里只做**原始落盘** ✓ 聚合逻辑等看清数据结构再写 ✗
+            d = _pd.DataFrame(out["head"])
             p = os.path.join(ROOT, "Data", "raw", "futu_fedwatch_raw.csv")
             d.to_csv(p, index=False, encoding="utf-8")
             out["written"] = os.path.relpath(p, ROOT)
@@ -1214,8 +1246,7 @@ def _act_test_futu_fed(params):
         out["error"] = "%s: %s" % (type(exc).__name__, str(exc)[:300])
         out["hint"] = ("⚠️ 若是连接失败 ⇒ **OpenD 没开** ✗ "
                        "（`~/futu_OpenD/OpenD` 或 GUI 版 ✗）")
-    # ⚠️ `ctx` 已在 `_probe()` 内部关闭 ✓（超时时由守护线程持有，
-    #    进程退出自动清理 ✓）⇒ 这里不再需要 finally 兜底 ✓
+    # ⚠️ 子进程已 `communicate()` / `kill()` 收尸 ✓ ⇒ 无残留线程 ✓
     return out
 
 
