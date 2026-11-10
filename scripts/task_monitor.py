@@ -78,6 +78,9 @@ TASKS = [
     "com.xingguo.fg-sync-watcher",    # 常驻 飞书分片 watcher（fg-sync 入口）
     "com.xingguo.fg-realtime",        # 常驻 盘中实时行情
     "com.xingguo.fg-weekly-review",   # 每周一 07:30 周报
+    # 🔴 2026-11-10 用户要求补齐最后两个 ✓
+    "com.xingguo.fg-dashboard",       # 常驻 看板服务（本页面自己）
+    "com.xingguo.fg-monitor",         # 每日 07:00 任务与数据新鲜度告警
 ]
 
 #: 🔴 高频/常驻任务的**活性阈值**（秒）✓（2026-11-10 新增）
@@ -107,6 +110,8 @@ TASK_SCHEDULE = {
     "com.xingguo.fg-sync-watcher":   "常驻（收分片即触发）",
     "com.xingguo.fg-realtime":       "常驻（盘中）",
     "com.xingguo.fg-weekly-review":  "每周一 07:30",
+    "com.xingguo.fg-dashboard":      "常驻（看板服务）",
+    "com.xingguo.fg-monitor":        "每日 07:00",
 }
 
 # 任务 → 日志文件候选（plist StandardOutPath）。launchd 不暴露"最后运行时间"，
