@@ -30,6 +30,7 @@ import sys
 import threading
 import time
 import urllib.request
+from contextlib import contextmanager
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -816,6 +817,37 @@ def _rss_titles_any(urls, limit, timeout=15):
     return []
 
 
+@contextmanager
+def _alarm(seconds, msg="timeout"):
+    """POSIX `SIGALRM` 硬超时 ⇒ 超时抛 `TimeoutError` ✓（2026-11-10）。
+
+    🔴 为什么必须加：OpenD 进入**无限重连循环**时，futu 的
+       `OpenQuoteContext()` / `get_search_news()` **永不返回** ✗
+       实测 `rerun_brief` 因此 **超时 1200 秒** ✗（`t-20261110-094008`）
+       ⇒ 整条 daily 链的新闻段被它拖死 ✗
+    ⚠️ 只在主线程可用；非 POSIX（Windows）静默跳过 ✓
+    """
+    try:
+        import signal
+    except ImportError:                       # pragma: no cover
+        yield
+        return
+    if not hasattr(signal, "SIGALRM"):
+        yield
+        return
+
+    def _h(signum, frame):
+        raise TimeoutError(msg)
+
+    old = signal.signal(signal.SIGALRM, _h)
+    signal.alarm(int(seconds))
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old)
+
+
 def fetch_news(snap):
     """大盘 + 持仓标的相关新闻。
     主源: 富途 OpenAPI GetSearchNews(本地 OpenD, 中文资讯, 无需代理)
@@ -824,58 +856,59 @@ def fetch_news(snap):
     # --- 富途主源 ---
     try:
         from futu import OpenQuoteContext
-        q = OpenQuoteContext(host="127.0.0.1", port=11111)
-        # 🔴 2026-11-02 实测：`"US stock market"` 返回的是**港股**新闻 ✗
-        # （富途是中文源，英文检索词会落到港股板块 ✗）
-        # ⇒ 改中文检索词 + **实体过滤**（标题须含美股相关词）✓
-        mkt_ret, mkt = q.get_search_news("美股", max_count=6)
-        if mkt_ret == 0 and len(mkt):
-            _MKT_ENTS = ("美股", "标普", "S&P", "纳斯达克", "纳指", "道指",
-                         "三大股", "费半", "美国", "美债")
-            out["_market"] = [
-                str(t).strip() for t in mkt["title"].tolist()
-                if any(e in str(t) for e in _MKT_ENTS)][:3]
-        for r in snap["positions"]:
-            sym = r["symbol"].replace("-USDT", "")
-            kw = {"BTC": "比特币", "ETH": "以太坊"}.get(sym, sym)
-            ret, data = q.get_search_news(kw, max_count=4)
-            if ret == 0 and len(data):
-                # 🔴 2026-11-02 实测：`CONL` 会匹配到 `ONL`（Orion Office
-                # REIT）✗ —— 富途是**模糊检索**，子串命中就算 ✓
-                # ⇒ 标题必须含**该标的代码**（词边界）✓
-                # ⚠️ 但 BTC/ETH 用中文检索「比特币」，标题里**不会写 BTC** ✗
-                # ⇒ 必须把中文别名一起算进实体词 ✓（否则 BTC 新闻全被滤掉 ✗）
-                _alias = {"BTC": ("BTC", "比特币", "bitcoin"),
-                          "ETH": ("ETH", "以太坊", "ethereum")}.get(
-                    sym, (sym,))
-                # ⚠️ `\b` 对**中文不生效** ✗ —— 中文字符在 Unicode 模式下算
-                # `\w` ⇒ `\b比特币\b` 在「发布比特币 Tracker」里匹配不到 ✗
-                # ⇒ ASCII 别名加词边界（防 ONL 误匹配），中文别名**不加** ✓
-                _asc = [a for a in _alias if a.isascii()]
-                _cjk = [a for a in _alias if not a.isascii()]
-                _parts = []
-                for a in _asc:
-                    # ⚠️ 不能用 `\b` ✗ —— 「SOXS、CONL和NVDX」里 CONL 两侧
-                    # 都是中文 ⇒ `\b` 不成立 ⇒ 正样本被误杀 ✗
-                    # ⇒ 改成「两侧不是 ASCII 字母数字」✓
-                    _parts.append(r"(?<![A-Za-z0-9])%s(?![A-Za-z0-9])"
-                                  % re.escape(a))
-                if _cjk:
-                    _parts.append("|".join(re.escape(a) for a in _cjk))
-                _pat = re.compile("|".join(_parts), re.I)
-                _kept = [str(t).strip() for t in data["title"].tolist()
-                         if _pat.search(str(t))]
-                if _kept:
-                    out[sym] = _kept[:2]
-                else:
-                    print("[news] %s 检索结果全部不含代码，已过滤 ✗（原 %d 条）"
-                          % (sym, len(data)))
-            if sym not in out:
-                # 🔴 2026-10-31：富途返回空也要**留痕** ✗ ——
-                # 原来静默跳过，简报里少几组新闻没人知道为什么 ✗
-                print("[news] 富途无结果：%s（kw=%s, ret=%s, n=%s）"
-                      % (sym, kw, ret, 0 if data is None else len(data)))
-        q.close()
+        with _alarm(45, "futu 新闻抓取超时（OpenD 疑似重连循环）"):
+            q = OpenQuoteContext(host="127.0.0.1", port=11111)
+            # 🔴 2026-11-02 实测：`"US stock market"` 返回的是**港股**新闻 ✗
+            # （富途是中文源，英文检索词会落到港股板块 ✗）
+            # ⇒ 改中文检索词 + **实体过滤**（标题须含美股相关词）✓
+            mkt_ret, mkt = q.get_search_news("美股", max_count=6)
+            if mkt_ret == 0 and len(mkt):
+                _MKT_ENTS = ("美股", "标普", "S&P", "纳斯达克", "纳指", "道指",
+                             "三大股", "费半", "美国", "美债")
+                out["_market"] = [
+                    str(t).strip() for t in mkt["title"].tolist()
+                    if any(e in str(t) for e in _MKT_ENTS)][:3]
+            for r in snap["positions"]:
+                sym = r["symbol"].replace("-USDT", "")
+                kw = {"BTC": "比特币", "ETH": "以太坊"}.get(sym, sym)
+                ret, data = q.get_search_news(kw, max_count=4)
+                if ret == 0 and len(data):
+                    # 🔴 2026-11-02 实测：`CONL` 会匹配到 `ONL`（Orion Office
+                    # REIT）✗ —— 富途是**模糊检索**，子串命中就算 ✓
+                    # ⇒ 标题必须含**该标的代码**（词边界）✓
+                    # ⚠️ 但 BTC/ETH 用中文检索「比特币」，标题里**不会写 BTC** ✗
+                    # ⇒ 必须把中文别名一起算进实体词 ✓（否则 BTC 新闻全被滤掉 ✗）
+                    _alias = {"BTC": ("BTC", "比特币", "bitcoin"),
+                              "ETH": ("ETH", "以太坊", "ethereum")}.get(
+                        sym, (sym,))
+                    # ⚠️ `\b` 对**中文不生效** ✗ —— 中文字符在 Unicode 模式下算
+                    # `\w` ⇒ `\b比特币\b` 在「发布比特币 Tracker」里匹配不到 ✗
+                    # ⇒ ASCII 别名加词边界（防 ONL 误匹配），中文别名**不加** ✓
+                    _asc = [a for a in _alias if a.isascii()]
+                    _cjk = [a for a in _alias if not a.isascii()]
+                    _parts = []
+                    for a in _asc:
+                        # ⚠️ 不能用 `\b` ✗ —— 「SOXS、CONL和NVDX」里 CONL 两侧
+                        # 都是中文 ⇒ `\b` 不成立 ⇒ 正样本被误杀 ✗
+                        # ⇒ 改成「两侧不是 ASCII 字母数字」✓
+                        _parts.append(r"(?<![A-Za-z0-9])%s(?![A-Za-z0-9])"
+                                      % re.escape(a))
+                    if _cjk:
+                        _parts.append("|".join(re.escape(a) for a in _cjk))
+                    _pat = re.compile("|".join(_parts), re.I)
+                    _kept = [str(t).strip() for t in data["title"].tolist()
+                             if _pat.search(str(t))]
+                    if _kept:
+                        out[sym] = _kept[:2]
+                    else:
+                        print("[news] %s 检索结果全部不含代码，已过滤 ✗（原 %d 条）"
+                              % (sym, len(data)))
+                if sym not in out:
+                    # 🔴 2026-10-31：富途返回空也要**留痕** ✗ ——
+                    # 原来静默跳过，简报里少几组新闻没人知道为什么 ✗
+                    print("[news] 富途无结果：%s（kw=%s, ret=%s, n=%s）"
+                          % (sym, kw, ret, 0 if data is None else len(data)))
+            q.close()
     except Exception as e:
         print("富途新闻源不可用:", e)
 
