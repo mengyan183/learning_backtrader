@@ -81,6 +81,11 @@ TASKS = [
     # 🔴 2026-11-10 用户要求补齐最后两个 ✓
     "com.xingguo.fg-dashboard",       # 常驻 看板服务（本页面自己）
     "com.xingguo.fg-monitor",         # 每日 07:00 任务与数据新鲜度告警
+    # 🔴 2026-11-11 用户要求纳入 ✓ —— 它不是贪恐系统业务，但**是我们装的** ✗
+    #    实测 `RunAtLoad=true` + `KeepAlive=true` 却**进程静默消失** ✗
+    #    （`autostart_list` 回执：`dsh_related_count=1` 但 `running: []`）
+    #    ⇒ 不监控的话，它死了 40 小时也没人知道（web 控制台打不开才被发现）
+    "com.xingguo.dsh.web",            # 常驻 dsh web 控制台（DeepSeek Harness）
 ]
 
 #: 🔴 高频/常驻任务的**活性阈值**（秒）✓（2026-11-10 新增）
@@ -90,6 +95,12 @@ HEARTBEAT_TASKS = {
     "com.xingguo.fg-task-queue":   300,    # 每 10 秒跑一次 ⇒ 5 分钟没动静就是卡了
     "com.xingguo.fg-sync-watcher": 1800,   # 常驻，收分片才写日志 ⇒ 30 分钟
     "com.xingguo.fg-realtime":     1800,   # 常驻，盘中才写 ⇒ 30 分钟
+    # 🔴 2026-11-11：dsh web 用 `~/.dsh/our-free-model/availability.json` 做心跳 ✓
+    #    为什么不用 `/tmp/dsh-web-launchd.log` ✗ —— 它**只在启动时写一行** ✗
+    #    ⇒ 进程活着时 mtime 也一直不动 ⇒ 会天天误报「卡死」✗
+    #    `availability.json` 是 dsh 运行期持续刷新的（实测 1 分钟级）✓
+    #    阈值给 **3600 秒**（1 小时）—— 它依赖上游模型源，刷新间隔可能拉长 ✓
+    "com.xingguo.dsh.web":         3600,
 }
 
 #: 任务频率（2026-10-28 新增展示）。
@@ -112,6 +123,7 @@ TASK_SCHEDULE = {
     "com.xingguo.fg-weekly-review":  "每周一 07:30",
     "com.xingguo.fg-dashboard":      "常驻（看板服务）",
     "com.xingguo.fg-monitor":        "每日 07:00",
+    "com.xingguo.dsh.web":           "常驻（dsh web 控制台）",
 }
 
 # 任务 → 日志文件候选（plist StandardOutPath）。launchd 不暴露"最后运行时间"，
@@ -135,7 +147,26 @@ TASK_LOG = {
                                        "logs/walkforward_launchd.out.log"],
     "com.xingguo.fg-evolve-verify":   ["logs/evolve_verify.log"],
     "com.xingguo.fg-evolve-weekly":   ["logs/evolve_weekly.log"],
+    # 🔴 2026-11-11：dsh web 的日志都在仓库外 ⇒ 用 `~` 前缀（下面 `_resolve_log` 会展开）✓
+    #    ① `/tmp/dsh-web-launchd.log`  —— 启动时写一行（只看「最后一次启动时间」）
+    #    ② `~/.dsh/our-free-model/availability.json` —— 运行期持续刷新（心跳用这个）✓
+    "com.xingguo.dsh.web":            ["~/.dsh/our-free-model/availability.json",
+                                       "/tmp/dsh-web-launchd.log"],
 }
+
+
+def _resolve_log(rel):
+    """把 `TASK_LOG` 里的相对/绝对/`~` 路径统一成 `Path` ✓（2026-11-11 新增）。
+
+    为什么需要：`dsh.web` 的日志在仓库外（`~/.dsh/...`、`/tmp/...`）✗
+    原来只支持「`/` 开头当绝对路径，其余拼 `REPO`」⇒ `~` 会被拼成
+    `REPO/~/.dsh/...`（不存在的路径）✗
+    """
+    if rel.startswith("/"):
+        return Path(rel)
+    if rel.startswith("~"):
+        return Path(os.path.expanduser(rel))
+    return REPO / rel
 
 
 def _task_last_run(label: str):
@@ -145,7 +176,7 @@ def _task_last_run(label: str):
     """
     best_mt, best_p = None, None
     for rel in TASK_LOG.get(label) or []:
-        p = Path(rel) if rel.startswith("/") else REPO / rel
+        p = _resolve_log(rel)
         if not p.exists():
             continue
         mt = p.stat().st_mtime
@@ -163,7 +194,7 @@ def _task_log_age(label: str):
     """
     best_mt = None
     for rel in TASK_LOG.get(label) or []:
-        p = Path(rel) if rel.startswith("/") else REPO / rel
+        p = _resolve_log(rel)
         if not p.exists():
             continue
         mt = p.stat().st_mtime
