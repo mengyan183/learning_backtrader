@@ -152,17 +152,23 @@ def review(days=7):
         suggestion = suggestion.rstrip("，,、:：;； ").strip()
         if not suggestion:
             suggestion = _before          # 全被削掉就退回原样，别给空 ✓
-        # ③ 截断：优先句号 → 逗号/分号 → 硬切 ✓
-        #    🔴 2026-11-11 实测：只找句号会退化成硬切，
-        #    输出 `…二者两次升到80时fg_index最低（1` 这种半句 ✗
+        # ③ 截断：优先句号 → 逗号/分号/顿号 → 硬切 ✓
+        #    🔴 2026-11-11 实测两轮：
+        #      第一轮：只找句号 ⇒ 退化成硬切 ⇒ `…fg_index最低（1` 半句 ✗
+        #      第二轮：找逗号但**保留了逗号** ⇒ `…并记录，` 以标点结尾 ✗
+        #    ⇒ 句号**保留**（完整句）✓；逗号/分号/顿号**剥掉**（不是句末）✗
         if len(suggestion) > 60:
-            cut = suggestion.rfind("。", 0, 60)
-            if cut <= 20:
-                cut = max(suggestion.rfind("，", 0, 60),
-                          suggestion.rfind("；", 0, 60),
-                          suggestion.rfind("、", 0, 60))
-            suggestion = (suggestion[:cut + 1] if cut > 20
-                          else suggestion[:60])
+            _per = suggestion.rfind("。", 0, 60)
+            if _per > 20:
+                suggestion = suggestion[:_per + 1]
+            else:
+                _cut = max(suggestion.rfind("，", 0, 60),
+                           suggestion.rfind("；", 0, 60),
+                           suggestion.rfind("、", 0, 60),
+                           suggestion.rfind("：", 0, 60))
+                suggestion = (suggestion[:_cut] if _cut > 20
+                              else suggestion[:60])
+            suggestion = suggestion.rstrip("，,、；;：: \t")
         text = facts + "。建议：" + suggestion
     except Exception:
         # 降级：确定性建议（短板导向，绝不阻塞）

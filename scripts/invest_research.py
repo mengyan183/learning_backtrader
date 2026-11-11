@@ -1283,9 +1283,16 @@ def risk_brief_text(snap):
         #    但 `pct` 的分母是 **stock_net**（股票净值），不是总净值 ✗
         #    实测 11-10：当日亏损 -1004.43 显示 -10.2%，
         #    而总净值口径是 -8.0%（12493）⇒ 读者会以为亏了 10% 总资产 ✗
+        # 🔴 2026-11-11：**标注数据口径** ✗ —— 这个 `day_pnl` 来自
+        #    `positions.csv` 的**当日盈亏列**，不随行情刷新 ✗
+        #    实测：16:04 和 18:50 两次简报都是 `-1004.43` 一模一样 ✗
+        #    读者会以为是「今天实时亏了 1004」⇒ 必须写明是快照日口径 ✓
+        # `snap["date"]` 就是**持仓快照日** ✓（见上方 `2026-10-29` 那条注释）
+        _pos_date = str(snap.get("date") or "").strip()
         lines.append("🔴 连亏保护触发：当日亏损 %s (%.1f%% **股票净值**)"
-                     " ≥ 2%% 阈值，建议停止开新仓/当日收工（Peter Brandt 风控）"
-                     % (ks["day_pnl"], ks["pct"]))
+                     " ≥ 2%% 阈值%s，建议停止开新仓/当日收工（Peter Brandt 风控）"
+                     % (ks["day_pnl"], ks["pct"],
+                        "（持仓快照 %s，非实时）" % _pos_date if _pos_date else ""))
     return "\n".join(lines) if lines else None
 
 
@@ -2026,9 +2033,13 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     # 2026-10-31：标题从**运行时配置**推导 ✓（硬编码会过期 ✗）
     _sent_tag = _llm_tag(HERMES_URL, HERMES_MODEL)
     _attr_tag = _llm_tag(NIM_URL, NIM_MODEL)
+    # 🔴 2026-11-11：情绪面 prompt 要 300 字，实测写了 ~400 字 ✗
+    #    原来展示层硬截 **1200** ⇒ 完全不设防 ✗
+    #    ⇒ 改成 `_clip_at_sentence(..., 500)` ✓（300 × 1.6 缓冲，句号处收尾）
     secs.append(("📰 情绪面 · %s" % _sent_tag,
                  _AI_ACTION_NOTE + "\n"
-                 + (sentiment or "（不可用）").strip()[:1200]))
+                 + _clip_at_sentence(
+                     (sentiment or "（不可用）").strip(), 500)))
     secs.append("hr")
     _mc = _major_contradiction()
     # 🔴 2026-10-31 精简：2600 → **1200** 字 ✗ ——
@@ -2324,7 +2335,9 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
         "",
         "## 情绪面分析（%s）" % _llm_tag(HERMES_URL, HERMES_MODEL),
         _AI_ACTION_NOTE + "\n"
-        + (sentiment or "（跳过：Hermes 不可用）").strip()[:1500],
+        # 🔴 2026-11-11：同 `build_brief_sections`，情绪面收到 500 字 ✓
+        + _clip_at_sentence(
+            (sentiment or "（跳过：Hermes 不可用）").strip(), 500),
         "",
         "## 深度归因（%s）" % _llm_tag(NIM_URL, NIM_MODEL),
         _AI_ACTION_NOTE + "\n"
