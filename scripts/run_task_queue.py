@@ -444,6 +444,27 @@ def _find_bsk_bin():
     import glob as _g
     cands += sorted(_g.glob(os.path.join(
         home, "Library", "Python", "*", "bin", "bsk")), reverse=True)
+    # 🔴 2026-11-11：补 `~/opt/node*/bin/bsk` ✓ ——
+    #    `dsh_web_diag` 回执显示 dsh 在 `/Users/xingguo/opt/node24/bin/dsh` ✗
+    #    ⇒ 用户用 `~/opt/nodeXX/` 管 node ⇒ **npm 全局包也装在那** ✓
+    #    （之前 5 个候选路径全不中，就是漏了这一处 ✗）
+    cands += sorted(_g.glob(os.path.join(home, "opt", "node*", "bin", "bsk")),
+                    reverse=True)
+    # 🔴 2026-11-11：`zsh -lc` 是**非交互登录 shell，不 source `.zshrc`** ✗
+    #    （只 source `.zshenv` / `.zprofile` / `.zlogin`）
+    #    而 bsk 常挂在 `.zshrc` 配的 PATH 上 ✗ ⇒ 必须**显式 source** ✓
+    try:
+        import subprocess as _sp
+        r = _sp.run(["/bin/zsh", "-lc",
+                     "source ~/.zshrc 2>/dev/null; command -v bsk"],
+                    capture_output=True, text=True, timeout=20)
+        for ln in (r.stdout or "").splitlines():
+            ln = ln.strip()
+            if ln and os.path.isfile(ln) and os.access(ln, os.X_OK):
+                cands.insert(0, ln)
+                break
+    except Exception:                     # noqa: BLE001
+        pass
     for c in cands:
         if os.path.exists(c) and os.access(c, os.X_OK):
             return c
@@ -1281,57 +1302,101 @@ def _act_dsh_web_launch(params):
                         "先跑 `service_bootstrap(label=com.xingguo.dsh.web)`")
         return out
 
-    # ③ 用默认浏览器打开
-    try:
-        r = subprocess.run(["open", url], capture_output=True, text=True,
-                           timeout=20)
-        out["steps"]["open"] = {"rc": r.returncode,
-                                "err": (r.stderr or "").strip()[:150]}
-    except Exception as exc:              # noqa: BLE001
-        out["steps"]["open"] = {"rc": -1,
-                                "err": "%s: %s" % (type(exc).__name__,
-                                                   str(exc)[:120])}
+    # ③ 找 bsk ✓
+    # 🔴 2026-11-11 第二次修正：原来用 `zsh -lc 'command -v bsk'` ✗ 找不到 ✗
+    #    根因：**`zsh -lc` 是非交互登录 shell，不 source `.zshrc`** ✗
+    #    （只 source `.zshenv` / `.zprofile` / `.zlogin`）
+    #    而 bsk 通常在 `.zshrc` 配的 PATH 里（npm 全局 / nvm）✗
+    #    ⇒ 必须**显式 `source ~/.zshrc`** ✓（和 dsh.web plist 里一个套路）
+    #    ⇒ 另加 `~/opt/node*/bin` 通配（node 版本目录）✓
+    def _find_bsk():
+        # 🔴 2026-11-11：**复用模块级 `BSK_BIN`** ✓ —— 原来这里又写了一份 ✗
+        #    重复实现的结果是「两处不一致」：模块级那份我补了 `~/opt/node*/bin`
+        #    和 `source .zshrc`，这份没有 ⇒ 修了一处另一处还是找不到 ✗
+        if BSK_BIN and BSK_BIN != "bsk" and os.path.isfile(BSK_BIN):
+            return BSK_BIN, "BSK_BIN"
+        return None, "not_found"
 
-    # ④ bsk 独立验证（尽力而为 ✓ 失败不影响 open 的结论）
-    try:
-        exe = None
-        for cand in (os.path.expanduser("~/.bsk/bin/bsk"), "/usr/local/bin/bsk",
-                     "/opt/homebrew/bin/bsk"):
-            if os.path.isfile(cand):
-                exe = cand
-                break
+    exe, how = _find_bsk()
+    out["steps"]["bsk_exe"] = exe or "(未找到)"
+    out["steps"]["bsk_found_by"] = how
+
+    # ④ 按 mode 执行 ✓（`bsk` 默认 / `open` / `both`）
+    #    🔴 2026-11-11 用户要求「open 改成 bsk 内部导航」✗
+    #    原因：`open` 会**在系统浏览器开新标签** ⇒ 干扰 bsk 的 Agent Window
+    #    （实测：`open` 之后连续 3 次发包都卡在「会话列表没出来」✗）
+    mode = str(params.get("mode") or "bsk").strip().lower()
+    if mode not in ("bsk", "open", "both"):
+        mode = "bsk"
+    out["mode"] = mode
+    ok_any = False
+
+    # ---- bsk 内部导航 ----
+    if mode in ("bsk", "both"):
         if not exe:
-            r = subprocess.run(["/bin/zsh", "-lc", "command -v bsk"],
-                               capture_output=True, text=True, timeout=20)
-            exe = (r.stdout or "").strip().splitlines()[0] if r.stdout.strip() else None
-        out["steps"]["bsk_exe"] = exe or "(未找到)"
-        if exe:
-            r1 = subprocess.run([exe, "session", "start", "--no-focus"],
-                                capture_output=True, text=True, timeout=60)
-            sid = (r1.stdout or "").strip().splitlines()[-1].strip() \
-                if r1.stdout.strip() else ""
-            out["steps"]["bsk_session"] = sid or "(start 失败)"
+            out["steps"]["bsk_navigate"] = "跳过（bsk 未找到）✗"
+        else:
+            sid = ""
+            try:
+                r1 = subprocess.run([exe, "session", "start", "--no-focus"],
+                                    capture_output=True, text=True, timeout=60)
+                _s1 = (r1.stdout or "").strip().splitlines()
+                sid = _s1[-1].strip() if _s1 else ""
+                out["steps"]["bsk_session"] = sid or "(start 失败)"
+            except Exception as exc:      # noqa: BLE001
+                out["steps"]["bsk_session"] = "ERR %s" % str(exc)[:120]
             if sid:
-                r2 = subprocess.run([exe, "navigate", url, "--session", sid,
-                                     "--timeout", "60s"],
-                                    capture_output=True, text=True, timeout=90)
-                _o = ((r2.stdout or "") + (r2.stderr or "")).strip()
-                # 回显里也可能带 token ⇒ 打码
-                _o = _re.sub(r"(token=)([A-Za-z0-9_\-]{8})([A-Za-z0-9_\-]*)",
-                             lambda m: m.group(1) + m.group(2) + "…(%d)"
-                             % (len(m.group(2)) + len(m.group(3))), _o)
-                out["steps"]["bsk_navigate"] = {"rc": r2.returncode,
-                                                "out": _o[:400]}
-                subprocess.run([exe, "session", "stop", sid],
-                               capture_output=True, text=True, timeout=30)
-                out["steps"]["bsk_verified"] = r2.returncode == 0
-    except Exception as exc:              # noqa: BLE001
-        out["steps"]["bsk_error"] = "%s: %s" % (type(exc).__name__,
-                                                str(exc)[:150])
+                try:
+                    r2 = subprocess.run([exe, "navigate", url, "--session", sid,
+                                         "--timeout", "60s"],
+                                        capture_output=True, text=True, timeout=90)
+                    _o = ((r2.stdout or "") + (r2.stderr or "")).strip()
+                    _o = _re.sub(r"(token=)([A-Za-z0-9_\-]{8})([A-Za-z0-9_\-]*)",
+                                 lambda m: m.group(1) + m.group(2) + "…(%d)"
+                                 % (len(m.group(2)) + len(m.group(3))), _o)
+                    out["steps"]["bsk_navigate"] = {"rc": r2.returncode,
+                                                    "out": _o[:400]}
+                    # 🔴 验证：最终 url 是否被重定向（token 错会跳登录页）✗
+                    _m = _re.search(r"^url=(\S+)", _o, re.M)
+                    _final = _m.group(1) if _m else ""
+                    if _final:
+                        _masked = _re.sub(
+                            r"(token=)([A-Za-z0-9_\-]{8})([A-Za-z0-9_\-]*)",
+                            lambda m: m.group(1) + m.group(2) + "…(%d)"
+                            % (len(m.group(2)) + len(m.group(3))), _final)
+                        out["steps"]["final_url"] = _masked
+                        _same = (_final.split("?")[0]
+                                 == url.split("?")[0])
+                        out["steps"]["same_page"] = _same
+                        if not _same:
+                            out["steps"]["warning"] = (
+                                "**被重定向** ✗ —— token 可能失效或未登录")
+                    ok_any = ok_any or (r2.returncode == 0
+                                        and out["steps"].get("same_page", True))
+                except Exception as exc:  # noqa: BLE001
+                    out["steps"]["bsk_navigate"] = "ERR %s" % str(exc)[:150]
+                try:
+                    subprocess.run([exe, "session", "stop", sid],
+                                   capture_output=True, text=True, timeout=30)
+                except Exception:         # noqa: BLE001
+                    pass
 
-    out["ok"] = (out["steps"].get("open") or {}).get("rc") == 0
+    # ---- 系统浏览器（兜底 / both 时并用）----
+    if mode in ("open", "both"):
+        try:
+            r = subprocess.run(["open", url], capture_output=True, text=True,
+                               timeout=20)
+            out["steps"]["open"] = {"rc": r.returncode,
+                                    "err": (r.stderr or "").strip()[:150]}
+            ok_any = ok_any or (r.returncode == 0)
+        except Exception as exc:          # noqa: BLE001
+            out["steps"]["open"] = {"rc": -1,
+                                    "err": "%s: %s" % (type(exc).__name__,
+                                                       str(exc)[:120])}
+
+    out["ok"] = ok_any
     if not out["ok"]:
-        out["hint"] = ("`open` 失败 ✗ ⇒ 直接手动打开 `url_masked` 里的地址"
+        out["hint"] = ("两种方式都没成功 ✗ ⇒ 手动打开 `url_masked` 里的地址"
                        "（完整 token 在 Mac 的 %s 里）" % log_path)
     return out
 
