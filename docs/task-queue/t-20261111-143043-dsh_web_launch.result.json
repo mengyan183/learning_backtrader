@@ -1,0 +1,11 @@
+{
+  "id": "t-20261111-143043-dsh_web_launch",
+  "action": "dsh_web_launch",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"steps\": {\"token_len\": 43, \"token_head\": \"ZMo05R7S…\", \"port_3080\": true, \"open\": {\"rc\": 0, \"err\": \"\"}, \"bsk_exe\": \"(未找到)\"}, \"url_masked\": \"http://127.0.0.1:3080/?token=ZMo05R7S…(43)\", \"ok\": true}",
+  "started_at": "2026-11-11T14:39:35",
+  "finished_at": "2026-11-11T14:39:35",
+  "duration_s": 0.05
+}

@@ -1,0 +1,13 @@
+{
+  "id": "t-20261111-143034-plist_path_append",
+  "action": "plist_path_append",
+  "params": {
+    "label": "com.xingguo.dsh.web"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"label\": \"com.xingguo.dsh.web\", \"plist\": \"/Users/xingguo/Library/LaunchAgents/com.xingguo.dsh.web.plist\", \"steps\": {\"backup\": \"/Users/xingguo/Library/LaunchAgents/com.xingguo.dsh.web.plist.bak-20261111143929\", \"old_path\": \"export PATH=\\\"/usr/local/bin:$HOME/opt/node24/bin:/usr/bin:/bin:/usr/sbin:/sbin\\\"\", \"new_path\": \"export PATH=\\\"$PATH:/usr/local/bin:$HOME/opt/node24/bin:$(ls -d $HOME/opt/node*/bin | sort -V | tail -1)\\\"\", \"changed\": true, \"lint\": {\"rc\": 0, \"out\": \"/Users/xingguo/Library/LaunchAgents/com.xingguo.dsh.web.plist: OK\"}, \"bootout\": {\"rc\": 0, \"out\": \"\"}, \"bootstrap\": {\"rc\": 0, \"out\": \"\"}, \"launchctl_list\": [\"59881\\t0\\tcom.xingguo.dsh.web\"], \"processes\": \"PID ELAPSED COMMAND\\n59881   00:04 node /Users/xingguo/opt/node24/bin/dsh web --no-open\", \"log_tail\": \"dsh web: http://127.0.0.1:3080/?token=Wyui-BrE…(43)\\ndsh web: http://127.0.0.1:3080/?token=1vJu70Oi…(43)\\ndsh web: http://127.0.0.1:3080/?token=ZMo05R7S…(43)\\n\"}, \"ok\": true}",
+  "started_at": "2026-11-11T14:39:29",
+  "finished_at": "2026-11-11T14:39:35",
+  "duration_s": 6.22
+}
