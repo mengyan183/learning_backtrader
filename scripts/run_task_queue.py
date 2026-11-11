@@ -1033,6 +1033,122 @@ def _act_autostart_list(params):
     return out
 
 
+def _act_service_bootstrap(params):
+    """**硬重启** launchd 服务：`bootout` + `bootstrap` ✓（2026-11-11 用户要求修 dsh web）。
+
+    🔴 为什么 `kickstart` 不够 ✗（`dsh_web_diag` 回执实测）：
+       `launchctl list`       → `16490  -9  com.xingguo.dsh.web`（退出码 -9 = SIGKILL）
+       `ps ax | grep dsh`     → **空**（进程真的没了 ✗）
+       `launchctl print`      → `state = running, pid = 16490`（**状态卡住** ✗）
+       ⇒ launchd 认为它在跑，所以 `kickstart` 不生效 ✗
+       ⇒ 必须 `bootout`（清掉注册）再 `bootstrap`（重新加载）✓
+
+    步骤：
+      ① `launchctl bootout gui/<uid>/<label>`（失败也继续 ✓）
+      ② 等 2 秒
+      ③ `launchctl bootstrap gui/<uid> ~/Library/LaunchAgents/<label>.plist`
+      ④ 等 3 秒，回报 `launchctl list` 那一行 + `ps` + 日志尾巴
+    ⚠️ 日志尾巴里的 **token 段会打码** ✗（回执进 git ✓）
+    """
+    import re as _re
+
+    _ALLOWED = ("com.xingguo.fg-task-queue",
+                "com.xingguo.fg-realtime",
+                "com.xingguo.fg-dashboard",
+                "com.xingguo.fg-sync-watcher",
+                "com.xingguo.dsh.web")
+    label = str(params.get("label") or "").strip()
+    if label not in _ALLOWED:
+        return {"ok": False,
+                "error": "不允许的 label：`%s` ✗（白名单：%s）"
+                         % (label, ", ".join(_ALLOWED))}
+
+    home = os.path.expanduser("~")
+    plist = os.path.join(home, "Library", "LaunchAgents", label + ".plist")
+    uid = os.getuid() if hasattr(os, "getuid") else 501
+    target = "gui/%s/%s" % (uid, label)
+    out = {"label": label, "plist": plist, "target": target, "steps": {}}
+
+    if not os.path.exists(plist):
+        out["ok"] = False
+        out["error"] = "plist 不存在：%s ✗" % plist
+        return out
+
+    def _sh(cmd, t=30):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=t)
+            return {"rc": r.returncode,
+                    "out": ((r.stdout or "") + (r.stderr or "")).strip()[:400]}
+        except Exception as exc:              # noqa: BLE001
+            return {"rc": -1, "out": "%s: %s" % (type(exc).__name__,
+                                                str(exc)[:150])}
+
+    # ① bootout（服务没注册时 rc!=0 是正常的 ✓ 继续走）
+    out["steps"]["bootout"] = _sh(["launchctl", "bootout", target])
+    time.sleep(2)
+
+    # ② bootstrap
+    out["steps"]["bootstrap"] = _sh(["launchctl", "bootstrap", target, plist])
+    time.sleep(3)
+
+    # ③ 状态
+    try:
+        r = subprocess.run(["launchctl", "list"], capture_output=True,
+                           text=True, timeout=20)
+        out["steps"]["launchctl_list"] = [
+            ln for ln in (r.stdout or "").splitlines() if label in ln
+        ] or ["(列表里没有它)"]
+    except Exception as exc:                  # noqa: BLE001
+        out["steps"]["launchctl_list"] = "ERR %s" % str(exc)[:100]
+
+    try:
+        r = subprocess.run(["/bin/sh", "-c",
+                            "ps ax -o pid,etime,comm | grep -i '%s' "
+                            "| grep -v grep | head -5" % label.split(".")[-1]],
+                           capture_output=True, text=True, timeout=20)
+        out["steps"]["processes"] = [
+            ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()
+        ] or ["(无)"]
+    except Exception as exc:                  # noqa: BLE001
+        out["steps"]["processes"] = "ERR %s" % str(exc)[:100]
+
+    # ④ 日志尾巴（dsh.web 的 token 会在这里 ✓ 打码后回）
+    try:
+        r = subprocess.run(["/usr/bin/plutil", "-p", plist],
+                           capture_output=True, text=True, timeout=15)
+        m = _re.search(r'"StandardOutPath"\s*=>\s*"([^"]+)"', r.stdout or "")
+        if m:
+            lp = m.group(1)
+            out["steps"]["log_path"] = lp
+            if os.path.exists(lp):
+                with open(lp, encoding="utf-8", errors="replace") as fh:
+                    tail = "".join(fh.readlines()[-20:])
+                # token 打码 ✓
+                tail = _re.sub(r"(token=)([A-Za-z0-9_\-\.]{8})([A-Za-z0-9_\-\.]*)",
+                               lambda mm: mm.group(1) + mm.group(2)
+                               + "…(%d)" % (len(mm.group(2)) + len(mm.group(3))),
+                               tail)
+                out["steps"]["log_tail"] = tail[-1200:]
+            else:
+                out["steps"]["log_tail"] = "(日志文件不存在)"
+    except Exception as exc:                  # noqa: BLE001
+        out["steps"]["log_tail"] = "ERR %s" % str(exc)[:150]
+
+    # 判定：launchctl 里有数字 PID 且 ps 里能看到 ⇒ 起来了 ✓
+    _listed = out["steps"].get("launchctl_list") or []
+    _pid_ok = False
+    if isinstance(_listed, list) and _listed:
+        _first = str(_listed[0]).split()
+        if _first and _first[0].isdigit():
+            _pid_ok = True
+    out["ok"] = _pid_ok
+    if not _pid_ok:
+        out["hint"] = ("服务没起来 ✗ ⇒ 看 `log_tail` 的真实报错；"
+                       "若日志为空，说明进程启动后立刻退出")
+    return out
+
+
 def _act_realtime_diag(params):
     """排查 `com.xingguo.fg-realtime` 为什么没更新 BTC 价 ✓（2026-11-10 用户要求）。
 
@@ -4377,6 +4493,7 @@ ACTIONS = {
     "dsh_web_open": _act_dsh_web_open,
     "futu_opend_info": _act_futu_opend_info,
     "realtime_diag": _act_realtime_diag,
+    "service_bootstrap": _act_service_bootstrap,
     "autostart_list": _act_autostart_list,
     "dsh_web_diag": _act_dsh_web_diag,
     "dsh_webauth_find": _act_dsh_webauth_find,
