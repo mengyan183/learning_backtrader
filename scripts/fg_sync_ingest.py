@@ -625,28 +625,37 @@ def main():
         r = _git(args.repo, "add", "--", *add_all)
         if r.returncode != 0:
             print("❌ git add 失败：" + r.stderr.strip()); return 2
-        r = _git(args.repo, "commit", "-m", args.commit)
-        if r.returncode != 0:
-            # 🔴 2026-11-10 用户反馈：`fix_1111a` 报「⚠️ commit 失败（可能无变更可提交）」
-            #    但**改动其实早就在 origin 上** ✗ —— 这是**幂等 patch** ✓
-            #    成因：patch 基准与工作区一致 ⇒ `git apply` 不改文件 ⇒ 无变更可提交 ✗
-            #    而原提示与真正的失败（patch 冲突 / add 失败）看起来一样 ⇒ 误导 ✓
-            #    ⇒ 区分「无变更」与「真失败」✓，前者报 ✅ 并继续补推 ✓
-            _out = ((r.stdout or "") + (r.stderr or "")).strip()
-            _nochange = any(k in _out for k in (
-                "nothing to commit", "nothing added to commit",
-                "working tree clean", "无文件要提交", "没有要提交"))
-            if _nochange:
-                print("✅ 内容与现有文件一致，无需提交（幂等应用，非失败）")
-                _ok, _err = _push_with_retry(args.repo)
-                if _ok:
-                    print("✅ 已推送 origin/main（本次无新变更，历史积压已同步）")
-                else:
-                    print("⚠️ 无新变更，但补推失败：%s" % (_err or "")[:200])
+        # 🔴 2026-11-11 **先判有无暂存内容** ✓ —— 不要靠解析 `git commit` 的文案 ✗
+        #    事故：`task_1112a` 报「❌ commit 失败：On branch main」✗
+        #    成因两层：
+        #      ① 实际输出是
+        #         `On branch main\nYour branch is up to date...\n
+        #          nothing to commit, working tree clean` ✗
+        #         但 `fg_sync_tool.py --brief` 只回传 ✅/❌/⚠️ 开头的行，
+        #         整行里的 `\n` 在飞书里被截断 ⇒ 只看到 `On branch main` ✗
+        #      ② 更糟：同名的第二个包（`task_1111v` / `task_1112a` 内容相同）
+        #         第一个已提交 ⇒ 第二个必然「无变更」✗
+        #    ⇒ `git diff --cached --quiet` 直接看**索引 vs HEAD**：
+        #      rc=0 ⇒ 没东西要提交（幂等）✓   rc=1 ⇒ 有 ✓
+        #      比字符串匹配可靠（不受 locale / commit.status 影响）✓
+        _staged = _git(args.repo, "diff", "--cached", "--quiet")
+        if _staged.returncode == 0:
+            print("✅ 无变更需提交（幂等应用，非失败）")
+            _ok, _err = _push_with_retry(args.repo)
+            if _ok:
+                print("✅ 已推送 origin/main（本次无新变更，历史积压已同步）")
             else:
-                print("❌ commit 失败：" + _out[:400])
-                return 3
+                print("⚠️ 无新变更，但补推失败：%s" % (_err or "")[:200])
+            r = None
         else:
+            r = _git(args.repo, "commit", "-m", args.commit)
+        if r is not None and r.returncode != 0:
+            # 真失败 ⇒ **压成一行**（飞书按换行截断，多行会把原因吞掉 ✗）
+            _out = ((r.stdout or "") + (r.stderr or "")).strip()
+            _one = " | ".join(x.strip() for x in _out.splitlines() if x.strip())
+            print("❌ commit 失败：%s" % _one[:400])
+            return 3
+        if r is not None:                     # 只有真提交过才推 ✓
             sha = _head_short(args.repo)
             ok, err = _push_with_retry(args.repo)
             if ok:
