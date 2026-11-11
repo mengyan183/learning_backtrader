@@ -1,0 +1,9 @@
+{
+  "id": "t-20261111-145229-dsh_web_launch",
+  "action": "dsh_web_launch",
+  "params": {
+    "mode": "bsk"
+  },
+  "status": "pending",
+  "created_at": "2026-11-11T14:52:29"
+}
