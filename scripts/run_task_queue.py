@@ -1418,12 +1418,13 @@ def _act_news_diag(params):
       ⑤ 每个原始标题过 `_news_relevant("BTC", t)` 的判定（相关性层）
     ⚠️ 只读，不改任何数据 ✓
     """
-    import sys as _sys
     out = {"steps": {}}
 
     # ① 持仓里有没有 BTC
+    # 🔴 2026-11-11 修正：原来写 `sys.path.insert(0, SCRIPTS)` ✗
+    #    但本模块**没有 `SCRIPTS` 常量**（只有 `ROOT`）⇒ `NameError` ✗
+    #    其他 action 都是直接 `import invest_research`（入口已把 scripts/ 加进 path）✓
     try:
-        _sys.path.insert(0, SCRIPTS)
         import invest_research as _ir
         snap = _ir.build_snapshot()
         syms = [str(r.get("symbol") or "") for r in (snap.get("positions") or [])]
