@@ -1793,10 +1793,16 @@ def _act_restart_queue(params):
     #    实测 `fg-realtime` 从 **10-12** 起就在无限重连（日志里 `conn=0(7475)` ✗）
     #    进程还活着（PID 707）但数据 29 天没更新 ✗ ⇒ 需要能重启它 ✓
     #    ⚠️ 白名单，不接受任意 label ✗
+    # 🔴 2026-11-11：`autostart_list` 回执发现 `com.xingguo.dsh.web` 这个
+    #    LaunchAgent **存在**（RunAtLoad + KeepAlive 都 true ✗）
+    #    但 `running: []` ⇒ 进程没在跑 ✗
+    #    ⇒ 这就是 `dsh web authentication required` 的根因 ✓
+    #    ⇒ 加进白名单，可以用同一个动作把它拉起来 ✓
     _ALLOWED = ("com.xingguo.fg-task-queue",
                 "com.xingguo.fg-realtime",
                 "com.xingguo.fg-dashboard",
-                "com.xingguo.fg-sync-watcher")
+                "com.xingguo.fg-sync-watcher",
+                "com.xingguo.dsh.web")
     label = str(params.get("label") or "com.xingguo.fg-task-queue").strip()
     if label not in _ALLOWED:
         return {"ok": False,
@@ -4348,11 +4354,27 @@ def _archive_stale_pending(hours=STALE_PENDING_HOURS):
             #    （实测：11-09 那批 5 个任务在 11-10 15:20 仍 pending ✗）
             #    `created_at` 缺失时才退回 mtime ✓
             _age_base = t_created or os.path.getmtime(p)
-            if _age_base > cutoff:
+            _age_h = (time.time() - _age_base) / 3600.0
+            # 🔴 2026-11-11 用户要求：**「有 .running 才归档」** ✓
+            #    事故：11-10 17:27 下发的 `autostart_list` 因为队列卡住没跑成 ✗
+            #    到 11-11 09:02（15.5 小时 > 6h 阈值）被**静默归档** ✗
+            #    ⇒ 用户以为它执行了，其实压根没轮到 ✗
+            #    ⇒ 分两档：
+            #      ① 有 `.running` 残留 ⇒ 说明**尝试过但卡死** ⇒ 6 小时就归档 ✓
+            #      ② 没有 `.running` ⇒ 说明**压根没轮到** ⇒ 要 **24 小时**才归档 ✓
+            #    （24h 是为了兜住 11-09 那批 result 丢了的真僵尸 ✓）
+            _has_running = os.path.exists(os.path.join(QUEUE, tid + ".running"))
+            if _has_running:
+                if _age_base > cutoff:            # 6h
+                    continue
+            elif _age_h < 24:
                 continue
             os.makedirs(dst, exist_ok=True)
             shutil.move(p, os.path.join(dst, name))
             moved.append(name)
+            print("[stale]   %s（%.1f 小时，%s）"
+                  % (name, _age_h,
+                     "有 .running 残留" if _has_running else "从未执行过"))
         except OSError:
             continue
     if moved:
