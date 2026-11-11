@@ -1089,8 +1089,21 @@ def _act_service_bootstrap(params):
     time.sleep(2)
 
     # ② bootstrap
-    out["steps"]["bootstrap"] = _sh(["launchctl", "bootstrap", target, plist])
+    # 🔴 2026-11-11 实测踩坑：`bootstrap` 的 domain **只到 `gui/<uid>`** ✗
+    #    我第一版写成 `bootstrap gui/501/com.xingguo.dsh.web <plist>` ✗
+    #    ⇒ rc=64 `Usage: launchctl bootstrap <domain-target> [service-path...]` ✗
+    #    ⇒ 而 bootout 已经成功 ⇒ 服务变成**未注册**（比之前更糟 ✗）
+    #    ⇒ 正确：`launchctl bootstrap gui/501 <plist-path>` ✓
+    _domain = "gui/%s" % uid
+    out["steps"]["bootstrap"] = _sh(["launchctl", "bootstrap", _domain, plist])
     time.sleep(3)
+
+    # ②b 兜底：`bootstrap` 失败时退回老的 `load -w` ✓（兼容性更好）
+    _bs_rc = (out["steps"].get("bootstrap") or {}).get("rc")
+    if _bs_rc != 0:
+        out["steps"]["load_fallback"] = _sh(
+            ["launchctl", "load", "-w", plist])
+        time.sleep(3)
 
     # ③ 状态
     try:
@@ -1102,16 +1115,29 @@ def _act_service_bootstrap(params):
     except Exception as exc:                  # noqa: BLE001
         out["steps"]["launchctl_list"] = "ERR %s" % str(exc)[:100]
 
+    # 🔴 2026-11-11 实测踩坑：原来用 `grep -i '<label最后一段>'` ✗
+    #    ⇒ `com.xingguo.dsh.web` 的最后一段是 **`web`** ✗
+    #    ⇒ 把所有 **WebKit 进程**都匹配进来了（webprivacyd / WebKit.GPU …）✗
+    #    ⇒ 改成：先拿 `launchctl list` 里的 PID，再用 `ps -p <pid>` 精确验证 ✓
+    _pid = None
     try:
-        r = subprocess.run(["/bin/sh", "-c",
-                            "ps ax -o pid,etime,comm | grep -i '%s' "
-                            "| grep -v grep | head -5" % label.split(".")[-1]],
-                           capture_output=True, text=True, timeout=20)
-        out["steps"]["processes"] = [
-            ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()
-        ] or ["(无)"]
-    except Exception as exc:                  # noqa: BLE001
-        out["steps"]["processes"] = "ERR %s" % str(exc)[:100]
+        _lst = out["steps"].get("launchctl_list") or []
+        if isinstance(_lst, list) and _lst:
+            _f = str(_lst[0]).split()
+            if _f and _f[0].isdigit():
+                _pid = _f[0]
+    except Exception:                         # noqa: BLE001
+        _pid = None
+    if _pid:
+        try:
+            r = subprocess.run(["ps", "-p", _pid, "-o", "pid,etime,command"],
+                               capture_output=True, text=True, timeout=20)
+            _lns = [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
+            out["steps"]["processes"] = _lns[1:] or ["(ps 无输出)"]
+        except Exception as exc:              # noqa: BLE001
+            out["steps"]["processes"] = "ERR %s" % str(exc)[:100]
+    else:
+        out["steps"]["processes"] = ["(launchctl list 里没有数字 PID ⇒ 进程未运行)"]
 
     # ④ 日志尾巴（dsh.web 的 token 会在这里 ✓ 打码后回）
     try:
