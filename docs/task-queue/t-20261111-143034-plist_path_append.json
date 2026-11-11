@@ -1,0 +1,9 @@
+{
+  "id": "t-20261111-143034-plist_path_append",
+  "action": "plist_path_append",
+  "params": {
+    "label": "com.xingguo.dsh.web"
+  },
+  "status": "pending",
+  "created_at": "2026-11-11T14:30:34"
+}
