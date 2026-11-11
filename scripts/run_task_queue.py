@@ -1494,6 +1494,24 @@ def _act_news_diag(params):
             out["steps"]["judge"] = "ERR %s: %s" % (type(exc).__name__,
                                                     str(exc)[:200])
 
+        # ⑥ **直接跑完整 `fetch_news`** ✓ —— 上面 ②~⑤ 是「手工重放」，
+        #    可能和真实路径不同（比如 `fetch_news` 里富途段**整段超时**被吞 ✗）
+        #    ⇒ 这一步才是「简报里到底拿到了什么」的**真凭实据** ✓
+        try:
+            import time as _t
+            _t0 = _t.time()
+            _news = _ir.fetch_news(snap)
+            out["steps"]["fetch_news"] = {
+                "seconds": round(_t.time() - _t0, 1),
+                "keys": list(_news.keys()),
+                "has_target": target in _news,
+                "counts": {k: (len(v) if isinstance(v, list) else 1)
+                           for k, v in _news.items()},
+            }
+        except Exception as exc:          # noqa: BLE001
+            out["steps"]["fetch_news"] = "ERR %s: %s" % (
+                type(exc).__name__, str(exc)[:250])
+
     out["ok"] = True
     _k = out["steps"].get("kept")
     out["hint"] = ("`judge` 里 verdict 全是「滤·…」⇒ 就是过滤层的问题 ✓；"

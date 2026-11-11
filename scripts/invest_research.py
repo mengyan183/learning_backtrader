@@ -979,7 +979,14 @@ def fetch_news(snap):
     # --- 富途主源 ---
     try:
         from futu import OpenQuoteContext
-        with _alarm(45, "futu 新闻抓取超时（OpenD 疑似重连循环）"):
+        # 🔴 2026-11-11 `news_diag` 实测：富途**其实是通的** ✓
+        #    对 `比特币` 返回 6 条优质中文新闻（「今日比特币：跌破7.4万美元…」等）
+        #    但简报里 BTC 行一直消失 ✗
+        #    ⇒ 根因：**6 个标的各调一次 `get_search_news`**，45 秒不够 ✗
+        #      超时 ⇒ 整个 try 块被 except 吞掉 ⇒ 富途结果全丢 ✗
+        #      只剩 gnews，而 gnews 当次可能只返回噪音（Robinhood 预测市场）✗
+        #    ⇒ 45 → **90 秒** ✓
+        with _alarm(90, "futu 新闻抓取超时（OpenD 疑似重连循环）"):
             q = OpenQuoteContext(host="127.0.0.1", port=11111)
             # 🔴 2026-11-02 实测：`"US stock market"` 返回的是**港股**新闻 ✗
             # （富途是中文源，英文检索词会落到港股板块 ✗）
@@ -994,7 +1001,16 @@ def fetch_news(snap):
             for r in snap["positions"]:
                 sym = r["symbol"].replace("-USDT", "")
                 kw = {"BTC": "比特币", "ETH": "以太坊"}.get(sym, sym)
-                ret, data = q.get_search_news(kw, max_count=4)
+                # 🔴 2026-11-11：**每个标的独立 try** ✓ ——
+                #    原来整段一个 try，任意一只超时/抛异常就丢掉**全部**富途结果 ✗
+                #    （`news_diag` 证明富途对 BTC 能返回 6 条优质新闻 ✓）
+                ret, data = -1, None
+                try:
+                    ret, data = q.get_search_news(kw, max_count=4)
+                except Exception as _e1:      # noqa: BLE001
+                    print("[news] 富途查询异常 %s（kw=%s）: %s"
+                          % (sym, kw, str(_e1)[:120]))
+                    continue
                 if ret == 0 and len(data):
                     # 🔴 2026-11-02 实测：`CONL` 会匹配到 `ONL`（Orion Office
                     # REIT）✗ —— 富途是**模糊检索**，子串命中就算 ✓
