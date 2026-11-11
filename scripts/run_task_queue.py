@@ -1033,6 +1033,132 @@ def _act_autostart_list(params):
     return out
 
 
+def _act_dsh_web_launch(params):
+    """**读取 dsh web 的 token URL 并用浏览器打开** ✓（2026-11-11 用户要求）。
+
+    🔴 为什么不用 `dsh_web_open`（跑 `dsh web` 抓 stdout）✗：
+       dsh web 是**常驻 launchd 服务**（`com.xingguo.dsh.web`）✓
+       再手动跑一个实例会抢 3080 端口 ✗
+       ⇒ 正确做法是**从它的日志里读现成 URL** ✓
+       （`/tmp/dsh-web-launchd.log` 里 `dsh web: http://127.0.0.1:3080/?token=...`）
+
+    步骤：
+      ① 读日志最后一条 `http://127.0.0.1:3080/?token=...`
+      ② 探 3080 端口（不通 ⇒ 先提示用 `service_bootstrap`）
+      ③ `open <url>` 用**默认浏览器**打开 ✓（人能看到）
+      ④ 用 **bsk** 独立验证一次页面能加载 ✓（证据，失败不影响 ③）
+    ⚠️ 回执里的 token **打码** ✗（进 git ✓）
+
+    📌 node 版本问题（用户提问）：
+       当前 `dsh` 在 `~/opt/node24/bin/dsh` ✗ —— 这是**版本化目录** ✗
+       node 升到 26 后该路径失效 ✗（plist 里也硬编码了 node24 ✗）
+       ⇒ 本动作**不写死路径**，用 `zsh -lc 'command -v dsh'` 让 shell 自己解析 ✓
+         （`source ~/.zshrc` 后的 PATH 才准 ✓）
+    """
+    import re as _re
+    import socket
+
+    out = {"steps": {}}
+
+    # ① 读日志里的 URL
+    log_path = "/tmp/dsh-web-launchd.log"
+    url = None
+    try:
+        if os.path.exists(log_path):
+            with open(log_path, encoding="utf-8", errors="replace") as fh:
+                txt = fh.read()
+            hits = _re.findall(r"http://127\.0\.0\.1:3080/\?token=([A-Za-z0-9_\-]+)",
+                               txt)
+            if hits:
+                url = "http://127.0.0.1:3080/?token=" + hits[-1]
+                out["steps"]["token_len"] = len(hits[-1])
+                out["steps"]["token_head"] = hits[-1][:8] + "…"
+        else:
+            out["steps"]["log"] = "日志不存在：%s ✗" % log_path
+    except OSError as exc:
+        out["steps"]["log"] = "读日志失败：%s" % str(exc)[:120]
+
+    if not url:
+        out["ok"] = False
+        out["error"] = ("日志里没找到 dsh web 的 token URL ✗ ⇒ "
+                        "先跑 `service_bootstrap(label=com.xingguo.dsh.web)`")
+        return out
+
+    out["url_masked"] = _re.sub(
+        r"(token=)([A-Za-z0-9_\-]{8})([A-Za-z0-9_\-]*)",
+        lambda m: m.group(1) + m.group(2) + "…(%d)"
+        % (len(m.group(2)) + len(m.group(3))), url)
+
+    # ② 探端口
+    port_ok = False
+    try:
+        s = socket.create_connection(("127.0.0.1", 3080), 3.0)
+        s.close()
+        port_ok = True
+    except OSError as exc:
+        out["steps"]["port"] = "不通：%s" % str(exc)[:100]
+    out["steps"]["port_3080"] = port_ok
+    if not port_ok:
+        out["ok"] = False
+        out["error"] = ("3080 端口不通 ✗ ⇒ dsh web 没在跑，"
+                        "先跑 `service_bootstrap(label=com.xingguo.dsh.web)`")
+        return out
+
+    # ③ 用默认浏览器打开
+    try:
+        r = subprocess.run(["open", url], capture_output=True, text=True,
+                           timeout=20)
+        out["steps"]["open"] = {"rc": r.returncode,
+                                "err": (r.stderr or "").strip()[:150]}
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["open"] = {"rc": -1,
+                                "err": "%s: %s" % (type(exc).__name__,
+                                                   str(exc)[:120])}
+
+    # ④ bsk 独立验证（尽力而为 ✓ 失败不影响 open 的结论）
+    try:
+        exe = None
+        for cand in (os.path.expanduser("~/.bsk/bin/bsk"), "/usr/local/bin/bsk",
+                     "/opt/homebrew/bin/bsk"):
+            if os.path.isfile(cand):
+                exe = cand
+                break
+        if not exe:
+            r = subprocess.run(["/bin/zsh", "-lc", "command -v bsk"],
+                               capture_output=True, text=True, timeout=20)
+            exe = (r.stdout or "").strip().splitlines()[0] if r.stdout.strip() else None
+        out["steps"]["bsk_exe"] = exe or "(未找到)"
+        if exe:
+            r1 = subprocess.run([exe, "session", "start", "--no-focus"],
+                                capture_output=True, text=True, timeout=60)
+            sid = (r1.stdout or "").strip().splitlines()[-1].strip() \
+                if r1.stdout.strip() else ""
+            out["steps"]["bsk_session"] = sid or "(start 失败)"
+            if sid:
+                r2 = subprocess.run([exe, "navigate", url, "--session", sid,
+                                     "--timeout", "60s"],
+                                    capture_output=True, text=True, timeout=90)
+                _o = ((r2.stdout or "") + (r2.stderr or "")).strip()
+                # 回显里也可能带 token ⇒ 打码
+                _o = _re.sub(r"(token=)([A-Za-z0-9_\-]{8})([A-Za-z0-9_\-]*)",
+                             lambda m: m.group(1) + m.group(2) + "…(%d)"
+                             % (len(m.group(2)) + len(m.group(3))), _o)
+                out["steps"]["bsk_navigate"] = {"rc": r2.returncode,
+                                                "out": _o[:400]}
+                subprocess.run([exe, "session", "stop", sid],
+                               capture_output=True, text=True, timeout=30)
+                out["steps"]["bsk_verified"] = r2.returncode == 0
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["bsk_error"] = "%s: %s" % (type(exc).__name__,
+                                                str(exc)[:150])
+
+    out["ok"] = (out["steps"].get("open") or {}).get("rc") == 0
+    if not out["ok"]:
+        out["hint"] = ("`open` 失败 ✗ ⇒ 直接手动打开 `url_masked` 里的地址"
+                       "（完整 token 在 Mac 的 %s 里）" % log_path)
+    return out
+
+
 def _act_service_bootstrap(params):
     """**硬重启** launchd 服务：`bootout` + `bootstrap` ✓（2026-11-11 用户要求修 dsh web）。
 
@@ -4520,6 +4646,7 @@ ACTIONS = {
     "futu_opend_info": _act_futu_opend_info,
     "realtime_diag": _act_realtime_diag,
     "service_bootstrap": _act_service_bootstrap,
+    "dsh_web_launch": _act_dsh_web_launch,
     "autostart_list": _act_autostart_list,
     "dsh_web_diag": _act_dsh_web_diag,
     "dsh_webauth_find": _act_dsh_webauth_find,
