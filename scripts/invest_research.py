@@ -700,10 +700,18 @@ def stage_attribution(nim_key, snap, kb=None):
     kb: 可选检索问题（L3.5）——注入知识库观点作参考上下文，不改判决链。
     """
     system = (
+        # 🔴 2026-11-11 瘦身 P3（用户要求）：800 → **500 字** ✓
+        #    实测 11-10 那份归因 1100+ 字，其中「三、仓位合理性」整段
+        #    是在复述「有效敞口 2.3 倍 / 目标 47.1% / 偏离 39 个百分点」——
+        #    这些数字前面【市场快照】【风控仓位】已经给过 ✗
+        #    ⇒ 收成 500 字：只留「逐标的归因 + 组合风险点」，
+        #      「仓位合理性」**并入风险点**（不单独成节）✓
         "你是量化交易系统的深度归因分析师。基于持仓与盈亏数据，"
-        "用中文输出结构化归因（**严格不超过 800 字**，超了会被截断 ✗）："
-        "逐标的归因（为什么涨/跌、驱动因素）、"
-        "组合风险点、仓位合理性。只做归因分析，不给交易指令。"
+        "用中文输出结构化归因（**严格不超过 500 字**，超了会被截断 ✗）："
+        "① 逐标的归因（为什么涨/跌、驱动因素，每只 1 句）"
+        "② 组合风险点（把「仓位合理性」的结论**并入这里**，不单独成节 ✗）。"
+        "只做归因分析，不给交易指令。"
+        "**禁止复述**简报前文已有的数字（目标仓位/名义仓位/回撤/贪恐指数）✗。"
         "直接输出最终分析正文，不要输出思考过程。\n\n"
         # 🔴 2026-10-31 用户裁定：**禁止线性折算** ✗
         # 杠杆 ETF 的累计收益是**逐日复利**的：
@@ -994,23 +1002,97 @@ def fetch_news(snap):
     return out
 
 
+#: 🔴 2026-11-11 瘦身 P3：**模板标题过滤器** ✓
+#: 实测 11-10 简报的「市场快讯」7 条里有 5 条是纯噪音：
+#:   `AXTX: Tradr 2X Long AXTI Daily ETF Latest Stock Price, Analysis, News...`
+#:   `MicroSectors Gold Miners 3X Leveraged ETNs (GDXU) Stock Price, News, Quote & History`
+#:   `CONL290119P00013000 Interactive Stock Chart | CONL Jan 2029 13.000 put Stock`
+#:   `(GDXU) Long Term Investment Analysis (GDXU:CA)`
+#:   `$Leverage Shares 2X Long CRCL Daily ETF (CRCG.US)$$Leverage Shares...$ - Moomoo`
+#: ⇒ 这些是**行情页标题**，不是新闻 ✗ 零信息量 ✗
+#: 判据：命中下列任一模式即视为噪音 ✓
+_NEWS_NOISE_RE = re.compile(
+    r"(Stock Price,? News,? Quote"          # Yahoo 行情页
+    r"|Interactive Stock Chart"              # Yahoo 期权图表页
+    r"|Long Term Investment Analysis"        # Stock Traders Daily 模板
+    r"|Latest Stock Price,? Analysis,? News"  # Stocktwits 行情页
+    r"|Stock Price,? News,? Quote & History"
+    r"|^\$.*\$\$)"                           # Moomoo 的 $$ 包裹
+    , re.I)
+
+
+def _news_is_noise(title):
+    """模板标题 / 行情页标题 ⇒ True（简报里不该出现）✓"""
+    t = str(title or "").strip()
+    if not t:
+        return True
+    if _NEWS_NOISE_RE.search(t):
+        return True
+    # 纯符号/纯代码型（如 `CONL270115C00072000 Interactive Stock Chart`）
+    if len(re.sub(r"[^A-Za-z\u4e00-\u9fff]", "", t)) < 8:
+        return True
+    return False
+
+
 def news_text(news):
-    """简报用新闻文本：市场区 + 标的分区。"""
+    """简报用新闻文本：市场区 + 标的分区 ✓。
+
+    🔴 2026-11-11 瘦身 P3（用户要求）：
+       ① **过滤模板标题**（`_news_is_noise`）—— 7 条里 5 条是行情页 ✗
+       ② **跨标的去重**（同一标题被多个标的分区抓到 ⇒ 只留一次）✓
+       ③ 某标的**过滤后没剩** ⇒ **整行不输出**（不留空的 `SYM:` 头 ✗）
+       预计省 300~400 字 ✓
+    """
     if not news:
         return "（新闻源不可用或为空）"
     lines = []
+    seen = set()
+    dropped = 0
+
+    def _key(t):
+        """去重键：去掉标点/空白后的小写前 60 字 ✓"""
+        return re.sub(r"\W+", "", str(t).lower())[:60]
+
     if news.get("_market"):
-        lines.append("大盘快讯:")
-        for t in news["_market"][:2]:      # 2026-10-31 精简：3 → 2 条 ✓
-            lines.append(f"· {t[:150]}")
+        kept_market = []
+        for t in news["_market"]:
+            if _news_is_noise(t):
+                dropped += 1
+                continue
+            k = _key(t)
+            if k in seen:
+                continue
+            seen.add(k)
+            kept_market.append(t)
+            if len(kept_market) >= 2:      # 大盘最多 2 条 ✓
+                break
+        if kept_market:
+            lines.append("大盘快讯:")
+            for t in kept_market:
+                lines.append("· " + t[:150])
+
     for sym, titles in news.items():
         if sym == "_market":
             continue
-        lines.append(f"{sym}:")
-        # 2026-10-31 精简：每标的 2 → **1** 条 ✓（6 个标的就省 6 行）
-        for t in titles[:1]:
-            lines.append(f"· {t[:120]}")
-    return "\n".join(lines)
+        kept = []
+        for t in titles:
+            if _news_is_noise(t):
+                dropped += 1
+                continue
+            k = _key(t)
+            if k in seen:
+                continue
+            seen.add(k)
+            kept.append(t)
+            break                          # 每标的只要 1 条 ✓
+        if not kept:
+            continue                       # ← 过滤后没剩 ⇒ 整行不输出 ✓
+        lines.append(sym + ":")
+        lines.append("· " + kept[0][:120])
+
+    if dropped >= 3:                       # 过滤得多才提示（少量不占行 ✓）
+        lines.append("（已过滤 %d 条行情页/模板标题）" % dropped)
+    return "\n".join(lines) if lines else "（无有效新闻）"
 
 
 # ---------------------------------------------------------------- 简报与推送
@@ -1225,12 +1307,11 @@ def action_brief_text(snap):
     # —— 原来 6 条各带一遍同样的后缀 ✗
     if any("减仓至上限" in ln for ln in out):
         head += ("\n标注「减仓至上限」= 仅价格风控触发（系数非贪婪）⇒ 只降敞口、不追方向。")
-    # 🔴 2026-11-09 用户裁定（第 4.6 条）：存量仓过渡期内只按系数减仓
-    if any(_is_legacy(r.get("symbol") or "") for r in snap.get("positions", [])):
-        from fg_system import config as _cfg2
-        head += ("\n存量仓过渡期（至 %s）：名单内标的**不适用** 1%% 硬上限 ✗ ——"
-                 " 只按贪恐系数定方向，上限仅供参照 ✓"
-                 % _cfg2.LEGACY_TRANSITION_UNTIL)
+    # 🔴 2026-11-11 瘦身 P3：**本节不再重复过渡期定义** ✗（原 ~55 字 → 0）
+    #    它已在【风控仓位】完整说过一次（名单 + 截止日期 + 口径）✓
+    #    ⚠️ 逐标的行本身就带 `（存量仓，仅供参考）` 后缀 ✓
+    #       （见上方 `out.append(... "（存量仓，仅供参考）" if legacy ...)`）
+    #    ⇒ 标题行再说一遍是纯重复，删掉不丢信息 ✓
     # 🔴 2026-10-31 用户裁定：**减仓顺序要写进简报** ✗
     # 排序 = 浮亏深度 × 杠杆倍数（越大越先减）✓ 依据：
     #   ① 浮亏深 ⇒ 回本数学**指数级**恶化（-83% 要 +488%，几乎不可能）
@@ -1273,8 +1354,8 @@ def action_brief_text(snap):
     #    名单内标的动作是「持有观望」而 ENE 写「支持减仓」⇒ 同页自相矛盾 ✗
     if ene_line and any(_is_legacy(r.get("symbol") or "")
                         for r in snap.get("positions", [])):
-        ene_line += ("\n⚠️ 存量仓过渡期内上述 ENE 确认**仅供参考** ✗ —— "
-                     "名单内标的减仓与否只按贪恐系数（第 4.6 条）")
+        # 🔴 2026-11-11 瘦身 P3：压成一行（原 ~50 字 → ~28 字）✓
+        ene_line += "\n⚠️ 过渡期内 ENE 仅供参考（只按系数，第 4.6 条）"
     tail = ("\n" + ene_line) if ene_line else ""
     return head + "\n" + "\n".join(out) + tail
 
@@ -1401,8 +1482,10 @@ def position_plan_brief(snap):
     # 🔴 2026-11-09：名单内标的的 1% 上限在过渡期**不参与减仓判定** ✗
     #    但本节的逐条仍会写「上限 $1159（1% 规则更严）」⇒ 读者会当成硬约束 ✗
     if any(_is_legacy(r.get("symbol") or "") for r in pos):
-        head += ("\n⚠️ 存量仓过渡期内，名单内标的的 **1% 上限仅供参考** ✗ "
-                 "（不参与减仓判定，第 4.6 条）；**加仓仍按上述规则冻结** ✓")
+        # 🔴 2026-11-11 瘦身 P3：只留**动作侧**信息（原 ~60 字 → ~30 字）✓
+        #    「1% 上限仅供参考」已在【风控仓位】说过 ⇒ 这里删 ✗
+        #    「加仓仍冻结」是本节独有的动作约束 ⇒ 必须留 ✓
+        head += "\n⚠️ 加仓仍冻结（第 4.6.6 条：豁免的是减仓，不是加仓）"
     # 🔴 2026-10-31 精简：**全部不可操作** ⇒ 压成一行 ✓
     # 原来 5 行全是「已到单标的上限」/「禁止加仓」，占 5 行但零信息量 ✗
     # （用户实测：简报太长，且这三节在重复列同一批标的 ✗）
@@ -1523,6 +1606,27 @@ def _human30_brief():
         return None
     levels = rec.get("levels") or {}
     phases = rec.get("phases") or {}
+    gap = _h30.days_since_last()
+    # 🔴 2026-11-11 瘦身 P3（用户要求）：**断档时压成 2 行** ✓
+    #    原来断档状态下仍输出 5 行（四象限 4 行 + 核心问题 + 近7日 + AI复盘）✗
+    #    而记录本身是 N 天前的 ⇒ 四象限展开、近7日、AI 复盘**都基于旧数据** ✗
+    #    ⇒ 压成「断档天数 + 上次四象限（一行）」+ 打卡提示 ✓（省 ~250 字）
+    #    ⚠️ 不能写「上次分数」✗ —— v2 口径（§8）**禁分数与 Level 数字** ✓
+    #       ⇒ 用象限 Archetype 名称代替 ✓
+    if gap is not None and gap >= 1:
+        _short = []
+        for _ln in _rd.quadrant_lines(levels, phases):
+            _k, _, _v = str(_ln).partition("：")
+            _v1 = (_v.split("·")[0] or "").strip()
+            if _k.strip() and _v1:
+                _short.append("%s %s" % (_k.strip(), _v1))
+        _lines = ["· ⏰ 断档 **%d 天**未打卡（上次 %s）⇒ 极端档位归因缺样本"
+                  % (gap, rec["date"])]
+        if _short:                       # 象限读不出来就不硬拼空行 ✓
+            _lines.append("· 上次四象限：%s" % " / ".join(_short))
+        _lines.append("（自评打卡：页面表单 或 scripts/human30_cli.py --set "
+                      "--mind .. --body .. --spirit .. --vocation ..）")
+        return "\n".join(_lines)
     out = ["· " + ln for ln in _rd.quadrant_lines(levels, phases)]
     # 🔴 2026-10-31 精简：去掉重复的 `AI_PREFIX` ✗ ——
     # 下面 `_h30_review()` 自己已经带一次「AI 复盘（🟡 研究参考…）」✗
@@ -1530,10 +1634,6 @@ def _human30_brief():
     out.append("· 核心问题：%s"
                % (_mt.deterministic_metatype(levels).get("metatype")
                   or "未判定"))
-    gap = _h30.days_since_last()
-    if gap is not None and gap >= 1:
-        out.append("⏰ 已断档多日未打卡（上次 %s）——记录断档，极端档位归因将缺样本"
-                   % rec["date"])
     w = _h30.window_stats(7)
     if not w["no_data"]:
         lv = w["level_counts"]
@@ -1827,10 +1927,11 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     # 截断后仍保留「逐标的 + 风险点 + 仓位合理性」三段主干 ✓
     # 🔴 2026-11-10：截断问题**不是 max_tokens**（已 4096）而是展示层硬切 ✗
     #    ⇒ 改用「**句号处收尾**」的软截断：既不半句断掉，也不让简报无限长 ✓
-    #    （prompt 已要求 ≤800 字；1200 是留给模型超写的缓冲 ✓）
+    # 🔴 2026-11-11 瘦身 P3：prompt 收到 500 字 ⇒ 展示层缓冲同步 **1200 → 800** ✓
+    #    （500 × 1.6 ≈ 800，给模型超写留 60% 余量 ✓）
     _attr_txt = ((_mc + "\n\n" if _mc else "")
                  + _clip_at_sentence(
-                     (attribution or "（归因生成失败，已降级跳过）").strip(), 1200))
+                     (attribution or "（归因生成失败，已降级跳过）").strip(), 800))
     secs.append(("🔍 深度归因 · %s" % _attr_tag, _AI_ACTION_NOTE + "\n" + _attr_txt))
     secs.append("hr")
     secs.append(("⚖️ 裁判裁决 · %s【研究参考】" % _attr_tag,
