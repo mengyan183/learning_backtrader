@@ -893,6 +893,16 @@ def _alarm(seconds, msg="timeout"):
     if not hasattr(signal, "SIGALRM"):
         yield
         return
+    # 🔴 2026-11-11 真因（4 轮 BTC/GDXU/AXTX 新闻消失）：`fetch_news` 跑在
+    #    `main()` 的 **daemon 线程**里（见 `_worker`），而 `signal.signal()`
+    #    只能在主线程调用 ⇒ 这里抛 `ValueError: signal only works in main thread`
+    #    ⇒ 富途段整个 `try` 被 `except Exception` 吞掉 ⇒ 富途结果**全丢** ✗
+    #    ⇒ 只剩 gnews，而 gnews 对 BTC 常返回 Robinhood 预测市场（噪音）✗
+    #    非主线程直接跳过超时机制 ✓（外层有 `STAGE_TIMEOUT` daemon 线程兜底）
+    import threading
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
 
     def _h(signum, frame):
         raise TimeoutError(msg)
@@ -998,8 +1008,13 @@ def fetch_news(snap):
             if _ret != 0 or not len(_data):
                 return _sym, [], "ret=%s n=%s" % (
                     _ret, 0 if _data is None else len(_data))
-            _kept = [str(t).strip() for t in _data["title"].tolist()
-                     if _news_relevant(_sym, t)]
+            _all = [str(t).strip() for t in _data["title"].tolist()]
+            # 🔴 2026-11-11 修回归：`_market` **不是标的**，不能走 `_news_relevant` ✗
+            #    （`_news_terms("_market")` 只有 `_MARKET` 自己 ⇒ 全被滤掉 ✗）
+            #    大盘的实体校验在外层用 `_MKT_ENTS` 做 ✓
+            if _sym == "_market":
+                return _sym, _all, "" if _all else "空"
+            _kept = [t for t in _all if _news_relevant(_sym, t)]
             if not _kept:
                 return _sym, [], "全部不含标的词（原 %d 条）" % len(_data)
             return _sym, _kept[:2], ""
