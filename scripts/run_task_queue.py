@@ -1033,6 +1033,183 @@ def _act_autostart_list(params):
     return out
 
 
+def _act_plist_path_append(params):
+    """把 LaunchAgent plist 里的 `export PATH="..."` 改成**追加式** ✓（2026-11-11 用户要求）。
+
+    🔴 问题（`dsh_web_diag` 回执里的 plist 原文）：
+       `source ~/.zshrc; export PATH="/usr/local/bin:$HOME/opt/node24/bin:
+        /usr/bin:/bin:/usr/sbin:/sbin"; ...; exec dsh web --no-open`
+       ⇒ `source ~/.zshrc` 先把用户的 PATH 配好 ✗
+       ⇒ 紧接着 `export PATH="..."` **整个覆盖掉** ✗
+       ⇒ 且写死 `node24` ✗ —— node 升到 26 后 `~/opt/node24/bin` 不存在
+         ⇒ `exec dsh web` 报 `command not found` ✗
+
+    ✅ 改法（追加 + 版本通配兜底）：
+       `export PATH="$PATH:/usr/local/bin:$HOME/opt/node24/bin:$(ls -d
+        $HOME/opt/node*/bin | sort -V | tail -1)"`
+       - `$PATH` 保留 `.zshrc` 的配置 ✓
+       - 保留已知可用的 `node24`（不倒退）✓
+       - 用 `sort -V | tail -1` 取**最新**的 `node*/bin` ✓ ⇒ 升级后自动跟随 ✓
+       ⚠️ 只能用 XML 安全字符（不能出现 `&` / `<` / `>`）✗
+
+    步骤：
+      ① 读 plist，备份为 `<plist>.bak-<时间戳>`
+      ② 正则替换**第一处** `export PATH="..."`（没有就报错，不乱改）
+      ③ `plutil -lint` 校验 XML ✓（不通过就回滚 ✓）
+      ④ bootout + bootstrap
+      ⑤ 回报新 PATH 行 + 进程状态 + 日志尾巴
+    """
+    import re as _re
+
+    _ALLOWED = ("com.xingguo.dsh.web",
+                "com.xingguo.fg-task-queue",
+                "com.xingguo.fg-realtime",
+                "com.xingguo.fg-dashboard",
+                "com.xingguo.fg-sync-watcher")
+    label = str(params.get("label") or "").strip()
+    if label not in _ALLOWED:
+        return {"ok": False,
+                "error": "不允许的 label：`%s` ✗（白名单：%s）"
+                         % (label, ", ".join(_ALLOWED))}
+
+    home = os.path.expanduser("~")
+    plist = os.path.join(home, "Library", "LaunchAgents", label + ".plist")
+    uid = os.getuid() if hasattr(os, "getuid") else 501
+    target = "gui/%s/%s" % (uid, label)
+    out = {"label": label, "plist": plist, "steps": {}}
+
+    if not os.path.exists(plist):
+        out["ok"] = False
+        out["error"] = "plist 不存在：%s ✗" % plist
+        return out
+
+    try:
+        with open(plist, encoding="utf-8") as fh:
+            src = fh.read()
+    except OSError as exc:
+        out["ok"] = False
+        out["error"] = "读 plist 失败：%s" % str(exc)[:150]
+        return out
+
+    # ① 备份
+    import datetime as _dt
+    bak = plist + ".bak-" + _dt.datetime.now().strftime("%Y%m%d%H%M%S")
+    try:
+        with open(bak, "w", encoding="utf-8") as fh:
+            fh.write(src)
+        out["steps"]["backup"] = bak
+    except OSError as exc:
+        out["ok"] = False
+        out["error"] = "备份失败，**不动原文件** ✗：%s" % str(exc)[:150]
+        return out
+
+    # ② 替换
+    _NEW = ('export PATH="$PATH:/usr/local/bin:$HOME/opt/node24/bin:'
+            '$(ls -d $HOME/opt/node*/bin | sort -V | tail -1)"')
+    m = _re.search(r'export PATH="[^"]*"', src)
+    if not m:
+        out["ok"] = False
+        out["error"] = ("plist 里找不到 `export PATH=\"...\"` ✗ ⇒ "
+                        "结构可能不同，不改（备份已留）")
+        out["steps"]["old_path"] = "(未找到)"
+        return out
+    out["steps"]["old_path"] = m.group(0)
+    out["steps"]["new_path"] = _NEW
+    if m.group(0) == _NEW:
+        out["steps"]["changed"] = False
+        out["steps"]["note"] = "已经是追加式，无需修改 ✓"
+        return {"ok": True, **out}
+
+    new_src = src[:m.start()] + _NEW + src[m.end():]
+    try:
+        with open(plist, "w", encoding="utf-8") as fh:
+            fh.write(new_src)
+    except OSError as exc:
+        out["ok"] = False
+        out["error"] = "写 plist 失败：%s" % str(exc)[:150]
+        return out
+    out["steps"]["changed"] = True
+
+    # ③ plutil -lint 校验（不通过就回滚）
+    try:
+        r = subprocess.run(["/usr/bin/plutil", "-lint", plist],
+                           capture_output=True, text=True, timeout=20)
+        lint_ok = (r.returncode == 0)
+        out["steps"]["lint"] = {"rc": r.returncode,
+                                "out": ((r.stdout or "") + (r.stderr or "")).strip()[:200]}
+    except Exception as exc:              # noqa: BLE001
+        lint_ok = False
+        out["steps"]["lint"] = {"rc": -1, "out": str(exc)[:150]}
+    if not lint_ok:
+        try:
+            with open(plist, "w", encoding="utf-8") as fh:
+                fh.write(src)
+            out["steps"]["rolled_back"] = True
+        except OSError:
+            out["steps"]["rolled_back"] = "回滚失败 ✗"
+        out["ok"] = False
+        out["error"] = "plutil -lint 不通过 ⇒ 已回滚原文件 ✗"
+        return out
+
+    # ④ bootout + bootstrap
+    def _sh(cmd, t=30):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=t)
+            return {"rc": r.returncode,
+                    "out": ((r.stdout or "") + (r.stderr or "")).strip()[:300]}
+        except Exception as exc:          # noqa: BLE001
+            return {"rc": -1, "out": str(exc)[:150]}
+
+    out["steps"]["bootout"] = _sh(["launchctl", "bootout", target])
+    time.sleep(2)
+    out["steps"]["bootstrap"] = _sh(["launchctl", "bootstrap",
+                                     "gui/%s" % uid, plist])
+    time.sleep(4)
+
+    # ⑤ 状态
+    try:
+        r = subprocess.run(["launchctl", "list"], capture_output=True,
+                           text=True, timeout=20)
+        lst = [ln for ln in (r.stdout or "").splitlines() if label in ln]
+        out["steps"]["launchctl_list"] = lst or ["(列表里没有它)"]
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["launchctl_list"] = "ERR %s" % str(exc)[:100]
+
+    _pid = None
+    _lst = out["steps"].get("launchctl_list") or []
+    if isinstance(_lst, list) and _lst:
+        _f = str(_lst[0]).split()
+        if _f and _f[0].isdigit():
+            _pid = _f[0]
+    if _pid:
+        out["steps"]["processes"] = _sh(
+            ["ps", "-p", _pid, "-o", "pid,etime,command"])["out"][:300]
+    else:
+        out["steps"]["processes"] = "(无数字 PID ⇒ 进程未运行)"
+
+    # 日志尾巴（token 打码）
+    try:
+        r = subprocess.run(["/usr/bin/plutil", "-p", plist],
+                           capture_output=True, text=True, timeout=15)
+        mm = _re.search(r'"StandardOutPath"\s*=>\s*"([^"]+)"', r.stdout or "")
+        if mm and os.path.exists(mm.group(1)):
+            with open(mm.group(1), encoding="utf-8", errors="replace") as fh:
+                tail = "".join(fh.readlines()[-10:])
+            tail = _re.sub(r"(token=)([A-Za-z0-9_\-]{8})([A-Za-z0-9_\-]*)",
+                           lambda x: x.group(1) + x.group(2) + "…(%d)"
+                           % (len(x.group(2)) + len(x.group(3))), tail)
+            out["steps"]["log_tail"] = tail[-800:]
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["log_tail"] = "ERR %s" % str(exc)[:150]
+
+    out["ok"] = bool(_pid)
+    if not out["ok"]:
+        out["hint"] = ("改完 PATH 后服务没起来 ✗ ⇒ 看 log_tail；"
+                       "必要时用备份 %s 还原" % os.path.basename(bak))
+    return out
+
+
 def _act_dsh_web_launch(params):
     """**读取 dsh web 的 token URL 并用浏览器打开** ✓（2026-11-11 用户要求）。
 
@@ -4647,6 +4824,7 @@ ACTIONS = {
     "realtime_diag": _act_realtime_diag,
     "service_bootstrap": _act_service_bootstrap,
     "dsh_web_launch": _act_dsh_web_launch,
+    "plist_path_append": _act_plist_path_append,
     "autostart_list": _act_autostart_list,
     "dsh_web_diag": _act_dsh_web_diag,
     "dsh_webauth_find": _act_dsh_webauth_find,
