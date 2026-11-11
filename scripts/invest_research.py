@@ -780,15 +780,22 @@ def stage_judge(nim_key, snap, sentiment, attribution):
         _u, _m = agent_route("judge")
         # 🔴 `max_tokens=400` 实测不够 ✗ —— 推理模型先写思维链，正文还没开始
         #    就被截断 ⇒ 提到 2000，并**关闭 reasoning 回退**（宁可降级也不印思考过程）
+        # 🔴 2026-11-11 实测（11-10 简报）：**2000 仍不够** ✗ —— 回执是
+        #    `裁判调用失败（DeepSeek（deepseek-flash））：调用失败(1次): 空响应`
+        #    原因是 `reasoning_fallback=False` + 思维链吃光 2000 个 token
+        #    ⇒ `content` 为空且不许回退 ⇒ 直接报「空响应」✗
+        #    ⇒ `max_tokens` 提到 **4000**（归因段 4096 一直够用 ✓）
+        #    ⇒ `retries` 1 → **2**（第一次空响应后重试一次 ✓）
+        _JUDGE_TOKENS = 4000
         out = _chat(_u, nim_key, _m, system, user,
-                    max_tokens=2000, proxy=PROXY, timeout=120, retries=1,
-                    reasoning_fallback=False)
+                    max_tokens=_JUDGE_TOKENS, proxy=PROXY, timeout=120,
+                    retries=2, reasoning_fallback=False)
         v = _validate_judge(out)
         if v is None:
             _u, _m = agent_route("judge")
             out = _chat(_u, nim_key, _m, system, user,
-                        max_tokens=2000, proxy=PROXY, timeout=120, retries=1,
-                        reasoning_fallback=False)
+                        max_tokens=_JUDGE_TOKENS, proxy=PROXY, timeout=120,
+                        retries=2, reasoning_fallback=False)
             v = _validate_judge(out)
         if v is None:
             return "（裁判未按三行格式输出，本次以归因/风控结论为准。）"
@@ -1707,7 +1714,12 @@ _AI_ACTION_NOTE = ("⚠️ 本段是 AI 分析，**不产生动作**；当前动
 
 #: LLM 输出的**噪音行**形态 ✓（2026-11-09 用户要求剥离）
 _ARTIFACT_RE = re.compile(r"^\s*[A-Za-z_]\w*(\.[A-Za-z_]\w*)+\s*$")
-_SELFCHECK_RE = re.compile(r"(符合上限|核验|字数|已按去空白)")
+#: 🔴 2026-11-11 实测（11-10 简报情绪面第一行）：
+#:    `296 字（去空白），三段如下：` ✗ —— 模型把**自检字数**当正文开头 ✗
+#:    原来只认「已按去空白」✗ 而这里是「（去空白）」⇒ 漏网 ✗
+#:    ⇒ 补 `去空白` / `三段如下` / `如下：` ✓
+_SELFCHECK_RE = re.compile(
+    r"(符合上限|核验|字数|去空白|三段如下|^如下[:：]|共\s*\d+\s*字)")
 
 
 def _clip_at_sentence(text, limit):

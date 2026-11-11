@@ -120,6 +120,16 @@ def review(days=7):
             raise RuntimeError("empty response")
         suggestion = _guard_filter(suggestion)
         suggestion = " ".join(suggestion.split())
+        # 🔴 2026-11-11 实测（11-10 简报）：输出是
+        #    `… 层级分布 L3×1。建议：建议（58字）：心、体连续七次满分…` ✗
+        #    两处噪音：
+        #      ① 模型自己又写了一遍「建议：」⇒ 和我们拼的前缀重复 ✗
+        #      ② 行内「（58字）」—— 原来的后缀正则只削**行尾** ✗ 这里在中间 ✗
+        #    ⇒ 全部剥掉 ✓
+        import re as _re
+        suggestion = _re.sub(r"[（(]\s*\d+\s*字\s*[)）]", "", suggestion)
+        suggestion = _re.sub(r"^[\s:：]*(建议|成长建议)\s*[:：]\s*", "",
+                             suggestion).strip()
         if len(suggestion) > 60:
             cut = suggestion.rfind("。", 0, 60)
             suggestion = suggestion[:cut + 1] if cut > 20 else suggestion[:60]
