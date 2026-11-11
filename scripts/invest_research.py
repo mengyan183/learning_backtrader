@@ -1015,6 +1015,9 @@ _NEWS_NOISE_RE = re.compile(
     r"(Stock Price,? News,? Quote"          # Yahoo 行情页
     r"|Interactive Stock Chart"              # Yahoo 期权图表页
     r"|Long Term Investment Analysis"        # Stock Traders Daily 模板
+    # 🔴 2026-11-11 补：`(GDXU) Trading Performance and Risk Management (GDXU:CA)`
+    #    也是 Stock Traders Daily 的模板标题，上一版漏网 ✗
+    r"|Trading Performance and Risk Management"
     r"|Latest Stock Price,? Analysis,? News"  # Stocktwits 行情页
     r"|Stock Price,? News,? Quote & History"
     r"|^\$.*\$\$)"                           # Moomoo 的 $$ 包裹
@@ -1185,8 +1188,12 @@ def risk_brief_text(snap):
                         "、".join(sorted(s for s in legacy_syms if s))))
     ks = snap.get("kill_switch")
     if ks:
-        lines.append("🔴 连亏保护触发：当日亏损 %s (%.1f%%) ≥ 2%%净值，"
-                     "建议停止开新仓/当日收工（Peter Brandt 风控）"
+        # 🔴 2026-11-11：**口径写清楚** ✗ —— 原来写「≥ 2%净值」，
+        #    但 `pct` 的分母是 **stock_net**（股票净值），不是总净值 ✗
+        #    实测 11-10：当日亏损 -1004.43 显示 -10.2%，
+        #    而总净值口径是 -8.0%（12493）⇒ 读者会以为亏了 10% 总资产 ✗
+        lines.append("🔴 连亏保护触发：当日亏损 %s (%.1f%% **股票净值**)"
+                     " ≥ 2%% 阈值，建议停止开新仓/当日收工（Peter Brandt 风控）"
                      % (ks["day_pnl"], ks["pct"]))
     return "\n".join(lines) if lines else None
 
@@ -1864,7 +1871,18 @@ def _strip_llm_artifacts(text):
         if len(t.strip()) <= 30 and "字" in t and _SELFCHECK_RE.search(t):
             continue
         keep.append(t)
-    return "\n".join(keep).strip()
+    # 🔴 2026-11-11 实测（11-10 简报情绪面）：模型把 `情绪定性:` 单独成行 ✗
+    #    正文放下一行 ⇒ 白白多占 3 行 ✗
+    #    （11-09 那份是「情绪定性：贪恐24.8在恐惧区…」同行的 ✓）
+    #    判据：上一行 ≤12 字且以 `:`/`：` 结尾 ⇒ 与当前行合并 ✓
+    merged = []
+    for t in keep:
+        if (merged and len(merged[-1].strip()) <= 12
+                and merged[-1].rstrip().endswith((":", "："))):
+            merged[-1] = merged[-1].rstrip() + " " + t.strip()
+        else:
+            merged.append(t)
+    return "\n".join(merged).strip()
 
 
 def build_brief_sections(snap, sentiment, attribution, judge, news=None):

@@ -147,6 +147,20 @@ TASK_LOG = {
                                        "logs/walkforward_launchd.out.log"],
     "com.xingguo.fg-evolve-verify":   ["logs/evolve_verify.log"],
     "com.xingguo.fg-evolve-weekly":   ["logs/evolve_weekly.log"],
+    # 🔴 2026-11-11 **补 6 个漏配的日志候选** ✗ ——
+    #    之前把它们加进 `TASKS`（fix_1110s/t）却**没加 TASK_LOG** ✗
+    #    后果不只是「任务页最新执行时间永远显示 —」✗，
+    #    更严重的是 **`HEARTBEAT_TASKS` 判据失效** ✗：
+    #      `_task_log_age()` 找不到任何候选文件 ⇒ 返回 None
+    #      ⇒ `alive` 恒为 True ⇒ 队列卡死也不会报红 ✗
+    #    （`test_every_monitored_task_declares_a_candidate` 早就挂了 ✗）
+    #    路径取自各自 plist 的 `StandardOutPath` ✓
+    "com.xingguo.fg-task-queue":      ["/tmp/fg_task_queue.log"],
+    "com.xingguo.fg-sync-watcher":    ["/tmp/fg_sync_watcher.log"],
+    "com.xingguo.fg-realtime":        ["/tmp/fg_realtime.log"],
+    "com.xingguo.fg-weekly-review":   ["/tmp/fg_weekly_review.out"],
+    "com.xingguo.fg-dashboard":       ["/tmp/fg_dashboard.log"],
+    "com.xingguo.fg-monitor":         ["logs/task_monitor.out.log"],
     # 🔴 2026-11-11：dsh web 的日志都在仓库外 ⇒ 用 `~` 前缀（下面 `_resolve_log` 会展开）✓
     #    ① `/tmp/dsh-web-launchd.log`  —— 启动时写一行（只看「最后一次启动时间」）
     #    ② `~/.dsh/our-free-model/availability.json` —— 运行期持续刷新（心跳用这个）✓

@@ -127,12 +127,42 @@ def review(days=7):
         #      ② 行内「（58字）」—— 原来的后缀正则只削**行尾** ✗ 这里在中间 ✗
         #    ⇒ 全部剥掉 ✓
         import re as _re
-        suggestion = _re.sub(r"[（(]\s*\d+\s*字\s*[)）]", "", suggestion)
-        suggestion = _re.sub(r"^[\s:：]*(建议|成长建议)\s*[:：]\s*", "",
-                             suggestion).strip()
+        # ① 剥字数自检 —— 三种形态都要覆盖 ✓
+        #    `（58字）` / `共57字，` / `57 字`
+        #    🔴 2026-11-11 实测：11-10 那份是 `共57字，建议如下： …` ✗
+        #    而上一版正则只认**括号包裹**的 ⇒ 漏网 ✗
+        suggestion = _re.sub(
+            r"[（(]?\s*共?\s*\d+\s*字\s*[)）]?\s*[，,、:：]?\s*", "",
+            suggestion)
+        # ② 剥重复的「建议：」「建议如下：」（可能嵌套两层）✓
+        for _ in range(3):
+            _new = _re.sub(
+                r"^[\s:：]*(建议|成长建议)\s*(如下)?\s*[:：]?\s*", "",
+                suggestion).strip()
+            if _new == suggestion:
+                break
+            suggestion = _new
+        if not suggestion:
+            raise RuntimeError("cleanup emptied suggestion")
+        # ③b 去掉**结尾未闭合的括号残句** ✓
+        #     🔴 2026-11-11 实测：上游 max_tokens 截断后输出
+        #     `…二者两次升到80时fg_index最低（1` ✗ 尾巴是个半截括号 ✗
+        _before = suggestion
+        suggestion = _re.sub(r"[（(][^）)]*$", "", suggestion)
+        suggestion = suggestion.rstrip("，,、:：;； ").strip()
+        if not suggestion:
+            suggestion = _before          # 全被削掉就退回原样，别给空 ✓
+        # ③ 截断：优先句号 → 逗号/分号 → 硬切 ✓
+        #    🔴 2026-11-11 实测：只找句号会退化成硬切，
+        #    输出 `…二者两次升到80时fg_index最低（1` 这种半句 ✗
         if len(suggestion) > 60:
             cut = suggestion.rfind("。", 0, 60)
-            suggestion = suggestion[:cut + 1] if cut > 20 else suggestion[:60]
+            if cut <= 20:
+                cut = max(suggestion.rfind("，", 0, 60),
+                          suggestion.rfind("；", 0, 60),
+                          suggestion.rfind("、", 0, 60))
+            suggestion = (suggestion[:cut + 1] if cut > 20
+                          else suggestion[:60])
         text = facts + "。建议：" + suggestion
     except Exception:
         # 降级：确定性建议（短板导向，绝不阻塞）
