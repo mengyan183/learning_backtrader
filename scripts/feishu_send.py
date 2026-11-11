@@ -170,15 +170,24 @@ def _release_lock(fd):
 
 FEISHU_URL = "https://www.feishu.cn/messenger/"
 TEXTBOX_RE = re.compile(r"(@e\d+)\s+textbox")
+#: 飞书富文本编辑器的 CSS 选择器 ✓（bsk 0.4.2 的 VOM 不暴露 textbox ⇒ 只能按选择器填）
+EDITOR_SELECTOR = 'div[contenteditable="true"]'
 BUTTON_RE = re.compile(r"(@e\d+)\s+button\s+\"([^\"]*)\"")
 
 
 class Bsk:
     """`bsk` CLI 的薄封装。"""
 
+    #: 需要 `--context` 的 DOM 动作 ✓（2026-11-11 bsk 0.2.0 → 0.4.2 引入
+    #: `cooperate` 机制后，这些动作**必须**带 context，否则报
+    #: `shared page control or observation changed` ✗）
+    _CTX_ACTIONS = ("click", "fill", "press", "type", "extract",
+                    "reload", "snapshot", "get-html", "screenshot")
+
     def __init__(self, session=None, quiet=True):
         self.session = session
         self.quiet = quiet
+        self.ctx = None
 
     def run(self, *args, check=True, with_session=True):
         """跑一条 `bsk` 子命令 ✓。
@@ -190,6 +199,10 @@ class Bsk:
         cmd = ["bsk"] + list(args)
         if with_session and self.session:
             cmd += ["--session", self.session]
+        # 🔴 2026-11-11：DOM 动作要带 `--context` ✓（见 `sync()`）
+        if (with_session and self.ctx and args
+                and args[0] in self._CTX_ACTIONS):
+            cmd += ["--context", self.ctx]
         proc = subprocess.run(cmd, capture_output=True, text=True,
                               encoding="utf-8", errors="replace")
         if check and proc.returncode != 0:
@@ -232,8 +245,40 @@ class Bsk:
             finally:
                 self.session = None
 
+    def sync(self):
+        """`cooperate sync` → `(context_id, vom_text)` ✓（bsk ≥0.4.2 必需）。
+
+        🔴 2026-11-11 升级 bsk `0.2.0` → `0.4.2` 后实测：
+           `bsk click @e8` 报
+             `error: shared page control or observation changed`
+             `details: This action requires the context returned by the latest cooperate sync`
+           ⇒ DOM 动作必须带 `--context` ✓；
+           **且 ref 必须来自同一次 sync** ✗ ——
+           拿 `observe` 的 ref 配新 context 会报
+             `The action target was removed from its document` ✗
+           ⇒ 所以**统一用 `sync()` 取代 `observe()`**：它同时给 context 和 refs ✓
+        """
+        raw = self.run("cooperate", "sync", check=False)
+        ctx = None
+        m = re.search(r'"context_id"\s*:\s*"([^"]+)"', raw or "")
+        if m:
+            ctx = m.group(1)
+        self.ctx = ctx
+        txt = ""
+        try:
+            d = json.loads(raw)
+            txt = ((d.get("observation") or {}).get("text") or "")
+        except (json.JSONDecodeError, AttributeError, TypeError):
+            mt = re.search(r'"text"\s*:\s*"((?:[^"\\]|\\.)*)"', raw or "")
+            if mt:
+                try:
+                    txt = json.loads('"%s"' % mt.group(1))
+                except json.JSONDecodeError:
+                    txt = mt.group(1)
+        return ctx, txt
+
     def observe(self):
-        """返回 VOM 文本。"""
+        """返回 VOM 文本（**只读** ✓ 不能拿它的 ref 去 click ✗，见 `sync()`）。"""
         raw = self.run("observe", "--json")
         try:
             return json.loads(raw).get("text", raw)
@@ -241,8 +286,43 @@ class Bsk:
             return raw
 
     def find_textbox(self, vom):
+        """找输入框 ✓ —— 返回 `@eN` ref 或 **CSS 选择器**。
+
+        🔴 2026-11-11 升级 bsk 0.4.2 后实测（用户要求「把飞书发送走通」）：
+           ① 新版 VOM **不再把飞书编辑器标成 `textbox`** ✗
+              它标成 `button "发送给 海外投资助手"`（placeholder 当文案）✗
+           ② 真正的编辑器是 `div[contenteditable="true"]`
+              （class `zone-container editor-kit-container innerdocbody`）✓
+           ③ `fill @eN` 报 `element DIV not fillable` ✗
+              但 `fill --selector 'div[contenteditable="true"]'` **能填进去** ✓
+              （`rc=3 could not be confirmed` 只是确认失败，实际成功 ✗）
+           ④ 必须**先点会话打开聊天** ✗ —— 只看欢迎页时编辑器不存在 ✗
+              （判据：VOM 里出现 `发送给` 或 `Shift + Enter 换行` ✓）
+        """
         m = TEXTBOX_RE.search(vom)
-        return m.group(1) if m else None
+        if m:
+            return m.group(1)
+        # 新版：聊天已打开（有输入框的 placeholder / 换行提示）⇒ 用选择器 ✓
+        if "发送给" in vom or "Shift + Enter" in vom:
+            return EDITOR_SELECTOR
+        return None
+
+    def fill(self, target, text):
+        """填文本 ✓ —— `target` 是 `@eN` 用位置参数，否则当 CSS 选择器 ✓"""
+        if str(target).startswith("@"):
+            return self.run("fill", target, "--value", text, check=False)
+        return self.run("fill", "--selector", target, "--value", text,
+                        check=False)
+
+    def press(self, key, target=None):
+        """按键 ✓ —— `target` 同上（`@eN` → `--ref`；否则 → `--selector`）"""
+        args = ["press", key]
+        if target:
+            if str(target).startswith("@"):
+                args += ["--ref", target]
+            else:
+                args += ["--selector", target]
+        return self.run(*args, check=False)
 
     def find_chat(self, vom, name):
         """找会话列表里匹配 `name` 的那个条目。"""
@@ -301,7 +381,9 @@ def _box_has_text(vom, snippet):
     （2026-09-28 实测踩到的形态：那条分片其实发过，但列表里也有 ⇒ 判据失效）。
     """
     for line in vom.splitlines():
-        if "textbox" in line and snippet in line:
+        # 旧版 bsk：`@eN textbox "..."`
+        # 新版 bsk：`@eN button "发送给 XXX <已输入内容>"`
+        if ("textbox" in line or "发送给" in line) and snippet in line:
             return True
     return False
 
@@ -383,7 +465,8 @@ def main():
         vom = ""
         for attempt in range(15):              # 最多等 ~45 秒
             time.sleep(3)
-            vom = bsk.observe()
+            # 🔴 用 `sync()` 而非 `observe()`：click 的 ref 必须来自同一次 sync ✓
+            _ctx, vom = bsk.sync()
             ref, label = bsk.find_chat(vom, args.chat)
             if ref:
                 break
@@ -403,9 +486,12 @@ def main():
         bsk.run("click", ref)
 
         box = None
-        for attempt in range(10):              # 等输入框出现
+        # 🔴 2026-11-11：提到 **20 次（40 秒）** ✗ —— 新版下聊天窗口渲染更慢，
+        #    而且「点会话」后要先出现 `发送给` 才算编辑器就绪 ✓
+        for attempt in range(20):              # 等输入框出现
             time.sleep(2)
-            vom = bsk.observe()
+            # 点开会话后**主文档变了** ⇒ 必须重新 sync ✓
+            _ctx, vom = bsk.sync()
             box = bsk.find_textbox(vom)
             if box:
                 break
@@ -418,9 +504,20 @@ def main():
         for i, (name, text) in enumerate(todo, args.start):
             # ⚠️ **每发一条，ref 就失效一次** —— 发完消息后消息列表变了，
             # 旧 ref 会报 "snapshot ref was not found for this tab"。
-            # 所以每条都要重新观察、重新拿输入框 ref（实测踩到过）。
-            vom = bsk.observe()
-            box = bsk.find_textbox(vom)
+            # 所以每条都要重新 sync、重新拿输入框 ref（实测踩到过）。
+            # 🔴 2026-11-11 实测：**第一次能拿到输入框，循环里再 sync 就没了** ✗
+            #    （`fix_1111w` 连续 2 次卡在这里：日志先打印
+            #     `输入框：div[contenteditable="true"]`，然后报「找不到输入框」✗）
+            #    原因：`click` 打开会话后主文档还在变，紧接着的 sync 可能
+            #    抓到**过渡态**（VOM 里还没有 `发送给` 那行）✗
+            #    ⇒ 加**重试**：最多 6 次 × 2 秒 ✓，别一次抓空就退出 ✓
+            box = None
+            for _try in range(6):
+                _ctx, vom = bsk.sync()
+                box = bsk.find_textbox(vom)
+                if box:
+                    break
+                time.sleep(2)
             if not box:
                 raise SystemExit("❌ 第 %d 条（%s）前找不到输入框；"
                                  "可能页面被切走或掉登录了" % (i, name))
@@ -428,11 +525,13 @@ def main():
             # `fill` 有时报 "browser rejected the underlying CDP call"，
             # 但**内容其实已经填进去了**（校验被 placeholder 干扰）。
             # 故不把非零退出当失败，而是**观察一次**确认真填上了。
-            bsk.run("fill", box, "--value", text, check=False)
+            bsk.fill(box, text)
             vom2 = bsk.observe()
             if text[:20] not in vom2:
+                # 🔴 重填也要重新 sync（`observe` 的 ref 不能用于 `fill` ✗）
+                _c2, vom2 = bsk.sync()
                 box2 = bsk.find_textbox(vom2) or box
-                bsk.run("fill", box2, "--value", text, check=False)
+                bsk.fill(box2, text)
                 vom2 = bsk.observe()
                 if not _box_has_text(vom2, text[:20]):
                     raise SystemExit(
@@ -440,7 +539,9 @@ def main():
                         "   已发 %d 条；用 --start %d 续发。"
                         % (i, name, sent, i))
                 box = box2
-            bsk.run("press", "Enter", "--ref", box)
+            # 🔴 `fill` 改了 DOM ⇒ 旧 context 可能失效 ⇒ press 前再 sync 一次 ✓
+            _c3, _v3 = bsk.sync()
+            bsk.press("Enter", bsk.find_textbox(_v3) or box)
             # ⚠️ **必须验证真的发出去了** —— `press Enter` 不报错 ≠ 消息已发送。
             #    实测（2026-09-28）：最后一条 `fill` 成功、`press Enter` 也没报错，但消息
             #    **停在输入框里**没发出去，而脚本照样打印「已发」⇒ 用户无法分辨
