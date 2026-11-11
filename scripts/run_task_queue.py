@@ -1401,6 +1401,105 @@ def _act_dsh_web_launch(params):
     return out
 
 
+def _act_news_diag(params):
+    """排查「某个标的的新闻整行消失」✓（2026-11-11 用户要求查 BTC）。
+
+    🔴 现象：11-11 三轮简报里 **BTC 行全部消失** ✗
+       而 BTC 是唯一盈利仓，此前一直有
+       `Live news: Bitcoin falls to nearly three-month low - CoinDesk` ✓
+       同一轮 GDXU / AXTX 也消失了（那两只是「过滤后无内容」，合理）
+       ⇒ 但 BTC 不该空 ✗
+
+    查五件事（逐层往下，定位是哪一层滤掉的）：
+      ① `snap["positions"]` 里有没有 BTC（防止上游就没给）
+      ② 富途 `get_search_news("比特币")` 的**原始**标题（不滤）
+      ③ Google News `bitcoin price` 的**原始**标题（不滤）
+      ④ 每个原始标题过 `_news_is_noise` 的判定（模板标题层）
+      ⑤ 每个原始标题过 `_news_relevant("BTC", t)` 的判定（相关性层）
+    ⚠️ 只读，不改任何数据 ✓
+    """
+    import sys as _sys
+    out = {"steps": {}}
+
+    # ① 持仓里有没有 BTC
+    try:
+        _sys.path.insert(0, SCRIPTS)
+        import invest_research as _ir
+        snap = _ir.build_snapshot()
+        syms = [str(r.get("symbol") or "") for r in (snap.get("positions") or [])]
+        out["steps"]["positions"] = syms
+        out["steps"]["has_btc"] = any("BTC" in s for s in syms)
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["positions"] = "ERR %s: %s" % (type(exc).__name__,
+                                                    str(exc)[:200])
+        _ir = None
+        snap = None
+
+    target = str(params.get("symbol") or "BTC").strip().upper()
+    out["target"] = target
+
+    # ② 富途原始返回
+    if _ir is not None:
+        try:
+            from futu import OpenQuoteContext
+            kw = {"BTC": "比特币", "ETH": "以太坊"}.get(target, target)
+            with _ir._alarm(45, "futu 新闻抓取超时"):
+                q = OpenQuoteContext(host="127.0.0.1", port=11111)
+                ret, data = q.get_search_news(kw, max_count=6)
+                titles = ([str(t).strip() for t in data["title"].tolist()]
+                          if ret == 0 and len(data) else [])
+                q.close()
+            out["steps"]["futu"] = {"kw": kw, "ret": ret, "n": len(titles),
+                                    "titles": titles[:6]}
+        except Exception as exc:          # noqa: BLE001
+            out["steps"]["futu"] = "ERR %s: %s" % (type(exc).__name__,
+                                                   str(exc)[:200])
+
+        # ③ Google News 原始
+        try:
+            q = {"BTC": "bitcoin price", "ETH": "ethereum price"}.get(
+                target, "%s stock" % target)
+            tick = None if target in ("BTC", "ETH") else target
+            urls = _ir._rss_sources(q, tick)
+            raw = _ir._rss_titles_any(urls, 4)
+            out["steps"]["gnews"] = {"q": q, "n": len(raw or []),
+                                     "titles": list(raw or [])[:4],
+                                     "sources": [u.split("?")[0][:70] for u in urls]}
+        except Exception as exc:          # noqa: BLE001
+            out["steps"]["gnews"] = "ERR %s: %s" % (type(exc).__name__,
+                                                    str(exc)[:200])
+
+        # ④⑤ 逐条判定：哪一层滤掉的
+        try:
+            rows = []
+            for src in ("futu", "gnews"):
+                blk = out["steps"].get(src)
+                if not isinstance(blk, dict):
+                    continue
+                for t in (blk.get("titles") or []):
+                    noise = _ir._news_is_noise(t)
+                    rel = _ir._news_relevant(target, t)
+                    rows.append({
+                        "src": src,
+                        "title": str(t)[:80],
+                        "noise": noise,
+                        "relevant": rel,
+                        "verdict": ("滤·模板标题" if noise
+                                    else ("保留" if rel else "滤·不含标的词")),
+                    })
+            out["steps"]["judge"] = rows
+            out["steps"]["kept"] = sum(1 for r in rows if r["verdict"] == "保留")
+        except Exception as exc:          # noqa: BLE001
+            out["steps"]["judge"] = "ERR %s: %s" % (type(exc).__name__,
+                                                    str(exc)[:200])
+
+    out["ok"] = True
+    _k = out["steps"].get("kept")
+    out["hint"] = ("`judge` 里 verdict 全是「滤·…」⇒ 就是过滤层的问题 ✓；"
+                   "`futu`/`gnews` 的 n 都是 0 ⇒ 是**抓取源**的问题 ✗（不是过滤）")
+    return out
+
+
 def _act_service_bootstrap(params):
     """**硬重启** launchd 服务：`bootout` + `bootstrap` ✓（2026-11-11 用户要求修 dsh web）。
 
@@ -4888,6 +4987,7 @@ ACTIONS = {
     "futu_opend_info": _act_futu_opend_info,
     "realtime_diag": _act_realtime_diag,
     "service_bootstrap": _act_service_bootstrap,
+    "news_diag": _act_news_diag,
     "dsh_web_launch": _act_dsh_web_launch,
     "plist_path_append": _act_plist_path_append,
     "autostart_list": _act_autostart_list,
