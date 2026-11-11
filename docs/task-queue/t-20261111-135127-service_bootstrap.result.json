@@ -1,0 +1,13 @@
+{
+  "id": "t-20261111-135127-service_bootstrap",
+  "action": "service_bootstrap",
+  "params": {
+    "label": "com.xingguo.dsh.web"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"label\": \"com.xingguo.dsh.web\", \"plist\": \"/Users/xingguo/Library/LaunchAgents/com.xingguo.dsh.web.plist\", \"target\": \"gui/501/com.xingguo.dsh.web\", \"steps\": {\"bootout\": {\"rc\": 3, \"out\": \"Boot-out failed: 3: No such process\"}, \"bootstrap\": {\"rc\": 0, \"out\": \"\"}, \"launchctl_list\": [\"52318\\t0\\tcom.xingguo.dsh.web\"], \"processes\": [\"52318   00:03 node /Users/xingguo/opt/node24/bin/dsh web --no-open\"], \"log_path\": \"/tmp/dsh-web-launchd.log\", \"log_tail\": \"dsh web: http://127.0.0.1:3080/?token=Wyui-BrE…(43)\\n\"}, \"ok\": true}",
+  "started_at": "2026-11-11T13:55:48",
+  "finished_at": "2026-11-11T13:55:53",
+  "duration_s": 5.21
+}
