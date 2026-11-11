@@ -903,6 +903,71 @@ def _alarm(seconds, msg="timeout"):
         signal.signal(signal.SIGALRM, old)
 
 
+#: 🔴 2026-11-11 用户要求：**新闻相关性强校验** ✓
+#: 实测事故（11-10 简报）：
+#:   `YINN: Under a trading plan, Grab Holdings (GRAB) officer sells
+#:    38,000 shares at $3.21 each. - Stock Titan` ✗
+#:     —— Grab 是东南亚打车公司，与 YINN（富时中国 3×）**毫无关系** ✗
+#:   `BTC: BTC price on Nov 11, 2026 at 4am EST Prediction Market - Robinhood` ✗
+#:     —— 是预测市场页面，不是新闻 ✗
+#: 根因：Google News / 富途都是**全文模糊匹配**（标题/正文里出现过该词就算命中 ✗）
+#: ⇒ 判据改成「**标题**必须含标的词」✓
+#:
+#: 第二层（用户明确要求）：杠杆 ETF 还要认**正股** ✓
+#:   YINN→FXI(富时中国)、CONL→COIN、CRCG→CRCL、AXTX→AXTI、GDXU→金矿
+#:   ⇒ 正股新闻也算「相关」（读者关心的是底层标的发生了什么）✓
+_NEWS_RELEVANCE = {
+    "YINN": ("YINN", "FXI", "China", "Chinese", "中概", "中国", "富时"),
+    "GDXU": ("GDXU", "GDX", "GDXJ", "gold miner", "gold", "金矿", "黄金"),
+    "CRCG": ("CRCG", "CRCL", "Circle"),
+    "CONL": ("CONL", "COIN", "Coinbase"),
+    "AXTX": ("AXTX", "AXTI"),
+    "BTC":  ("BTC", "Bitcoin", "比特币"),
+    "ETH":  ("ETH", "Ethereum", "以太坊"),
+}
+
+
+def _news_terms(sym):
+    """标的 → 相关性关键词元组 ✓（代码 + **正股** + 中英别名）。
+
+    正股从 `fg_system.config.SIGNAL_UNDERLYING_MAP` 取 ✓（已有权威映射，不另写一份 ✗）
+    ⚠️ `GDXU_UND` 这类**合成列**（GDX+GDXJ 加权指数）不是可检索代码 ⇒ 跳过 ✓
+    """
+    s = str(sym or "").replace("-USDT", "").upper()
+    terms = list(_NEWS_RELEVANCE.get(s) or ())
+    if not terms:
+        terms = [s]
+    try:
+        from fg_system import config as _cfg
+        und = _cfg.SIGNAL_UNDERLYING_MAP.get(s)
+        if und and not str(und).endswith("_UND"):
+            terms.append(str(und))
+    except Exception:                     # noqa: BLE001
+        pass
+    return tuple(dict.fromkeys(x for x in terms if x))
+
+
+def _news_relevant(sym, title):
+    """标题是否**真的**与该标的有关 ✓（强校验，2026-11-11）。
+
+    判据：标题必须含 `_news_terms(sym)` 里**至少一个**词 ✓
+    ⚠️ ASCII 词用「两侧不是字母数字」当词边界（防 `CONL` 命中 `ONL`）✗
+       —— 不能用 `\\b`：`「SOXS、CONL和NVDX」` 里 CONL 两侧都是中文，`\\b` 不成立 ✗
+    ⚠️ 中文词不加边界（`\\b` 对 CJK 不生效）✓
+    """
+    t = str(title or "")
+    if not t:
+        return False
+    for w in _news_terms(sym):
+        if w.isascii():
+            if re.search(r"(?<![A-Za-z0-9])%s(?![A-Za-z0-9])" % re.escape(w),
+                         t, re.I):
+                return True
+        elif w in t:
+            return True
+    return False
+
+
 def fetch_news(snap):
     """大盘 + 持仓标的相关新闻。
     主源: 富途 OpenAPI GetSearchNews(本地 OpenD, 中文资讯, 无需代理)
@@ -933,26 +998,11 @@ def fetch_news(snap):
                     # ⇒ 标题必须含**该标的代码**（词边界）✓
                     # ⚠️ 但 BTC/ETH 用中文检索「比特币」，标题里**不会写 BTC** ✗
                     # ⇒ 必须把中文别名一起算进实体词 ✓（否则 BTC 新闻全被滤掉 ✗）
-                    _alias = {"BTC": ("BTC", "比特币", "bitcoin"),
-                              "ETH": ("ETH", "以太坊", "ethereum")}.get(
-                        sym, (sym,))
-                    # ⚠️ `\b` 对**中文不生效** ✗ —— 中文字符在 Unicode 模式下算
-                    # `\w` ⇒ `\b比特币\b` 在「发布比特币 Tracker」里匹配不到 ✗
-                    # ⇒ ASCII 别名加词边界（防 ONL 误匹配），中文别名**不加** ✓
-                    _asc = [a for a in _alias if a.isascii()]
-                    _cjk = [a for a in _alias if not a.isascii()]
-                    _parts = []
-                    for a in _asc:
-                        # ⚠️ 不能用 `\b` ✗ —— 「SOXS、CONL和NVDX」里 CONL 两侧
-                        # 都是中文 ⇒ `\b` 不成立 ⇒ 正样本被误杀 ✗
-                        # ⇒ 改成「两侧不是 ASCII 字母数字」✓
-                        _parts.append(r"(?<![A-Za-z0-9])%s(?![A-Za-z0-9])"
-                                      % re.escape(a))
-                    if _cjk:
-                        _parts.append("|".join(re.escape(a) for a in _cjk))
-                    _pat = re.compile("|".join(_parts), re.I)
+                    # 🔴 2026-11-11：**统一用 `_news_relevant`** ✓ ——
+                    # 原来这里内联了一套「别名 + 词边界」逻辑 ✗
+                    # 现在把「正股也算相关」一起纳进来（YINN→FXI 等）✓
                     _kept = [str(t).strip() for t in data["title"].tolist()
-                             if _pat.search(str(t))]
+                             if _news_relevant(sym, t)]
                     if _kept:
                         out[sym] = _kept[:2]
                     else:
@@ -970,19 +1020,49 @@ def fetch_news(snap):
     # --- Google News 兜底（补富途缺失的区） ---
     gnews = {}
     if not out.get("_market"):
-        t = _rss_titles_any(_rss_sources("US stock market today", "^GSPC"), 3)
-        if t:
-            gnews["_market"] = t
+        t = _rss_titles_any(_rss_sources("US stock market today", "^GSPC"), 4)
+        # 🔴 2026-11-11：大盘也加**实体校验** ✓ —— 和富途分支同一套词表
+        _MK = ("S&P", "SPX", "Nasdaq", "Dow", "stock market", "stocks",
+               "美股", "标普", "纳指", "道指", "三大股", "费半", "美债", "CPI",
+               "Fed", "inflation", "Wall Street")
+        _m = [x for x in (t or [])
+              if any(k.lower() in str(x).lower() for k in _MK)]
+        if _m:
+            gnews["_market"] = _m[:2]
     for r in snap["positions"]:
         sym = r["symbol"].replace("-USDT", "")
         if sym in out:
             continue
-        q = {"BTC": "bitcoin price", "ETH": "ethereum price"}.get(sym, f"{sym} stock")
+        # 🔴 2026-11-11 用户要求：**杠杆 ETF 的检索词要带正股** ✓
+        #    `CONL` → `CONL COIN stock`、`YINN` → `YINN FXI stock`
+        #    ⇒ Google News 同时返回 ETF 与底层个股的报道 ✓
+        #    （读者关心的是「底层发生了什么」，而不只是 ETF 自己）
+        _und = ""
+        try:
+            from fg_system import config as _cfg2
+            _u2 = _cfg2.SIGNAL_UNDERLYING_MAP.get(sym)
+            if _u2 and not str(_u2).endswith("_UND"):
+                _und = str(_u2)
+        except Exception:                 # noqa: BLE001
+            _und = ""
+        if sym in ("BTC", "ETH"):
+            q = {"BTC": "bitcoin price", "ETH": "ethereum price"}[sym]
+        elif _und:
+            q = "%s %s stock" % (sym, _und)
+        else:
+            q = "%s stock" % sym
         # 加密标的用中文/英文查询词即可（Yahoo 的 `s=` 要股票代码，加密不传 ✓）
         tick = None if sym in ("BTC", "ETH") else sym
-        t = _rss_titles_any(_rss_sources(q, tick), 2)
-        if t:
-            gnews[sym] = t
+        # 多取几条（4）给过滤留余量 ✓ —— 强校验会淘汰一批 ✗
+        t = _rss_titles_any(_rss_sources(q, tick), 4)
+        # 🔴 2026-11-11 **强校验**：标题必须含标的词或正股词 ✗
+        #    否则 `YINN → Grab Holdings`、`BTC → Robinhood 预测市场` 这类混进来 ✗
+        _t = [x for x in (t or []) if _news_relevant(sym, x)]
+        if _t:
+            gnews[sym] = _t[:2]
+        elif t:
+            print("[news] gnews %s 检索结果全部无关，已过滤 ✗（原 %d 条：%s）"
+                  % (sym, len(t), " | ".join(str(x)[:40] for x in t[:2])))
     # 富途完全失败时整体用 gnews；否则仅补缺失
     if not out:
         out = gnews
@@ -1020,6 +1100,10 @@ _NEWS_NOISE_RE = re.compile(
     r"|Trading Performance and Risk Management"
     r"|Latest Stock Price,? Analysis,? News"  # Stocktwits 行情页
     r"|Stock Price,? News,? Quote & History"
+    # 🔴 2026-11-11 补：`BTC price on Nov 11, 2026 at 4am EST Prediction Market
+    #    - Robinhood` ✗ —— 这是**预测市场页面**，不是新闻 ✗
+    #    注意：它含 `BTC` ⇒ 相关性校验会放行 ⇒ 必须靠噪音表拦 ✓
+    r"|Prediction Market"
     r"|^\$.*\$\$)"                           # Moomoo 的 $$ 包裹
     , re.I)
 
@@ -1080,6 +1164,13 @@ def news_text(news):
         kept = []
         for t in titles:
             if _news_is_noise(t):
+                dropped += 1
+                continue
+            # 🔴 2026-11-11 **展示层再校一次相关性** ✓（双保险）
+            #    `fetch_news` 抓取时已过滤，但 `news` 可能来自缓存/旧数据 ✗
+            #    实测：11-10 简报的 `YINN: Grab Holdings officer sells 38,000 shares`
+            #    就是绕过了抓取层过滤直接进展示层的 ✗
+            if not _news_relevant(sym, t):
                 dropped += 1
                 continue
             k = _key(t)
