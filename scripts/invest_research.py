@@ -976,62 +976,81 @@ def fetch_news(snap):
     主源: 富途 OpenAPI GetSearchNews(本地 OpenD, 中文资讯, 无需代理)
     兜底: Google News RSS(免 key, 走 7890 代理)。全部失败时为空 dict。"""
     out = {}
-    # --- 富途主源 ---
+    # --- 富途主源（**只查有持仓的标的 + 并发**）---
+    # 🔴 2026-11-11 用户要求：只查持仓 + 并发 ✓
+    #    之前是 **7 次串行**调用（1 大盘 + 6 标的），45 秒不够 ✗
+    #    ⇒ 超时 ⇒ 整个 try 块被 except 吞掉 ⇒ 富途结果**全丢** ✗
+    #      （`news_diag` 证明富途对「比特币」能返回 6 条优质中文新闻 ✓）
+    #    改动三点：
+    #      ① 只查 `qty > 0` 的标的（空仓不查，省时间）✓
+    #      ② 大盘 + 标的**并发**（线程池 4）✓
+    #      ③ 整体 90 秒闸门保留，但**已完成的结果立即落 `out`** ⇒
+    #         即使后面某只卡住，前面的也不会白跑 ✓
+    #    ⚠️ futu SDK 的 `get_search_news` 是请求-响应（按 request id 配对），
+    #       多线程共享同一个 `OpenQuoteContext` 是安全的 ✓
     try:
         from futu import OpenQuoteContext
-        # 🔴 2026-11-11 `news_diag` 实测：富途**其实是通的** ✓
-        #    对 `比特币` 返回 6 条优质中文新闻（「今日比特币：跌破7.4万美元…」等）
-        #    但简报里 BTC 行一直消失 ✗
-        #    ⇒ 根因：**6 个标的各调一次 `get_search_news`**，45 秒不够 ✗
-        #      超时 ⇒ 整个 try 块被 except 吞掉 ⇒ 富途结果全丢 ✗
-        #      只剩 gnews，而 gnews 当次可能只返回噪音（Robinhood 预测市场）✗
-        #    ⇒ 45 → **90 秒** ✓
+        import concurrent.futures as _cf
+
+        def _fetch_one(_q, _sym, _kw):
+            """单个标的：查 → 相关性过滤 ⇒ `(sym, 标题列表, 失败原因)` ✓"""
+            _ret, _data = _q.get_search_news(_kw, max_count=4)
+            if _ret != 0 or not len(_data):
+                return _sym, [], "ret=%s n=%s" % (
+                    _ret, 0 if _data is None else len(_data))
+            _kept = [str(t).strip() for t in _data["title"].tolist()
+                     if _news_relevant(_sym, t)]
+            if not _kept:
+                return _sym, [], "全部不含标的词（原 %d 条）" % len(_data)
+            return _sym, _kept[:2], ""
+
         with _alarm(90, "futu 新闻抓取超时（OpenD 疑似重连循环）"):
             q = OpenQuoteContext(host="127.0.0.1", port=11111)
-            # 🔴 2026-11-02 实测：`"US stock market"` 返回的是**港股**新闻 ✗
-            # （富途是中文源，英文检索词会落到港股板块 ✗）
-            # ⇒ 改中文检索词 + **实体过滤**（标题须含美股相关词）✓
-            mkt_ret, mkt = q.get_search_news("美股", max_count=6)
-            if mkt_ret == 0 and len(mkt):
-                _MKT_ENTS = ("美股", "标普", "S&P", "纳斯达克", "纳指", "道指",
-                             "三大股", "费半", "美国", "美债")
-                out["_market"] = [
-                    str(t).strip() for t in mkt["title"].tolist()
-                    if any(e in str(t) for e in _MKT_ENTS)][:3]
+            # ① 只取**有持仓**的标的 ✓
+            _held = []
             for r in snap["positions"]:
-                sym = r["symbol"].replace("-USDT", "")
-                kw = {"BTC": "比特币", "ETH": "以太坊"}.get(sym, sym)
-                # 🔴 2026-11-11：**每个标的独立 try** ✓ ——
-                #    原来整段一个 try，任意一只超时/抛异常就丢掉**全部**富途结果 ✗
-                #    （`news_diag` 证明富途对 BTC 能返回 6 条优质新闻 ✓）
-                ret, data = -1, None
+                _s = str(r.get("symbol") or "").replace("-USDT", "")
                 try:
-                    ret, data = q.get_search_news(kw, max_count=4)
-                except Exception as _e1:      # noqa: BLE001
-                    print("[news] 富途查询异常 %s（kw=%s）: %s"
-                          % (sym, kw, str(_e1)[:120]))
+                    _qty = float(r.get("qty") or 0)
+                except (TypeError, ValueError):
+                    _qty = 0.0
+                if _s and _qty > 0:
+                    _held.append(_s)
+            print("[news] 富途并发查询 %d 个持仓标的：%s"
+                  % (len(_held), "、".join(_held) or "(无)"))
+
+            # ② 大盘 + 标的并发 ✓
+            _jobs = [("_market", "美股")] + [
+                (s, {"BTC": "比特币", "ETH": "以太坊"}.get(s, s)) for s in _held
+            ]
+            _pool = _cf.ThreadPoolExecutor(max_workers=4)
+            _futs = {_pool.submit(_fetch_one, q, s, k): (s, k)
+                     for s, k in _jobs}
+            for _f in _cf.as_completed(_futs):
+                _s, _k = _futs[_f]
+                try:
+                    _sym2, _titles, _why = _f.result(timeout=1)
+                except Exception as _e2:      # noqa: BLE001
+                    print("[news] 富途 %s 失败: %s" % (_s, str(_e2)[:100]))
                     continue
-                if ret == 0 and len(data):
-                    # 🔴 2026-11-02 实测：`CONL` 会匹配到 `ONL`（Orion Office
-                    # REIT）✗ —— 富途是**模糊检索**，子串命中就算 ✓
-                    # ⇒ 标题必须含**该标的代码**（词边界）✓
-                    # ⚠️ 但 BTC/ETH 用中文检索「比特币」，标题里**不会写 BTC** ✗
-                    # ⇒ 必须把中文别名一起算进实体词 ✓（否则 BTC 新闻全被滤掉 ✗）
-                    # 🔴 2026-11-11：**统一用 `_news_relevant`** ✓ ——
-                    # 原来这里内联了一套「别名 + 词边界」逻辑 ✗
-                    # 现在把「正股也算相关」一起纳进来（YINN→FXI 等）✓
-                    _kept = [str(t).strip() for t in data["title"].tolist()
-                             if _news_relevant(sym, t)]
-                    if _kept:
-                        out[sym] = _kept[:2]
+                if _s == "_market":
+                    # 🔴 2026-11-02 实测：`"US stock market"` 返回的是**港股**新闻 ✗
+                    # ⇒ 中文检索 + 实体过滤（标题须含美股相关词）✓
+                    _MKT_ENTS = ("美股", "标普", "S&P", "纳斯达克", "纳指",
+                                 "道指", "三大股", "费半", "美国", "美债")
+                    _m = [t for t in _titles if any(e in t for e in _MKT_ENTS)]
+                    if _m:
+                        out["_market"] = _m[:3]
                     else:
-                        print("[news] %s 检索结果全部不含代码，已过滤 ✗（原 %d 条）"
-                              % (sym, len(data)))
-                if sym not in out:
-                    # 🔴 2026-10-31：富途返回空也要**留痕** ✗ ——
-                    # 原来静默跳过，简报里少几组新闻没人知道为什么 ✗
-                    print("[news] 富途无结果：%s（kw=%s, ret=%s, n=%s）"
-                          % (sym, kw, ret, 0 if data is None else len(data)))
+                        print("[news] 富途大盘无有效标题（原 %d 条）"
+                              % len(_titles))
+                elif _titles:
+                    out[_sym2] = _titles
+                else:
+                    # 🔴 富途返回空也要**留痕** ✗ —— 否则简报少几组没人知道为什么
+                    print("[news] 富途无结果：%s（kw=%s, %s）"
+                          % (_s, _k, _why))
+            _pool.shutdown(wait=False)
             q.close()
     except Exception as e:
         print("富途新闻源不可用:", e)
