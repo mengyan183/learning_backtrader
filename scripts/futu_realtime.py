@@ -247,54 +247,52 @@ def _nim_preview_reason(preview, factor_row, feat_last):
 
 
 # ---------------------------------------------------------------- OKX 实时 BTC
-def okx_ticker_loop():
-    """OKX WebSocket 订阅 BTC-USDT tickers（公共行情，免 key）。
+def crypto_ticker_loop():
+    """**币安 REST 轮询** BTC 实时价 ✓（2026-11-11 从 OKX WS 换过来）。
 
-    富途无 BTC 现货，加密持仓用 OKX 实时价补齐（2026-10-05 延伸）。
-    断线自动重连；心跳保持连接。
+    🔴 为什么换（`realtime_diag` 回执实测）：
+       OKX WS 日志 4 小时里持续刷：
+         `Connection timed out` / `[Errno 54] Connection reset by peer`
+         `EOF occurred in violation of protocol (_ssl.c:997)`
+         `Connection to remote host was lost.`
+       ⇒ 只偶尔拿到一次价 ⇒ 简报里 BTC 价格在 73,433 / 73,858 / 83,489 之间跳 ✗
+       而 `net_probe` 验证 `api.binance.com` 经 7890 代理返回 **200** ✓
+       ⇒ 改**币安 REST 轮询**（10 秒一次）✓
+         比 WS 稳：不用处理 ping/pong、断线重连逻辑天然由轮询兜住 ✓
+
+    ⚠️ 代理写死 7890（和原 OKX 一致）✗ —— 若要改，走 `FG_RT_PROXY` ✓
     """
-    import websocket
-    url = "wss://ws.okx.com:8443/ws/v5/public"
+    import urllib.request
+    _proxy = os.environ.get("FG_RT_PROXY") or "http://127.0.0.1:7890"
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({"http": _proxy, "https": _proxy}))
+    url = "https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT"
+    print("[rt] 币安 BTC 轮询线程已启动（10s 间隔）")
+    _fail = 0
     while True:
         try:
-            ws = websocket.WebSocket()
-            ws.connect(url, timeout=30,
-                       http_proxy_host="127.0.0.1", http_proxy_port=7890,
-                       header={"User-Agent": "fg-realtime/1.0"})
-            ws.send(json.dumps({"op": "subscribe",
-                                "args": [{"channel": "tickers", "instId": "BTC-USDT"}]}))
-            last_ping = time.time()
-            while True:
-                ws.settimeout(30)
-                raw = ws.recv()
-                if isinstance(raw, (bytes, bytearray)):
-                    raw = raw.decode("utf-8")
-                try:
-                    msg = json.loads(raw)
-                except Exception:
-                    continue
-                if msg.get("event") == "error":
-                    print(f"[okx] 订阅错误: {msg.get('code')} {msg.get('msg')}")
-                    break
-                data = msg.get("data") or []
-                for d in data:
-                    if d.get("instId") != "BTC-USDT":
-                        continue
-                    last = float(d.get("last") or 0)
-                    open24 = float(d.get("open24h") or 0)
-                    chg = (last / open24 - 1) * 100 if open24 else None
-                    state.setdefault("prices", {})["BTC"] = {
-                        "price": round(last, 2),
-                        "day_chg_pct": round(chg, 2) if chg is not None else None,
-                        "ts": now_iso(), "source": "OKX",
-                    }
-                    save_state(state)
-                if time.time() - last_ping > 20:   # 心跳
-                    ws.send("ping")
-                    last_ping = time.time()
-        except Exception as e:
-            print(f"[okx] 连接断开: {e}，5s 后重连")
-        time.sleep(5)
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "fg-realtime/1.0"})
+            d = json.loads(opener.open(req, timeout=20).read())
+            last = float(d.get("lastPrice") or 0)
+            open24 = float(d.get("openPrice") or 0)
+            chg = (last / open24 - 1) * 100 if open24 else None
+            if last > 0:
+                state.setdefault("prices", {})["BTC"] = {
+                    "price": round(last, 2),
+                    "day_chg_pct": round(chg, 2) if chg is not None else None,
+                    "ts": now_iso(), "source": "Binance",
+                }
+                save_state(state)
+                if _fail:
+                    print("[binance] 已恢复（连续失败 %d 次后）" % _fail)
+                    _fail = 0
+        except Exception as e:                # noqa: BLE001
+            _fail += 1
+            # 只在首次和每 30 次（约 5 分钟）打一次，避免刷屏 ✗
+            if _fail == 1 or _fail % 30 == 0:
+                print(f"[binance] 拉取失败（第 {_fail} 次）: {e}")
+        time.sleep(10)
 
 
 # ---------------------------------------------------------------- 异动告警
@@ -398,8 +396,8 @@ def main():
 
     # OKX 实时 BTC（富途无 BTC 现货）
     import threading
-    threading.Thread(target=okx_ticker_loop, daemon=True).start()
-    print("[rt] OKX BTC 实时线程已启动")
+    threading.Thread(target=crypto_ticker_loop, daemon=True).start()
+    print("[rt] 币安 BTC 实时线程已启动")
 
     # 主线程：每 60s 保存状态 + 重算预览指数；订阅无数据时 180s 无更新则降级轮询
     last_snapshot = time.time()

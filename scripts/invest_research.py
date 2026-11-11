@@ -350,13 +350,16 @@ def build_snapshot():
                 #    实测 11-10 16:20 的简报里 BTC 仍是 **11-09 22:07 的 83489.7** ✗
                 #    而其他 5 个标的都更新了 ⇒ `realtime_state` 的 BTC 段没刷新 ✗
                 #    ⇒ 至少要把**时间戳**显示出来 ✓ 让陈旧可见 ✗
+                # 🔴 2026-11-11：源名从 `realtime_state` 的 `source` 字段读 ✓
+                #    （OKX → Binance 之后硬写「OKX实时」就错了 ✗）
+                _src = str(_rt.get("source") or "实时")
                 _ts = str(_rt.get("ts") or rt_updated or "")[:16].replace("T", " ")
                 _age = _minutes_since(_ts)
                 if _age is not None and _age > 30:
-                    r["px_source"] = ("OKX实时·⚠️ **%s 的旧值**（%.0f 分钟前）"
-                                      % (_ts or "?", _age))
+                    r["px_source"] = ("%s实时·⚠️ **%s 的旧值**（%.0f 分钟前）"
+                                      % (_src, _ts or "?", _age))
                 else:
-                    r["px_source"] = "OKX实时"
+                    r["px_source"] = "%s实时" % _src
             else:
                 r["last_close"] = float(r["price"])
                 r["px_source"] = "positions快照"

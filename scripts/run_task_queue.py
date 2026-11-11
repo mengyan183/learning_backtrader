@@ -839,6 +839,110 @@ def _act_futu_opend_update(params):
     return out
 
 
+def _act_dsh_web_diag(params):
+    """查 `com.xingguo.dsh.web` 为什么起不来 ✓（2026-11-11 用户要求看日志）。
+
+    🔴 背景（`autostart_list` 回执）：
+       `com.xingguo.dsh.web` 的 `RunAtLoad=true` + `KeepAlive=true` ✓
+       但 `running: []` ⇒ **进程没在跑** ✗
+       ⇒ 这就是 `dsh web authentication required` 的根因 ✓
+
+    查六件事：
+      ① plist 全文（ProgramArguments / StandardOutPath / ThrottleInterval）
+      ② `launchctl list` 里它的状态（PID + 最后退出码）
+      ③ StandardOutPath / StandardErrorPath 的日志尾巴
+      ④ `~/.dsh/logs/` 里最新的 startup 日志
+      ⑤ 当前有没有 dsh 相关进程
+      ⑥ `launchctl print` 的 last exit status（能看出崩溃原因）
+    """
+    import glob as _g
+    home = os.path.expanduser("~")
+    plist = os.path.join(home, "Library", "LaunchAgents",
+                         "com.xingguo.dsh.web.plist")
+    out = {"steps": {}}
+
+    # ① plist
+    try:
+        out["steps"]["plist"] = open(plist, encoding="utf-8").read()[:3000]
+    except OSError as exc:
+        out["steps"]["plist"] = "ERR %s" % str(exc)[:120]
+
+    # ② launchctl list
+    try:
+        r = subprocess.run(["launchctl", "list"], capture_output=True,
+                           text=True, timeout=20)
+        out["steps"]["launchctl"] = [ln for ln in (r.stdout or "").splitlines()
+                                     if "dsh" in ln.lower()] or ["(没有 dsh 相关项)"]
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["launchctl"] = "ERR %s" % str(exc)[:120]
+
+    # ③ 日志（从 plist 里抠 StandardOutPath / StandardErrorPath）
+    logs = {}
+    for key in ("StandardOutPath", "StandardErrorPath"):
+        try:
+            txt = out["steps"]["plist"]
+            import re as _re
+            m = _re.search(r"<key>%s</key>\s*<string>([^<]+)</string>" % key, txt)
+            if not m:
+                continue
+            lp = m.group(1).strip()
+            if not os.path.exists(lp):
+                logs[key] = {"path": lp, "exists": False}
+                continue
+            with open(lp, encoding="utf-8", errors="replace") as fh:
+                lines = fh.readlines()
+            logs[key] = {"path": lp, "exists": True,
+                         "age_sec": int(time.time() - os.path.getmtime(lp)),
+                         "size": len(lines),
+                         "tail": "".join(lines[-40:])[-2500:]}
+        except Exception as exc:          # noqa: BLE001
+            logs[key] = "ERR %s" % str(exc)[:120]
+    out["steps"]["logs"] = logs or "(plist 里没写 StandardOutPath)"
+
+    # ④ ~/.dsh/logs 最新 startup 日志
+    try:
+        files = sorted(_g.glob(os.path.join(home, ".dsh", "logs", "*.log")),
+                       key=os.path.getmtime, reverse=True)[:2]
+        recent = []
+        for fp in files:
+            with open(fp, encoding="utf-8", errors="replace") as fh:
+                lines = fh.readlines()
+            recent.append({"file": os.path.basename(fp),
+                           "age_min": int((time.time() - os.path.getmtime(fp)) / 60),
+                           "tail": "".join(lines[-30:])[-2000:]})
+        out["steps"]["dsh_startup_logs"] = recent or "(无)"
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["dsh_startup_logs"] = "ERR %s" % str(exc)[:120]
+
+    # ⑤ 进程
+    try:
+        r = subprocess.run(["/bin/sh", "-c",
+                            "ps ax -o pid,etime,comm | grep -i dsh "
+                            "| grep -v grep | head -10"],
+                           capture_output=True, text=True, timeout=20)
+        out["steps"]["processes"] = [ln.strip() for ln in
+                                     (r.stdout or "").splitlines() if ln.strip()] or ["(无)"]
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["processes"] = "ERR %s" % str(exc)[:120]
+
+    # ⑥ launchctl print（含 last exit status）
+    try:
+        uid = os.getuid() if hasattr(os, "getuid") else 501
+        r = subprocess.run(["launchctl", "print",
+                            "gui/%s/com.xingguo.dsh.web" % uid],
+                           capture_output=True, text=True, timeout=20)
+        txt = (r.stdout or "") + (r.stderr or "")
+        keep = [ln.strip() for ln in txt.splitlines()
+                if any(k in ln for k in ("state", "last exit", "runs",
+                                         "pid", "program", "path"))]
+        out["steps"]["launchctl_print"] = keep[:15] or txt[:600]
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["launchctl_print"] = "ERR %s" % str(exc)[:120]
+
+    out["ok"] = True
+    return out
+
+
 def _act_autostart_list(params):
     """列出 Mac 上**所有开机自启项** ✓（2026-11-10 用户问「有没有自动拉起 dsh 的程序」）。
 
@@ -4274,6 +4378,7 @@ ACTIONS = {
     "futu_opend_info": _act_futu_opend_info,
     "realtime_diag": _act_realtime_diag,
     "autostart_list": _act_autostart_list,
+    "dsh_web_diag": _act_dsh_web_diag,
     "dsh_webauth_find": _act_dsh_webauth_find,
     "futu_opend_update": _act_futu_opend_update,
     "run_invest_research": _act_run_invest_research,
