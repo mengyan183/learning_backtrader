@@ -1,6 +1,6 @@
 # 回测裁判：gold_ratio（negative）→ TQQQ OOS
 
-- 生成：2026-11-12 15:13 · scripts/factor_backtest_probe.py
+- 生成：2026-11-12 16:03 · scripts/factor_backtest_probe.py
 - 口径：因子 756 日滚动分位 → 仓位 0.2~1.0 线性映射（无参数先验）；T 信号 shift(1) → T+1 生效；换仓成本 0.0008/单位换手；OOS 起 2024-10-04（527 日）
 - 主判据：**择时 alpha > 0**（策略年化 − 同平均仓位基准 0.52）✓ —— 不再拿「年化 vs 满仓 B0」判定 ✗（仓位调节型因子天然输仓位）
 - 噪音阈值：Sharpe 差异 < **0.10** 视为不可区分 ✗（OOS 仅 527 日）
@@ -15,6 +15,7 @@
 
 - **择时 alpha = -1.56pp**（vs B0' 同仓位）✗ 只是仓位低，不是择时好
 - **Sharpe delta = +0.03**（vs B0 满仓）（在噪音内 ✗ 不可当证据）
+- **样本内外一致性**：样本内 Sharpe 0.39 vs OOS 0.48，差 0.10 ✓ 一致
 
 > 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；
 > 仅作 C-3 审批证据，不直接改动生产。

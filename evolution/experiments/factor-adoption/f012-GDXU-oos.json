@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12 15:35",
+  "generated_at": "2026-11-12 16:03",
   "factor": "f012",
   "symbol": "GDXU",
   "direction": "positive",
@@ -44,5 +44,9 @@
   "timing_alpha": 0.643283,
   "sharpe_delta": 1.0155,
   "sharpe_noise_threshold": 0.1,
-  "verdict": "PASS（择时 alpha > 0、回撤不劣化、且 Sharpe > 0）"
+  "is_sharpe": -0.1806,
+  "oos_is_sharpe_gap": 1.4334,
+  "is_oos_gap_max": 0.3,
+  "is_consistent": false,
+  "verdict": "FAIL（**样本内外矛盾** ✗：样本内 Sharpe -0.18（≤0，样本内亏钱），OOS 1.25，差 1.43 ≥ 0.30 ⇒ 典型过拟合 ✗）"
 }

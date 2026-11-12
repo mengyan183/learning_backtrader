@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12 15:13",
+  "generated_at": "2026-11-12 16:03",
   "factor": "gold_ratio",
   "symbol": "TQQQ",
   "direction": "negative",
@@ -44,5 +44,9 @@
   "timing_alpha": -0.015638,
   "sharpe_delta": 0.0262,
   "sharpe_noise_threshold": 0.1,
+  "is_sharpe": 0.3859,
+  "oos_is_sharpe_gap": 0.0963,
+  "is_oos_gap_max": 0.3,
+  "is_consistent": true,
   "verdict": "FAIL（**无择时 alpha** ✗：策略年化 19.62% ≤ 同仓位基准 21.19%（pos_mean=0.52）⇒ 它只是「仓位低」不是「择时好」）"
 }

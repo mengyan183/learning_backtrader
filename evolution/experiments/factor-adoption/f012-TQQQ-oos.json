@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12 15:35",
+  "generated_at": "2026-11-12 16:03",
   "factor": "f012",
   "symbol": "TQQQ",
   "direction": "positive",
@@ -44,5 +44,9 @@
   "timing_alpha": 0.037629,
   "sharpe_delta": 0.0903,
   "sharpe_noise_threshold": 0.1,
-  "verdict": "PASS（择时 alpha > 0、回撤不劣化、且 Sharpe > 0）"
+  "is_sharpe": 0.432,
+  "oos_is_sharpe_gap": 0.1144,
+  "is_oos_gap_max": 0.3,
+  "is_consistent": true,
+  "verdict": "PASS（alpha > 0、回撤不劣化、Sharpe > 0、**且样本内外一致**）"
 }

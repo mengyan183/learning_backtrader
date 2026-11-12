@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12 15:44",
+  "generated_at": "2026-11-12 16:03",
   "factor": "erp",
   "symbol": "GDXU",
   "direction": "positive",
@@ -44,5 +44,9 @@
   "timing_alpha": -0.056195,
   "sharpe_delta": 0.11,
   "sharpe_noise_threshold": 0.1,
-  "verdict": "FAIL（**无择时 alpha** ✗：策略年化 39.98% ≤ 同仓位基准 45.60%（pos_mean=0.80）⇒ 它只是「仓位低」不是「择时好」）"
+  "is_sharpe": -0.2737,
+  "oos_is_sharpe_gap": 0.6211,
+  "is_oos_gap_max": 0.3,
+  "is_consistent": false,
+  "verdict": "FAIL（**样本内外矛盾** ✗：样本内 Sharpe -0.27（≤0，样本内亏钱），OOS 0.35，差 0.62 ≥ 0.30 ⇒ 典型过拟合 ✗）"
 }
