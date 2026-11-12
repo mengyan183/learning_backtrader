@@ -1,0 +1,52 @@
+{
+  "generated_at": "2026-11-12 17:06",
+  "factor": "erp",
+  "symbol": "QQQ",
+  "direction": "positive",
+  "oos_start": "2024-10-04",
+  "oos_days": 527,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": 0.47268459071872115,
+      "annual_return": 0.2033347054755248,
+      "max_drawdown": -0.1657502640826961,
+      "annual_vol": 0.18057415410116315,
+      "sharpe": 1.1260454547753855,
+      "calmar": 1.22675343294824
+    },
+    "buyhold_oos": {
+      "total_return": 0.43354305529599824,
+      "annual_return": 0.1879337824334293,
+      "max_drawdown": -0.2288330367734278,
+      "annual_vol": 0.22347971877943779,
+      "sharpe": 0.8409433458206094,
+      "calmar": 0.8212703247892755
+    },
+    "strategy_is": {
+      "total_return": 1.6320284220567953,
+      "annual_return": 0.1325697133894883,
+      "max_drawdown": -0.21066621727782076,
+      "annual_vol": 0.1296360491107098,
+      "sharpe": 1.0226300037597809,
+      "calmar": 0.6292879565718839
+    },
+    "buyhold_samepos_oos": {
+      "total_return": 0.3450515022363023,
+      "annual_return": 0.1522856773706407,
+      "max_drawdown": -0.18668546686197562,
+      "annual_vol": 0.178792749842332,
+      "sharpe": 0.8517441423376142,
+      "calmar": 0.8157339718534805
+    }
+  },
+  "pos_mean": 0.8,
+  "timing_alpha": 0.051049,
+  "sharpe_delta": 0.2851,
+  "sharpe_noise_threshold": 0.1,
+  "is_sharpe": 1.0226,
+  "oos_is_sharpe_gap": 0.1034,
+  "is_oos_gap_max": 0.3,
+  "is_consistent": true,
+  "verdict": "PASS（alpha > 0、回撤不劣化、Sharpe > 0、**且样本内外一致**）"
+}

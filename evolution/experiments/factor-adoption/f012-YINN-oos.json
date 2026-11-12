@@ -1,0 +1,52 @@
+{
+  "generated_at": "2026-11-12 17:06",
+  "factor": "f012",
+  "symbol": "YINN",
+  "direction": "positive",
+  "oos_start": "2024-10-04",
+  "oos_days": 527,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": -0.36887514078617734,
+      "annual_return": -0.19754727895926905,
+      "max_drawdown": -0.6270603517727522,
+      "annual_vol": 0.5575715007528975,
+      "sharpe": -0.3542994552133993,
+      "calmar": -0.31503710671673996
+    },
+    "buyhold_oos": {
+      "total_return": -0.48438168592212294,
+      "annual_return": -0.2714797424653125,
+      "max_drawdown": -0.6402595185248424,
+      "annual_vol": 0.7718649869101585,
+      "sharpe": -0.35171920875964213,
+      "calmar": -0.42401516043182247
+    },
+    "strategy_is": {
+      "total_return": -0.6196808716133706,
+      "annual_return": -0.11693739329791142,
+      "max_drawdown": -0.9240118833211596,
+      "annual_vol": 0.5084429842480351,
+      "sharpe": -0.2299911630619836,
+      "calmar": -0.12655399287464292
+    },
+    "buyhold_samepos_oos": {
+      "total_return": -0.21372139383268962,
+      "annual_return": -0.10861171598108055,
+      "max_drawdown": -0.4222812480084527,
+      "annual_vol": 0.462815215076259,
+      "sharpe": -0.2346762000103743,
+      "calmar": -0.25720231834425783
+    }
+  },
+  "pos_mean": 0.5996,
+  "timing_alpha": -0.088936,
+  "sharpe_delta": -0.0026,
+  "sharpe_noise_threshold": 0.1,
+  "is_sharpe": -0.23,
+  "oos_is_sharpe_gap": 0.1243,
+  "is_oos_gap_max": 0.3,
+  "is_consistent": false,
+  "verdict": "FAIL（OOS 亏钱：Sharpe ≤ 0，只是「比买入持有少亏」✗）"
+}

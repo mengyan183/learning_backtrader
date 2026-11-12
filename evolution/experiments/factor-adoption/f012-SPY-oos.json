@@ -1,0 +1,52 @@
+{
+  "generated_at": "2026-11-12 17:06",
+  "factor": "f012",
+  "symbol": "SPY",
+  "direction": "positive",
+  "oos_start": "2024-10-04",
+  "oos_days": 527,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": 0.1682432322134757,
+      "annual_return": 0.07719158151963335,
+      "max_drawdown": -0.17755608667099154,
+      "annual_vol": 0.13289116569834225,
+      "sharpe": 0.5808631530470221,
+      "calmar": 0.43474477821009905
+    },
+    "buyhold_oos": {
+      "total_return": 0.33811771335986807,
+      "annual_return": 0.1494414320294466,
+      "max_drawdown": -0.18998906889856915,
+      "annual_vol": 0.1670409050977716,
+      "sharpe": 0.8946397407388103,
+      "calmar": 0.7865791063444286
+    },
+    "strategy_is": {
+      "total_return": 0.41645497386614005,
+      "annual_return": 0.04580395581042174,
+      "max_drawdown": -0.2130167947037963,
+      "annual_vol": 0.12668158106680572,
+      "sharpe": 0.36156760457755066,
+      "calmar": 0.2150250916793343
+    },
+    "buyhold_samepos_oos": {
+      "total_return": 0.199116684418863,
+      "annual_return": 0.09071136253706924,
+      "max_drawdown": -0.11752560360671749,
+      "annual_vol": 0.10015880203198874,
+      "sharpe": 0.9056753944410979,
+      "calmar": 0.7718434090380999
+    }
+  },
+  "pos_mean": 0.5996,
+  "timing_alpha": -0.01352,
+  "sharpe_delta": -0.3138,
+  "sharpe_noise_threshold": 0.1,
+  "is_sharpe": 0.3616,
+  "oos_is_sharpe_gap": 0.2193,
+  "is_oos_gap_max": 0.3,
+  "is_consistent": true,
+  "verdict": "FAIL（**无择时 alpha** ✗：策略年化 7.72% ≤ 同仓位基准 9.07%（pos_mean=0.60）⇒ 它只是「仓位低」不是「择时好」）"
+}
