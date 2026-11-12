@@ -124,9 +124,21 @@ def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_STA
     if len(oos) < 60:
         raise SystemExit("OOS 样本不足：%d 行（%s 起）" % (len(oos), oos_start))
 
+    # 🔴 2026-11-12 实测（AXTX）：价格数据起点就在 2024 附近 ⇒ **样本内为空** ✗
+    #    `performance_metrics(空 Series)` 返回 **nan** ✗
+    #    ⇒ `is_consistent` 里 `nan > 0` 为 False ⇒ 报「内外矛盾」✗
+    #      但真实原因是**没有样本内数据**，不是过拟合 ✗
+    #    ⇒ 样本内 < 60 行就直接拒跑 ✓（让调用方知道是「数据不足」不是「判定失败」）
+    _is_df = df[df.index < oos_start]
+    if len(_is_df) < 60:
+        raise SystemExit(
+            "样本内不足：%d 行（%s 之前）< 60 ⇒ 无法做内外一致性检查 ✗ "
+            "（该标的的价格历史太短，起点约 %s）"
+            % (len(_is_df), oos_start,
+               df.index[0].date() if len(df) else "?"))
     strat = performance_metrics(oos["strat_ret"])
     bh = performance_metrics(oos["ret"])
-    in_sample = performance_metrics(df[df.index < oos_start]["strat_ret"])
+    in_sample = performance_metrics(_is_df["strat_ret"])
 
     # 🔴 2026-11-12 用户裁定 P0①：**加「同平均仓位基准」B0'** ✓
     #    问题：`pos = 0.2 + 0.8×rank` ⇒ 平均仓位约 60%，而 B0 是 **100% 满仓** ✗
