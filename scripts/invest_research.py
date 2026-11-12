@@ -1157,6 +1157,10 @@ _NEWS_NOISE_RE = re.compile(
     #    - Robinhood` ✗ —— 这是**预测市场页面**，不是新闻 ✗
     #    注意：它含 `BTC` ⇒ 相关性校验会放行 ⇒ 必须靠噪音表拦 ✓
     r"|Prediction Market"
+    # 🔴 2026-11-12 用户要求：**丢弃「期权拆分代码变更」公告** ✗
+    #    实测 `2倍做多AXTI ETF-Tradr：…——反向拆分 期权代码：AXTX 新代码：AXTX1`
+    #    这类是**期权链代码调整**，不是标的新闻，还会让人误以为股票拆了 ✗
+    r"|反向拆分|正向拆分|期权代码|新代码"
     r"|^\$.*\$\$)"                           # Moomoo 的 $$ 包裹
     , re.I)
 
@@ -1243,9 +1247,44 @@ def news_text(news):
 
 
 # ---------------------------------------------------------------- 简报与推送
+def _prev_snapshot(cur_date):
+    """读 `positions.csv`，返回 `{symbol: (date, price, qty)}` —— 当前快照日**之前**最后一条 ✓
+
+    🔴 2026-11-12 用户要求：**单日价格波动 >30% 时打印市值对照** ✓
+       用途：区分「真实波动」和「拆分/合并」——
+         拆分/合并 ⇒ 股数反向变、价格反向变、**市值不变** ✓
+         真实波动   ⇒ 股数不变、市值同向同幅变 ✓
+       （2026-11-12 我把 AXTX +42% 误判成反向拆分，用户用这个方法纠正）
+    """
+    import csv as _csv
+    p = DATA / "positions.csv"
+    if not p.exists():
+        return {}
+    best = {}
+    try:
+        with open(p, encoding="utf-8") as fh:
+            for row in _csv.DictReader(fh):
+                d = str(row.get("date") or "").strip()
+                s = str(row.get("symbol") or "").strip()
+                # 只要**严格早于**当前快照日的记录 ✓（同日多条取最后）
+                if not d or not s or (cur_date and d >= str(cur_date)):
+                    continue
+                try:
+                    px = float(row.get("price") or 0)
+                    qty = float(row.get("qty") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if s not in best or d >= best[s][0]:
+                    best[s] = (d, px, qty)
+    except OSError:
+        return {}
+    return best
+
+
 def build_snapshot_lines(snap):
     """简报用紧凑快照行（区别于喂给 LLM 的完整 snapshot_text）。"""
     out = []
+    _prev = _prev_snapshot(snap.get("date"))
     if snap.get("fg"):
         f = snap["fg"]
         # 2026-10-29：目标仓位打**百分比** ✗ —— 原来直接打 float，
@@ -1265,7 +1304,23 @@ def build_snapshot_lines(snap):
         pnl = ("%.2f (%.2f%%)" % (r["pnl"], r["pnl_pct"])
                if r["pnl"] is not None else "无行情")
         flag = "🔺" if (r["pnl"] or 0) > 0 else ("🔻" if (r["pnl"] or 0) < 0 else "▪️")
-        out.append(f"{flag} {r['symbol']} {r['name']} · 成本 {r['cost']} · 现价 {r['last_close'] or '—'} · 浮盈亏 {pnl}")
+        # 🔴 2026-11-12：**单日价格波动 >30% ⇒ 加市值对照** ✓
+        #    读者（和模型）看到「现价 +42%」会误判成反弹，也可能误判成拆分 ✗
+        #    市值同向同幅 ⇒ 真实波动 ✓；市值不动而价格变 ⇒ 拆分/合并 ✓
+        _note = ""
+        _pv = _prev.get(r["symbol"])
+        if _pv and _pv[1] and r.get("last_close"):
+            _px_now = float(r["last_close"])
+            _dpx = (_px_now / _pv[1] - 1) * 100
+            if abs(_dpx) > 30:
+                _mv_now = float(r.get("qty") or 0) * _px_now
+                _mv_prev = _pv[2] * _pv[1]
+                _dmv = ((_mv_now / _mv_prev - 1) * 100) if _mv_prev else 0.0
+                _why = ("市值同步 ⇒ 真实波动" if abs(_dpx - _dmv) < 15
+                        else "市值背离 ⇒ 拆分/合并")
+                _note = ("\n  ↳ 较 %s 价格 %+.0f%%、市值 %+.0f%% ⇒ **%s**"
+                         % (_pv[0], _dpx, _dmv, _why))
+        out.append(f"{flag} {r['symbol']} {r['name']} · 成本 {r['cost']} · 现价 {r['last_close'] or '—'} · 浮盈亏 {pnl}{_note}")
     out.append(f"账户净值: " + " / ".join(f"{k} {v}" for k, v in (snap.get('accounts') or {}).items()))
     # 🔴 2026-10-31 用户裁定：**账户明细进简报正文** ✓ ——
     # 原来只在 `snapshot_text`（喂 LLM 的）里给，正文看不到 ✗
