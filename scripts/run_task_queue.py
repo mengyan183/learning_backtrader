@@ -1401,6 +1401,59 @@ def _act_dsh_web_launch(params):
     return out
 
 
+def _compute_gold_ratio(root, pd):
+    """F-021：`GDX/GLD` 的 **120 日滚动分位** ✓（`factors/gold_ratio.py`）"""
+    sys.path.insert(0, root)
+    from fg_system.factors import gold_ratio as _gr
+    prices = pd.read_csv(os.path.join(root, "Data", "raw", "prices.csv"))
+    sdf = _gr.gold_ratio_pct(prices).to_frame(name="gold_ratio").reset_index()
+    sdf.columns = ["date", "gold_ratio"][:len(sdf.columns)]
+    sdf["date"] = sdf["date"].astype(str).str[:10]
+    return sdf
+
+
+def _compute_f012(root, pd):
+    """F-012：VIX 期限结构 `vix/vix3m` 的 **5 日变化率** ✓
+
+    判据来源 `evolution/factors.md` 原文：
+      「波动率结构（VIX 期限结构 term=vix3m/vix 的滚动变化率）」
+      「2026-11-02 重测…**方向改为「正向」** ✓…统一用 `vix/vix3m` 的 N 日变化率」
+      「N=5：+0.308/+0.403/+0.236/**+0.668**（5/10/20/40）…⇒ **定 N=5** ✓」
+
+    ⚠️ 与 `features.csv` 的 `term` 列**不是一回事** ✗ ——
+       `term` 是 `vix3m/vix` 的**水平** ✗；本因子要的是 `vix/vix3m` 的**变化率** ✓
+    数据：`Data/raw/vix.csv` + `Data/raw/vix3m.csv`（都是 `date,open,high,low,close`）
+    """
+    def _close(name):
+        d = pd.read_csv(os.path.join(root, "Data", "raw", name),
+                        parse_dates=["date"])
+        s = d.set_index("date")["close"].astype(float)
+        return s[~s.index.duplicated(keep="last")].sort_index()
+
+    v, v3 = _close("vix.csv"), _close("vix3m.csv")
+    ratio = (v / v3).dropna()
+    chg = ratio.pct_change(5).dropna()          # N=5（2026-11-02 定版）
+    sdf = chg.rename("f012").reset_index()
+    sdf.columns = ["date", "f012"]
+    sdf["date"] = sdf["date"].astype(str).str[:10]
+    return sdf
+
+
+#: 需现算的因子（其余因子名若在 `features.csv` 里已存在 ⇒ 直接复用 ✓）
+_COMPUTE = {
+    "gold_ratio": _compute_gold_ratio,
+    "f012": _compute_f012,
+}
+
+
+def _compute_factor(root, factor, pd):
+    """按名算因子列 ⇒ 返回 `DataFrame(date, <factor>)`，未知返回 `None` ✓"""
+    fn = _COMPUTE.get(factor)
+    if fn is None:
+        return None
+    return fn(root, pd)
+
+
 def _act_factor_probe(params):
     """**算 gold_ratio 列 → 跑回测裁判** ✓（2026-11-12 用户要求推进 F-021）。
 
@@ -1430,32 +1483,42 @@ def _act_factor_probe(params):
     if not os.path.exists(py):
         py = sys.executable
 
-    # ① 算信号
+    # ① 算信号 —— 🔴 2026-11-12 用户要求：**支持任意因子列** ✓
+    #    两条路径：
+    #      A. `features.csv` **已有该列**（vix/term/price/breadth/fed/putcall）
+    #         ⇒ 直接复制到研究文件 ✓（不重算，与生产同源 ✓）
+    #      B. 需现算（`gold_ratio` / `f012`）⇒ 走 `_COMPUTE` 分派 ✓
+    factor = str(params.get("factor") or "gold_ratio").strip()
+    out["factor"] = factor
     try:
         import pandas as _pd
         sys.path.insert(0, root)
-        from fg_system.factors import gold_ratio as _gr
-        prices = _pd.read_csv(os.path.join(root, "Data", "raw", "prices.csv"))
-        sig = _gr.gold_ratio_pct(prices)
-        # sig 是 Series（index=date）或 DataFrame ⇒ 统一成两列
-        if hasattr(sig, "to_frame"):
-            sdf = sig.to_frame(name="gold_ratio").reset_index()
+        base = _pd.read_csv(os.path.join(root, "Data", "features.csv"))
+        base["date"] = base["date"].astype(str).str[:10]
+
+        if factor in base.columns:
+            sdf = base[["date", factor]].copy()
+            out["steps"]["signal_from"] = "features.csv（已有列，直接复用）"
         else:
-            return {"ok": False, "error": "gold_ratio_pct 返回类型不支持：%s"
-                                          % type(sig).__name__}
-        sdf.columns = ["date", "gold_ratio"][:len(sdf.columns)]
-        sdf["date"] = sdf["date"].astype(str).str[:10]
+            sdf = _compute_factor(root, factor, _pd)
+            if sdf is None:
+                return {"ok": False,
+                        "error": "未知因子 `%s` ✗ —— features.csv 无此列，"
+                                 "且 `_COMPUTE` 里没有对应算列逻辑（支持：%s）"
+                                 % (factor, "、".join(sorted(_COMPUTE)) +
+                                    " + features 已有列")}
+            out["steps"]["signal_from"] = "_COMPUTE[%s]（现算）" % factor
         out["steps"]["signal"] = {"n": int(len(sdf)),
                                   "head": sdf.head(2).to_dict("records"),
                                   "tail": sdf.tail(2).to_dict("records")}
     except Exception as exc:              # noqa: BLE001
         return {"ok": False,
-                "error": "算 gold_ratio 失败：%s: %s"
-                         % (type(exc).__name__, str(exc)[:250])}
+                "error": "算 %s 失败：%s: %s"
+                         % (factor, type(exc).__name__, str(exc)[:250])}
 
     # ② 写研究专用特征文件（合并原 features 的非因子列）
     feat_out = os.path.join(root, "evolution", "experiments",
-                            "factor-adoption", "features_gold_ratio.csv")
+                            "factor-adoption", "features_%s.csv" % factor)
     try:
         os.makedirs(os.path.dirname(feat_out), exist_ok=True)
         base = _pd.read_csv(os.path.join(root, "Data", "features.csv"))
@@ -1470,7 +1533,10 @@ def _act_factor_probe(params):
                          % (type(exc).__name__, str(exc)[:250])}
 
     # ③ 跑裁判（TQQQ + GDXU）
-    direction = str(params.get("direction") or "negative").strip().lower()
+    # 方向默认按因子定 ✓（`gold_ratio` 实测 rank_ic -0.53 ⇒ 逆向；F-012 定「正向」）
+    _DIR_DEFAULT = {"gold_ratio": "negative", "f012": "positive"}
+    direction = str(params.get("direction")
+                    or _DIR_DEFAULT.get(factor, "positive")).strip().lower()
     if direction not in ("positive", "negative"):
         direction = "negative"
     out["direction"] = direction
@@ -1479,7 +1545,7 @@ def _act_factor_probe(params):
         try:
             r = _sp.run([py, os.path.join(root, "scripts",
                                           "factor_backtest_probe.py"),
-                         "--factor", "gold_ratio", "--symbol", sym,
+                         "--factor", factor, "--symbol", sym,
                          "--direction", direction, "--features", feat_out],
                         capture_output=True, text=True, timeout=300, cwd=root)
             tail = ((r.stdout or "") + (r.stderr or "")).strip()[-500:]
@@ -1492,7 +1558,7 @@ def _act_factor_probe(params):
     # ④ 收集产出
     arts = sorted(_glob.glob(os.path.join(
         root, "evolution", "experiments", "factor-adoption",
-        "gold_ratio-*-oos.md")))
+        "%s-*-oos.md" % factor)))
     out["steps"]["artifacts"] = [os.path.basename(a) for a in arts[-4:]]
     # 🔴 2026-11-12 实测修正：**`rc=1` 不代表执行失败** ✗
     #    `factor_backtest_probe.py` 在「因子未通过裁判」时也返回 1 ✗
