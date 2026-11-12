@@ -1,9 +1,0 @@
-{
-  "id": "t-20261112-155859-factor_probe",
-  "action": "factor_probe",
-  "params": {
-    "factor": "gold_ratio"
-  },
-  "status": "pending",
-  "created_at": "2026-11-12T15:58:59"
-}
