@@ -1494,10 +1494,21 @@ def _act_factor_probe(params):
         root, "evolution", "experiments", "factor-adoption",
         "gold_ratio-*-oos.md")))
     out["steps"]["artifacts"] = [os.path.basename(a) for a in arts[-4:]]
-    out["ok"] = any(v.get("rc") == 0 for v in runs.values())
+    # 🔴 2026-11-12 实测修正：**`rc=1` 不代表执行失败** ✗
+    #    `factor_backtest_probe.py` 在「因子未通过裁判」时也返回 1 ✗
+    #    （首次跑 F-021 时两个标的都 rc=1，但 md/json 都正常产出 ✓
+    #      回执却被判成 failed，白排查一轮 ✗）
+    #    ⇒ 判据改成「**有没有产出 artifacts**」✓（产出即跑通 ✓）
+    out["ok"] = bool(arts)
     if not out["ok"]:
-        out["hint"] = ("两个标的都失败 ✗ ⇒ 看 `steps.probe.*.tail`；"
+        out["hint"] = ("两个标的都没产出 md ✗ ⇒ 看 `steps.probe.*.tail`；"
                        "常见原因：prices.csv 缺 GDX/GLD、或 features 日期对不上")
+    else:
+        # rc=1 时把语义写清楚，避免下次又误读成「执行失败」✗
+        _rcs = {s: v.get("rc") for s, v in runs.items()}
+        if any(rc != 0 for rc in _rcs.values()):
+            out["note"] = ("rc=%s 表示**因子未通过裁判**（不是执行失败 ✓）—— "
+                           "产出已生成，结论见 artifacts" % _rcs)
     return out
 
 
