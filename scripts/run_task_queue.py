@@ -1472,11 +1472,52 @@ def _compute_erp(root, pd):
     return sdf
 
 
+def _fg_pos_tendency(pd, root, with_erp):
+    """把「6 因子合成」转成**仓位倾向** 0~100（高=该加仓）✓
+
+    🔴 为什么必须转：`fg_index` 是**贪婪度**（高=贪婪=该减仓）✗
+       而 `factor_backtest_probe` 的 `positive` 方向是「因子高 ⇒ 仓位高」✗
+       ⇒ 直接把 `fg_index` 丢进去会**方向反了** ✗
+       ⇒ 统一转成 `100 - fg_index`（恐惧度，高=该加仓）✓
+
+    `with_erp=True` 时：`0.9 × (100-fg_index) + 0.1 × (erp×100)` ✓
+       - ERP 是 0~1 分位（高=便宜=该加仓 ✓，与「恐惧度」同向 ✓）
+       - 权重 10%：参照 `config.WEIGHTS` 里 putcall 的 0.10 ✓
+         其余 6 项按比例缩到 0.90 ✓（不新增权重总量，只做再分配 ✓）
+    """
+    base = pd.read_csv(os.path.join(root, "Data", "features.csv"))
+    base["date"] = base["date"].astype(str).str[:10]
+    base["fg_index"] = pd.to_numeric(base["fg_index"], errors="coerce")
+    df = base[["date", "fg_index"]].dropna()
+    df["fg_base"] = 100.0 - df["fg_index"]
+    if not with_erp:
+        return df[["date", "fg_base"]]
+
+    erp = _compute_erp(root, pd)
+    m = df.merge(erp, on="date", how="inner").dropna()
+    m["fg_erp"] = 0.90 * m["fg_base"] + 0.10 * (m["erp"] * 100.0)
+    return m[["date", "fg_erp"]]
+
+
+def _compute_fg_base(root, pd):
+    """基线：**现有 6 因子合成** ⇒ 仓位倾向 0~100 ✓（不加 ERP）"""
+    return _fg_pos_tendency(pd, root, with_erp=False)
+
+
+def _compute_fg_erp(root, pd):
+    """增量：**6 因子 + ERP（10% 权重）** ⇒ 仓位倾向 0~100 ✓"""
+    return _fg_pos_tendency(pd, root, with_erp=True)
+
+
 #: 需现算的因子（其余因子名若在 `features.csv` 里已存在 ⇒ 直接复用 ✓）
 _COMPUTE = {
     "gold_ratio": _compute_gold_ratio,
     "f012": _compute_f012,
     "erp": _compute_erp,
+    # 🔴 2026-11-12 用户要求「6 因子 vs 6 因子+ERP 增量评测」✓
+    #    两个都用 `direction=positive`（高=该加仓）⇒ 口径一致可比 ✓
+    "fg_base": _compute_fg_base,     # 基线：6 因子合成
+    "fg_erp": _compute_fg_erp,       # 增量：6 因子 + ERP 10%
 }
 
 
@@ -1569,7 +1610,9 @@ def _act_factor_probe(params):
     # ③ 跑裁判（TQQQ + GDXU）
     # 方向默认按因子定 ✓（`gold_ratio` 实测 rank_ic -0.53 ⇒ 逆向；F-012 定「正向」）
     _DIR_DEFAULT = {"gold_ratio": "negative", "f012": "positive",
-                    "erp": "positive"}   # F-017 登记为「正向」（ERP 高=便宜=看多）
+                    "erp": "positive",   # F-017 登记为「正向」（ERP 高=便宜=看多）
+                    # 下面两个已转成「仓位倾向」（高=该加仓）⇒ positive ✓
+                    "fg_base": "positive", "fg_erp": "positive"}
     direction = str(params.get("direction")
                     or _DIR_DEFAULT.get(factor, "positive")).strip().lower()
     if direction not in ("positive", "negative"):
