@@ -2203,6 +2203,25 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     #    实测 500 字要求时模型写 750~1100 ⇒ 只靠 prompt 约束不住 ✗
     #    600 = 400 × 1.5（超写 50% 才截），比 800 更硬 ✓
     _attr = (attribution or "（归因生成失败，已降级跳过）").strip()
+    # 🔴 2026-11-12 实测：prompt 要求「每标的**一行、不超过 40 字**」✗
+    #    模型为了压字数把**句号全省了** ✗ —— 6 行标的全以汉字结尾：
+    #      `YINN：中国资产情绪转弱，三倍杠杆放大跌幅` ✗
+    #    风险点 3 条也一样 ✗ ⇒ 读起来像断句、像没写完 ✗
+    #    ⇒ **展示层补句号** ✓（prompt 约束不住，模型已两次为字数牺牲标点）
+    #    ⚠️ 只补「内容行」：标题行（`风险点：`、`①②`）和已有标点的不动 ✓
+    def _ensure_period(_txt):
+        _o = []
+        for _ln in str(_txt or "").splitlines():
+            _t = _ln.rstrip()
+            if (not _t or len(_t) <= 10
+                    or _t.endswith(("。", "！", "？", ".", "!", "?",
+                                    "：", ":", "·", "；", ";"))):
+                _o.append(_t)
+                continue
+            _o.append(_t + "。")
+        return "\n".join(_o)
+
+    _attr = _ensure_period(_attr)
     # 🔴 2026-11-12 实测：prompt 要求「`风险点：` 单独一行」，模型仍写成
     #    `风险点： · 股票端有效名义敞口…` ✗ —— 第一条拼在了冒号后面 ✗
     #    （后两条倒是 `· ` 开头独立行 ⇒ 视觉割裂 ✗）
