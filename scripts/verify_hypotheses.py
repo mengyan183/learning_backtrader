@@ -1186,38 +1186,28 @@ def _mk_terminal(state, reason):
     return _r
 
 
-def verify_h009(df):
-    """H-009：占比 >28% 的标的，T+10 负收益概率**高于**占比 <20% 对照组。
+def _two_prop_z_p(x1, n1, x2, n2):
+    """两比例 z 检验 ⇒ `(z, 双侧 p)` ✓（判据原文要求 p ≤ 0.05 ✗）。
 
-    🔴 2026-11-05 新实现 ✓（原来只在 `PENDING` 里登记 ✗ 永远 pending ✗）
-
-    判据（`hypotheses.md`）：
-      占比 >28% 的标的在随后 **10 个交易日**内出现负收益的概率
-      高于占比 <20% 的对照组 ⇒ 成立
-
-    数据：
-      `Data/positions.csv`  —— `date` / `symbol` / `market_value`
-      `Data/raw/prices.csv` —— `symbol` / `date` / `close`
-      ⚠️ `BTC` 不在 `prices.csv`（在 `crypto_prices.csv` ✗）⇒ 自动跳过 ✓
-
-    口径说明：
-      - **占比分母** = 当日**所有持仓标的**的 `market_value` 之和 ✓
-        （不区分 stock/crypto 账户 ✗ 因为假说说的是「单一标的市值占比」✗）
-      - **T+10 收益** = `close[t+10] / close[t] - 1` ✓
-        按**标的自身的交易日序列**取第 10 行 ✓（不是自然日 ✗）
-      - 样本不足（任一组 <20 个观测 ✗）⇒ `status: "pending"`
+    用 `math.erfc` 算正态尾概率 ⇒ 不引入 scipy ✓
     """
-    import pandas as _pd
+    if not (n1 and n2):
+        return 0.0, 1.0
+    p1, p2 = x1 / float(n1), x2 / float(n2)
+    pool = (x1 + x2) / float(n1 + n2)
+    se = (pool * (1.0 - pool) * (1.0 / n1 + 1.0 / n2)) ** 0.5
+    if se <= 0:
+        return 0.0, 1.0
+    z = (p1 - p2) / se
+    return z, math.erfc(abs(z) / math.sqrt(2.0))
 
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    pp = os.path.join(root, "Data", "positions.csv")
-    cp = os.path.join(root, "Data", "raw", "prices.csv")
-    if not (os.path.exists(pp) and os.path.exists(cp)):
-        return {"passed": False, "status": "pending",
-                "reason": "缺 Data/positions.csv 或 Data/raw/prices.csv"}
 
-    pos = _pd.read_csv(pp)
-    px = _pd.read_csv(cp)
+def _h009_core(pos, px):
+    """H-009 纯计算（**不读盘** ⇒ 可测 ✓）；口径见 `verify_h009`。
+
+    判据（`hypotheses.md`）：>28% 组 T+10 负收益率**高于** <20% 组，
+    **且**两比例 z 检验 **p ≤ 0.05** ✓（只看方向 ⇒ 判据只满足一半 ✗）
+    """
     need_p = {"date", "symbol", "market_value"}
     need_x = {"date", "symbol", "close"}
     if not (need_p.issubset(pos.columns) and need_x.issubset(px.columns)):
@@ -1225,6 +1215,10 @@ def verify_h009(df):
                 "reason": "列缺失：positions 需 %s / prices 需 %s"
                           % (sorted(need_p), sorted(need_x))}
 
+    import pandas as _pd
+
+    pos = pos.copy()
+    px = px.copy()
     pos["date"] = pos["date"].astype(str).str[:10]
     pos["market_value"] = _pd.to_numeric(pos["market_value"], errors="coerce")
     pos = pos.dropna(subset=["market_value"])
@@ -1261,10 +1255,13 @@ def verify_h009(df):
     lo = m[m["share"] < 0.20]      # 对照组 ✓
 
     def _neg_rate(g):
-        return (float((g["fwd10"] < 0).mean()), int(len(g))) if len(g) else (0.0, 0)
+        if not len(g):
+            return 0.0, 0, 0
+        x = int((g["fwd10"] < 0).sum())
+        return x / float(len(g)), x, int(len(g))
 
-    r_hi, n_hi = _neg_rate(hi)
-    r_lo, n_lo = _neg_rate(lo)
+    r_hi, x_hi, n_hi = _neg_rate(hi)
+    r_lo, x_lo, n_lo = _neg_rate(lo)
 
     # 样本门槛：两组各 ≥20 ✓（否则 pending ✗）
     if n_hi < 20 or n_lo < 20:
@@ -1276,17 +1273,52 @@ def verify_h009(df):
                 "note": "口径：占比分母 = 当日全部持仓 market_value 之和 ✗；"
                         "T+10 按标的自身交易日序列取第 10 行 ✓"}
 
-    passed = r_hi > r_lo
+    z, p = _two_prop_z_p(x_hi, n_hi, x_lo, n_lo)
+    passed = bool(r_hi > r_lo and p <= 0.05)
     return {
-        "passed": bool(passed),
+        "passed": passed,
         "neg_rate_hi": round(r_hi, 4), "neg_rate_lo": round(r_lo, 4),
         "n_hi": n_hi, "n_lo": n_lo,
         "diff_pp": round((r_hi - r_lo) * 100, 2),
+        "z": round(z, 3), "p_value": round(p, 4),
         "note": ("占比 >28%% 组 T+10 负收益率 %.1f%%（n=%d）"
-                 " vs <20%% 组 %.1f%%（n=%d）⇒ 差 %.2fpp ✗"
+                 " vs <20%% 组 %.1f%%（n=%d）⇒ 差 %.2fpp / p=%.3f ✗"
                  % (r_hi * 100, n_hi, r_lo * 100, n_lo,
-                    (r_hi - r_lo) * 100)),
+                    (r_hi - r_lo) * 100, p)),
     }
+
+
+def verify_h009(df):
+    """H-009：占比 >28% 的标的，T+10 负收益概率**高于**占比 <20% 对照组。
+
+    🔴 2026-11-05 新实现 ✓（原来只在 `PENDING` 里登记 ✗ 永远 pending ✗）
+    🔴 2026-11-06 补**两比例 z 检验** ✓（判据要求 p ≤ 0.05 ✗ 原来只看方向 ✗）
+
+    判据（`hypotheses.md`）：
+      占比 >28% 的标的在随后 **10 个交易日**内出现负收益的概率
+      高于占比 <20% 的对照组，**且** p ≤ 0.05 ⇒ 成立
+
+    数据：
+      `Data/positions.csv`  —— `date` / `symbol` / `market_value`
+      `Data/raw/prices.csv` —— `symbol` / `date` / `close`
+      ⚠️ `BTC` 不在 `prices.csv`（在 `crypto_prices.csv` ✗）⇒ 自动跳过 ✓
+
+    口径说明：
+      - **占比分母** = 当日**所有持仓标的**的 `market_value` 之和 ✓
+        （不区分 stock/crypto 账户 ✗ 因为假说说的是「单一标的市值占比」✗）
+      - **T+10 收益** = `close[t+10] / close[t] - 1` ✓
+        按**标的自身的交易日序列**取第 10 行 ✓（不是自然日 ✗）
+      - 样本不足（任一组 <20 个观测 ✗）⇒ `status: "pending"`
+    """
+    import pandas as _pd
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    pp = os.path.join(root, "Data", "positions.csv")
+    cp = os.path.join(root, "Data", "raw", "prices.csv")
+    if not (os.path.exists(pp) and os.path.exists(cp)):
+        return {"passed": False, "status": "pending",
+                "reason": "缺 Data/positions.csv 或 Data/raw/prices.csv"}
+    return _h009_core(_pd.read_csv(pp), _pd.read_csv(cp))
 
 
 def _read_accounts():
@@ -1863,11 +1895,144 @@ def verify_h022(df):
     }
 
 
+def verify_h011(df):
+    """H-011：持仓浮亏在信号**回落期**（fg 下降）的扩大幅度显著大于上升期。
+
+    🔴 2026-11-12 新实现 ✓（原来只在 `PENDING` 里登记 ⇒ 永远 pending ✗）
+
+    数据源（按 MT-57 结论，`e8b5c08` 实证 ✓）：
+      **用 positions 自算** `unrealized = qty × (price − cost)` ✓
+      **禁用** `accounts.unrealized_pnl` ✗ —— 全量对账 17/17 天不一致 ✗
+      （10-01~10-19 共 15 天恒报 0 ✗、10-20 差 −608.37 ✗）
+
+    判据（`hypotheses.md`）：
+      fg 下降日 vs 上升日，比较「**浮亏日变化绝对值**」的均值；
+      若下降期均值 **≤ 上升期均值 × 1.2** ⇒ **证伪** ✓
+      任一组 < 5 个观测 ⇒ `insufficient` ✗
+
+    注：MT-58 手工重跑过（derived 口径，12 天）：下降/上升 = 2.13 > 1.2
+        ⇒ 不触发 falsify ⇒ 继续 open 累积 ✓（本函数是该逻辑的自动化版）
+    """
+    import pandas as _pd
+
+    pos = _read_positions()
+    if pos is None:
+        return {"passed": False, "status": "pending",
+                "reason": "缺 Data/positions.csv"}
+    need = {"qty", "price", "cost"}
+    if not need.issubset(pos.columns):
+        return {"passed": False, "status": "pending",
+                "reason": "positions.csv 缺列：%s"
+                          % "、".join(sorted(need - set(pos.columns)))}
+    # ⚠️ 两个列都要查 ✗ —— 只查 `fg_index` 会在测试用的 mock df（无 `date`）上
+    #    抛 `KeyError: ['date'] not in index` ✗（`test_all_supported_...` 实测）
+    _cols = getattr(df, "columns", [])
+    if df is None or "fg_index" not in _cols or "date" not in _cols:
+        return {"passed": False, "status": "pending",
+                "reason": "features 缺 fg_index 或 date 列"}
+
+    p = pos.copy()
+    for c in ("qty", "price", "cost"):
+        p[c] = _pd.to_numeric(p[c], errors="coerce")
+    p["upl"] = p["qty"] * (p["price"] - p["cost"])
+    daily = p.groupby("date")["upl"].sum().sort_index()
+
+    fg = df[["date", "fg_index"]].copy()
+    fg["date"] = fg["date"].astype(str).str[:10]
+    fg["fg_index"] = _pd.to_numeric(fg["fg_index"], errors="coerce")
+    fg = fg.dropna().drop_duplicates("date").set_index("date")["fg_index"]
+
+    j = _pd.DataFrame({"du": daily.diff(), "dfg": fg.diff()}).dropna()
+    up = j.loc[j["dfg"] > 0, "du"].abs()
+    down = j.loc[j["dfg"] < 0, "du"].abs()
+    if len(up) < 5 or len(down) < 5:
+        return {"passed": None, "status": "insufficient",
+                "note": "样本不足：上升 %d / 下降 %d（各需 ≥5）"
+                        % (len(up), len(down)),
+                "n_up": int(len(up)), "n_down": int(len(down))}
+    mu_up, mu_down = float(up.mean()), float(down.mean())
+    ratio = (mu_down / mu_up) if mu_up else 0.0
+    passed = ratio > 1.2
+    return {"passed": passed, "status": "ok",
+            "note": ("fg 下降日 |Δupl| 均值 %.1f（n=%d）vs 上升日 %.1f（n=%d）"
+                     "⇒ 比值 %.2f（判据 >1.2 才成立）"
+                     % (mu_down, len(down), mu_up, len(up), ratio)),
+            "ratio": round(ratio, 3),
+            "n_up": int(len(up)), "n_down": int(len(down))}
+
+
+def verify_h085(df):
+    """H-085：GDXU 占比的**日变化**与组合**日波动变化**同向（Spearman ρ）。
+
+    🔴 2026-11-12 新实现 ✓（原 `H-026`/`H-036`/`H-039` 合并重登记，
+       2026-10-23 用户批准 ✓）
+
+    为什么改用相关性（`hypotheses.md` 原文）：
+      原三条判据都是「**阈值分组对比**」（>20% vs ≤20%、>60% vs 之前）✗
+      但样本期占比**全部超阈值** ⇒ **永远无对照组** ⇒ 判据不可证伪 ✗
+      ⇒ 改用**相关性** ✓：不需对照组，只要占比有波动就能判 ✓
+
+    口径（先验写死，不调参）：
+      ① `GDXU 占比` = 当日 GDXU 市值 / 当日全部持仓市值 ✓
+      ② `组合日波动` = 当日各持仓 `|收益率|` 按市值加权均值 ✓
+         收益率由 `positions.price` 逐日 `pct_change` 算 ✓
+      ③ 两者取**日变化量**（`diff`）后算 **Spearman ρ**
+    判据：**ρ > 0.3 且样本 ≥ 15 日** ⇒ 成立 ✓；否则不成立 ✗
+    """
+    import pandas as _pd
+
+    pos = _read_positions()
+    if pos is None:
+        return {"passed": False, "status": "pending",
+                "reason": "缺 Data/positions.csv"}
+    need = {"price", "market_value"}
+    if not need.issubset(pos.columns):
+        return {"passed": False, "status": "pending",
+                "reason": "positions.csv 缺列：%s"
+                          % "、".join(sorted(need - set(pos.columns)))}
+
+    p = pos.copy()
+    for c in ("price", "market_value"):
+        p[c] = _pd.to_numeric(p[c], errors="coerce")
+    px = p.pivot_table(index="date", columns="symbol", values="price")
+    mv = p.pivot_table(index="date", columns="symbol", values="market_value")
+    if px.empty or mv.empty:
+        return {"passed": False, "status": "pending",
+                "reason": "positions.csv 无法 pivot（缺 symbol/date）"}
+
+    ratio = (mv["GDXU"] / mv.sum(axis=1)) if "GDXU" in mv.columns else None
+    if ratio is None:
+        return {"passed": False, "status": "pending",
+                "reason": "positions.csv 无 GDXU 持仓"}
+    ret = px.pct_change().abs()
+    vol = (ret * mv).sum(axis=1) / mv.sum(axis=1)
+
+    j = _pd.DataFrame({"dr": ratio.diff(), "dv": vol.diff()}).dropna()
+    if len(j) < 15:
+        return {"passed": None, "status": "insufficient",
+                "note": "样本 %d 日 < 15 日 ⇒ 不判 ✗" % len(j),
+                "n_days": int(len(j))}
+    rho = float(j["dr"].corr(j["dv"], method="spearman") or 0.0)
+    passed = rho > 0.3
+    return {"passed": passed, "status": "ok",
+            "note": ("GDXU 占比日变化 vs 组合日波动日变化的 Spearman ρ = %.3f"
+                     "（判据 >0.3 才成立，样本 %d 日）" % (rho, len(j))),
+            "rho": round(rho, 3), "n_days": int(len(j))}
+
+
 CUSTOM = {
     # 🔴 2026-11-05 新实现 ✓（原来只在 PENDING 里登记 ✗ 永远 pending ✗）
     "H-009": (verify_h009,
               "占比>28% 的标的 T+10 负收益比例 高于 占比<20% 对照组",
               "Data/positions.csv(market_value) + Data/raw/prices.csv(close)"),
+    # 🔴 2026-11-12 新实现 ✓（H-011 原在 PENDING ✗ 数据源已按 MT-57 切到
+    #    positions 自算 ✓；H-085 原**不在任何注册表** ✗ 从未跑过 ✗）
+    "H-011": (verify_h011,
+              "fg 下降日 |Δupl| 均值 > 上升日均值×1.2",
+              "Data/positions.csv(qty/price/cost) + features.csv(fg_index)"),
+    "H-085": (verify_h085,
+              "GDXU 占比日变化 vs 组合日波动日变化 Spearman ρ > 0.3",
+              "Data/positions.csv(price/market_value)"),
     # 🔴 2026-11-05 新实现 ✓（原来只在 PENDING ✗）
     "H-028": (verify_h028,
               "现金>0 且累计盈亏<0 的频率 ≥10%",
@@ -1981,6 +2146,11 @@ HYPOTHESES = {
     # 🔴 2026-11-05：`H-009` **新注册** ✓（原来只在 PENDING ✗）
     "H-009": {"kind": "custom", "desc": CUSTOM["H-009"][1],
               "fields": CUSTOM["H-009"][2]},
+    # 🔴 2026-11-12 新注册 ✓（H-011 原 pending、H-085 原不在任何注册表）
+    "H-011": {"kind": "custom", "desc": CUSTOM["H-011"][1],
+              "fields": CUSTOM["H-011"][2]},
+    "H-085": {"kind": "custom", "desc": CUSTOM["H-085"][1],
+              "fields": CUSTOM["H-085"][2]},
     # 🔴 2026-11-05 新注册 ✓
     "H-028": {"kind": "custom", "desc": CUSTOM["H-028"][1],
               "fields": CUSTOM["H-028"][2]},
@@ -2056,7 +2226,8 @@ PENDING = {
     "H-006": ('账户累计盈亏日差分 × fg_index 的 Spearman 相关（≥60 交易日）', 'Data/accounts.csv（本机仅 1 日快照，需 ≥60 交易日）'),
     "H-008": ('杠杆标的占比 vs 累计盈亏日变动回归（≥40 交易日）', 'Data/positions.csv（本机仅 1 日快照，需 ≥40 交易日）'),
     # 🔴 2026-11-05：`H-009` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
-    "H-011": ('信号升降期账户日均浮亏变化绝对值比较', 'Data/accounts.csv / Data/positions.csv（09-25/09-29 快照缺失）'),
+    # 🔴 2026-11-12：`H-011` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
+    #    （数据源按 MT-57 切到 positions 自算，不再依赖 accounts.unrealized_pnl ✗）
     # 🔴 2026-11-05：`H-017` / `H-022` **已实现** ✓ 移出 PENDING ✗ 见 CUSTOM ✗
     #    （原判据写死 10-03↔10-07 / 10-07/10-08 ✗ 已泛化成「所有相邻配对/每天」✓）
     "H-023": ('半凯利仓位 vs 规则仓位 walk-forward 净值回测', '胜率/盈亏比估计（样本 <60 日，置信度不足）'),
