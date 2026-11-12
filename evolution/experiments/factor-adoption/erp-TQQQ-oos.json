@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-11-12 15:44",
+  "factor": "erp",
+  "symbol": "TQQQ",
+  "direction": "positive",
+  "oos_start": "2024-10-04",
+  "oos_days": 527,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": 1.20879990914927,
+      "annual_return": 0.46072389664243585,
+      "max_drawdown": -0.44155039698748677,
+      "annual_vol": 0.5362809146540689,
+      "sharpe": 0.8591092542229075,
+      "calmar": 1.0434231285619078
+    },
+    "buyhold_oos": {
+      "total_return": 0.738780207134637,
+      "annual_return": 0.3028061883555919,
+      "max_drawdown": -0.5830206881766535,
+      "annual_vol": 0.6639551184622015,
+      "sharpe": 0.4560642428014213,
+      "calmar": 0.5193746885768187
+    },
+    "strategy_is": {
+      "total_return": 9.437566238524811,
+      "annual_return": 0.3521647558303007,
+      "max_drawdown": -0.5605961647770017,
+      "annual_vol": 0.38297331095441817,
+      "sharpe": 0.9195543024986816,
+      "calmar": 0.6281968696135971
+    },
+    "buyhold_samepos_oos": {
+      "total_return": 0.6752681417954656,
+      "annual_return": 0.27982997940583165,
+      "max_drawdown": -0.49492573784996363,
+      "annual_vol": 0.5311907588308221,
+      "sharpe": 0.5267975294256845,
+      "calmar": 0.5653979132737322
+    }
+  },
+  "pos_mean": 0.8,
+  "timing_alpha": 0.180894,
+  "sharpe_delta": 0.403,
+  "sharpe_noise_threshold": 0.1,
+  "verdict": "PASS（择时 alpha > 0、回撤不劣化、且 Sharpe > 0）"
+}

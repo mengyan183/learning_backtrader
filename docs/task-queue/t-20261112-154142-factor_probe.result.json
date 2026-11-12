@@ -1,0 +1,13 @@
+{
+  "id": "t-20261112-154142-factor_probe",
+  "action": "factor_probe",
+  "params": {
+    "factor": "erp"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"steps\": {\"signal_from\": \"_COMPUTE[erp]（现算）\", \"signal\": {\"n\": 2546, \"head\": [{\"date\": \"2016-09-26\", \"erp\": 0.49166666666666664}, {\"date\": \"2016-09-27\", \"erp\": 0.49166666666666664}], \"tail\": [{\"date\": \"2026-11-10\", \"erp\": 0.008333333333333333}, {\"date\": \"2026-11-11\", \"erp\": 0.008333333333333333}]}, \"features_file\": \"/Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/features_erp.csv\", \"features_cols\": [\"price\", \"breadth\", \"fed\", \"putcall\", \"warmup\", \"erp\"], \"probe\": {\"TQQQ\": {\"rc\": 0, \"tail\": \" -44.2% | -58.3% | -49.5% | -56.1% |\\n| Sharpe | 0.86 | 0.46 | 0.53 | 0.92 |\\n| Calmar | 1.04 | 0.52 | 0.57 | 0.63 |\\n\\n- **择时 alpha = +18.09pp**（vs B0' 同仓位）✓ 有择时能力\\n- **Sharpe delta = +0.40**（vs B0 满仓）（超出噪音 ✓ 可作证据）\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/erp-TQQQ-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/erp-TQQQ-oos.json\"}, \"GDXU\": {\"rc\": 1, \"tail\": \" | -87.7% | -77.9% | -78.9% |\\n| Sharpe | 0.35 | 0.24 | 0.42 | -0.27 |\\n| Calmar | 0.47 | 0.36 | 0.58 | -0.20 |\\n\\n- **择时 alpha = -5.62pp**（vs B0' 同仓位）✗ 只是仓位低，不是择时好\\n- **Sharpe delta = +0.11**（vs B0 满仓）（超出噪音 ✓ 可作证据）\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/erp-GDXU-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/erp-GDXU-oos.json\"}}, \"artifacts\": [\"erp-GDXU-oos.md\", \"erp-TQQQ-oos.md\"]}, \"factor\": \"erp\", \"direction\": \"positive\", \"ok\": true, \"note\": \"rc={'TQQQ': 0, 'GDXU': 1} 表示**因子未通过裁判**（不是执行失败 ✓）—— 产出已生成，结论见 artifacts\"}",
+  "started_at": "2026-11-12T15:44:07",
+  "finished_at": "2026-11-12T15:44:09",
+  "duration_s": 2.21
+}
