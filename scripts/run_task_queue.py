@@ -1439,10 +1439,44 @@ def _compute_f012(root, pd):
     return sdf
 
 
+def _compute_erp(root, pd):
+    """F-017：ERP 股权风险溢价 **滚动分位** ✓（`factors/erp.py`）
+
+    判据来源 `evolution/factors.md`：
+      「ERP 股权风险溢价（`1/PE − 月均10Y`，`fg_system/factors/erp.py`）」
+      「**正向**（ERP 高=股票便宜=看多）」
+    状态：`rejected`（日频 rank_ICIR +0.334/+0.244/+0.200/+0.242 未达 0.5 ✗，
+          月频更差）—— **本次复核是用新判据（择时 alpha）重判** ✓
+
+    ⚠️ `erp_pct()` 原生是**月频**（`available_date`）✗
+       ⇒ 必须传 `target_index` 对齐到**日频** ✓
+          （否则 join 日频价格后只剩每月一行 ✗ 样本不够）
+       目标指数取 SPY（缺则退 TQQQ）✓
+    """
+    sys.path.insert(0, root)
+    from fg_system.factors import erp as _erp
+    px = pd.read_csv(os.path.join(root, "Data", "raw", "prices.csv"),
+                     parse_dates=["date"])
+    idx = None
+    for sym in ("SPY", "TQQQ"):
+        s = px[px["symbol"] == sym].set_index("date").sort_index()
+        if not s.empty:
+            idx = s.index
+            break
+    if idx is None:
+        raise RuntimeError("prices.csv 缺 SPY/TQQQ，无法对齐 ERP 到日频")
+    s = _erp.erp_pct(target_index=idx).dropna().rename("erp")
+    sdf = s.reset_index()
+    sdf.columns = ["date", "erp"]
+    sdf["date"] = pd.to_datetime(sdf["date"]).dt.strftime("%Y-%m-%d")
+    return sdf
+
+
 #: 需现算的因子（其余因子名若在 `features.csv` 里已存在 ⇒ 直接复用 ✓）
 _COMPUTE = {
     "gold_ratio": _compute_gold_ratio,
     "f012": _compute_f012,
+    "erp": _compute_erp,
 }
 
 
@@ -1534,7 +1568,8 @@ def _act_factor_probe(params):
 
     # ③ 跑裁判（TQQQ + GDXU）
     # 方向默认按因子定 ✓（`gold_ratio` 实测 rank_ic -0.53 ⇒ 逆向；F-012 定「正向」）
-    _DIR_DEFAULT = {"gold_ratio": "negative", "f012": "positive"}
+    _DIR_DEFAULT = {"gold_ratio": "negative", "f012": "positive",
+                    "erp": "positive"}   # F-017 登记为「正向」（ERP 高=便宜=看多）
     direction = str(params.get("direction")
                     or _DIR_DEFAULT.get(factor, "positive")).strip().lower()
     if direction not in ("positive", "negative"):
