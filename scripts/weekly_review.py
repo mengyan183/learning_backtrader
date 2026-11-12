@@ -59,29 +59,86 @@ RE_DATE = re.compile(r"invest_brief_(\d{4}-\d{2}-\d{2})\.md$")
 
 
 def _briefs(days):
-    """最近 `days` 天内的简报文件 ✓（含 archive 与工作区根目录）。"""
-    files = []
+    """最近 `days` 天内的简报文件 ✓（含 archive 与工作区根目录）。
+
+    🔴 2026-11-12 用户要求**去重** ✓ —— 原实现同时扫 `ARCHIVE` 和 `DATA` ✗
+       同一份简报若两处都有 ⇒ **被算两次** ✗
+       （实测 2026-11-04 的四条记录各出现 2 次 ✗
+         「16 条」里只有 12 条是真数据 ✗）
+    ⇒ 按**日期**去重 ✓，同日多份取 `ARCHIVE` 优先（归档是权威副本 ✓）
+    """
+    seen = {}
     for d in (ARCHIVE, DATA):
         for p in d.rglob("invest_brief_*.md"):
             m = RE_DATE.match(p.name)
-            if m:
-                files.append((m.group(1), p))
-    files.sort(reverse=True)
+            if not m:
+                continue
+            day = m.group(1)
+            # `ARCHIVE` 先扫 ⇒ 已存在就不被 `DATA` 覆盖 ✓
+            seen.setdefault(day, p)
+    files = sorted(seen.items(), reverse=True)
     return files[:days]
 
 
-def _parse(p):
-    """解析一份简报 ⇒ `{symbol: {"cap": 上限, "ene": 建议仓位%}}` ✓。"""
+def _advice_from_data(date_s):
+    """从**结构化数据重算**当日「减仓建议」✓（不再解析简报文本 ✗）
+
+    🔴 2026-11-12 用户要求（原 `_parse` 的替代）：
+       原实现靠正则抠简报里的 `· XXX 市值123/上限456` 和 ENE 行 ✗
+       而 **P1/P3 瘦身正好删掉了这两类** ✗
+       ⇒ 最近 3 份简报全部「解析不到建议」✗（11-09/10/11）
+       ⇒ 简报格式会继续变 ⇒ 正则解析是**结构性脆弱** ✗
+       ⇒ 改成用**与简报同源**的规则重算 ✓：
+         `risk_mod.atr_pct_effective` + `risk_mod.position_limit`
+         （`invest_research.py:460-467` 用的是同一对函数 ✓）
+       ⇒ 只要 `positions.csv` + `raw/prices.csv` + `accounts.csv` 在，永远能算 ✓
+
+    返回 `{symbol: {"cap": 上限}}` —— 只含**超上限**的标的（即「建议减仓」）✓
+    数据缺失 ⇒ 返回 `{}`（上层标「数据缺失」而不是「解析失败」✓）
+    """
     try:
-        txt = p.read_text(encoding="utf-8")
-    except Exception:                       # noqa: BLE001 —— 读不到就跳过 ✓
+        pos = pd.read_csv(DATA / "positions.csv")
+        px = pd.read_csv(DATA / "raw" / "prices.csv")
+        acc = pd.read_csv(DATA / "accounts.csv")
+    except Exception:                       # noqa: BLE001
         return {}
+    for d in (pos, acc):
+        if "date" in d.columns:
+            d["date"] = d["date"].astype(str).str[:10]
+    cur = pos[pos["date"] == date_s]
+    a = acc[(acc["date"] == date_s) & (acc.get("account") == "stock")]
+    if cur.empty or a.empty or "net_value" not in a.columns:
+        return {}
+    try:
+        stock_net = float(a["net_value"].iloc[0])
+    except (TypeError, ValueError):
+        return {}
+    if not stock_net:
+        return {}
+
+    sys.path.insert(0, str(REPO))
+    try:
+        from fg_system import risk as risk_mod
+    except Exception:                       # noqa: BLE001
+        return {}
+
     out = {}
-    for sym, cap in RE_CAP.findall(txt):
-        out.setdefault(sym, {})["cap"] = float(cap)
-    for sym, pos, tgt in RE_ENE.findall(txt):
-        out.setdefault(sym, {})["ene"] = float(tgt)
-        out[sym]["ene_pos"] = float(pos)
+    for _, r in cur.iterrows():
+        sym = str(r.get("symbol") or "").replace("-USDT", "")
+        try:
+            mv0 = float(r.get("market_value") or 0)
+            px_now = float(r.get("price") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not (sym and mv0 and px_now):
+            continue
+        try:
+            atrp = risk_mod.atr_pct_effective(px, sym, px_now)
+            lim, _ = risk_mod.position_limit(stock_net, mv0, atrp)
+        except Exception:                   # noqa: BLE001
+            continue
+        if lim and mv0 > lim:
+            out[sym] = {"cap": round(float(lim), 2)}
     return out
 
 
@@ -109,9 +166,11 @@ def main(argv=None):
     n_parse_fail = n_no_price = 0
     last_price_date = None
     for date_s, p in briefs:
-        sig = _parse(p)
+        # 🔴 2026-11-12：改成**从结构化数据重算** ✓（不再解析简报文本 ✗）
+        #    简报只用于**枚举日期** ✓ —— 它有哪些天，就重算哪些天 ✓
+        sig = _advice_from_data(date_s)
         if not sig:
-            print("· %s —— **解析不到建议** ✗（格式变了？）" % date_s)
+            print("· %s —— **当日无减仓建议** ✓（市值未超 1%% 上限）" % date_s)
             n_parse_fail += 1
             continue
         d0 = pd.Timestamp(date_s)
@@ -147,7 +206,7 @@ def main(argv=None):
         print("\n## ✗ 没有可对照的记录\n")
         print("| 原因 | 条数 |")
         print("|---|---|")
-        print("| **解析不到建议**（简报格式变了？）| %d |" % n_parse_fail)
+        print("| **当日无减仓建议**（市值未超上限）| %d |" % n_parse_fail)
         print("| **无未来价格**（`prices.csv` 太旧）| %d |" % n_no_price)
         if last_price_date is not None:
             print("\n`prices.csv` 最新日期：**%s**" % last_price_date.date())
