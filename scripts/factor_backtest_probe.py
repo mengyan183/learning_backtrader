@@ -51,12 +51,52 @@ ROLL = 756
 #:    ⇒ 回执里显式给 `sharpe_delta` + 本阈值，判定时不拿噪音当证据 ✓
 SHARPE_NOISE = 0.10
 
+#: 🔴 2026-11-12 用户裁定 **第四条判据：样本内外一致性** ✓
+#:    暴露过程：F-012/GDXU 的 OOS 是 Sharpe **1.25** / 年化 **112.74%** ✗
+#:    但**样本内 Sharpe -0.18 / 年化 -11.40%** ✗ ⇒ 典型「样本外神迹、样本内亏钱」✗
+#:    而旧的三条判据（alpha>0 / 回撤不劣化 / Sharpe>0）**全都满足** ✗
+#:    ⇒ OOS 仅 ~519 天（约 2 年），单靠它无法区分「真能力」和「运气」✗
+#:    ⇒ 补两条：① 样本内 Sharpe **> 0**（不是亏的）
+#:              ② |OOS Sharpe − 样本内 Sharpe| **< 0.30**（内外不矛盾）
+#:    对照组：F-017/TQQQ 样本内 0.92 vs OOS 0.86（差 0.06 ✓ 一致）
+IS_SHARPE_MIN = 0.0
+IS_OOS_SHARPE_GAP_MAX = 0.30
+
 
 def rolling_rank(s: pd.Series, window: int = ROLL, min_periods: int = 60) -> pd.Series:
     """因子对自身滚动分位 rank ∈ [0,1]（只用 ≤T 数据，无前视）。"""
     def _rank_last(x):
         return (x <= x[-1]).mean() if len(x) > 0 and not np.isnan(x[-1]) else np.nan
     return s.rolling(window, min_periods=min_periods).apply(_rank_last, raw=True)
+
+
+def _verdict(alpha, strat, bh, is_m, b0_equiv, pos_mean, is_consistent):
+    """判定（**四条**）✓ —— 按顺序报第一个不满足的原因 ✓
+
+    ① 自己得赚钱（OOS Sharpe > 0）—— 否则只是「比买入持有少亏」✗
+    ② **样本内外一致**（P0④）—— 否则是过拟合 ✗
+    ③ **择时 alpha > 0**（P0①）—— 否则只是「仓位低」✗
+    ④ 回撤不劣化
+    """
+    if strat["sharpe"] <= 0:
+        return "FAIL（OOS 亏钱：Sharpe ≤ 0，只是「比买入持有少亏」✗）"
+    if not is_consistent:
+        return ("FAIL（**样本内外矛盾** ✗：样本内 Sharpe %.2f%s，OOS %.2f，"
+                "差 %.2f ≥ %.2f ⇒ 典型过拟合 ✗）"
+                % (is_m["sharpe"],
+                   "（≤0，样本内亏钱）" if is_m["sharpe"] <= IS_SHARPE_MIN else "",
+                   strat["sharpe"],
+                   abs(strat["sharpe"] - is_m["sharpe"]),
+                   IS_OOS_SHARPE_GAP_MAX))
+    if alpha <= 0:
+        return ("FAIL（**无择时 alpha** ✗：策略年化 %.2f%% ≤ 同仓位基准 %.2f%%"
+                "（pos_mean=%.2f）⇒ 它只是「仓位低」不是「择时好」）"
+                % (strat["annual_return"] * 100,
+                   b0_equiv["annual_return"] * 100, pos_mean))
+    if strat["max_drawdown"] < bh["max_drawdown"]:
+        return ("FAIL（回撤劣化：%.1f%% < B0 %.1f%% ✗）"
+                % (strat["max_drawdown"] * 100, bh["max_drawdown"] * 100))
+    return "PASS（alpha > 0、回撤不劣化、Sharpe > 0、**且样本内外一致**）"
 
 
 def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_START,
@@ -99,6 +139,11 @@ def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_STA
     b0_equiv = performance_metrics(pos_mean * oos["ret"])
     alpha = strat["annual_return"] - b0_equiv["annual_return"]
 
+    # 🔴 P0④：**样本内外一致性** ✓（见 `IS_SHARPE_MIN` 注释里的暴露过程）
+    _is_oos_gap = abs(strat["sharpe"] - in_sample["sharpe"])
+    is_consistent = (in_sample["sharpe"] > IS_SHARPE_MIN
+                     and _is_oos_gap < IS_OOS_SHARPE_GAP_MAX)
+
     out = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "factor": factor, "symbol": symbol, "direction": direction,
@@ -117,6 +162,11 @@ def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_STA
         #    而 519 天 OOS 上这个差异**统计上不可区分** ✗
         "sharpe_delta": round(strat["sharpe"] - bh["sharpe"], 4),
         "sharpe_noise_threshold": SHARPE_NOISE,
+        # 🔴 P0④：样本内外一致性（OOS 只有 ~2 年，必须交叉验证）✓
+        "is_sharpe": round(in_sample["sharpe"], 4),
+        "oos_is_sharpe_gap": round(_is_oos_gap, 4),
+        "is_oos_gap_max": IS_OOS_SHARPE_GAP_MAX,
+        "is_consistent": bool(is_consistent),
         # 🔴 2026-10-31 用户裁定：判定标准加「**策略 Sharpe > 0**」✗
         # 实测（C5 ENE 六标的）：AXTX 策略年化 -65.83%、CRCG -33.92%、
         # YINN -9.85%，却都因为「B0 亏得更多」被判 **PASS** ✗
@@ -124,21 +174,8 @@ def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_STA
         # 🔴 2026-11-12 用户裁定 P0③：**主判据从「年化 vs 满仓 B0」改成
         #    「择时 alpha > 0」** ✓（年化作为参考，不再作为判定依据 ✗）
         #    三条全满足才算 PASS：① 择时 alpha > 0 ② 回撤不劣化 ③ 自己赚钱 ✓
-        "verdict": (
-            "PASS（择时 alpha > 0、回撤不劣化、且 Sharpe > 0）"
-            if (alpha > 0
-                and strat["max_drawdown"] >= bh["max_drawdown"]
-                and strat["sharpe"] > 0)
-            else ("FAIL（OOS 亏钱：Sharpe ≤ 0，只是「比买入持有少亏」✗）"
-                  if strat["sharpe"] <= 0
-                  else ("FAIL（**无择时 alpha** ✗：策略年化 %.2f%% ≤ 同仓位基准 "
-                        "%.2f%%（pos_mean=%.2f）⇒ 它只是「仓位低」不是「择时好」）"
-                        % (strat["annual_return"] * 100,
-                           b0_equiv["annual_return"] * 100, pos_mean)
-                        if alpha <= 0
-                        else "FAIL（回撤劣化：%.1f%% < B0 %.1f%% ✗）"
-                             % (strat["max_drawdown"] * 100,
-                                bh["max_drawdown"] * 100)))),
+        "verdict": _verdict(alpha, strat, bh, in_sample, b0_equiv, pos_mean,
+                            is_consistent),
     }
     return out
 
@@ -186,6 +223,13 @@ def render_md(out: dict) -> str:
            "（在噪音内 ✗ 不可当证据）"
            if abs(_sd or 0) < (out.get("sharpe_noise_threshold") or 0)
            else "（超出噪音 ✓ 可作证据）"),
+        # 🔴 P0④：样本内外一致性 ✓
+        "- **样本内外一致性**：样本内 Sharpe %.2f vs OOS %.2f，差 %.2f %s"
+        % (out.get("is_sharpe") or 0, s["sharpe"],
+           out.get("oos_is_sharpe_gap") or 0,
+           "✓ 一致" if out.get("is_consistent")
+           else "✗ **矛盾**（阈值 %.2f，且样本内须 > 0）⇒ 过拟合嫌疑 ✗"
+                % (out.get("is_oos_gap_max") or 0)),
         "",
         "> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；",
         "> 仅作 C-3 审批证据，不直接改动生产。",
