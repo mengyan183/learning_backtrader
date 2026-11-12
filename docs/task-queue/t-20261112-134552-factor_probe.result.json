@@ -1,0 +1,11 @@
+{
+  "id": "t-20261112-134552-factor_probe",
+  "action": "factor_probe",
+  "params": {},
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"steps\": {\"signal\": {\"n\": 2546, \"head\": [{\"date\": \"2016-09-26\", \"gold_ratio\": NaN}, {\"date\": \"2016-09-27\", \"gold_ratio\": NaN}], \"tail\": [{\"date\": \"2026-11-10\", \"gold_ratio\": 0.7583333333333333}, {\"date\": \"2026-11-11\", \"gold_ratio\": 0.75}]}, \"features_file\": \"/Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/features_gold_ratio.csv\", \"features_cols\": [\"price\", \"breadth\", \"fed\", \"putcall\", \"warmup\", \"gold_ratio\"], \"probe\": {\"TQQQ\": {\"rc\": 1, \"tail\": \"入生产）**\\n\\n| 指标 | 策略（OOS） | B0 买入持有 | 样本内 |\\n|---|---|---|---|\\n| OOS 年化 | 19.62% | 30.28% | 18.77% |\\n| 最大回撤 | -36.4% | -58.3% | -60.7% |\\n| Sharpe | 0.48 | 0.46 | 0.39 |\\n| Calmar | 0.54 | 0.52 | 0.31 |\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/gold_ratio-TQQQ-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/gold_ratio-TQQQ-oos.json\"}, \"GDXU\": {\"rc\": 1, \"tail\": \"产）**\\n\\n| 指标 | 策略（OOS） | B0 买入持有 | 样本内 |\\n|---|---|---|---|\\n| OOS 年化 | 28.18% | 31.89% | -0.85% |\\n| 最大回撤 | -66.1% | -87.7% | -70.4% |\\n| Sharpe | 0.36 | 0.24 | -0.01 |\\n| Calmar | 0.43 | 0.36 | -0.01 |\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/gold_ratio-GDXU-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/gold_ratio-GDXU-oos.json\"}}, \"artifacts\": [\"gold_ratio-GDXU-oos.md\", \"gold_ratio-TQQQ-oos.md\"]}, \"direction\": \"negative\", \"ok\": false, \"hint\": \"两个标的都失败 ✗ ⇒ 看 `steps.probe.*.tail`；常见原因：prices.csv 缺 GDX/GLD、或 features 日期对不上\"}",
+  "started_at": "2026-11-12T14:01:52",
+  "finished_at": "2026-11-12T14:01:55",
+  "duration_s": 2.75
+}

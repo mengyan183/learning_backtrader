@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-11-12 14:01",
+  "factor": "gold_ratio",
+  "symbol": "GDXU",
+  "direction": "negative",
+  "oos_start": "2024-10-04",
+  "oos_days": 527,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": 0.680660244310004,
+      "annual_return": 0.2817981001768475,
+      "max_drawdown": -0.6610477222111807,
+      "annual_vol": 0.7898807051281338,
+      "sharpe": 0.35676032892984066,
+      "calmar": 0.4262901008632827
+    },
+    "buyhold_oos": {
+      "total_return": 0.7840000000000003,
+      "annual_return": 0.318899122005752,
+      "max_drawdown": -0.8774476190476191,
+      "annual_vol": 1.3433342385715248,
+      "sharpe": 0.2373937273755957,
+      "calmar": 0.3634394977923409
+    },
+    "strategy_is": {
+      "total_return": -0.03027818545160299,
+      "annual_return": -0.008534173549951451,
+      "max_drawdown": -0.7043335857254147,
+      "annual_vol": 0.6121308193277568,
+      "sharpe": -0.013941747875599037,
+      "calmar": -0.012116664209845744
+    }
+  },
+  "verdict": "FAIL（OOS 未优于 B0，不采纳候选入生产）"
+}

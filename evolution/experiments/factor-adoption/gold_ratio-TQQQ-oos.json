@@ -1,0 +1,36 @@
+{
+  "generated_at": "2026-11-12 14:01",
+  "factor": "gold_ratio",
+  "symbol": "TQQQ",
+  "direction": "negative",
+  "oos_start": "2024-10-04",
+  "oos_days": 527,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": 0.4545382546992225,
+      "annual_return": 0.19622161509044855,
+      "max_drawdown": -0.36364016459481796,
+      "annual_vol": 0.40689962186090617,
+      "sharpe": 0.4822359239191542,
+      "calmar": 0.5396038012167504
+    },
+    "buyhold_oos": {
+      "total_return": 0.738780207134637,
+      "annual_return": 0.3028061883555919,
+      "max_drawdown": -0.5830206881766535,
+      "annual_vol": 0.6639551184622015,
+      "sharpe": 0.4560642428014213,
+      "calmar": 0.5193746885768187
+    },
+    "strategy_is": {
+      "total_return": 2.5113768473275204,
+      "annual_return": 0.18769982652521633,
+      "max_drawdown": -0.6072380569669232,
+      "annual_vol": 0.48635331504048807,
+      "sharpe": 0.3859330670123851,
+      "calmar": 0.30910418800618833
+    }
+  },
+  "verdict": "FAIL（OOS 未优于 B0，不采纳候选入生产）"
+}
