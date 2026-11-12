@@ -1576,7 +1576,13 @@ def _act_factor_probe(params):
         direction = "negative"
     out["direction"] = direction
     runs = {}
-    for sym in ("TQQQ", "GDXU"):
+    # 🔴 2026-11-12 用户要求：**标的可参数化** ✓
+    #    背景：F-012/F-017 在 TQQQ PASS 但 GDXU FAIL ⇒ 疑似「只在宽基有效」✗
+    #    ⇒ 需要扩到 SPY/QQQ/YINN/CONL 交叉验证 ✓
+    #    用法：`--param symbols=SPY,QQQ,YINN,CONL`（不传则用默认两个 ✓）
+    _syms = [s.strip().upper() for s in
+             str(params.get("symbols") or "TQQQ,GDXU").split(",") if s.strip()]
+    for sym in _syms:
         try:
             r = _sp.run([py, os.path.join(root, "scripts",
                                           "factor_backtest_probe.py"),
