@@ -1509,6 +1509,30 @@ def _compute_fg_erp(root, pd):
     return _fg_pos_tendency(pd, root, with_erp=True)
 
 
+def _compute_putcall(root, pd):
+    """F-011：CBOE 总 Put/Call 比率的**逆向滚动分位** ✓（高分=贪婪）
+
+    🔴 2026-11-12 实测：`Data/features.csv` **没有 `putcall` 列** ✗
+       （`factor_probe --factor putcall` 报「features 无因子列」✗）
+       ⇒ 只能从原始 `Data/raw/putcall.csv` 现算 ✓
+
+    口径（照抄 `fg_system/factors/putcall.py:29-37`）：
+      `total_ratio` → ffill → `rolling_pct(RANK_WINDOW)` → **`1 - pct`**（逆向）
+      ⇒ 高分 = P/C 低 = 贪婪 ✓ ⇒ `direction = negative`（贪婪 ⇒ 仓位低）
+    """
+    sys.path.insert(0, root)
+    from fg_system import config as _cfg
+    from fg_system.factors.base import rolling_pct as _rp
+    d = pd.read_csv(os.path.join(root, "Data", "raw", "putcall.csv"))
+    d["date"] = pd.to_datetime(d["date"])
+    s = d.set_index("date")["total_ratio"].astype(float).sort_index()
+    s = s[~s.index.duplicated(keep="last")].ffill()
+    out = (1.0 - _rp(s, _cfg.RANK_WINDOW)).dropna().rename("putcall").reset_index()
+    out.columns = ["date", "putcall"]
+    out["date"] = pd.to_datetime(out["date"]).dt.strftime("%Y-%m-%d")
+    return out
+
+
 #: 需现算的因子（其余因子名若在 `features.csv` 里已存在 ⇒ 直接复用 ✓）
 _COMPUTE = {
     "gold_ratio": _compute_gold_ratio,
@@ -1518,6 +1542,7 @@ _COMPUTE = {
     #    两个都用 `direction=positive`（高=该加仓）⇒ 口径一致可比 ✓
     "fg_base": _compute_fg_base,     # 基线：6 因子合成
     "fg_erp": _compute_fg_erp,       # 增量：6 因子 + ERP 10%
+    "putcall": _compute_putcall,     # F-011（features.csv 无此列，须现算）
 }
 
 
@@ -1612,7 +1637,9 @@ def _act_factor_probe(params):
     _DIR_DEFAULT = {"gold_ratio": "negative", "f012": "positive",
                     "erp": "positive",   # F-017 登记为「正向」（ERP 高=便宜=看多）
                     # 下面两个已转成「仓位倾向」（高=该加仓）⇒ positive ✓
-                    "fg_base": "positive", "fg_erp": "positive"}
+                    "fg_base": "positive", "fg_erp": "positive",
+                    # F-011：因子值 = 1-P/C分位（高分=贪婪）⇒ 贪婪该减仓 ⇒ negative
+                    "putcall": "negative"}
     direction = str(params.get("direction")
                     or _DIR_DEFAULT.get(factor, "positive")).strip().lower()
     if direction not in ("positive", "negative"):
