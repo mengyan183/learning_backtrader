@@ -1,9 +1,0 @@
-{
-  "id": "t-20261111-194115-news_diag",
-  "action": "news_diag",
-  "params": {
-    "symbol": "BTC"
-  },
-  "status": "pending",
-  "created_at": "2026-11-11T19:41:15"
-}
