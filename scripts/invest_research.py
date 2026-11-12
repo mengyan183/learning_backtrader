@@ -2202,9 +2202,15 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     # 🔴 2026-11-11 瘦身 P3：prompt 收到 400 字 ⇒ 展示层缓冲同步 **800 → 600** ✓
     #    实测 500 字要求时模型写 750~1100 ⇒ 只靠 prompt 约束不住 ✗
     #    600 = 400 × 1.5（超写 50% 才截），比 800 更硬 ✓
+    _attr = (attribution or "（归因生成失败，已降级跳过）").strip()
+    # 🔴 2026-11-12 实测：prompt 要求「`风险点：` 单独一行」，模型仍写成
+    #    `风险点： · 股票端有效名义敞口…` ✗ —— 第一条拼在了冒号后面 ✗
+    #    （后两条倒是 `· ` 开头独立行 ⇒ 视觉割裂 ✗）
+    #    ⇒ **展示层硬换行** ✓（比再调 prompt 可靠，模型已两次不遵守）
+    _attr = re.sub(r"风险点\s*[:：]\s*[·•・]\s*", "风险点：\n· ", _attr)
+    _attr = re.sub(r"风险点\s*[:：]\s*\n?\s*(?=[^\n·•・])", "风险点：\n", _attr)
     _attr_txt = ((_mc + "\n\n" if _mc else "")
-                 + _clip_at_sentence(
-                     (attribution or "（归因生成失败，已降级跳过）").strip(), 600))
+                 + _clip_at_sentence(_attr, 600))
     secs.append(("🔍 深度归因 · %s" % _attr_tag, _AI_ACTION_NOTE + "\n" + _attr_txt))
     secs.append("hr")
     secs.append(("⚖️ 裁判裁决 · %s【研究参考】" % _attr_tag,
