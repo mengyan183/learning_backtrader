@@ -155,8 +155,12 @@ TASK_LOG = {
     #      ⇒ `alive` 恒为 True ⇒ 队列卡死也不会报红 ✗
     #    （`test_every_monitored_task_declares_a_candidate` 早就挂了 ✗）
     #    路径取自各自 plist 的 `StandardOutPath` ✓
-    "com.xingguo.fg-task-queue":      ["/tmp/fg_task_queue.log"],
-    "com.xingguo.fg-sync-watcher":    ["/tmp/fg_sync_watcher.log"],
+    # 🔴 2026-11-12 修正：这两个是 `StartInterval` **定时一次性**脚本 ✗
+    #    「无事可做」时一行都不打印 ⇒ 用 StandardOutPath 的 mtime 当心跳会**误报卡死** ✗
+    #    （实测报 `fg-task-queue 日志 39280 秒没动静`，而它当时明显在跑）
+    #    ⇒ 改用两个脚本每次运行都 touch 的 `.heartbeat` ✓（只改 mtime，不写内容）
+    "com.xingguo.fg-task-queue":      ["docs/task-queue/.heartbeat"],
+    "com.xingguo.fg-sync-watcher":    ["~/.openclaw/tmp/.heartbeat"],
     "com.xingguo.fg-realtime":        ["/tmp/fg_realtime.log"],
     "com.xingguo.fg-weekly-review":   ["/tmp/fg_weekly_review.out"],
     "com.xingguo.fg-dashboard":       ["/tmp/fg_dashboard.log"],

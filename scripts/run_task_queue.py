@@ -5514,6 +5514,18 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Mac 侧任务队列执行器")
     ap.add_argument("--no-commit", action="store_true", help="只执行不提交（调试）")
     args = ap.parse_args(argv)
+    # 🔴 2026-11-12 用户告警「fg-task-queue 日志 39280 秒没动静 ⇒ 疑似卡死」是**误报** ✗
+    #    本脚本是 `StartInterval` **定时一次性**任务，不是常驻 ✗
+    #    没任务可做时什么都不打印 ⇒ `/tmp/fg_task_queue.log` 的 mtime 不动 ✗
+    #    ⇒ 每次运行都 **touch 一个心跳文件**（只改 mtime，不写内容，不涨体积）✓
+    #    放在 `_acquire_lock` **之前**：上一轮还在跑也算「活着」✓
+    try:
+        os.makedirs(QUEUE, exist_ok=True)
+        _hb = os.path.join(QUEUE, ".heartbeat")
+        with open(_hb, "a"):
+            os.utime(_hb, None)
+    except OSError:
+        pass
     lock = _acquire_lock()
     if lock is None:
         print("[skip] 上一轮仍在执行（flock 未释放）⇒ 本轮跳过")

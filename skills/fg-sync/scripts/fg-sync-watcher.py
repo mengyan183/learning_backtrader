@@ -109,6 +109,17 @@ def scan_packages():
 
 
 def main():
+    # 🔴 2026-11-12 用户告警「fg-sync-watcher 日志 212163 秒没动静」是**误报** ✗
+    #    本脚本是 `StartInterval` **定时一次性**任务 ✗
+    #    没收到分片时直接 `return 0`，一行都不打印 ⇒ 日志 mtime 不动 ✗
+    #    ⇒ 每次运行都 touch 心跳文件（只改 mtime，不写内容）✓
+    try:
+        _hb = os.path.join(os.path.dirname(IN_DIR), ".heartbeat")
+        os.makedirs(os.path.dirname(_hb), exist_ok=True)
+        with open(_hb, "a"):
+            os.utime(_hb, None)
+    except OSError:
+        pass
     if not os.path.isdir(IN_DIR):
         return 0
     pkgs = scan_packages()
