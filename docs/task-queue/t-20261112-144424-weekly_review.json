@@ -1,0 +1,9 @@
+{
+  "id": "t-20261112-144424-weekly_review",
+  "action": "weekly_review",
+  "params": {
+    "days": "7"
+  },
+  "status": "pending",
+  "created_at": "2026-11-12T14:44:24"
+}
