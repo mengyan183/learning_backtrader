@@ -179,5 +179,49 @@ def main(argv=None):
     return 0
 
 
+def _run_with_persist(argv=None):
+    """跑 `main` 并把 stdout **同时落盘**到 `evolution/memory/weekly-<date>.md` ✓
+
+    🔴 2026-11-12 用户要求：原来只 `print()` ✗ ⇒ 内容全在 Mac 的
+       `/tmp/fg_weekly_review.log` 里 ✗ —— `/tmp` 重启就没、也没进 git ✗
+       ⇒ 复盘结论**必须落盘**才能被后续追踪 ✓
+       （`evolution/memory/` 里原有的是 `evolve_h001.py` 写的 H-001 记忆 ✗
+         不是复盘产出 ✗，此前一直被误当成「复盘没跑」✗）
+
+    用 Tee 而不是改所有 `print` ✓ —— main 里有 3 个 return 点、20+ 处 print ✗
+    """
+    import io as _io
+
+    _buf = _io.StringIO()
+    _old = sys.stdout
+
+    class _Tee:
+        def write(self, s):
+            _old.write(s)
+            _buf.write(s)
+
+        def flush(self):
+            _old.flush()
+
+    sys.stdout = _Tee()
+    try:
+        rc = main(argv)
+    finally:
+        sys.stdout = _old
+
+    txt = _buf.getvalue()
+    if rc == 0 and txt.strip():
+        try:
+            out_dir = REPO / "evolution" / "memory"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            stamp = pd.Timestamp.now().strftime("%Y-%m-%d")
+            p = out_dir / ("weekly-%s.md" % stamp)
+            p.write_text(txt, encoding="utf-8")
+            _old.write("\n[落盘] %s\n" % p)
+        except OSError as exc:            # 落盘失败不改变退出码 ✓
+            _old.write("\n[落盘失败] %s\n" % str(exc)[:120])
+    return rc
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(_run_with_persist())

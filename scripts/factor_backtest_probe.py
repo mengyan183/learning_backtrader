@@ -45,6 +45,12 @@ OOS_START = evo_meta.oos_start()  # WT-18 单一来源
 COST = 0.0003 + 0.00050  # commission + slippage（config 原值单边）
 ROLL = 756
 
+#: 🔴 2026-11-12 用户裁定 P0②：**Sharpe 差异 < 0.10 视为噪音** ✗
+#:    实测 F-021/TQQQ：策略 0.48 vs B0 0.46（差 0.02）曾被当成「略优」✗
+#:    但 OOS 仅 519 天 ⇒ 这个差异**统计上不可区分** ✗
+#:    ⇒ 回执里显式给 `sharpe_delta` + 本阈值，判定时不拿噪音当证据 ✓
+SHARPE_NOISE = 0.10
+
 
 def rolling_rank(s: pd.Series, window: int = ROLL, min_periods: int = 60) -> pd.Series:
     """因子对自身滚动分位 rank ∈ [0,1]（只用 ≤T 数据，无前视）。"""
@@ -82,6 +88,17 @@ def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_STA
     bh = performance_metrics(oos["ret"])
     in_sample = performance_metrics(df[df.index < oos_start]["strat_ret"])
 
+    # 🔴 2026-11-12 用户裁定 P0①：**加「同平均仓位基准」B0'** ✓
+    #    问题：`pos = 0.2 + 0.8×rank` ⇒ 平均仓位约 60%，而 B0 是 **100% 满仓** ✗
+    #    ⇒ 在长期上涨标的上，60% 仓位**数学上必然**跑输 100% 约 12pp ✗
+    #    ⇒ 这是「仓位暴露差异」，不是「因子无效」✗
+    #    实测 F-021/TQQQ：年化 19.62% vs B0 30.28%（-10.66pp ✗）
+    #                     但 Sharpe 0.48 vs 0.46、Calmar 0.54 vs 0.52 ✓
+    #    ⇒ 加 B0' = **同平均仓位恒定持有** ✓，主判据改成「**择时 alpha > 0**」✓
+    pos_mean = float(oos["pos_prev"].mean())
+    b0_equiv = performance_metrics(pos_mean * oos["ret"])
+    alpha = strat["annual_return"] - b0_equiv["annual_return"]
+
     out = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "factor": factor, "symbol": symbol, "direction": direction,
@@ -89,20 +106,39 @@ def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_STA
         "cost_per_unit_turnover": COST,
         "metrics": {
             "strategy_oos": strat, "buyhold_oos": bh, "strategy_is": in_sample,
+            # 🔴 P0①：同仓位基准（衡量「择时能力」而非「仓位高低」）✓
+            "buyhold_samepos_oos": b0_equiv,
         },
+        "pos_mean": round(pos_mean, 4),
+        # 择时 alpha = 策略年化 − 同平均仓位基准年化 ✓
+        "timing_alpha": round(alpha, 6),
+        # 🔴 P0②：**Sharpe 差异 < 0.10 视为噪音** ✗
+        #    实测 F-021/TQQQ 0.48 vs 0.46（差 0.02）被当成「略优」✗
+        #    而 519 天 OOS 上这个差异**统计上不可区分** ✗
+        "sharpe_delta": round(strat["sharpe"] - bh["sharpe"], 4),
+        "sharpe_noise_threshold": SHARPE_NOISE,
         # 🔴 2026-10-31 用户裁定：判定标准加「**策略 Sharpe > 0**」✗
         # 实测（C5 ENE 六标的）：AXTX 策略年化 -65.83%、CRCG -33.92%、
         # YINN -9.85%，却都因为「B0 亏得更多」被判 **PASS** ✗
         # ⇒ 原标准在亏损标的上退化成「比烂」✗
-        # 新标准三条全满足才算 PASS：① 跑赢 B0 ② 回撤不劣化 ③ **自己得赚钱** ✓
+        # 🔴 2026-11-12 用户裁定 P0③：**主判据从「年化 vs 满仓 B0」改成
+        #    「择时 alpha > 0」** ✓（年化作为参考，不再作为判定依据 ✗）
+        #    三条全满足才算 PASS：① 择时 alpha > 0 ② 回撤不劣化 ③ 自己赚钱 ✓
         "verdict": (
-            "PASS（OOS 年化 > B0、回撤不劣化、且 Sharpe > 0）"
-            if (strat["annual_return"] > bh["annual_return"]
+            "PASS（择时 alpha > 0、回撤不劣化、且 Sharpe > 0）"
+            if (alpha > 0
                 and strat["max_drawdown"] >= bh["max_drawdown"]
                 and strat["sharpe"] > 0)
             else ("FAIL（OOS 亏钱：Sharpe ≤ 0，只是「比买入持有少亏」✗）"
                   if strat["sharpe"] <= 0
-                  else "FAIL（OOS 未优于 B0，不采纳候选入生产）")),
+                  else ("FAIL（**无择时 alpha** ✗：策略年化 %.2f%% ≤ 同仓位基准 "
+                        "%.2f%%（pos_mean=%.2f）⇒ 它只是「仓位低」不是「择时好」）"
+                        % (strat["annual_return"] * 100,
+                           b0_equiv["annual_return"] * 100, pos_mean)
+                        if alpha <= 0
+                        else "FAIL（回撤劣化：%.1f%% < B0 %.1f%% ✗）"
+                             % (strat["max_drawdown"] * 100,
+                                bh["max_drawdown"] * 100)))),
     }
     return out
 
@@ -110,6 +146,10 @@ def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_STA
 def render_md(out: dict) -> str:
     s, b = out["metrics"]["strategy_oos"], out["metrics"]["buyhold_oos"]
     i = out["metrics"]["strategy_is"]
+    # 🔴 P0①：同平均仓位基准（衡量择时能力，不是仓位高低）✓
+    q = out["metrics"].get("buyhold_samepos_oos") or {}
+    _alpha = out.get("timing_alpha")
+    _sd = out.get("sharpe_delta")
     lines = [
         "# 回测裁判：%s（%s）→ %s OOS" % (out["factor"], out["direction"], out["symbol"]),
         "",
@@ -117,16 +157,35 @@ def render_md(out: dict) -> str:
         "- 口径：因子 756 日滚动分位 → 仓位 0.2~1.0 线性映射（无参数先验）；"
         "T 信号 shift(1) → T+1 生效；换仓成本 %g/单位换手；OOS 起 %s（%d 日）"
         % (out["cost_per_unit_turnover"], out["oos_start"], out["oos_days"]),
+        # 🔴 P0①/②：把「同仓位基准」和「Sharpe 噪音阈值」写进回执 ✓
+        "- 主判据：**择时 alpha > 0**（策略年化 − 同平均仓位基准 %.2f）✓ —— "
+        "不再拿「年化 vs 满仓 B0」判定 ✗（仓位调节型因子天然输仓位）"
+        % (out.get("pos_mean") or 0),
+        "- 噪音阈值：Sharpe 差异 < **%.2f** 视为不可区分 ✗（OOS 仅 %d 日）"
+        % (out.get("sharpe_noise_threshold") or 0, out["oos_days"]),
         "- 判定：**%s**" % out["verdict"],
         "",
-        "| 指标 | 策略（OOS） | B0 买入持有 | 样本内 |",
-        "|---|---|---|---|",
-        "| OOS 年化 | %.2f%% | %.2f%% | %.2f%% |" % (
-            s["annual_return"] * 100, b["annual_return"] * 100, i["annual_return"] * 100),
-        "| 最大回撤 | %.1f%% | %.1f%% | %.1f%% |" % (
-            s["max_drawdown"] * 100, b["max_drawdown"] * 100, i["max_drawdown"] * 100),
-        "| Sharpe | %.2f | %.2f | %.2f |" % (s["sharpe"], b["sharpe"], i["sharpe"]),
-        "| Calmar | %.2f | %.2f | %.2f |" % (s["calmar"], b["calmar"], i["calmar"]),
+        "| 指标 | 策略（OOS） | B0 满仓 | **B0' 同仓位** | 样本内 |",
+        "|---|---|---|---|---|",
+        "| OOS 年化 | %.2f%% | %.2f%% | **%.2f%%** | %.2f%% |" % (
+            s["annual_return"] * 100, b["annual_return"] * 100,
+            (q.get("annual_return") or 0) * 100, i["annual_return"] * 100),
+        "| 最大回撤 | %.1f%% | %.1f%% | %.1f%% | %.1f%% |" % (
+            s["max_drawdown"] * 100, b["max_drawdown"] * 100,
+            (q.get("max_drawdown") or 0) * 100, i["max_drawdown"] * 100),
+        "| Sharpe | %.2f | %.2f | %.2f | %.2f |" % (
+            s["sharpe"], b["sharpe"], q.get("sharpe") or 0, i["sharpe"]),
+        "| Calmar | %.2f | %.2f | %.2f | %.2f |" % (
+            s["calmar"], b["calmar"], q.get("calmar") or 0, i["calmar"]),
+        "",
+        "- **择时 alpha = %+.2fpp**（vs B0' 同仓位）%s"
+        % ((_alpha or 0) * 100,
+           "✓ 有择时能力" if (_alpha or 0) > 0 else "✗ 只是仓位低，不是择时好"),
+        "- **Sharpe delta = %+.2f**（vs B0 满仓）%s"
+        % (_sd or 0,
+           "（在噪音内 ✗ 不可当证据）"
+           if abs(_sd or 0) < (out.get("sharpe_noise_threshold") or 0)
+           else "（超出噪音 ✓ 可作证据）"),
         "",
         "> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；",
         "> 仅作 C-3 审批证据，不直接改动生产。",
