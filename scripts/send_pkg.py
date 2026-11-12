@@ -12,6 +12,7 @@
 import os
 import subprocess
 import sys
+import time
 
 SCRIPTS = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPTS)
@@ -28,6 +29,10 @@ if len(sys.argv) < 2:
 try:
     subprocess.run(["bsk", "session", "stop", "--all"],
                    capture_output=True, text=True, timeout=30)
+    # 🔴 2026-11-12：清理后**等 2 秒** ✓ ——
+    #    `fix_1120t` 实测：加了清理但**紧接着就发**，仍然失败一次 ✗
+    #    （Agent Window 关标签/释放焦点需要一点时间）✗
+    time.sleep(2)
 except Exception:                       # noqa: BLE001
     pass                                # 清理失败不阻断发送（尽力而为）✓
 

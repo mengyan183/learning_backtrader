@@ -1032,7 +1032,15 @@ def fetch_news(snap):
             #    大盘的实体校验在外层用 `_MKT_ENTS` 做 ✓
             if _sym == "_market":
                 return _sym, _all, "" if _all else "空"
-            _kept = [t for t in _all if _news_relevant(_sym, t)]
+            # 🔴 2026-11-12 `news_diag(CRCG)` 实测真因：富途段**只做相关性过滤、
+            #    不做噪音过滤** ✗ ⇒ 富途返回「反向拆分期权代码：CRCG」这种公告时
+            #    它通过了相关性（含 CRCG）⇒ `out["CRCG"]` 被占位 ✗
+            #    ⇒ 下面 gnews 分支 `if sym in out: continue` **直接跳过** ✗
+            #    ⇒ 真新闻（Seeking Alpha 那条）永远补不进来 ✗
+            #    ⇒ 富途这里也过一遍 `_news_is_noise` ✓
+            #      全被滤掉 ⇒ `out` 不设该标的 ⇒ gnews 正常兜底 ✓
+            _kept = [t for t in _all
+                     if not _news_is_noise(t) and _news_relevant(_sym, t)]
             if not _kept:
                 return _sym, [], "全部不含标的词（原 %d 条）" % len(_data)
             return _sym, _kept[:2], ""
@@ -1179,6 +1187,11 @@ _NEWS_NOISE_RE = re.compile(
     #    实测 `2倍做多AXTI ETF-Tradr：…——反向拆分 期权代码：AXTX 新代码：AXTX1`
     #    这类是**期权链代码调整**，不是标的新闻，还会让人误以为股票拆了 ✗
     r"|反向拆分|正向拆分|期权代码|新代码"
+    # 🔴 2026-11-12 `news_diag(CRCG)` 实测：这两类**行情页标题**漏网 ✗
+    #    `CRCG ETF Price and Chart — NASDAQ:CRCG - TradingView` ✗
+    #    `CRCG 261120 14.00C (CRCG261120C14000) Stock Options Chain | Quotes` ✗
+    #    ⇒ 它们含标的代码 ⇒ 相关性校验放行 ⇒ 必须靠噪音表拦 ✓
+    r"|ETF Price and Chart|Options Chain|Stock Options"
     r"|^\$.*\$\$)"                           # Moomoo 的 $$ 包裹
     , re.I)
 
