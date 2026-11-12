@@ -1401,6 +1401,106 @@ def _act_dsh_web_launch(params):
     return out
 
 
+def _act_factor_probe(params):
+    """**算 gold_ratio 列 → 跑回测裁判** ✓（2026-11-12 用户要求推进 F-021）。
+
+    🔴 为什么需要这个动作：
+       `factor_backtest_probe.py --factor <name>` 只从 **features 文件**取因子列 ✗
+       而 `gold_ratio` 从没写进 `Data/features.csv`（只有 vix/term/price/breadth）✗
+       ⇒ 无法直接跑裁判 ✗
+
+    ✅ 做法（**不动生产 features.csv** ✗）：
+      ① `factors/gold_ratio.gold_ratio_pct(prices)` 算信号 ✓
+      ② 写成研究专用特征文件
+         `evolution/experiments/factor-adoption/features_gold_ratio.csv` ✓
+      ③ `factor_backtest_probe.py --factor gold_ratio --features <上一步文件>` ✓
+         **同时跑 TQQQ 与 GDXU 两个标的** ✓（GDXU 才是直接持仓 ✓）
+      ④ 回执带上裁判产出的 md 路径 + 关键指标行 ✓
+
+    方向：`gold_ratio.py` docstring 明写「方向待测，由 eval_gold_ratio 的实测 IC 决定」✗
+       实测 `rank_ic_mean = -0.53`（负）⇒ 默认 `--direction negative` ✓
+       （可用 `params.direction` 覆盖 ✓）
+    """
+    import glob as _glob
+    import subprocess as _sp
+
+    out = {"steps": {}}
+    root = ROOT
+    py = os.path.join(root, ".venv", "bin", "python")
+    if not os.path.exists(py):
+        py = sys.executable
+
+    # ① 算信号
+    try:
+        import pandas as _pd
+        sys.path.insert(0, root)
+        from fg_system.factors import gold_ratio as _gr
+        prices = _pd.read_csv(os.path.join(root, "Data", "raw", "prices.csv"))
+        sig = _gr.gold_ratio_pct(prices)
+        # sig 是 Series（index=date）或 DataFrame ⇒ 统一成两列
+        if hasattr(sig, "to_frame"):
+            sdf = sig.to_frame(name="gold_ratio").reset_index()
+        else:
+            return {"ok": False, "error": "gold_ratio_pct 返回类型不支持：%s"
+                                          % type(sig).__name__}
+        sdf.columns = ["date", "gold_ratio"][:len(sdf.columns)]
+        sdf["date"] = sdf["date"].astype(str).str[:10]
+        out["steps"]["signal"] = {"n": int(len(sdf)),
+                                  "head": sdf.head(2).to_dict("records"),
+                                  "tail": sdf.tail(2).to_dict("records")}
+    except Exception as exc:              # noqa: BLE001
+        return {"ok": False,
+                "error": "算 gold_ratio 失败：%s: %s"
+                         % (type(exc).__name__, str(exc)[:250])}
+
+    # ② 写研究专用特征文件（合并原 features 的非因子列）
+    feat_out = os.path.join(root, "evolution", "experiments",
+                            "factor-adoption", "features_gold_ratio.csv")
+    try:
+        os.makedirs(os.path.dirname(feat_out), exist_ok=True)
+        base = _pd.read_csv(os.path.join(root, "Data", "features.csv"))
+        base["date"] = base["date"].astype(str).str[:10]
+        merged = base.merge(sdf, on="date", how="left")
+        merged.to_csv(feat_out, index=False)
+        out["steps"]["features_file"] = feat_out
+        out["steps"]["features_cols"] = list(merged.columns)[-6:]
+    except Exception as exc:              # noqa: BLE001
+        return {"ok": False,
+                "error": "写研究特征文件失败：%s: %s"
+                         % (type(exc).__name__, str(exc)[:250])}
+
+    # ③ 跑裁判（TQQQ + GDXU）
+    direction = str(params.get("direction") or "negative").strip().lower()
+    if direction not in ("positive", "negative"):
+        direction = "negative"
+    out["direction"] = direction
+    runs = {}
+    for sym in ("TQQQ", "GDXU"):
+        try:
+            r = _sp.run([py, os.path.join(root, "scripts",
+                                          "factor_backtest_probe.py"),
+                         "--factor", "gold_ratio", "--symbol", sym,
+                         "--direction", direction, "--features", feat_out],
+                        capture_output=True, text=True, timeout=300, cwd=root)
+            tail = ((r.stdout or "") + (r.stderr or "")).strip()[-500:]
+            runs[sym] = {"rc": r.returncode, "tail": tail}
+        except Exception as exc:          # noqa: BLE001
+            runs[sym] = {"rc": -1, "tail": "%s: %s"
+                                          % (type(exc).__name__, str(exc)[:150])}
+    out["steps"]["probe"] = runs
+
+    # ④ 收集产出
+    arts = sorted(_glob.glob(os.path.join(
+        root, "evolution", "experiments", "factor-adoption",
+        "gold_ratio-*-oos.md")))
+    out["steps"]["artifacts"] = [os.path.basename(a) for a in arts[-4:]]
+    out["ok"] = any(v.get("rc") == 0 for v in runs.values())
+    if not out["ok"]:
+        out["hint"] = ("两个标的都失败 ✗ ⇒ 看 `steps.probe.*.tail`；"
+                       "常见原因：prices.csv 缺 GDX/GLD、或 features 日期对不上")
+    return out
+
+
 def _act_news_diag(params):
     """排查「某个标的的新闻整行消失」✓（2026-11-11 用户要求查 BTC）。
 
@@ -5007,6 +5107,7 @@ ACTIONS = {
     "realtime_diag": _act_realtime_diag,
     "service_bootstrap": _act_service_bootstrap,
     "news_diag": _act_news_diag,
+    "factor_probe": _act_factor_probe,
     "dsh_web_launch": _act_dsh_web_launch,
     "plist_path_append": _act_plist_path_append,
     "autostart_list": _act_autostart_list,
