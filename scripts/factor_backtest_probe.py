@@ -62,6 +62,15 @@ SHARPE_NOISE = 0.10
 IS_SHARPE_MIN = 0.0
 IS_OOS_SHARPE_GAP_MAX = 0.30
 
+#: 🔴 2026-11-12 用户要求：**有效信号天数门槛** ✓
+#:    暴露过程：AXTX 的 `prices.csv` 只有 118 行（2026-04-24 上市）
+#:    ⇒ `rolling_rank(min_periods=60)` 再吃掉 60 行 ⇒ **有效信号只剩 58 天** ✗
+#:    ⇒ 58 天全落在 OOS 区间 ⇒ 样本内为空 ⇒ 之前报「nan / 内外矛盾」✗
+#:    虽然 `len(in_sample) < 60` 已经拦住了它，但那是**间接**拦住 ✗
+#:    ⇒ 加**直接**门槛：滚动分位后的有效信号总数必须 ≥ 120 天（约半年）✓
+#:    参考：AXTX 58（拒）/ CRCG 235（过）/ CONL 630（过）/ GDXU 1409（过）
+MIN_EFFECTIVE_DAYS = 120
+
 
 def rolling_rank(s: pd.Series, window: int = ROLL, min_periods: int = 60) -> pd.Series:
     """因子对自身滚动分位 rank ∈ [0,1]（只用 ≤T 数据，无前视）。"""
@@ -111,6 +120,14 @@ def run_probe(factor: str, symbol: str, direction: str, oos_start: str = OOS_STA
 
     df["rank"] = rolling_rank(df[factor])
     df = df.dropna(subset=["rank"])
+    # 🔴 2026-11-12 用户要求：**有效信号天数门槛** ✓（见 `MIN_EFFECTIVE_DAYS` 注释）
+    #    放在 `dropna` 之后、OOS 切片之前 —— 这是「真正能用于回测的天数」✓
+    if len(df) < MIN_EFFECTIVE_DAYS:
+        raise SystemExit(
+            "有效信号不足：%d 天 < %d ✗（原始 %d 行，滚动分位 min_periods=%d "
+            "吃掉预热期；该标的约 %s 起有价格数据）⇒ 无法做可靠回测"
+            % (len(df), MIN_EFFECTIVE_DAYS, len(feats), ROLL,
+               df.index[0].date() if len(df) else "?"))
     # 方向：positive=高分看多（rank 直接映射仓位）；negative=高分看空（1-rank）
     base = df["rank"] if direction == "positive" else 1.0 - df["rank"]
     df["pos"] = (0.2 + 0.8 * base).clip(0.2, 1.0)
