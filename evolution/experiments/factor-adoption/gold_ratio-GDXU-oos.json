@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12 14:01",
+  "generated_at": "2026-11-12 15:13",
   "factor": "gold_ratio",
   "symbol": "GDXU",
   "direction": "negative",
@@ -30,7 +30,19 @@
       "annual_vol": 0.6121308193277568,
       "sharpe": -0.013941747875599037,
       "calmar": -0.012116664209845744
+    },
+    "buyhold_samepos_oos": {
+      "total_return": 1.2175669705369336,
+      "annual_return": 0.46349343031441026,
+      "max_drawdown": -0.5881452852259125,
+      "annual_vol": 0.6982214477931716,
+      "sharpe": 0.6638200985938592,
+      "calmar": 0.7880594165374935
     }
   },
-  "verdict": "FAIL（OOS 未优于 B0，不采纳候选入生产）"
+  "pos_mean": 0.5198,
+  "timing_alpha": -0.181695,
+  "sharpe_delta": 0.1194,
+  "sharpe_noise_threshold": 0.1,
+  "verdict": "FAIL（**无择时 alpha** ✗：策略年化 28.18% ≤ 同仓位基准 46.35%（pos_mean=0.52）⇒ 它只是「仓位低」不是「择时好」）"
 }

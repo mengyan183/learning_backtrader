@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-12 14:01",
+  "generated_at": "2026-11-12 15:13",
   "factor": "gold_ratio",
   "symbol": "TQQQ",
   "direction": "negative",
@@ -30,7 +30,19 @@
       "annual_vol": 0.48635331504048807,
       "sharpe": 0.3859330670123851,
       "calmar": 0.30910418800618833
+    },
+    "buyhold_samepos_oos": {
+      "total_return": 0.49458832248385565,
+      "annual_return": 0.21185998792420224,
+      "max_drawdown": -0.3488251953127455,
+      "annual_vol": 0.3451022766868022,
+      "sharpe": 0.6139049268471675,
+      "calmar": 0.6073528826788311
     }
   },
-  "verdict": "FAIL（OOS 未优于 B0，不采纳候选入生产）"
+  "pos_mean": 0.5198,
+  "timing_alpha": -0.015638,
+  "sharpe_delta": 0.0262,
+  "sharpe_noise_threshold": 0.1,
+  "verdict": "FAIL（**无择时 alpha** ✗：策略年化 19.62% ≤ 同仓位基准 21.19%（pos_mean=0.52）⇒ 它只是「仓位低」不是「择时好」）"
 }
