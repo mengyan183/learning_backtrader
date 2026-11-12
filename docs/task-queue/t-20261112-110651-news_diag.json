@@ -1,0 +1,9 @@
+{
+  "id": "t-20261112-110651-news_diag",
+  "action": "news_diag",
+  "params": {
+    "symbol": "CRCG"
+  },
+  "status": "pending",
+  "created_at": "2026-11-12T11:06:51"
+}
