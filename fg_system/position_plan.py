@@ -127,14 +127,18 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
     gap = gap_pct(symbol, atr_pct)
 
     blocked = None
+    # 🔴 2026-11-13 用户要求：**硬约束优先** ✓
+    #    暴露过程：造场景验证建仓线文案时发现，`coef > -75` 的检查在最前面，
+    #    会**掩盖**后面更硬的原因 ✗：
+    #      `coef=-50 且浮亏 -70%` ⇒ 报「系数 -50 未达建仓线 -75」
+    #      ⇒ 读者以为「等守猪待兔跌到 -75 就能加仓」✗
+    #      ⇒ 实际是「浮亏过 -60% 线，**永久禁加仓**（直到浮亏回到线内）」✗
+    #    区分：
+    #      硬约束（不可等）—— 无系数 / 浮亏过线 / 已到上限 / 总敞口满
+    #      软约束（可等）  —— 系数未达建仓线
+    #    ⇒ 硬约束先说，软约束最后 ✓
     if coef is None:
         blocked = "无守猪待兔系数"
-    elif float(coef) > PLAN["entry_coef"]:
-        # 🔴 2026-11-13 用户要求：**加「建仓线」三个字** ✓
-        #    原因：原文案「系数 -51 未达 -75」容易被读成「-75 是**减仓**门槛」✗
-        #    （实测 2026-11-13 简报里 YINN 到 -75 仍「无减仓触发」，就是因为
-        #      -75 只影响**建仓/加仓**，与减仓无关 ⇒ 文案必须点明 ✗）
-        blocked = "系数 %.0f 未达建仓线 %.0f" % (float(coef), PLAN["entry_coef"])
     elif pnl_pct is not None and float(pnl_pct) <= PLAN["hard_stop"] * 100:
         # 用户裁定：**不清仓**，但也不许加仓 ✓（回本数学，见模块 docstring）
         blocked = "浮亏 %.0f%% 已过 %.0f%% 线：禁止加仓（不清仓）" % (
@@ -143,6 +147,12 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
         blocked = "已到单标的上限 $%.0f" % single
     elif float(leveraged_value or 0) >= total and held <= 0:
         blocked = "杠杆总敞口已满（上限 $%.0f）" % total
+    elif float(coef) > PLAN["entry_coef"]:
+        # 🔴 2026-11-13 用户要求：**加「建仓线」三个字** ✓
+        #    原因：原文案「系数 -51 未达 -75」容易被读成「-75 是**减仓**门槛」✗
+        #    （实测 2026-11-13 简报里 YINN 到 -75 仍「无减仓触发」，就是因为
+        #      -75 只影响**建仓/加仓**，与减仓无关 ⇒ 文案必须点明 ✗）
+        blocked = "系数 %.0f 未达建仓线 %.0f" % (float(coef), PLAN["entry_coef"])
 
     nv = float(net_value or 0)
     if held <= 0:
