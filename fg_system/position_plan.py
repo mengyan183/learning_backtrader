@@ -130,7 +130,11 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
     if coef is None:
         blocked = "无守猪待兔系数"
     elif float(coef) > PLAN["entry_coef"]:
-        blocked = "系数 %.0f 未达 %.0f" % (float(coef), PLAN["entry_coef"])
+        # 🔴 2026-11-13 用户要求：**加「建仓线」三个字** ✓
+        #    原因：原文案「系数 -51 未达 -75」容易被读成「-75 是**减仓**门槛」✗
+        #    （实测 2026-11-13 简报里 YINN 到 -75 仍「无减仓触发」，就是因为
+        #      -75 只影响**建仓/加仓**，与减仓无关 ⇒ 文案必须点明 ✗）
+        blocked = "系数 %.0f 未达建仓线 %.0f" % (float(coef), PLAN["entry_coef"])
     elif pnl_pct is not None and float(pnl_pct) <= PLAN["hard_stop"] * 100:
         # 用户裁定：**不清仓**，但也不许加仓 ✓（回本数学，见模块 docstring）
         blocked = "浮亏 %.0f%% 已过 %.0f%% 线：禁止加仓（不清仓）" % (
