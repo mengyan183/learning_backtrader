@@ -860,6 +860,36 @@ def _act_futu_opend_update(params):
     return out
 
 
+def _act_verify_hyp(params):
+    """跑 `verify_hypotheses.py` 验证**指定假说** ✓（2026-11-13 用户要求）
+
+    🔴 背景：`hypotheses.md` 里有 **10 条「有 handler 但状态还是 open/verifying」** ✗
+       （H-009/H-011/H-017/H-022/H-028/H-031/H-038/H-042/H-049/H-085）
+       怀疑是 `evolve_review` 的 LLM 超时导致日更停摆 ⇒ 状态没落盘 ✗
+       ⇒ 手动跑一次，看是「insufficient」还是「false」还是「根本没执行」✓
+
+    用法：`--param ids=H-009,H-011,H-017`
+    """
+    ids = params.get("ids") or []
+    if isinstance(ids, str):
+        ids = [x.strip() for x in ids.replace("，", ",").split(",") if x.strip()]
+    if not ids:
+        return {"ok": False,
+                "error": "缺 params.ids（如 `ids=H-009,H-011`）"}
+    py = sys.executable or "python3"
+    cmd = [py, os.path.join(ROOT, "scripts", "verify_hypotheses.py")]
+    for h in ids:
+        cmd += ["-H", h]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           timeout=900, cwd=ROOT)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "ids": ids, "error": "verify_hypotheses 超时（900s）"}
+    out = (r.stdout or "") + (("\n[stderr]\n" + r.stderr) if r.stderr else "")
+    return {"ok": r.returncode == 0, "ids": ids, "rc": r.returncode,
+            "stdout": out[-4000:]}
+
+
 #: 允许删除的**遗留文件白名单** ✓（防任意路径删除 ✗）
 _LEGACY_FILES = {
     # 🔴 2026-11-13 用户确认：hermes 已改付费 `deepseek-flash`，
@@ -1608,6 +1638,26 @@ def _compute_ene(root, pd, symbol=None):
     return out
 
 
+def _compute_f020(root, pd):
+    """F-020：**独立极恐标记** ✓（`putcall.csv` 的 `total_ratio > 1.2` ⇒ 1，否则 0）
+
+    与 F-008（`zone==0` 二进制）的区别：
+      F-008 的 `zone` 由 `fg_index` 分档而来 ⇒ **循环论证** ✗（已 rejected）
+      F-020 用的是**独立的原始 P/C 比率** ⇒ 不依赖合成指数 ✓
+    数据：`Data/raw/putcall.csv`（`date,total_ratio,...`）
+    方向：`total_ratio > 1.2` = 极度恐慌 = 该加仓 ⇒ `positive` ✓
+          （注意：与 F-011 的 `1-pct` 逆向分位**不同** ✗ —— 这是原始阈值的二进制）
+    """
+    d = pd.read_csv(os.path.join(root, "Data", "raw", "putcall.csv"))
+    d["date"] = pd.to_datetime(d["date"])
+    s = d.set_index("date")["total_ratio"].astype(float).sort_index()
+    s = s[~s.index.duplicated(keep="last")]
+    out = (s > 1.2).astype(float).rename("f020").reset_index()
+    out.columns = ["date", "f020"]
+    out["date"] = pd.to_datetime(out["date"]).dt.strftime("%Y-%m-%d")
+    return out
+
+
 #: 依赖 `symbol` 的因子（需按标的分别生成研究 features）✓
 _SYM_FACTORS = {"ene"}
 
@@ -1622,6 +1672,7 @@ _COMPUTE = {
     "fg_erp": _compute_fg_erp,       # 增量：6 因子 + ERP 10%
     "putcall": _compute_putcall,     # F-011（features.csv 无此列，须现算）
     "ene": _compute_ene,             # F-018（**标的自身**因子，需 symbol）
+    "f020": _compute_f020,           # F-020（独立极恐标记，P/C > 1.2 二进制）
 }
 
 
@@ -1746,7 +1797,9 @@ def _act_factor_probe(params):
                     # F-011：因子值 = 1-P/C分位（高分=贪婪）⇒ 贪婪该减仓 ⇒ negative
                     "putcall": "negative",
                     # F-018：因子值 = 通道位置（高=触上轨=超买）⇒ 超买该降仓 ⇒ negative
-                    "ene": "negative"}
+                    "ene": "negative",
+                    # F-020：因子值 = 极恐标记（1=极恐）⇒ 极恐该加仓 ⇒ positive
+                    "f020": "positive"}
     direction = str(params.get("direction")
                     or _DIR_DEFAULT.get(factor, "positive")).strip().lower()
     if direction not in ("positive", "negative"):
@@ -5426,6 +5479,7 @@ ACTIONS = {
     "autostart_list": _act_autostart_list,
     "dsh_web_diag": _act_dsh_web_diag,
     "rm_legacy": _act_rm_legacy,
+    "verify_hyp": _act_verify_hyp,
     "dsh_webauth_find": _act_dsh_webauth_find,
     "futu_opend_update": _act_futu_opend_update,
     "run_invest_research": _act_run_invest_research,
