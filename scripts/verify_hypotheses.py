@@ -637,7 +637,11 @@ def verify_h031(df):
             #    ⇒ 改成**逐 horizon 列出**，一眼看出哪个不足 ✓
             "note": ("样本不足：各 horizon 事件日 %s（**每个**需 ≥%d，合计 %d）/ "
                      "基线 %d（需 ≥%d），无法做 t 检验。"
-                     % ("/".join("h%d=%d" % (h, r["n_events"])
+                     # 🔴 2026-11-13 修我自己的 bug：`h` 是字符串 `"h4"`
+                     #    用 `%d` ⇒ `TypeError: %d format: a real number is
+                     #    required, not str` ✗（实测 `verify_hyp` 直接崩溃 rc=1）
+                     #    ⇒ 改成 `%s=%d` ✓
+                     % ("/".join("%s=%d" % (h, r["n_events"])
                                  for h, r in results.items()),
                         H031_MIN_EVENTS, n_ev_total,
                         n_base_max, H031_MIN_BASE)),
