@@ -1,0 +1,11 @@
+{
+  "id": "t-20261113-110547-rm_legacy",
+  "action": "rm_legacy",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"key\": \"free_model_availability\", \"path\": \"/Users/xingguo/.dsh/our-free-model/availability.json\", \"steps\": {\"removed\": true, \"leftover\": [\"settings.json\", \"session-map.json\", \"catalog.json\", \"feed.json\"]}, \"ok\": true}",
+  "started_at": "2026-11-13T11:08:19",
+  "finished_at": "2026-11-13T11:08:19",
+  "duration_s": 0.0
+}
