@@ -860,6 +860,58 @@ def _act_futu_opend_update(params):
     return out
 
 
+#: 允许删除的**遗留文件白名单** ✓（防任意路径删除 ✗）
+_LEGACY_FILES = {
+    # 🔴 2026-11-13 用户确认：hermes 已改付费 `deepseek-flash`，
+    #    `our-free-model` 这个免费模型目录整体废弃 ✗
+    #    ⇒ 该文件不再刷新是**预期**，之前被误当成 `dsh.web` 的心跳 ✗
+    "free_model_availability": "~/.dsh/our-free-model/availability.json",
+}
+
+
+def _act_rm_legacy(params):
+    """删除**白名单内**的遗留文件 ✓（2026-11-13 用户要求）
+
+    🔴 为什么需要：`~/.dsh/our-free-model/availability.json` 是
+       免费模型时代的遗留 ✗ —— hermes 已改付费 `deepseek-flash` ✓
+       它留在磁盘上会被误当成「服务心跳」，之前就害得 `dsh.web` 误报 ✗
+
+    ⚠️ **只允许 `_LEGACY_FILES` 白名单** ✗ —— 不接受任意路径 ✓
+    """
+    import glob as _g
+    key = str(params.get("key") or "free_model_availability")
+    rel = _LEGACY_FILES.get(key)
+    if not rel:
+        return {"ok": False,
+                "error": "未知 key `%s`（白名单：%s）"
+                         % (key, "、".join(sorted(_LEGACY_FILES)))}
+    p = os.path.expanduser(rel)
+    out = {"key": key, "path": p, "steps": {}}
+    try:
+        if os.path.exists(p):
+            os.remove(p)
+            out["steps"]["removed"] = True
+        else:
+            out["steps"]["removed"] = False
+            out["steps"]["note"] = "文件本来就不存在 ✓"
+    except OSError as exc:
+        return {"ok": False, "error": "删除失败：%s: %s"
+                                     % (type(exc).__name__, str(exc)[:200])}
+    # 目录若已空 ⇒ 一并删掉（`our-free-model` 整个模块都废弃了）
+    d = os.path.dirname(p)
+    try:
+        if os.path.isdir(d) and not os.listdir(d):
+            os.rmdir(d)
+            out["steps"]["dir_removed"] = d
+    except OSError:
+        pass
+    # 附带确认：还有没有别的残留
+    out["steps"]["leftover"] = [os.path.basename(x) for x in
+                                _g.glob(os.path.join(d, "*"))][:10]
+    out["ok"] = True
+    return out
+
+
 def _act_dsh_web_diag(params):
     """查 `com.xingguo.dsh.web` 为什么起不来 ✓（2026-11-11 用户要求看日志）。
 
@@ -5373,6 +5425,7 @@ ACTIONS = {
     "plist_path_append": _act_plist_path_append,
     "autostart_list": _act_autostart_list,
     "dsh_web_diag": _act_dsh_web_diag,
+    "rm_legacy": _act_rm_legacy,
     "dsh_webauth_find": _act_dsh_webauth_find,
     "futu_opend_update": _act_futu_opend_update,
     "run_invest_research": _act_run_invest_research,
