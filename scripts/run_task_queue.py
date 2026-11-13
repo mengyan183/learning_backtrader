@@ -1534,6 +1534,32 @@ def _compute_putcall(root, pd):
 
 
 #: 需现算的因子（其余因子名若在 `features.csv` 里已存在 ⇒ 直接复用 ✓）
+def _compute_ene(root, pd, symbol=None):
+    """F-018：ENE 包络通道位置（0=触下轨超卖，1=触上轨超买）✓
+
+    🔴 **这是「标的自身」因子** ⇒ 必须传 `symbol` ✗（不同标的值不同 ✗）
+       与 `gold_ratio` / `erp` / `f012` 这些「市场级」因子不同 ✓
+       ⇒ `_act_factor_probe` 对这类因子会**按 symbol 分别生成**研究 features ✓
+
+    口径（`fg_system/factors/ene.py:126`）：`ene_pos(prices_df, sym)`
+    方向：高分=触上轨=超买 ⇒ 该降仓 ⇒ `negative` ✓
+    """
+    if not symbol:
+        raise RuntimeError("ENE 是标的自身因子，必须传 symbol ✗")
+    sys.path.insert(0, root)
+    from fg_system.factors import ene as _ene
+    prices = pd.read_csv(os.path.join(root, "Data", "raw", "prices.csv"))
+    s = _ene.ene_pos(prices, symbol)
+    out = s.dropna().rename("ene").reset_index()
+    out.columns = ["date", "ene"]
+    out["date"] = pd.to_datetime(out["date"]).dt.strftime("%Y-%m-%d")
+    return out
+
+
+#: 依赖 `symbol` 的因子（需按标的分别生成研究 features）✓
+_SYM_FACTORS = {"ene"}
+
+
 _COMPUTE = {
     "gold_ratio": _compute_gold_ratio,
     "f012": _compute_f012,
@@ -1543,14 +1569,17 @@ _COMPUTE = {
     "fg_base": _compute_fg_base,     # 基线：6 因子合成
     "fg_erp": _compute_fg_erp,       # 增量：6 因子 + ERP 10%
     "putcall": _compute_putcall,     # F-011（features.csv 无此列，须现算）
+    "ene": _compute_ene,             # F-018（**标的自身**因子，需 symbol）
 }
 
 
-def _compute_factor(root, factor, pd):
+def _compute_factor(root, factor, pd, symbol=None):
     """按名算因子列 ⇒ 返回 `DataFrame(date, <factor>)`，未知返回 `None` ✓"""
     fn = _COMPUTE.get(factor)
     if fn is None:
         return None
+    if factor in _SYM_FACTORS:
+        return fn(root, pd, symbol=symbol)
     return fn(root, pd)
 
 
@@ -1619,18 +1648,25 @@ def _act_factor_probe(params):
     # ② 写研究专用特征文件（合并原 features 的非因子列）
     feat_out = os.path.join(root, "evolution", "experiments",
                             "factor-adoption", "features_%s.csv" % factor)
-    try:
-        os.makedirs(os.path.dirname(feat_out), exist_ok=True)
-        base = _pd.read_csv(os.path.join(root, "Data", "features.csv"))
-        base["date"] = base["date"].astype(str).str[:10]
-        merged = base.merge(sdf, on="date", how="left")
-        merged.to_csv(feat_out, index=False)
-        out["steps"]["features_file"] = feat_out
-        out["steps"]["features_cols"] = list(merged.columns)[-6:]
-    except Exception as exc:              # noqa: BLE001
-        return {"ok": False,
-                "error": "写研究特征文件失败：%s: %s"
-                         % (type(exc).__name__, str(exc)[:250])}
+    if factor in _SYM_FACTORS:
+        # 🔴 2026-11-13：**标的自身**因子（ENE）不能在这里生成 ✗
+        #    每个 symbol 的因子值不同 ⇒ 必须按 symbol 分别生成 ✓
+        #    ⇒ 跳过这里，在 ③ 循环内逐 symbol 生成 ✓
+        out["steps"]["features_file"] = ("per-symbol（%s 依赖 symbol，见 ③）"
+                                         % factor)
+    else:
+        try:
+            os.makedirs(os.path.dirname(feat_out), exist_ok=True)
+            base = _pd.read_csv(os.path.join(root, "Data", "features.csv"))
+            base["date"] = base["date"].astype(str).str[:10]
+            merged = base.merge(sdf, on="date", how="left")
+            merged.to_csv(feat_out, index=False)
+            out["steps"]["features_file"] = feat_out
+            out["steps"]["features_cols"] = list(merged.columns)[-6:]
+        except Exception as exc:          # noqa: BLE001
+            return {"ok": False,
+                    "error": "写研究特征文件失败：%s: %s"
+                             % (type(exc).__name__, str(exc)[:250])}
 
     # ③ 跑裁判（TQQQ + GDXU）
     # 方向默认按因子定 ✓（`gold_ratio` 实测 rank_ic -0.53 ⇒ 逆向；F-012 定「正向」）
@@ -1639,7 +1675,9 @@ def _act_factor_probe(params):
                     # 下面两个已转成「仓位倾向」（高=该加仓）⇒ positive ✓
                     "fg_base": "positive", "fg_erp": "positive",
                     # F-011：因子值 = 1-P/C分位（高分=贪婪）⇒ 贪婪该减仓 ⇒ negative
-                    "putcall": "negative"}
+                    "putcall": "negative",
+                    # F-018：因子值 = 通道位置（高=触上轨=超买）⇒ 超买该降仓 ⇒ negative
+                    "ene": "negative"}
     direction = str(params.get("direction")
                     or _DIR_DEFAULT.get(factor, "positive")).strip().lower()
     if direction not in ("positive", "negative"):
@@ -1653,11 +1691,29 @@ def _act_factor_probe(params):
     _syms = [s.strip().upper() for s in
              str(params.get("symbols") or "TQQQ,GDXU").split(",") if s.strip()]
     for sym in _syms:
+        # 🔴 2026-11-13：**标的自身**因子（ENE）逐 symbol 生成研究 features ✓
+        _feat = feat_out
+        if factor in _SYM_FACTORS:
+            try:
+                _sdf = _compute_factor(root, factor, _pd, symbol=sym)
+                _feat = os.path.join(root, "evolution", "experiments",
+                                     "factor-adoption",
+                                     "features_%s-%s.csv" % (factor, sym))
+                os.makedirs(os.path.dirname(_feat), exist_ok=True)
+                _b = _pd.read_csv(os.path.join(root, "Data", "features.csv"))
+                _b["date"] = _b["date"].astype(str).str[:10]
+                _b.merge(_sdf, on="date", how="left").to_csv(_feat, index=False)
+            except Exception as exc:      # noqa: BLE001
+                runs[sym] = {"rc": -1,
+                             "tail": "生成 %s 的 %s 列失败：%s: %s"
+                                     % (sym, factor, type(exc).__name__,
+                                        str(exc)[:150])}
+                continue
         try:
             r = _sp.run([py, os.path.join(root, "scripts",
                                           "factor_backtest_probe.py"),
                          "--factor", factor, "--symbol", sym,
-                         "--direction", direction, "--features", feat_out],
+                         "--direction", direction, "--features", _feat],
                         capture_output=True, text=True, timeout=300, cwd=root)
             tail = ((r.stdout or "") + (r.stderr or "")).strip()[-500:]
             runs[sym] = {"rc": r.returncode, "tail": tail}
