@@ -457,7 +457,32 @@ def main():
         #       after 30s` ✗
         #    2026-11-04 实测：连发 2 次都超时 ✗ 第 3 次（缓存热了）才成功 ✗
         #    ⇒ 提到 **90 秒** ✓ 一次到位 ✓
-        bsk.run("navigate", FEISHU_URL, "--timeout", "90s")
+        # 🔴 2026-11-13 用户反馈「发送 task 失败频率变高」⇒ 加**重试** ✓
+        #    实测失败模式（今天 10+ 次）：
+        #      ① 「找不到输入框；可能未登录或页面结构变了」 ← 最多
+        #      ② `navigate` 90s 超时（只到 DOMContentLoaded，没到 load）← 新增
+        #      ③ 「页面被切走 / 掉登录」
+        #    共同点：**都是「页面没准备好」** ✗
+        #    根因：`bsk.start(no_focus=True)` 每次开**新会话**（新标签页）
+        #          ⇒ 飞书是重 SPA ⇒ 每次都是**冷加载** ✗
+        #    历史证据（本文件 2026-11-04 注释）：
+        #      「连发 2 次都超时，**第 3 次（缓存热了）才成功**」
+        #      ⇒ 说明**重试有效**（第二次时资源已缓存）✓
+        #    ⇒ navigate 失败后等 5 秒重试 1 次（共 2 次，上限 185s）✓
+        _nav_err = None
+        for _i in range(2):
+            try:
+                bsk.run("navigate", FEISHU_URL, "--timeout", "90s")
+                _nav_err = None
+                break
+            except Exception as _e:          # noqa: BLE001
+                _nav_err = _e
+                print("[navigate] 第 %d/2 次失败：%s"
+                      % (_i + 1, str(_e)[:120]))
+                if _i == 0:
+                    time.sleep(5)            # 给缓存/连接一点时间
+        if _nav_err is not None:
+            raise _nav_err
 
         # ⚠️ 飞书首屏**很慢**（实测 5 秒时连会话列表都还没渲染出来）——
         # 固定 sleep 会误判成"找不到会话"。改成轮询等待。
@@ -512,7 +537,12 @@ def main():
             #    抓到**过渡态**（VOM 里还没有 `发送给` 那行）✗
             #    ⇒ 加**重试**：最多 6 次 × 2 秒 ✓，别一次抓空就退出 ✓
             box = None
-            for _try in range(6):
+            # 🔴 2026-11-12 实测：6 次（12 秒）**不够** ✗ ——
+            #    日志显示首次等待（20 次 / 40 秒）拿到了输入框，
+            #    但进循环后 12 秒内 `find_textbox` 一直返回 None ✗
+            #    （`fix_1120u` / `task_1112r` 连续 4 次同一位置失败）
+            #    ⇒ 提到 **20 次（40 秒）**，与首次等待一致 ✓
+            for _try in range(20):
                 _ctx, vom = bsk.sync()
                 box = bsk.find_textbox(vom)
                 if box:
