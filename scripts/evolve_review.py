@@ -391,10 +391,33 @@ def log_memory(report, via, added):
 
 def main():
     prompt = build_prompt()
-    text, via = call_llm(prompt)
-    report = extract_json(text)
-    if not isinstance(report, dict):
-        raise ValueError("LLM 输出不是 JSON 对象")
+    # 🔴 2026-11-13 排查：`call_llm(timeout=240)` 超时 ⇒ 整个脚本 rc=1 ✗
+    #    而 `log_memory()` 在**最后** ✗ ⇒ LLM 一失败就什么都不落盘 ✗
+    #    实测：`evolution/memory/` 最新只到 **2026-10-19** ✗
+    #    ⇒ **连续 25 天没有新记忆文件** ✗（LLM 一直超时）
+    #    ⇒ 加 try/except：**失败也落盘一条**，让「今天跑过但 LLM 挂了」留痕 ✓
+    #       rc 仍返 1（保留告警 ✓），但不再「静默无痕」✗
+    try:
+        text, via = call_llm(prompt)
+        report = extract_json(text)
+        if not isinstance(report, dict):
+            raise ValueError("LLM 输出不是 JSON 对象")
+    except Exception as exc:              # noqa: BLE001
+        _err = "%s: %s" % (type(exc).__name__, str(exc)[:200])
+        print(f"[evolve_review] ✗ LLM 失败：{_err}")
+        try:
+            _p = os.path.join(MEM_DIR,
+                              "%s.md" % datetime.now().strftime("%Y-%m-%d"))
+            os.makedirs(MEM_DIR, exist_ok=True)
+            with open(_p, "a", encoding="utf-8") as _f:
+                _f.write(f"\n## LLM 体检（evolve_review 自动）\n")
+                _f.write(f"✗ **本次失败**：{_err}\n")
+                _f.write("⇒ 假说登记与极端标记未生成（下次成功时会补写新的一条）\n")
+            print(f"[evolve_review] 已落盘失败记录：{_p}")
+        except OSError as _e2:
+            print(f"[evolve_review] 落盘失败：{_e2}")
+        return 1
+
     added = register_hypotheses(report.get("candidate_hypotheses"), via)
     log_memory(report, via, added)
     print(f"[evolve_review] 完成（via={via}）")

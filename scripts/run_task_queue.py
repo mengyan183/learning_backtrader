@@ -1625,7 +1625,14 @@ def _act_factor_probe(params):
         base = _pd.read_csv(os.path.join(root, "Data", "features.csv"))
         base["date"] = base["date"].astype(str).str[:10]
 
-        if factor in base.columns:
+        # 🔴 2026-11-13 修：**标的自身因子**在 ① 段不能算 ✗（这里还没拿到 symbol）
+        #    实测 `factor_probe --factor ene` 报
+        #    `RuntimeError: ENE 是标的自身因子，必须传 symbol` ✗
+        #    ⇒ 跳过 ①，由 ③ 段逐 symbol 算 ✓
+        if factor in _SYM_FACTORS:
+            out["steps"]["signal_from"] = "per-symbol（见 ③）"
+            sdf = None
+        elif factor in base.columns:
             sdf = base[["date", factor]].copy()
             out["steps"]["signal_from"] = "features.csv（已有列，直接复用）"
         else:
@@ -1637,9 +1644,10 @@ def _act_factor_probe(params):
                                  % (factor, "、".join(sorted(_COMPUTE)) +
                                     " + features 已有列")}
             out["steps"]["signal_from"] = "_COMPUTE[%s]（现算）" % factor
-        out["steps"]["signal"] = {"n": int(len(sdf)),
-                                  "head": sdf.head(2).to_dict("records"),
-                                  "tail": sdf.tail(2).to_dict("records")}
+        if sdf is not None:
+            out["steps"]["signal"] = {"n": int(len(sdf)),
+                                      "head": sdf.head(2).to_dict("records"),
+                                      "tail": sdf.tail(2).to_dict("records")}
     except Exception as exc:              # noqa: BLE001
         return {"ok": False,
                 "error": "算 %s 失败：%s: %s"
@@ -1659,7 +1667,16 @@ def _act_factor_probe(params):
             os.makedirs(os.path.dirname(feat_out), exist_ok=True)
             base = _pd.read_csv(os.path.join(root, "Data", "features.csv"))
             base["date"] = base["date"].astype(str).str[:10]
-            merged = base.merge(sdf, on="date", how="left")
+            # 🔴 2026-11-13 修真 bug：**因子已存在于 features.csv 时不能 merge** ✗
+            #    `sdf` 本来就是从 `base` 取的（`base[["date", factor]]`）✗
+            #    ⇒ `base.merge(sdf)` = **自己和自己 merge** ✗
+            #    ⇒ pandas 产生 `baa10y_pct_x` / `baa10y_pct_y` ✗
+            #    ⇒ 子进程 `factor_probe --factor baa10y_pct` 报「无因子列」✗
+            #    （实测 F-016 / F-011 都栽在这里 ✗）
+            if factor in base.columns:
+                merged = base
+            else:
+                merged = base.merge(sdf, on="date", how="left")
             merged.to_csv(feat_out, index=False)
             out["steps"]["features_file"] = feat_out
             out["steps"]["features_cols"] = list(merged.columns)[-6:]
