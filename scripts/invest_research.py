@@ -1177,7 +1177,10 @@ def fetch_news(snap):
 #: ⇒ 这些是**行情页标题**，不是新闻 ✗ 零信息量 ✗
 #: 判据：命中下列任一模式即视为噪音 ✓
 _NEWS_NOISE_RE = re.compile(
-    r"(Stock Price,? News,? Quote"          # Yahoo 行情页
+    # ⚠️ 这里原来写 `r"(Stock Price,? News,? Quote"` —— 开头的 `(` 靠**末尾**那个
+    #    `)` 闭合（2026-11-13 我删末尾 `)` 修 bug 时把它弄成落单括号 ⇒ re.error）✗
+    #    ⇒ 改成**无分组**写法 ✓（不需要捕获，用非捕获组或直接去掉 `(`）
+    r"Stock Price,? News,? Quote"           # Yahoo 行情页
     r"|Interactive Stock Chart"              # Yahoo 期权图表页
     r"|Long Term Investment Analysis"        # Stock Traders Daily 模板
     # 🔴 2026-11-11 补：`(GDXU) Trading Performance and Risk Management (GDXU:CA)`
@@ -1198,7 +1201,18 @@ _NEWS_NOISE_RE = re.compile(
     #    `CRCG 261120 14.00C (CRCG261120C14000) Stock Options Chain | Quotes` ✗
     #    ⇒ 它们含标的代码 ⇒ 相关性校验放行 ⇒ 必须靠噪音表拦 ✓
     r"|ETF Price and Chart|Options Chain|Stock Options"
-    r"|^\$.*\$\$)"                           # Moomoo 的 $$ 包裹
+    # 🔴 2026-11-13 修**真 bug**：原写法 `r"|^\$.*\$\$)"` 末尾多了个 `)` ✗
+    #    实际正则是 `|^\$.*\$\$)` ⇒ 要求以 `)` 结尾 ✗
+    #    ⇒ 实测 `$Leverage Shares 2X Long CRCL Daily ETF (CRCG.US)$ - Moomoo`
+    #      **一直匹配不上** ✗（这轮简报里 CRCG 那条就是它漏的）
+    #    ⇒ 改成两条：① `$...$ - Moomoo` ② 兜底「以 Moomoo 结尾」✓
+    r"|^\$.*\$\s*-\s*Moomoo"
+    r"|-\s*Moomoo\s*$"
+    # 🔴 2026-11-13 用户要求：**过滤基金月报类公告** ✗
+    #    实测 `BTC: MBC比特币,MBC比特币－U月报表开放式集体投资计划的每月变动确认 2026年10月` ✗
+    #    这类是**基金定期披露**（月报/份额变动），不是市场新闻 ✗
+    #    且标题常带重复的公司名（`MBC比特币,MBC比特币－U`）⇒ 可读性也差 ✗
+    r"|月报表|每月变动确认|集体投资计划|份额变动"
     , re.I)
 
 
