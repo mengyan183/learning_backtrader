@@ -1,0 +1,9 @@
+{
+  "id": "t-20261113-155847-verify_hyp",
+  "action": "verify_hyp",
+  "params": {
+    "ids": "H-011,H-031"
+  },
+  "status": "pending",
+  "created_at": "2026-11-13T15:58:47"
+}

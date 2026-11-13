@@ -1,0 +1,10 @@
+{
+  "id": "t-20261113-155848-factor_probe",
+  "action": "factor_probe",
+  "params": {
+    "factor": "f020",
+    "symbols": "QQQ,SPY"
+  },
+  "status": "pending",
+  "created_at": "2026-11-13T15:58:48"
+}
