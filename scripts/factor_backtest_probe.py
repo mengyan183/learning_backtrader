@@ -71,6 +71,16 @@ IS_OOS_SHARPE_GAP_MAX = 0.30
 #:    参考：AXTX 58（拒）/ CRCG 235（过）/ CONL 630（过）/ GDXU 1409（过）
 MIN_EFFECTIVE_DAYS = 120
 
+#: 🔴 2026-11-13 用户要求：**alpha 显著性门槛** ✓
+#:    暴露过程：F-020（独立极恐标记）在 QQQ/SPY 上 PASS，
+#:    但 alpha 只有 **+0.24pp** ✗ —— 3949 天里只触发 215 天（5.44%），
+#:    这点 alpha 完全可能是噪音 ✗ 而旧判据只看「alpha > 0」⇒ 放过了 ✗
+#:    ⇒ 加**最小可采信阈值**：alpha 必须 ≥ 1.0pp（1 个百分点）才算「有择时能力」
+#:    参考：已 PASS 的 F-017（+18.09/+5.10/+2.97pp）都远超此线 ✓
+#:          F-012 的 TQQQ（+3.76pp）也过 ✓
+#:          F-020 的 +0.24pp 会被拦下 ✓（这是本次要修的目标）
+ALPHA_MIN_PP = 1.0
+
 
 def rolling_rank(s: pd.Series, window: int = ROLL, min_periods: int = 60) -> pd.Series:
     """因子对自身滚动分位 rank ∈ [0,1]（只用 ≤T 数据，无前视）。"""
@@ -102,6 +112,10 @@ def _verdict(alpha, strat, bh, is_m, b0_equiv, pos_mean, is_consistent):
                 "（pos_mean=%.2f）⇒ 它只是「仓位低」不是「择时好」）"
                 % (strat["annual_return"] * 100,
                    b0_equiv["annual_return"] * 100, pos_mean))
+    # 🔴 2026-11-13 用户要求：**alpha 显著性门槛** ✓（见 `ALPHA_MIN_PP` 注释）
+    if alpha * 100 < ALPHA_MIN_PP:
+        return ("FAIL（**alpha 不显著** ✗：+%.2fpp < %.2fpp 门槛 ⇒ 证据不足 ✗）"
+                % (alpha * 100, ALPHA_MIN_PP))
     if strat["max_drawdown"] < bh["max_drawdown"]:
         return ("FAIL（回撤劣化：%.1f%% < B0 %.1f%% ✗）"
                 % (strat["max_drawdown"] * 100, bh["max_drawdown"] * 100))

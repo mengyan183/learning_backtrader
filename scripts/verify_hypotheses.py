@@ -628,9 +628,19 @@ def verify_h031(df):
             "status": "insufficient", "passed": None,
             "n_events": n_ev_total, "n_base": n_base_max,
             "horizons": results,
-            "note": ("样本不足：方向变化事件日 %d（需 ≥%d）/ 基线 %d（需 ≥%d），"
-                     "无法做 t 检验。" % (n_ev_total, H031_MIN_EVENTS,
-                                        n_base_max, H031_MIN_BASE)),
+            # 🔴 2026-11-13 修**报错信息误导** ✗
+            #    实测回执：`样本不足：方向变化事件日 6（需 ≥5）/ 基线 359（需 ≥20）`
+            #    ⇒ 读起来「6 ≥ 5 ✓、359 ≥ 20 ✓ ⇒ 都够了，为什么还不足？」✗
+            #    真因：`n_ev_total` 是**各 horizon 之和**（h4/h8/h16 各 1~2 个），
+            #          而 `H031_MIN_EVENTS` 是**单个 horizon** 的门槛 ✗
+            #    ⇒ 把「总和」和「单 horizon 门槛」并列 ⇒ 逻辑上不可比 ✗
+            #    ⇒ 改成**逐 horizon 列出**，一眼看出哪个不足 ✓
+            "note": ("样本不足：各 horizon 事件日 %s（**每个**需 ≥%d，合计 %d）/ "
+                     "基线 %d（需 ≥%d），无法做 t 检验。"
+                     % ("/".join("h%d=%d" % (h, r["n_events"])
+                                 for h, r in results.items()),
+                        H031_MIN_EVENTS, n_ev_total,
+                        n_base_max, H031_MIN_BASE)),
         }
 
     adopted = any(p <= H031_ALPHA for p in p_values)
@@ -1926,10 +1936,22 @@ def verify_h011(df):
                           % "、".join(sorted(need - set(pos.columns)))}
     # ⚠️ 两个列都要查 ✗ —— 只查 `fg_index` 会在测试用的 mock df（无 `date`）上
     #    抛 `KeyError: ['date'] not in index` ✗（`test_all_supported_...` 实测）
+    # 🔴 2026-11-13 修**真 bug**：`load_features()` 走 `_read_csv()`，
+    #    而它 `set_index("date")` ⇒ **`date` 是 index 不是列** ✗
+    #    ⇒ 原来的 `"date" not in _cols` **永远为 True** ✗
+    #    ⇒ H-011 永远报「features 缺 fg_index 或 date 列」⇒ **被永久误杀** ✗
+    #    （实测 2026-11-13 `verify_hyp` 回执：`[H-011] pending / features 缺
+    #      fg_index 或 date 列` —— 而 features.csv 明明有 date 列 ✓）
+    #    ⇒ 先把 index 里的 `date` 提升成列 ✓
+    if df is not None and "date" not in getattr(df, "columns", []):
+        if getattr(df.index, "name", None) == "date":
+            df = df.reset_index()
     _cols = getattr(df, "columns", [])
     if df is None or "fg_index" not in _cols or "date" not in _cols:
         return {"passed": False, "status": "pending",
-                "reason": "features 缺 fg_index 或 date 列"}
+                "reason": "features 缺 fg_index 或 date 列（index=%s, cols=%s）"
+                          % (getattr(df.index, "name", "?"),
+                             ",".join(list(_cols)[:8]) if df is not None else "?")}
 
     p = pos.copy()
     for c in ("qty", "price", "cost"):
