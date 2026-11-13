@@ -26,6 +26,7 @@ import os
 import subprocess
 import sys
 import time
+import urllib.request
 from datetime import date, datetime
 from pathlib import Path
 
@@ -104,8 +105,9 @@ HEARTBEAT_TASKS = {
     #    实测 `availability.json` 5059 秒（1.4h）没更新就报警 ✗
     #    但它反映的是「免费模型源」可用性，**不是 web 服务存活** ✗
     #    （同一次回执显示进程 PID 59881 / state=running / never exited ✓）
-    #    ⇒ 24 小时阈值：容忍上游源长时间不可用，同时仍能发现真死 ✓
-    "com.xingguo.dsh.web":         86400,
+    #    ⇒ 已改 **HTTP 探活**（见 `TASK_LOG`），阈值回到 **300 秒** ✓
+    #       （探活是即时的，5 分钟内不通就是真挂 ✗）
+    "com.xingguo.dsh.web":         300,
 }
 
 #: 任务频率（2026-10-28 新增展示）。
@@ -186,8 +188,12 @@ TASK_LOG = {
     #         因为 `availability.json` 反映的是「免费模型源可用性」，
     #         它停刷 ≠ web 服务挂了（实测进程一直 running）✗
     #         24 小时阈值能容忍上游源长时间不可用，同时仍能发现真死 ✓
-    "com.xingguo.dsh.web":            ["~/.dsh/our-free-model/availability.json",
-                                       "/tmp/dsh-web-launchd.log"],
+    # 🔴 2026-11-13 用户澄清：`availability.json` 是**免费模型时代的遗留文件** ✗
+    #    hermes 现在配的是**付费 `deepseek-flash`** ⇒ 它不刷新是**预期行为** ✓
+    #    ⇒ 拿它当 `dsh.web` 的心跳**根本错误** ✗（web 活着 ≠ 免费模型源可用）
+    #    ⇒ 改用 **HTTP 探活** ✓：`dsh web` 监听 127.0.0.1:3080
+    #       `_task_log_age` 已支持 `http://` 前缀（GET 一次，status<500 算活）✓
+    "com.xingguo.dsh.web":            ["http://127.0.0.1:3080/"],
 }
 
 
@@ -230,6 +236,19 @@ def _task_log_age(label: str):
     """
     best_mt = None
     for rel in TASK_LOG.get(label) or []:
+        # 🔴 2026-11-13 用户澄清：`availability.json` 是**免费模型时代的遗留** ✗
+        #    hermes 现在配的是**付费 `deepseek-flash`** ⇒ 那个文件不刷新是**预期** ✓
+        #    ⇒ 拿它当 `dsh.web` 的心跳**根本错误** ✗
+        #    ⇒ 改用 **HTTP 探活** ✓（`dsh web` 在 127.0.0.1:3080）
+        #       `http://` 开头的候选 ⇒ GET 一次，2xx/3xx 就算活着 ✓
+        if str(rel).startswith(("http://", "https://")):
+            try:
+                with urllib.request.urlopen(rel, timeout=3) as r:
+                    if r.status < 500:
+                        return 0          # 活着 ⇒ age=0
+            except Exception:             # noqa: BLE001
+                pass                      # 探活失败 ⇒ 继续试下一个候选
+            continue
         p = _resolve_log(rel)
         if not p.exists():
             continue
