@@ -1,0 +1,14 @@
+{
+  "id": "t-20261113-153236-factor_probe",
+  "action": "factor_probe",
+  "params": {
+    "factor": "baa10y_pct",
+    "symbols": "TQQQ,QQQ,SPY"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"steps\": {\"signal_from\": \"features.csv（已有列，直接复用）\", \"signal\": {\"n\": 2547, \"head\": [{\"date\": \"2016-09-26\", \"baa10y_pct\": NaN}, {\"date\": \"2016-09-27\", \"baa10y_pct\": NaN}], \"tail\": [{\"date\": \"2026-11-11\", \"baa10y_pct\": 0.1851851851851851}, {\"date\": \"2026-11-12\", \"baa10y_pct\": 0.1865079365079365}]}, \"features_file\": \"/Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/features_baa10y_pct.csv\", \"features_cols\": [\"term\", \"price\", \"breadth\", \"fed\", \"putcall\", \"warmup\"], \"probe\": {\"TQQQ\": {\"rc\": 1, \"tail\": \"| 0.57 | 0.27 |\\n\\n- **择时 alpha = +6.72pp**（vs B0' 同仓位）✓ 有择时能力\\n- **Sharpe delta = +0.21**（vs B0 满仓）（超出噪音 ✓ 可作证据）\\n- **样本内外一致性**：样本内 Sharpe 0.34 vs OOS 0.65，差 0.32 ✗ **矛盾**（阈值 0.30，且样本内须 > 0）⇒ 过拟合嫌疑 ✗\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/baa10y_pct-TQQQ-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/baa10y_pct-TQQQ-oos.json\"}, \"QQQ\": {\"rc\": 1, \"tail\": \" | 0.80 | 0.40 |\\n\\n- **择时 alpha = +1.93pp**（vs B0' 同仓位）✓ 有择时能力\\n- **Sharpe delta = +0.08**（vs B0 满仓）（在噪音内 ✗ 不可当证据）\\n- **样本内外一致性**：样本内 Sharpe 0.56 vs OOS 0.91，差 0.35 ✗ **矛盾**（阈值 0.30，且样本内须 > 0）⇒ 过拟合嫌疑 ✗\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/baa10y_pct-QQQ-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/baa10y_pct-QQQ-oos.json\"}, \"SPY\": {\"rc\": 1, \"tail\": \" | 0.76 | 0.18 |\\n\\n- **择时 alpha = +1.06pp**（vs B0' 同仓位）✓ 有择时能力\\n- **Sharpe delta = -0.00**（vs B0 满仓）（在噪音内 ✗ 不可当证据）\\n- **样本内外一致性**：样本内 Sharpe 0.36 vs OOS 0.88，差 0.52 ✗ **矛盾**（阈值 0.30，且样本内须 > 0）⇒ 过拟合嫌疑 ✗\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/baa10y_pct-SPY-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/baa10y_pct-SPY-oos.json\"}}, \"artifacts\": [\"baa10y_pct-QQQ-oos.md\", \"baa10y_pct-SPY-oos.md\", \"baa10y_pct-TQQQ-oos.md\"]}, \"factor\": \"baa10y_pct\", \"direction\": \"positive\", \"ok\": true, \"note\": \"rc={'TQQQ': 1, 'QQQ': 1, 'SPY': 1} 表示**因子未通过裁判**（不是执行失败 ✓）—— 产出已生成，结论见 artifacts\"}",
+  "started_at": "2026-11-13T15:35:56",
+  "finished_at": "2026-11-13T15:35:59",
+  "duration_s": 2.91
+}
