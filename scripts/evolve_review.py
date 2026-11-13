@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import csv
+import time
 import urllib.request
 import urllib.error
 from datetime import date, datetime, timedelta
@@ -146,7 +147,16 @@ def build_prompt():
 {SCHEMA_HINT}"""
 
 
-def call_llm(prompt, timeout=240):
+#: 🔴 2026-11-13 用户裁定：**短超时 + 重试** ✓（原 240s 单次）
+#:    实测：`evolve_review` 连续多天 240s 失败（daily 链告警）
+#:    ⇒ 240s 单次的问题：一次卡死就占满 4 分钟，且**没有第二次机会** ✗
+#:    ⇒ 改 90s × 2 次（总上限 180s < 240s，且第一次失败还能再试）✓
+#:    注：hermes 若**真挂了**，改超时也没用 —— 但「偶发慢」时这个策略明显更好 ✓
+LLM_TIMEOUT = 90
+LLM_RETRIES = 2
+
+
+def call_llm(prompt, timeout=None, retries=None):
     """调**本机 Hermes 网关**（127.0.0.1:8642）⇒ 返回 (text, via)。
 
     🔴 2026-11-09 用户要求：**取消 NVIDIA 云端兜底** ✗ ——
@@ -158,15 +168,26 @@ def call_llm(prompt, timeout=240):
         "model": "hermes-agent",
         "messages": [{"role": "user", "content": prompt}],
     }).encode()
-    req = urllib.request.Request(HERMES_URL, data=body, method="POST",
-                                 headers={"Authorization": f"Bearer {HERMES_KEY}",
-                                          "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            d = json.loads(r.read())
-    except Exception as exc:
-        raise RuntimeError("Hermes(8642) 调用失败：%s" % exc) from exc
-    return d["choices"][0]["message"]["content"], "hermes(8642)"
+    _to = timeout if timeout is not None else LLM_TIMEOUT
+    _nr = retries if retries is not None else LLM_RETRIES
+    _last = None
+    for _i in range(max(1, _nr)):
+        req = urllib.request.Request(HERMES_URL, data=body, method="POST",
+                                     headers={"Authorization": f"Bearer {HERMES_KEY}",
+                                              "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=_to) as r:
+                d = json.loads(r.read())
+            return d["choices"][0]["message"]["content"], "hermes(8642)"
+        except Exception as exc:          # noqa: BLE001
+            _last = exc
+            if _i + 1 < _nr:
+                # 重试前等 5 秒：hermes 偶发排队时给一点缓冲 ✓
+                print(f"[evolve_review] LLM 第 {_i + 1}/{_nr} 次失败"
+                      f"（{type(exc).__name__}），5 秒后重试…")
+                time.sleep(5)
+    raise RuntimeError("Hermes(8642) 调用失败（%d 次 × %ds）：%s"
+                       % (_nr, _to, _last)) from _last
 
 
 def extract_json(text):

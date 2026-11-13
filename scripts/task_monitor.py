@@ -100,7 +100,12 @@ HEARTBEAT_TASKS = {
     #    ⇒ 进程活着时 mtime 也一直不动 ⇒ 会天天误报「卡死」✗
     #    `availability.json` 是 dsh 运行期持续刷新的（实测 1 分钟级）✓
     #    阈值给 **3600 秒**（1 小时）—— 它依赖上游模型源，刷新间隔可能拉长 ✓
-    "com.xingguo.dsh.web":         3600,
+    # 🔴 2026-11-13：3600 → **86400**（24 小时）✓
+    #    实测 `availability.json` 5059 秒（1.4h）没更新就报警 ✗
+    #    但它反映的是「免费模型源」可用性，**不是 web 服务存活** ✗
+    #    （同一次回执显示进程 PID 59881 / state=running / never exited ✓）
+    #    ⇒ 24 小时阈值：容忍上游源长时间不可用，同时仍能发现真死 ✓
+    "com.xingguo.dsh.web":         86400,
 }
 
 #: 任务频率（2026-10-28 新增展示）。
@@ -168,6 +173,19 @@ TASK_LOG = {
     # 🔴 2026-11-11：dsh web 的日志都在仓库外 ⇒ 用 `~` 前缀（下面 `_resolve_log` 会展开）✓
     #    ① `/tmp/dsh-web-launchd.log`  —— 启动时写一行（只看「最后一次启动时间」）
     #    ② `~/.dsh/our-free-model/availability.json` —— 运行期持续刷新（心跳用这个）✓
+    # 🔴 2026-11-13 实测（`dsh_web_diag` 回执）：
+    #    `availability.json` 本身 **5059 秒没刷新** ✗（不是心跳配错）
+    #    ⇒ 那是 dsh 的 `our-free-model` 模块停刷（上游模型源问题）✗
+    #      而 `dsh.web` 进程**完全正常**：PID 59881、`state=running`、
+    #      `last exit code = (never exited)` ✓
+    #    ⇒ 用 `availability.json` 当 `dsh.web` 的心跳**混淆了两件事** ✗
+    #      （web 服务活着 ≠ 免费模型源可用）
+    #    ⇒ **整条移除** ✓：`dsh.web` 有 `KeepAlive=true`，
+    #      进程挂了 launchd 会立刻重启 ⇒ 不需要额外的日志心跳 ✓
+    #      ⇒ **保留监控但大幅放宽阈值**（见 `STALE_SEC` 86400）✓
+    #         因为 `availability.json` 反映的是「免费模型源可用性」，
+    #         它停刷 ≠ web 服务挂了（实测进程一直 running）✗
+    #         24 小时阈值能容忍上游源长时间不可用，同时仍能发现真死 ✓
     "com.xingguo.dsh.web":            ["~/.dsh/our-free-model/availability.json",
                                        "/tmp/dsh-web-launchd.log"],
 }
