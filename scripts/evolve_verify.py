@@ -78,7 +78,11 @@ def check_h002():
     falsified = n_neg <= 2
     return {
         "id": "H-002", "status": "falsified" if falsified else "adopted",
-        "evidence": "5 个交易日内现金<0 天数 %d/5" % n_neg,
+        # 🔴 2026-11-16 实测：输出「34/5」✗ —— 分母写死 5，而实际已 34 天 ✗
+        #    判据 `n_neg <= 2` 本是「5 日内」设计，现在窗口变成全历史 ✗
+        #    ⇒ 文案改 `%d/%d`（真实分母）；判据语义待定（见 note）✓
+        "evidence": "全历史 %d 个交易日中现金<0 天数 %d/%d（原判据按 5 日窗口设计）"
+                    % (n_total, n_neg, n_total),
         "note": "",
     }
 

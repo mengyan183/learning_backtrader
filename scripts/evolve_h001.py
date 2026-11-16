@@ -157,9 +157,15 @@ def main():
     rho = pearson(dmv, dnv)
     cond1 = rebound >= REBOUND_FALSIFY
     cond2 = rho <= RHO_FALSIFY
-    note = (f"终点市值 {mv[-1]:.2f} vs 起点 {base_mv:.2f}，反弹 {rebound*100:.1f}%"
-            f"（判据 ≥10%）；ρ(d市值, d净值)={rho:.3f}（判据 ≤0.3）；"
-            f"触发1={cond1}，触发2={cond2}")
+    # 🔴 2026-11-16 实测：`rebound=-70.5%` 却打印「反弹 -70.5%」✗
+    #    「反弹」是**正向**词，配负值成矛盾修辞 ⇒ 读者以为判据算错了 ✗
+    #    判据 `cond1 = rebound >= 0.10` 是**反证**（真反弹才说明不是拖累）✓
+    #    ⇒ 文案改成中性的「市值变动」并带符号 ✓
+    note = (f"终点市值 {mv[-1]:.2f} vs 起点 {base_mv:.2f}，"
+            f"市值变动 {rebound*100:+.1f}%"
+            f"（反证判据：变动 ≥+10% 才算「不是拖累」）；"
+            f"ρ(d市值, d净值)={rho:.3f}（反证判据：ρ≤0.3 才算「无拖累」）；"
+            f"反证触发1={cond1}，触发2={cond2}")
     if cond1 or cond2:
         update_hypotheses("falsified", f"**证伪**：{note}")
         print(f"[H-001] 证伪 falsified：{note}")
