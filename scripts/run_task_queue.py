@@ -3767,9 +3767,12 @@ def _act_git_commit(params):
     steps = []
 
     def _git(*a):
-        r = _sp.run(["git", "-C", ROOT] + list(a),
-                    capture_output=True, text=True,
-                    encoding="utf-8", errors="replace", timeout=180)
+        # 🔴 2026-11-16 实测：`_sp` 是**局部导入**（见 line 457/1710）✗
+        #    模块级只有 `import subprocess` ⇒ 这里写 `_sp.run` 报
+        #    `NameError: name '_sp' is not defined` ✗（`task_1116l` 实测）
+        r = subprocess.run(["git", "-C", ROOT] + list(a),
+                           capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=180)
         return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
 
     # ① 看提交前有哪些改动（诊断用 ✓）
