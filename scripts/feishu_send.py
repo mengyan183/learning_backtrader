@@ -509,7 +509,14 @@ def main():
         # 复用的会话里飞书页面**已经在** ⇒ 跳过 navigate ✓
         # （若复用的会话被切到别的页面，下面的 `find_textbox` 会失败 ⇒
         #   下一轮 `session list` 查不到该 sid 或用户手动处理 ⇒ 自然回退 ✓）
-        if not reused:
+        # 🔴 2026-11-16 用户要求：**复用会话时也强制 navigate** ✓
+        #    实测 `fix_1122z`：复用成功（跳过 navigate）但**循环里拿不到编辑器** ✗
+        #    原因：飞书闲置一段时间后会**卸载编辑器**（省内存）✗
+        #    ⇒ 复用的会话页面看似还在聊天页，实际 DOM 已空 ✗
+        #    ⇒ 无条件 navigate 一次，保证页面是新鲜的 ✓
+        #    代价：失去「跳过 navigate」的 30~45 秒加速 ✗
+        #      但仍保留「跳过 `start`」的收益（创建会话更慢）✓
+        if True:                              # noqa: SIM103 —— 保留缩进便于回退
             _nav_err = None
             for _i in range(2):
                 try:
@@ -601,13 +608,22 @@ def main():
                 if box:
                     break
                 if _try and _try % 5 == 0:
+                    # 🔴 2026-11-16 用户要求：**加打印** ✓
+                    #    之前 `except: pass` 吞掉一切 ⇒ 日志里看不到「重点」发生
+                    #    实测 `fix_1122z` 失败时**完全没有**这一行 ✗
+                    #    ⇒ 分不清是「find_chat 返回 None」还是「click 抛异常」✗
                     _r, _l = bsk.find_chat(vom, args.chat)
                     if _r:
                         try:
                             bsk.run("click", _r)
-                            print("  …重新点会话（第 %d 次重试）" % (_try // 5))
-                        except Exception:      # noqa: BLE001
-                            pass
+                            print("  …重新点会话（第 %d 次，ref=%s）"
+                                  % (_try // 5, _r))
+                        except Exception as _ce:   # noqa: BLE001
+                            print("  …重点失败（第 %d 次）：%s"
+                                  % (_try // 5, str(_ce)[:100]))
+                    else:
+                        print("  …VOM 里找不到会话（第 %d 次，vom_len=%d）"
+                              % (_try // 5, len(vom)))
                 time.sleep(2)
             if not box:
                 # 🔴 2026-11-13：**清掉复用的 sid** ✓ —— 找不到输入框说明
