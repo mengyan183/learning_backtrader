@@ -2074,15 +2074,39 @@ def _data_health_block(snap, sentiment=None, attribution=None, judge=None):
     #    ⇒ 健康块必须**独立核对持仓快照日期** ✓，不能只信状态文件 ✓
     _pos_date = str(snap.get("date") or "")[:10]
     if _pos_date:
+        # 🔴 2026-11-16 用户反馈：**「3 天前」是假警报** ✗
+        #    `positions.csv` 的 `date` 是**美东收盘日**（`sync_positions` 明说
+        #    「美东交易日口径，16:00 ET 为收盘线」）✗
+        #    旧逻辑用**北京 `date.today()`** 减它 ⇒ 时区错位 + 周末被算成「落后」✗
+        #    实测 11-16（周一）快照 11-13（周五）⇒ 自然日差 3 ⇒ 误报「3 天前」✗
+        #    而 11-13 **就是最近收盘日**，数据是正常的 ✓
+        #    ⇒ ① 用**美东日期**（UTC-5 保守）当基准 ✓
+        #       ② 用**工作日差**（跳周末）判落后，`>= 2` 才算真落后 ✓
+        #       ③ 落后 1 个工作日 ⇒ 只是「最近收盘日」⇒ 用 ℹ️ 说明，不报警 ✓
         try:
             import datetime as _dt
-            _lag = (_dt.date.today() - _dt.date.fromisoformat(_pos_date)).days
+            _pd = _dt.date.fromisoformat(_pos_date)
+            _et = (_dt.datetime.now(_dt.timezone.utc)
+                   - _dt.timedelta(hours=5)).date()
+            _wd = 0
+            _c = _pd
+            while _c < _et:
+                _c += _dt.timedelta(days=1)
+                if _c.weekday() < 5:
+                    _wd += 1
         except (TypeError, ValueError):
-            _lag = 0
-        if _lag >= 3:
-            lines.append("⚠️ 持仓快照 **%s**（%d 天前）—— 数据可能未同步 ✗ "
+            _pd, _et, _wd = None, None, 0
+        if _wd >= 2:
+            lines.append("⚠️ 持仓快照 **%s**（落后 %d 个交易日）—— 数据可能未同步 ✗ "
                          "本简报的市值/浮亏/仓位比例均按该日数据 ✓"
-                         % (_pos_date, _lag))
+                         % (_pos_date, _wd))
+        elif _wd == 1:
+            # ⚠️ 必须写「美东」✗ —— 这个日期是**美东收盘日**（`positions.csv`
+            #    的 `date` 列口径），而读者在北京 ⇒ 北京日期比它晚 1 天
+            #    （美东 11-13 16:00 收盘 = 北京 11-14 04:00）✗
+            #    不加「美东」会被读成「北京 11-13」⇒ 以为落后 3 天 ✗
+            lines.append("ℹ️ 持仓快照 **%s**（美东最近收盘日；美股盘中则为上一交易日）"
+                         % _pos_date)
     # 🔴 2026-11-10 用户反馈「BTC 价格不刷新」✗ ——
     #    `realtime_state` 停在 11-09 22:07，简报却把它当实时价 ✗
     #    ⇒ 顶部显式告警 ✓（单看持仓行里的时间戳容易被忽略 ✗）
