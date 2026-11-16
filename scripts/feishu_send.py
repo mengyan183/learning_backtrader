@@ -34,7 +34,9 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fg_system import config                     # noqa: E402
@@ -169,6 +171,10 @@ def _release_lock(fd):
 
 
 FEISHU_URL = "https://www.feishu.cn/messenger/"
+
+#: 🔴 2026-11-13：上次用的 bsk 会话 id（用于**复用常驻会话** ✓）
+#:    放临时目录 ⇒ 重启电脑自动失效 ✓（失效后走新建分支，安全）
+_SID_FILE = Path(tempfile.gettempdir()) / "fg_bsk_session.txt"
 TEXTBOX_RE = re.compile(r"(@e\d+)\s+textbox")
 #: 飞书富文本编辑器的 CSS 选择器 ✓（bsk 0.4.2 的 VOM 不暴露 textbox ⇒ 只能按选择器填）
 EDITOR_SELECTOR = 'div[contenteditable="true"]'
@@ -227,6 +233,38 @@ class Bsk:
         out = self.run(*args, with_session=False)
         self.session = out.strip().splitlines()[-1].strip()
         return self.session
+
+    # ── 🔴 2026-11-13 用户要求：**复用常驻会话，不要每次重新探索** ──
+    #    问题：`main()` 每次都 `reap()` + `start()` + `navigate()`
+    #      ⇒ 新标签页 + 飞书 SPA **冷加载** ✗
+    #      ⇒ 今天 15+ 个包失败 5 次（33%）✗
+    #    方案：把上次的 sid 存到临时文件，下次先 `session list` 查它还活着吗
+    #      ⇒ 活着就**直接复用**（跳过 reap/start/navigate）✓
+    #      ⇒ 死了才新建（此时才 reap）✓
+    #    为什么不是「常驻服务」：`bsk` 本身是**CLI + daemon** 架构 ✗
+    #      浏览器会话本来就活在 daemon 里 ✓ 只是我们每次都把它杀了 ✗
+    #      ⇒ 复用 sid 就等价于「常驻」✓ 不需要额外写服务 ✓
+    def reuse_or_start(self):
+        """优先复用上次的会话 ⇒ 返回 `(sid, reused)` ✓"""
+        old = ""
+        try:
+            old = _SID_FILE.read_text(encoding="utf-8").strip()
+        except OSError:
+            pass
+        if old:
+            out = self.run("session", "list",
+                           with_session=False, check=False)
+            if old in (out or ""):
+                self.session = old
+                return old, True
+        # 没有可复用的 ⇒ 先收割残留，再新建 ✓
+        self.reap()
+        sid = self.start(no_focus=True)
+        try:
+            _SID_FILE.write_text(sid, encoding="utf-8")
+        except OSError:
+            pass
+        return sid, False
 
     def stop(self):
         """停掉本会话 ✓。
@@ -442,11 +480,10 @@ def main():
     lock_fd = _acquire_lock()
     bsk = Bsk()
     try:
-        # 🔴 先清掉**所有残留会话** ✓ —— 泄漏的会话会让 `observe` 挂起 ✗
-        # （2026-10-27 实测：残留 10+ 后每次发送都卡死 ✗）
-        bsk.reap()
-        sid = bsk.start(no_focus=True)
-        print("bsk 会话：%s" % sid)
+        # 🔴 2026-11-13 用户要求：**优先复用常驻会话** ✓（见 `reuse_or_start`）
+        #    原来这里无条件 `reap()` + `start()` ⇒ 每次冷启动 ✗
+        sid, reused = bsk.reuse_or_start()
+        print("bsk 会话：%s%s" % (sid, "（复用 ✓ 跳过 navigate）" if reused else ""))
 
         # 🔴 2026-11-04：**必须显式给 `--timeout 90s`** ✗
         #    实测 `bsk navigate` 的 **默认超时是 30 秒** ✗
@@ -469,20 +506,24 @@ def main():
         #      「连发 2 次都超时，**第 3 次（缓存热了）才成功**」
         #      ⇒ 说明**重试有效**（第二次时资源已缓存）✓
         #    ⇒ navigate 失败后等 5 秒重试 1 次（共 2 次，上限 185s）✓
-        _nav_err = None
-        for _i in range(2):
-            try:
-                bsk.run("navigate", FEISHU_URL, "--timeout", "90s")
-                _nav_err = None
-                break
-            except Exception as _e:          # noqa: BLE001
-                _nav_err = _e
-                print("[navigate] 第 %d/2 次失败：%s"
-                      % (_i + 1, str(_e)[:120]))
-                if _i == 0:
-                    time.sleep(5)            # 给缓存/连接一点时间
-        if _nav_err is not None:
-            raise _nav_err
+        # 复用的会话里飞书页面**已经在** ⇒ 跳过 navigate ✓
+        # （若复用的会话被切到别的页面，下面的 `find_textbox` 会失败 ⇒
+        #   下一轮 `session list` 查不到该 sid 或用户手动处理 ⇒ 自然回退 ✓）
+        if not reused:
+            _nav_err = None
+            for _i in range(2):
+                try:
+                    bsk.run("navigate", FEISHU_URL, "--timeout", "90s")
+                    _nav_err = None
+                    break
+                except Exception as _e:      # noqa: BLE001
+                    _nav_err = _e
+                    print("[navigate] 第 %d/2 次失败：%s"
+                          % (_i + 1, str(_e)[:120]))
+                    if _i == 0:
+                        time.sleep(5)        # 给缓存/连接一点时间
+            if _nav_err is not None:
+                raise _nav_err
 
         # ⚠️ 飞书首屏**很慢**（实测 5 秒时连会话列表都还没渲染出来）——
         # 固定 sleep 会误判成"找不到会话"。改成轮询等待。
@@ -542,15 +583,30 @@ def main():
             #    但进循环后 12 秒内 `find_textbox` 一直返回 None ✗
             #    （`fix_1120u` / `task_1112r` 连续 4 次同一位置失败）
             #    ⇒ 提到 **20 次（40 秒）**，与首次等待一致 ✓
-            for _try in range(20):
+            # 🔴 2026-11-13 用户要求：**20 → 30 次（40s → 60s）** ✓
+            #    实测（今天 15+ 个包）：20 次（40 秒）**仍会失败** ✗
+            #    典型日志：`❌ 第 1 条（xxx）前找不到输入框`
+            #    ⇒ 飞书冷加载比之前更慢（可能前端变重了）✗
+            #    ⇒ 提到 **30 次（60 秒）**；失败时多等 20 秒可接受 ✓
+            #      （成功时通常在 1~3 次内 break，不影响正常速度 ✓）
+            for _try in range(30):
                 _ctx, vom = bsk.sync()
                 box = bsk.find_textbox(vom)
                 if box:
                     break
                 time.sleep(2)
             if not box:
+                # 🔴 2026-11-13：**清掉复用的 sid** ✓ —— 找不到输入框说明
+                #    这个会话里的飞书页面已经不可用（被切走/掉登录）✗
+                #    ⇒ 删掉 sid 文件 ⇒ **下次自动走新建流程**（含 navigate）✓
+                #    否则会一直复用一个坏会话，每次都失败 ✗
+                try:
+                    _SID_FILE.unlink()
+                except OSError:
+                    pass
                 raise SystemExit("❌ 第 %d 条（%s）前找不到输入框；"
-                                 "可能页面被切走或掉登录了" % (i, name))
+                                 "可能页面被切走或掉登录了"
+                                 "（已清掉复用 sid，下次会新建会话）" % (i, name))
 
             # `fill` 有时报 "browser rejected the underlying CDP call"，
             # 但**内容其实已经填进去了**（校验被 placeholder 干扰）。
