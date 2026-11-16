@@ -530,7 +530,23 @@ def main():
                     if _i == 0:
                         time.sleep(5)        # 给缓存/连接一点时间
             if _nav_err is not None:
-                raise _nav_err
+                # 🔴 2026-11-16 实测（`fix_1130b`）：复用的会话 navigate 报
+                #    `the control context no longer belongs to the current tab` ✗
+                #    ⇒ 说明该会话的 tab 已经失效（飞书页面崩过）✗
+                #    ⇒ **复用坏会话比新建更糟**（navigate 都做不到）✗
+                #    ⇒ 回退：销毁会话 + 重建 + 再 navigate 一次 ✓
+                print("[navigate] 复用会话失效 ⇒ 重建会话重试")
+                try:
+                    bsk.stop()
+                except Exception:             # noqa: BLE001
+                    pass
+                sid = bsk.start(no_focus=True)
+                try:
+                    bsk.run("navigate", FEISHU_URL, "--timeout", "90s")
+                    _nav_err = None
+                    print("  重建后 navigate 成功 ✓")
+                except Exception as _e2:      # noqa: BLE001
+                    raise _e2
 
         # ⚠️ 飞书首屏**很慢**（实测 5 秒时连会话列表都还没渲染出来）——
         # 固定 sleep 会误判成"找不到会话"。改成轮询等待。
@@ -612,6 +628,24 @@ def main():
                     #    之前 `except: pass` 吞掉一切 ⇒ 日志里看不到「重点」发生
                     #    实测 `fix_1122z` 失败时**完全没有**这一行 ✗
                     #    ⇒ 分不清是「find_chat 返回 None」还是「click 抛异常」✗
+                    # 🔴 2026-11-16 实测（`fix_1130a`）：打印后发现
+                    #    **`vom_len=0` 连续 5 次** ✗ —— 页面整个是空的
+                    #    （不是「找不到编辑器」，是**飞书 SPA 崩了/被卸载**）✗
+                    #    ⇒ 空页面**不会自己恢复**，只 sync 永远拿不到 ✓
+                    #    ⇒ `vom_len < 500` 就**重新 navigate** 一次 ✓
+                    if len(vom) < 500:
+                        # 🔴 2026-11-16 实测（`fix_1130c`）：**不能在这里 navigate** ✗
+                        #    VOM 为空说明 context 已失效 ⇒ `bsk navigate` 报
+                        #    `the control context no longer belongs to the
+                        #    current tab` ✗ ⇒ 而且 `continue` 会**跳过一次 sync**
+                        #    机会 ⇒ 反而更慢 ✗
+                        #    对照：`fix_1130a` 什么都不做，5 次 `vom_len=0` 后
+                        #    **第 6 次页面自己恢复了** ✓（约 60 秒）
+                        #    ⇒ 这里**只打印**，靠 sync 重试等待自愈 ✓
+                        print("  …VOM 为空(%d)，继续等（第 %d 次）"
+                              % (len(vom), _try // 5))
+                        time.sleep(2)
+                        continue
                     _r, _l = bsk.find_chat(vom, args.chat)
                     if _r:
                         try:
