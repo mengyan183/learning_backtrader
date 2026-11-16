@@ -589,11 +589,25 @@ def main():
             #    ⇒ 飞书冷加载比之前更慢（可能前端变重了）✗
             #    ⇒ 提到 **30 次（60 秒）**；失败时多等 20 秒可接受 ✓
             #      （成功时通常在 1~3 次内 break，不影响正常速度 ✓）
+            # 🔴 2026-11-16 用户反馈：**「进入页面后需要先点击会话才会出来编辑框」** ✓
+            #    实测：首次等待（20×2s）能拿到 box，但进循环后 30×2s 全 None ✗
+            #    原因：`click` 后消息列表继续加载 ⇒ **页面重渲染** ⇒ 编辑器被
+            #      卸载重建 ⇒ 只靠 `sync()` 重试抓不到（旧 ref 也失效）✗
+            #    ⇒ 每 5 次（10 秒）**重新点一次会话**，强制触发一次渲染 ✓
+            #      （此时还没 `fill`，重新点击不会丢内容 ✓）
             for _try in range(30):
                 _ctx, vom = bsk.sync()
                 box = bsk.find_textbox(vom)
                 if box:
                     break
+                if _try and _try % 5 == 0:
+                    _r, _l = bsk.find_chat(vom, args.chat)
+                    if _r:
+                        try:
+                            bsk.run("click", _r)
+                            print("  …重新点会话（第 %d 次重试）" % (_try // 5))
+                        except Exception:      # noqa: BLE001
+                            pass
                 time.sleep(2)
             if not box:
                 # 🔴 2026-11-13：**清掉复用的 sid** ✓ —— 找不到输入框说明
@@ -678,9 +692,24 @@ def main():
             print("     bash scripts/mac_bootstrap.sh")
         return 0
     finally:
-        bsk.stop()
+        # 🔴 2026-11-16 用户要求：**改成 daemon 常驻会话** ✓
+        #    原来**无条件** `stop()` ⇒ 每个进程结束都销毁会话 ✗
+        #    ⇒ 下一个包必须 `reap()` + `start()` + `navigate()` 冷启动 ✗
+        #      实测要 30~45 秒（飞书首屏很慢）⇒ `find_textbox` 常在 DOM
+        #      就绪前返回 None ⇒ 报「找不到输入框」✗
+        #    实测对照（同一天）：
+        #      `stop --all` 后发 ⇒ **连续 2 次失败** ✗
+        #      不 stop（复用刚打开的会话）⇒ **一次成功** ✓
+        #    ⇒ **成功时保留会话**（下次 `reuse_or_start` 直接复用，跳过冷启动）✓
+        #       **失败时仍 stop**（会话可能已坏，留着会拖累下次）✓
+        #    自愈：保留的会话若真坏了（掉登录/被切走）⇒ 下次 `find_textbox`
+        #      返回 None ⇒ 兜底 `_SID_FILE.unlink()` ⇒ 再下次重建 ✓
+        if sys.exc_info()[0] is not None:
+            bsk.stop()
+            print("bsk 会话已结束（失败，已清理）。")
+        else:
+            print("bsk 会话保留（下次复用，跳过冷启动）。")
         _release_lock(lock_fd)
-        print("bsk 会话已结束。")
 
 
 if __name__ == "__main__":
