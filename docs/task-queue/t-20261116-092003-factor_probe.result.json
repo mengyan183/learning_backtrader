@@ -1,0 +1,14 @@
+{
+  "id": "t-20261116-092003-factor_probe",
+  "action": "factor_probe",
+  "params": {
+    "factor": "ene",
+    "symbols": "GDXU,YINN,CONL,CRCG"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"steps\": {\"signal_from\": \"per-symbol（见 ③）\", \"features_file\": \"per-symbol（ene 依赖 symbol，见 ③）\", \"probe\": {\"GDXU\": {\"rc\": 1, \"tail\": \"0.76 | 0.26 | 0.69 | -0.22 |\\n\\n- **择时 alpha = +9.47pp**（vs B0' 同仓位）✓ 有择时能力\\n- **Sharpe delta = +0.44**（vs B0 满仓）（超出噪音 ✓ 可作证据）\\n- **样本内外一致性**：样本内 Sharpe -0.28 vs OOS 0.61，差 0.90 ✗ **矛盾**（阈值 0.30，且样本内须 > 0）⇒ 过拟合嫌疑 ✗\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/ene-GDXU-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/ene-GDXU-oos.json\"}, \"YINN\": {\"rc\": 1, \"tail\": \"0 | -0.44 | -0.27 | -0.11 |\\n\\n- **择时 alpha = +1.93pp**（vs B0' 同仓位）✓ 有择时能力\\n- **Sharpe delta = +0.17**（vs B0 满仓）（超出噪音 ✓ 可作证据）\\n- **样本内外一致性**：样本内 Sharpe -0.18 vs OOS -0.20，差 0.02 ✗ **矛盾**（阈值 0.30，且样本内须 > 0）⇒ 过拟合嫌疑 ✗\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/ene-YINN-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/ene-YINN-oos.json\"}, \"CONL\": {\"rc\": 1, \"tail\": \"6 | -0.50 | -0.08 | -1.06 |\\n\\n- **择时 alpha = +10.36pp**（vs B0' 同仓位）✓ 有择时能力\\n- **Sharpe delta = +0.34**（vs B0 满仓）（超出噪音 ✓ 可作证据）\\n- **样本内外一致性**：样本内 Sharpe -0.64 vs OOS 0.05，差 0.69 ✗ **矛盾**（阈值 0.30，且样本内须 > 0）⇒ 过拟合嫌疑 ✗\\n\\n> 由 scripts/factor_backtest_probe.py 生成 · 确定性判定，无 LLM 判决；\\n> 仅作 C-3 审批证据，不直接改动生产。\\n[probe] md → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/ene-CONL-oos.md\\n[probe] json → /Users/xingguo/learning_backtrader/evolution/experiments/factor-adoption/ene-CONL-oos.json\"}, \"CRCG\": {\"rc\": 1, \"tail\": \"样本内不足：0 行（2024-10-04 之前）< 60 ⇒ 无法做内外一致性检查 ✗ （该标的的价格历史太短，起点约 2025-11-14）\"}}, \"artifacts\": [\"ene-CONL-oos.md\", \"ene-GDXU-oos.md\", \"ene-YINN-oos.md\"]}, \"factor\": \"ene\", \"direction\": \"negative\", \"ok\": true, \"note\": \"rc={'GDXU': 1, 'YINN': 1, 'CONL': 1, 'CRCG': 1} 表示**因子未通过裁判**（不是执行失败 ✓）—— 产出已生成，结论见 artifacts\"}",
+  "started_at": "2026-11-16T09:21:30",
+  "finished_at": "2026-11-16T09:21:34",
+  "duration_s": 4.31
+}

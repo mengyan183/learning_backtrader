@@ -1,0 +1,52 @@
+{
+  "generated_at": "2026-11-16 09:21",
+  "factor": "ene",
+  "symbol": "GDXU",
+  "direction": "negative",
+  "oos_start": "2024-10-04",
+  "oos_days": 529,
+  "cost_per_unit_turnover": 0.0007999999999999999,
+  "metrics": {
+    "strategy_oos": {
+      "total_return": 1.3781798668296479,
+      "annual_return": 0.5108866327596953,
+      "max_drawdown": -0.6685832573436481,
+      "annual_vol": 0.833590756174826,
+      "sharpe": 0.6128746377947464,
+      "calmar": 0.7641331534228091
+    },
+    "buyhold_oos": {
+      "total_return": 0.5418378378378379,
+      "annual_return": 0.22906850844572113,
+      "max_drawdown": -0.8774476190476191,
+      "annual_vol": 1.3438204602122046,
+      "sharpe": 0.17046064948999853,
+      "calmar": 0.26106231696696824
+    },
+    "strategy_is": {
+      "total_return": -0.4936460377897869,
+      "annual_return": -0.17437112497756624,
+      "max_drawdown": -0.79295891442771,
+      "annual_vol": 0.6146609378198129,
+      "sharpe": -0.2836866868359266,
+      "calmar": -0.21989931862158635
+    },
+    "buyhold_samepos_oos": {
+      "total_return": 1.075896174985857,
+      "annual_return": 0.41614396929827757,
+      "max_drawdown": -0.6062968979941468,
+      "annual_vol": 0.7289810341199353,
+      "sharpe": 0.5708570591286627,
+      "calmar": 0.6863699462673072
+    }
+  },
+  "pos_mean": 0.5425,
+  "timing_alpha": 0.094743,
+  "sharpe_delta": 0.4424,
+  "sharpe_noise_threshold": 0.1,
+  "is_sharpe": -0.2837,
+  "oos_is_sharpe_gap": 0.8966,
+  "is_oos_gap_max": 0.3,
+  "is_consistent": false,
+  "verdict": "FAIL（**样本内外矛盾** ✗：样本内 Sharpe -0.28（≤0，样本内亏钱），OOS 0.61，差 0.90 ≥ 0.30 ⇒ 典型过拟合 ✗）"
+}
