@@ -75,14 +75,18 @@ def check_h002():
                 n_total, ", ".join(map(str, stock["cash"].tolist())), n_neg, n_total),
             "note": "待 2026-10-09 前后累计 5 个交易日后再判；负现金持续（-981.66/-876.11/-879.99）",
         }
-    falsified = n_neg <= 2
+    # 🔴 2026-11-16 用户要求：**判据改成比例** ✓
+    #    原来 `n_neg <= 2` 是「5 个交易日窗口里负现金 ≤2 天算证伪」✗
+    #    ⇒ 窗口变全历史后 `n_neg=34` 必然 > 2 ⇒ **永远判 adopted** ✗
+    #      判据**失效**了（不是因为假说成立，而是因为窗口变了）✗
+    #    ⇒ 改成比例 `n_neg / n_total <= 0.4` ✓
+    #      （等价于原「5 日内 ≤2 天」= 40% ✓ 语义保持）
+    _ratio = (n_neg / n_total) if n_total else 0.0
+    falsified = _ratio <= 0.4
     return {
         "id": "H-002", "status": "falsified" if falsified else "adopted",
-        # 🔴 2026-11-16 实测：输出「34/5」✗ —— 分母写死 5，而实际已 34 天 ✗
-        #    判据 `n_neg <= 2` 本是「5 日内」设计，现在窗口变成全历史 ✗
-        #    ⇒ 文案改 `%d/%d`（真实分母）；判据语义待定（见 note）✓
-        "evidence": "全历史 %d 个交易日中现金<0 天数 %d/%d（原判据按 5 日窗口设计）"
-                    % (n_total, n_neg, n_total),
+        "evidence": "全历史 %d 个交易日中现金<0 %d 天（%.0f%%，"
+                    "证伪判据 ≤40%%）" % (n_total, n_neg, _ratio * 100),
         "note": "",
     }
 
