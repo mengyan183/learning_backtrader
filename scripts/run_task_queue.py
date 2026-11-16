@@ -3340,6 +3340,85 @@ def _act_run_fetch_step(params):
             "stdout": so[-6000:], "stderr": se[-2000:]}
 
 
+def _act_futu_probe(params):
+    """验证**富途 OpenD 是否可用** ✓（2026-11-16 用户要求）
+
+    🔴 背景：简报报「富途 OpenD 不可用 —— 超过 180 秒未完成（疑似 SDK
+       重连循环）」⇒ 连带两个 daily 脚本超时（`fetch_fedwatch_futu` 300s、
+       `invest_research` 900s）⇒ 持仓 3 天未更新 ✗
+
+    查**四层**（从粗到细，任一层失败就能定位问题在哪）：
+      ① **进程**：`ps aux` 里有没有 `futu` / `OpenD` ✓
+         （没有 ⇒ OpenD 根本没启动 ✗）
+      ② **端口**：`127.0.0.1:11111` 能否 TCP 连上 ✓
+         （连不上 ⇒ 进程在但没监听 / 防火墙 ✗）
+      ③ **SDK**：`futu.OpenQuoteContext()` 能否构造成功 ✓
+         （失败 ⇒ 端口通但协议层不对 / 版本不匹配 ✗）
+      ④ **快照**：`get_market_snapshot(["US.SPY"])` 能否取到数据 ✓
+         （失败 ⇒ 连接通但行情权限/登录态有问题 ✗）
+
+    ⚠️ **只有 ④ 成功才算「可用」** ✗ —— 前三层都可能假通
+       （实测过「端口通但 get_market_snapshot 一直超时」的情形）
+
+    参数：`host`（默认 127.0.0.1）/ `port`（默认 11111）
+    """
+    import socket
+    host = str(params.get("host") or "127.0.0.1")
+    port = int(params.get("port") or 11111)
+    out = {"host": host, "port": port, "steps": {}}
+
+    # ① 进程
+    try:
+        r = subprocess.run(["ps", "aux"], capture_output=True,
+                           text=True, timeout=20)
+        hits = [ln.strip() for ln in (r.stdout or "").splitlines()
+                if ("futu" in ln.lower() or "opend" in ln.lower())
+                and "grep" not in ln]
+        out["steps"]["processes"] = [h[:150] for h in hits[:5]] or ["(无)"]
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["processes"] = "ERR %s" % str(exc)[:100]
+
+    # ② 端口
+    _port_ok = False
+    try:
+        _s = socket.create_connection((host, port), timeout=5)
+        _s.close()
+        _port_ok = True
+        out["steps"]["port"] = "可连 ✓"
+    except Exception as exc:              # noqa: BLE001
+        out["steps"]["port"] = "不可连 ✗ %s" % str(exc)[:100]
+
+    # ③④ SDK + 快照
+    _snap_ok = False
+    if not _port_ok:
+        out["steps"]["sdk"] = "跳过（端口不通）✗"
+        out["steps"]["snapshot"] = "跳过（端口不通）✗"
+    else:
+        try:
+            import futu as _futu
+            _ctx = _futu.OpenQuoteContext(host=host, port=port)
+            out["steps"]["sdk"] = "OpenQuoteContext 成功 ✓"
+            try:
+                _ret, _data = _ctx.get_market_snapshot(["US.SPY"])
+                _n = len(_data) if hasattr(_data, "__len__") else "?"
+                out["steps"]["snapshot"] = "ret=%s rows=%s" % (_ret, _n)
+                _snap_ok = str(_ret).upper().endswith("OK") or _ret == 0
+            finally:
+                try:
+                    _ctx.close()
+                except Exception:         # noqa: BLE001
+                    pass
+        except Exception as exc:          # noqa: BLE001
+            out["steps"]["sdk"] = ("失败 ✗ %s: %s"
+                                   % (type(exc).__name__, str(exc)[:150]))
+            out["steps"]["snapshot"] = "跳过（SDK 失败）✗"
+
+    out["ok"] = _snap_ok
+    out["verdict"] = ("✅ **可用**（四层全过）" if _snap_ok
+                      else "❌ **不可用** —— 看 steps 哪一层失败")
+    return out
+
+
 def _act_diagnose_data(params):
     """**数据断流诊断** ✓（2026-11-03 用户要求「Mac 上先修数据」）。
 
@@ -5480,6 +5559,7 @@ ACTIONS = {
     "dsh_web_diag": _act_dsh_web_diag,
     "rm_legacy": _act_rm_legacy,
     "verify_hyp": _act_verify_hyp,
+    "futu_probe": _act_futu_probe,
     "dsh_webauth_find": _act_dsh_webauth_find,
     "futu_opend_update": _act_futu_opend_update,
     "run_invest_research": _act_run_invest_research,
