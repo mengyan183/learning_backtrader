@@ -3389,25 +3389,38 @@ def _act_futu_probe(params):
         out["steps"]["port"] = "不可连 ✗ %s" % str(exc)[:100]
 
     # ③④ SDK + 快照
+    # 🔴 2026-11-16 实测事故：**必须走 `_call_with_timeout`** ✗
+    #    第一版直接调 `_futu.OpenQuoteContext(...)` ⇒ OpenD 挂时 SDK
+    #    **永不返回** ✗ ⇒ 队列单线程串行 ⇒ 整个队列卡死
+    #    （用户告警「fg-task-queue 日志 653 秒没动静」就是这个 ✗）
+    #    ⇒ 和 `test_futu_fed` 一样用守护线程 + join(timeout) ✓
     _snap_ok = False
     if not _port_ok:
         out["steps"]["sdk"] = "跳过（端口不通）✗"
         out["steps"]["snapshot"] = "跳过（端口不通）✗"
     else:
-        try:
+        def _probe():
             import futu as _futu
-            _ctx = _futu.OpenQuoteContext(host=host, port=port)
-            out["steps"]["sdk"] = "OpenQuoteContext 成功 ✓"
+            ctx = _futu.OpenQuoteContext(host=host, port=port)
             try:
-                _ret, _data = _ctx.get_market_snapshot(["US.SPY"])
+                return ctx.get_market_snapshot(["US.SPY"])
+            finally:
+                try:
+                    ctx.close()
+                except Exception:         # noqa: BLE001
+                    pass
+
+        try:
+            _done, _res = _call_with_timeout(_probe, 60)
+            if not _done:
+                out["steps"]["sdk"] = "超时 60s ✗ ⇒ SDK 卡在连接（OpenD 挂）"
+                out["steps"]["snapshot"] = "跳过（超时）✗"
+            else:
+                out["steps"]["sdk"] = "OpenQuoteContext 成功 ✓"
+                _ret, _data = _res
                 _n = len(_data) if hasattr(_data, "__len__") else "?"
                 out["steps"]["snapshot"] = "ret=%s rows=%s" % (_ret, _n)
                 _snap_ok = str(_ret).upper().endswith("OK") or _ret == 0
-            finally:
-                try:
-                    _ctx.close()
-                except Exception:         # noqa: BLE001
-                    pass
         except Exception as exc:          # noqa: BLE001
             out["steps"]["sdk"] = ("失败 ✗ %s: %s"
                                    % (type(exc).__name__, str(exc)[:150]))
