@@ -1,0 +1,11 @@
+{
+  "id": "t-20261116-152629-futu_probe",
+  "action": "futu_probe",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"host\": \"127.0.0.1\", \"port\": 11111, \"steps\": {\"processes\": [\"root               126   1.9  0.1 33940752  13708   ??  Ss   Mon08PM  17:50.51 /usr/libexec/opendirectoryd\", \"xingguo          47128   0.0  0.1 34339680  17528   ??  S     3:24PM   0:00.33 /Users/xingguo/.futu/opend/FutuOpenD.app/Contents/Frameworks/CrashRepor\", \"xingguo          47115   0.0  0.9 34797248 144852   ??  S     3:24PM   0:09.48 /Users/xingguo/.futu/opend/FutuOpenD.app/Contents/MacOS/FutuOpenD /User\", \"xingguo          47110   0.0  0.3 34576016  43492   ??  S     3:24PM   0:00.62 /Users/xingguo/.futu/opend/FutuOpenD.app/Contents/MacOS/FutuOpenD -logi\", \"xingguo           5303   0.0  0.8 35742536 128976   ??  S    Sat02AM  47:38.62 /Users/xingguo/learning_backtrader/.venv/bin/python -u /Users/xingguo/l\"], \"port\": \"可连 ✓\", \"sdk\": \"OpenQuoteContext 成功 ✓\", \"snapshot\": \"ret=0 rows=1\"}, \"ok\": true, \"verdict\": \"✅ **可用**（四层全过）\"}",
+  "started_at": "2026-11-16T15:27:46",
+  "finished_at": "2026-11-16T15:27:47",
+  "duration_s": 1.11
+}
