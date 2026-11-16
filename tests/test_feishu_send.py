@@ -72,7 +72,19 @@ def test_send_failure_check_is_not_short_circuited():
     """
     import ast
     src = _src()
-    idx = src.index('bsk.run("press", "Enter"')
+    # 🔴 2026-11-16 修**过期断言** ✗ —— 实测这两个测试**一直失败** ✗
+    #    代码早已从 `bsk.run("press", "Enter")` 改成 `bsk.press("Enter", …)` ✓
+    #    （`feishu_send.py` 的 `Bsk.press()` 封装，见 `Bsk.run` 上面的方法）
+    #    而测试还在找旧写法 ⇒ `ValueError: substring not found` ✗
+    #    ⇒ 用**两种写法都认**的方式定位 ✓（向后兼容，不会再因重构而红）
+    for _pat in ('bsk.press("Enter"', 'bsk.run("press", "Enter"'):
+        if _pat in src:
+            idx = src.index(_pat)
+            break
+    else:
+        raise AssertionError(
+            "找不到 `press Enter` 的调用点（期望 `bsk.press(\"Enter\"` 或 "
+            "`bsk.run(\"press\", \"Enter\"`）—— 若实现又重构了，请同步更新本测试")
     line0 = src[:idx].count("\n") + 1
 
     def _sets_cleared_true(node):
@@ -111,7 +123,14 @@ def test_send_failure_check_is_not_short_circuited():
 def test_send_loop_raises_with_resume_hint_on_failure():
     """失败必须**抛错并给出 `--start N` 续发指令**，不得静默计成已发。"""
     src = _src()
-    idx = src.index('bsk.run("press", "Enter"')
+    # 🔴 2026-11-16 同上：认两种写法 ✓
+    for _pat in ('bsk.press("Enter"', 'bsk.run("press", "Enter"'):
+        if _pat in src:
+            idx = src.index(_pat)
+            break
+    else:
+        raise AssertionError(
+            "找不到 `press Enter` 的调用点 —— 若实现重构了，请同步更新本测试")
     tail = src[idx:]
     assert "--start" in tail, "发送失败时应给出 --start 续发指令"
     assert "raise SystemExit" in tail, "发送失败必须抛错，不得静默继续"
