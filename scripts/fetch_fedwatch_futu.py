@@ -92,6 +92,19 @@ def main():
         print("[futu-fed] 当前目标区间 %s ⇒ (%.2f, %.2f)"
               % (config.FED_RANGE_TXT, cur[0], cur[1]))
 
+    # 🔴 2026-11-16 用户要求：**3 秒 TCP 预检** ✓
+    #    OpenD 挂时 `OpenQuoteContext()` **永不返回**（无限重连循环）✗
+    #    实测 `task_1116c` 卡满 120 秒被强杀、daily 链 180 秒 ✗
+    #    ⇒ 先探端口：连不上就**快速失败**，省掉整段超时 ✓
+    import socket as _socket
+    try:
+        _s = _socket.create_connection((args.host, args.port), timeout=3)
+        _s.close()
+    except OSError as exc:
+        print("[futu-fed] ✗ 端口 %s:%d 连不上（%s）⇒ **OpenD 没开** ✗"
+              % (args.host, args.port, type(exc).__name__), file=sys.stderr)
+        return 2
+
     ctx = None
     try:
         ctx = OpenQuoteContext(host=args.host, port=args.port)

@@ -3371,9 +3371,12 @@ def _act_futu_probe(params):
     try:
         r = subprocess.run(["ps", "aux"], capture_output=True,
                            text=True, timeout=20)
+        # 🔴 2026-11-16 用户要求：**精确匹配** ✓
+        #    原来用 `"opend" in ln.lower()` ⇒ 误匹配 macOS 系统进程
+        #    `/usr/libexec/opendirectoryd` ✗（实测回执里混进来了）
+        #    ⇒ 只认 `futu`（覆盖 `~/.futu/opend/FutuOpenD.app` 全路径）✓
         hits = [ln.strip() for ln in (r.stdout or "").splitlines()
-                if ("futu" in ln.lower() or "opend" in ln.lower())
-                and "grep" not in ln]
+                if "futu" in ln.lower() and "grep" not in ln]
         out["steps"]["processes"] = [h[:150] for h in hits[:5]] or ["(无)"]
     except Exception as exc:              # noqa: BLE001
         out["steps"]["processes"] = "ERR %s" % str(exc)[:100]
