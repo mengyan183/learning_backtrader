@@ -3728,6 +3728,93 @@ def _act_safe_pull_data(params):
                     % os.path.relpath(backup, ROOT)}
 
 
+#: `git_commit` 允许提交的路径前缀 ✓（白名单，防误提交敏感文件）
+_GIT_COMMIT_ALLOW = ("evolution/", "docs/task-queue/")
+
+
+def _act_git_commit(params):
+    """在 Mac 上**提交指定文件并推送** ✓（2026-11-16 用户要求）
+
+    🔴 背景：`verify_hypotheses.py` 跑完会改 `evolution/hypotheses.md`
+       但**不 commit** ✗ ⇒ 留下未提交改动 ⇒ 下一个 `fix_*` 包被
+       「与 Mac 本地未提交修改冲突，中止（不自动覆盖）」拒绝 ✗
+       （实测 `fix_1130f` 10 片白跑一轮 ✗）
+
+    ⚠️ **白名单限制**：只允许 `evolution/` 和 `docs/task-queue/` ✗
+       防误提交 `Data/*.csv`、`state.json` 这类运行时文件 ✓
+
+    参数：
+      - `files`：逗号分隔的相对路径（必填）
+      - `message`：提交信息（默认自动生成）
+      - `push`：`1`（默认）⇒ 提交后 `git push origin HEAD:main` ✓
+    """
+    raw = str(params.get("files") or "").strip()
+    files = [x.strip() for x in raw.split(",") if x.strip()]
+    if not files:
+        return {"ok": False, "error": "`files` 必填（逗号分隔的相对路径）"}
+
+    bad = [f for f in files if not f.startswith(_GIT_COMMIT_ALLOW)]
+    if bad:
+        return {"ok": False,
+                "error": "路径不在白名单 %s 内：%s"
+                         % (list(_GIT_COMMIT_ALLOW), bad)}
+
+    msg = str(params.get("message") or "").strip()
+    if not msg:
+        msg = "chore(mac): 自动提交 %s（git_commit action）" % ", ".join(files)
+    do_push = str(params.get("push") or "1").lower() in ("1", "true", "yes")
+
+    steps = []
+
+    def _git(*a):
+        r = _sp.run(["git", "-C", ROOT] + list(a),
+                    capture_output=True, text=True,
+                    encoding="utf-8", errors="replace", timeout=180)
+        return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
+
+    # ① 看提交前有哪些改动（诊断用 ✓）
+    rc, so, _ = _git("status", "--porcelain")
+    steps.append({"step": "status_before", "rc": rc,
+                  "stdout": so[-2000:]})
+
+    # ② add
+    rc, so, se = _git("add", "--", *files)
+    steps.append({"step": "add", "rc": rc, "stdout": so[-1000:],
+                  "stderr": se[-500:]})
+    if rc != 0:
+        return {"ok": False, "error": "git add 失败", "steps": steps}
+
+    # ③ 有东西可提交吗（无改动时 commit 会 rc=1 ✗ 不算失败 ✓）
+    rc, staged, _ = _git("diff", "--cached", "--name-only")
+    if not staged:
+        return {"ok": True, "skipped": "无改动可提交",
+                "files": files, "steps": steps}
+
+    # ④ commit
+    rc, so, se = _git("commit", "-m", msg)
+    steps.append({"step": "commit", "rc": rc, "stdout": so[-1500:],
+                  "stderr": se[-500:]})
+    if rc != 0:
+        return {"ok": False, "error": "git commit 失败", "steps": steps}
+
+    rc, head, _ = _git("rev-parse", "--short", "HEAD")
+
+    # ⑤ push
+    pushed = False
+    if do_push:
+        rc, so, se = _git("push", "origin", "HEAD:main")
+        steps.append({"step": "push", "rc": rc, "stdout": so[-1500:],
+                      "stderr": se[-800:]})
+        pushed = rc == 0
+        if not pushed:
+            return {"ok": False,
+                    "error": "已 commit(%s) 但 push 失败 ✗ 见 steps" % head,
+                    "head": head, "files": files, "steps": steps}
+
+    return {"ok": True, "head": head, "pushed": pushed,
+            "staged": staged.splitlines(), "files": files, "steps": steps}
+
+
 def _act_git_pull(params):
     """在 Mac 上 **git pull** 并汇报关键状态 ✓（2026-11-03 用户裁定）。
 
@@ -5538,6 +5625,7 @@ ACTIONS = {
     "cleanup_backlog": _act_cleanup_backlog,
     "sync_runtime": _act_sync_runtime,
     "git_pull": _act_git_pull,
+    "git_commit": _act_git_commit,
     "safe_pull_data": _act_safe_pull_data,
     "inspect_sync": _act_inspect_sync,
     "archive_briefs": _act_archive_briefs,
