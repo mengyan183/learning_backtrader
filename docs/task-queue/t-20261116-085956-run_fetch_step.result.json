@@ -1,0 +1,14 @@
+{
+  "id": "t-20261116-085956-run_fetch_step",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "sync_positions.py",
+    "timeout": "120"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"script\": \"sync_positions.py\", \"args\": [], \"rc\": 0, \"seconds\": 0.5, \"env_extra\": {}, \"env_proxy\": {\"FG_LLM_PROXY\": \"\", \"HTTP_PROXY\": \"\", \"HTTPS_PROXY\": \"\", \"http_proxy\": \"\", \"https_proxy\": \"\", \"NO_PROXY\": \"\"}, \"has_proxy\": false, \"changed\": {}, \"unchanged\": {\"putcall_daily_latest.csv\": \"2026-11-13|60\", \"shoutu_etf_universe.csv\": \"2026-09-29|1895\", \"fred_baa10y_avail.csv\": \"2026-10-23|10203\", \"fred_DFF.csv\": \"2026-11-12|26433\", \"splits.csv\": \"2026-10-01|2\", \"stablecoin_usage.csv\": \"2026-11-15|401\", \"funding_rate.csv\": \"2026-11-16|21\", \"fred_BAA10Y.csv\": \"2026-10-23|10203\", \"vix3m.csv\": \"2026-11-13|4316\", \"sp500_pe.csv\": \"2026-10-29|1871\", \"fred_DCOILBRENTEU.csv\": \"2026-10-06|9102\", \"fred_T10Y2Y.csv\": \"2026-11-13|12610\", \"crypto_fng.csv\": \"2026-11-15|3206\", \"prices.csv\": \"2026-11-13|101868\", \"putcall_daily_1.csv\": \"2025-06-30|374\", \"sentiment.csv\": \"2026-11-13|9316\", \"putcall.csv\": \"2026-11-13|3973\", \"putcall_daily_2.csv\": \"2026-10-07|316\", \"fred_DGS10.csv\": \"2026-11-12|16201\", \"shoutu_fng.csv\": \"2026-11-16|213\", \"fng_altme.csv\": \"2026-11-13|14\", \"vix_history.csv\": \"2026-11-13|9316\", \"news_sentiment.csv\": \"2026-11-16|17\", \"kalshi_fed.csv\": \"2026-11-16|11\", \"fred_DCOILWTICO.csv\": \"2026-10-06|9517\", \"futu_fedwatch_raw.csv\": \"?|46\", \"fedwatch.csv\": \"2026-11-14|19\", \"vix.csv\": \"2026-11-13|9316\", \"crypto_underlying.csv\": \"2026-11-15|3651\", \"crypto_prices.csv\": \"2026-11-13|7643\", \"shoutu_history.csv\": \"2026-10-14|3671\", \"sp500_cape.csv\": \"2026-10-29|1870\", \"watchlist_3x.csv\": \"?|24\", \"trade_log_futu.csv\": \"2026-06-25|105\", \"trade_log.csv\": \"2026-10-01|28\", \"portfolio_features.csv\": \"2026-11-13|2548\", \"accounts.csv\": \"2026-11-13|68\", \"crypto_features.csv\": \"2026-11-13|2548\", \"trade_log_merged.csv\": \"2026-10-01|95\", \"positions.csv\": \"2026-11-13|204\", \"features.csv\": \"2026-11-13|2548\", \"trade_log_derived.csv\": \"2026-10-01|3\"}, \"verdict\": \"rc=0 但**没有任何文件更新** ✗ ⇒ 「静默成功」✗\", \"stdout\": \"[sync] FG_SYNC_MODE=static：不调用任何外部 API（公司电脑模式）。\\n[sync] 现有快照保持原样：accounts 68 行 / positions 204 行。\\n[sync] 如需在家动态同步：FG_SYNC_MODE=live python scripts/sync_positions.py\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-16T09:01:23",
+  "finished_at": "2026-11-16T09:01:24",
+  "duration_s": 1.48
+}
