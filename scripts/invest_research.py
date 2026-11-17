@@ -1856,6 +1856,55 @@ _PERSPECTIVE_PROMPTS = (
 )
 
 
+def _psych_section(snap):
+    """🧘 持仓心理状态（2026-11-17 用户要求：简报加心理按摩）
+
+    🔴 用户原话：「虽然我可以严格按照规则执行，但是心理压力会很大」
+       ⇒ 需求不是「告诉他怎么做」（他已经知道），而是「确认他做得对」✗
+
+    设计原则（用户确认）：
+      · ❌ 不说「会反弹」—— 虚假希望，破灭时更痛 ✗
+      · ❌ 不说「亏损是市场的错」—— 推卸责任，反而削弱掌控感 ✗
+      · ❌ 不提亏损金额 —— 他每天看得到，再提是强化负面 ✗
+      · ✅ 说「操作符合纪律」—— 可验证的支撑 ✓
+      · ✅ 说「可控 vs 不可控」—— 给掌控感 ✓
+      · ✅ 「做得对的事」按档位/回撤**动态选** ✓
+
+    位置：**数据源健康之后、市场快照之前**（用户要求「放最前面」）✓
+    """
+    fg = (snap.get("fg") or {}).get("fg_index")
+    try:
+        fgv = float(fg)
+    except (TypeError, ValueError):
+        return ""
+    zi = _zone_int(fgv)
+    zones = {0: "极度恐惧", 1: "恐惧", 2: "中性", 3: "贪婪",
+             4: "极度贪婪"}
+    dd = _drawdown_of(snap)
+    dd_txt = ("%.2f%%" % (abs(dd) * 100)) if dd is not None else "—"
+
+    good = []
+    if zi <= 1:
+        good.append("恐惧档位**没恐慌割肉** ⇒ 不动是纪律允许的，不是逃避")
+    if dd is None or abs(dd) < 0.20:
+        good.append("回撤未达首档 ⇒ 弹药还在，没提前打光")
+    if zi <= 2:
+        good.append("**没在恐慌里加仓** ⇒ 避开了「越跌越买」的典型错误")
+    if len(good) < 3:
+        good.append("**严格按规则执行** ⇒ 这本身就是最难的部分")
+    good = ["%s %s" % (chr(0x2460 + i), g) for i, g in enumerate(good[:3])]
+
+    return ("处境：贪恐 %.1f（%s）· 回撤 %s\n"
+            "你做得对的事：\n  %s\n"
+            "可控 vs 不可控：\n"
+            "  ✅ 仓位比例 · 杠杆倍数 · 是否加仓 · 何时重新评估\n"
+            "  ❌ 金价 · 中概政策 · 美联储时点 · AI 泡沫何时破\n"
+            "⚠️ 不是建议，不预测涨跌。你的操作符合纪律 ⇒ 不需要自责。\n"
+            "   但「买杠杆 ETF」是主动决定，它是今天亏损的原因之一\n"
+            "   —— 当时在信息约束下合理，现在也可以重新评估。"
+            % (fgv, zones.get(zi, "?"), dd_txt, "\n  ".join(good)))
+
+
 def behavior_checklist(snap):
     """P2 极端档位 + 抄底三黑 行为检查清单（简报节）。
 
@@ -2249,6 +2298,14 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     _ds = _data_health_block(snap, sentiment, attribution, judge)
     if _ds:
         secs.append(("🔌 数据源健康", _ds))
+        secs.append("hr")
+    # 🧘 心理状态（2026-11-17 用户要求：**放最前面** ✓）
+    #    位置：数据源健康之后、市场快照之前
+    #    理由：数据健康是「这份简报可不可信」的前提，必须最先；
+    #         心理状态是「今天该怎么看待自己」，放在所有数字之前 ✓
+    _psych = _psych_section(snap)
+    if _psych:
+        secs.append(("🧘 持仓心理状态【不是建议，是镜子】", _psych))
         secs.append("hr")
     secs.append(("市场快照", build_snapshot_lines(snap)))
     secs.append("hr")
