@@ -2398,6 +2398,46 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     return secs
 
 
+#: 因子 → **外部源**文件（只列有发布时滞的；price/breadth 由 features 自算 ✓）
+_FACTOR_SOURCE = {
+    "putcall": "Data/raw/putcall_daily_latest.csv",
+    "vix": "Data/raw/vix_history.csv",
+}
+
+
+def _factor_source_dates():
+    """各因子**源文件**的最后日期 ⇒ `{factor: 'YYYY-MM-DD'}` ✓
+
+    🔴 2026-11-17 用户要求：简报的「数据日」要区分**因子实际数据日** ✗
+       背景：`features.csv` 对缺失因子做 **forward fill**（容差 4 天）✗
+       实测 2026-11-16 的简报写「数据日 2026-11-16」，但
+       `PUT-CALL 64.4` 实际是 **2026-11-13** 的值（CBOE 还没发布 11-16）✗
+       ⇒ 读者会以为 6 个因子都是 11-16 的 ⇒ 误判数据新鲜度 ✗
+
+    ⚠️ 只查**外部源**（CBOE / VIX）✗ —— `price` / `breadth` 由
+       `features.csv` 自算，数据日必然等于主数据日 ✓ 不必查 ✓
+    ⚠️ `fedwatch.csv` 的日期列**不是第一列**（首列是 `X...` 标记）✗
+       ⇒ 暂不纳入（宁可少标，不可标错 ✓）
+    """
+    import os
+    import pandas as pd
+    from fg_system import config
+    out = {}
+    for k, rel in _FACTOR_SOURCE.items():
+        p = os.path.join(config.ROOT, rel.replace("/", os.sep))
+        if not os.path.exists(p):
+            continue
+        try:
+            df = pd.read_csv(p)
+            s = df.iloc[:, 0].dropna().astype(str)
+            v = s.iloc[-1][:10] if len(s) else ""
+            if len(v) == 10 and v[4] == "-" and v[7] == "-":
+                out[k] = v
+        except Exception:                 # noqa: BLE001
+            continue
+    return out
+
+
 def _factor_breakdown():
     """R1.3 六因子独立分项（确定性）：features.csv 尾行逐因子 分 + 档位 + 方向。
 
@@ -2426,16 +2466,32 @@ def _factor_breakdown():
         # 🔴 2026-11-10 简报瘦身 P1：原来**每因子一行 + 权重 + 箭头** ✗
         #    6 行 ≈ 250 字，而权重/箭头对决策没有增量信息 ✗
         #    ⇒ 压成一行「VIX 32.6 恐惧 · TERM 6.8 极恐 · …」✓（约 110 字）
+        # 🔴 2026-11-17 用户要求：标出**因子实际数据日**（与主数据日不同的才标）✓
+        #    实测：主数据日 2026-11-16，但 PUT-CALL 实际是 2026-11-13 的值 ✗
+        #    ⇒ 不标的话读者以为 6 个因子都是 11-16 ⇒ 误判新鲜度 ✗
+        _src_dates = _factor_source_dates()
+        _main_date = str(date)[:10]
         toks = []
         for k, s in summary.items():
+            _d = _src_dates.get(k)
+            # 只标**与主数据日不同**的（相同不标，避免每项都带日期 ✓）
+            _tag = ("〔%s〕" % _d[5:]) if (_d and _d != _main_date) else ""
             if s["score"] is None:
                 prev, lag = _prev_factor_value(whole, k)
                 if prev is None:
                     toks.append("%s —" % labels[k])
                 else:
-                    toks.append("%s %.1f(T-%d)" % (labels[k], prev, lag))
+                    toks.append("%s %.1f(T-%d)%s"
+                                % (labels[k], prev, lag, _tag))
                 continue
-            toks.append("%s %.1f %s" % (labels[k], s["score"], s["zone_name"]))
+            toks.append("%s %.1f %s%s"
+                        % (labels[k], s["score"], s["zone_name"], _tag))
+        # 有因子滞后时，在首行补一句说明（避免读者不知道〔MM-DD〕是什么意思）
+        _lagged = [(labels[k], _src_dates[k]) for k in summary
+                   if _src_dates.get(k) and _src_dates[k] != _main_date]
+        if _lagged:
+            _note = "；〔MM-DD〕= 该因子**源文件**最后日期（features 已 forward fill 到主数据日）"
+            lines[0] = lines[0].rstrip("〕") + _note + "〕"
         return lines[0] + "\n" + " · ".join(toks)
     except Exception:
         return None
