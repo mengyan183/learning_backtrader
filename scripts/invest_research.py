@@ -2402,11 +2402,12 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
 _FACTOR_SOURCE = {
     "putcall": "Data/raw/putcall_daily_latest.csv",
     "vix": "Data/raw/vix_history.csv",
+    "fed": "Data/raw/fedwatch.csv",
 }
 
 
-def _factor_source_dates():
-    """各因子**源文件**的最后日期 ⇒ `{factor: 'YYYY-MM-DD'}` ✓
+def _factor_source_dates(main_date):
+    """各因子**源文件**中「**不晚于 `main_date`** 的最后日期」⇒ `{factor: 'YYYY-MM-DD'}` ✓
 
     🔴 2026-11-17 用户要求：简报的「数据日」要区分**因子实际数据日** ✗
        背景：`features.csv` 对缺失因子做 **forward fill**（容差 4 天）✗
@@ -2414,14 +2415,20 @@ def _factor_source_dates():
        `PUT-CALL 64.4` 实际是 **2026-11-13** 的值（CBOE 还没发布 11-16）✗
        ⇒ 读者会以为 6 个因子都是 11-16 的 ⇒ 误判数据新鲜度 ✗
 
-    ⚠️ 只查**外部源**（CBOE / VIX）✗ —— `price` / `breadth` 由
+    ⚠️ 为什么必须过滤 `<= main_date` ✗（2026-11-17 实测发现）：
+       `fedwatch.csv` 的最后一行是 **2026-11-17**（今天抓的）✗
+       而 `features.csv` 的主数据日是 **2026-11-16** ✓
+       ⇒ 直接取「文件最后日期」会标出 `〔11-17〕`（**比主数据日还新**）✗
+       ⇒ 读者会问「数据日 11-16 怎么会有 11-17 的因子」✗
+       真相：`features.csv` 的 11-16 行只用 ≤11-16 的数据 ✓
+
+    ⚠️ 只查**外部源**（CBOE / VIX / CME）✗ —— `price` / `breadth` 由
        `features.csv` 自算，数据日必然等于主数据日 ✓ 不必查 ✓
-    ⚠️ `fedwatch.csv` 的日期列**不是第一列**（首列是 `X...` 标记）✗
-       ⇒ 暂不纳入（宁可少标，不可标错 ✓）
     """
     import os
     import pandas as pd
     from fg_system import config
+    _cap = str(main_date)[:10]
     out = {}
     for k, rel in _FACTOR_SOURCE.items():
         p = os.path.join(config.ROOT, rel.replace("/", os.sep))
@@ -2430,9 +2437,12 @@ def _factor_source_dates():
         try:
             df = pd.read_csv(p)
             s = df.iloc[:, 0].dropna().astype(str)
-            v = s.iloc[-1][:10] if len(s) else ""
-            if len(v) == 10 and v[4] == "-" and v[7] == "-":
-                out[k] = v
+            # 只取「看起来是日期」且「<= 主数据日」的行 ✓
+            cand = [v[:10] for v in s
+                    if len(v) >= 10 and v[4] == "-" and v[7] == "-"
+                    and v[:10] <= _cap]
+            if cand:
+                out[k] = max(cand)
         except Exception:                 # noqa: BLE001
             continue
     return out
@@ -2469,8 +2479,8 @@ def _factor_breakdown():
         # 🔴 2026-11-17 用户要求：标出**因子实际数据日**（与主数据日不同的才标）✓
         #    实测：主数据日 2026-11-16，但 PUT-CALL 实际是 2026-11-13 的值 ✗
         #    ⇒ 不标的话读者以为 6 个因子都是 11-16 ⇒ 误判新鲜度 ✗
-        _src_dates = _factor_source_dates()
         _main_date = str(date)[:10]
+        _src_dates = _factor_source_dates(_main_date)
         toks = []
         for k, s in summary.items():
             _d = _src_dates.get(k)
