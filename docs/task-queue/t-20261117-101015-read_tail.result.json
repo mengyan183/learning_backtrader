@@ -1,0 +1,14 @@
+{
+  "id": "t-20261117-101015-read_tail",
+  "action": "read_tail",
+  "params": {
+    "path": "Data/raw/putcall_daily_latest.csv",
+    "lines": "12"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"path\": \"Data/raw/putcall_daily_latest.csv\", \"total_lines\": 61, \"returned\": 12, \"lines\": [\"2026-10-29,0.85,0.95,0.58,1.06,0.29,1.1,6900576,5851785,,,CBOE Daily Market Statistics JSON\", \"2026-10-30,0.9,1.03,0.66,0.93,0.47,1.25,10250848,9251263,,,CBOE Daily Market Statistics JSON\", \"2026-11-02,0.87,0.96,0.67,0.91,0.28,1.13,7971384,6917180,,,CBOE Daily Market Statistics JSON\", \"2026-11-03,0.86,1.02,0.6,0.82,0.57,1.13,6034465,5168990,,,CBOE Daily Market Statistics JSON\", \"2026-11-04,0.8,0.97,0.44,1.2,0.38,1.2,9638101,7703135,,,CBOE Daily Market Statistics JSON\", \"2026-11-05,1.06,1.07,0.89,1.25,0.7,1.24,10589764,11225416,,,CBOE Daily Market Statistics JSON\", \"2026-11-06,0.95,1.26,0.59,0.91,1.49,1.22,7752661,7339138,,,CBOE Daily Market Statistics JSON\", \"2026-11-09,0.88,1.06,0.56,0.96,0.83,,7988433,7001264,,,CBOE Daily Market Statistics JSON\", \"2026-11-10,0.95,1.02,0.77,1.04,0.59,,6632948,6319117,,,CBOE Daily Market Statistics JSON\", \"2026-11-11,0.92,1.05,0.59,1.13,0.87,,8279111,7636823,,,CBOE Daily Market Statistics JSON\", \"2026-11-12,0.89,0.97,0.72,1.06,0.42,,7902622,7057000,,,CBOE Daily Market Statistics JSON\", \"2026-11-13,0.85,0.96,0.63,0.99,0.32,,8587615,7315789,,,CBOE Daily Market Statistics JSON\"]}",
+  "started_at": "2026-11-17T10:48:31",
+  "finished_at": "2026-11-17T10:48:31",
+  "duration_s": 0.0
+}
