@@ -2901,9 +2901,30 @@ def main():
     # 「任一阶段失败自动降级」自相矛盾 ✗）。只在**三个全缺**时留一行日志 ✓。
     if not (sentiment or attribution or judge):
         print("[degrade] 三个 AI 阶段全缺 ⇒ 仍按占位版本推送（不再静默不发）")
-    ok, msg = push_feishu_rich(f"📊 多智能体投研简报 {_date_label(snap)}",
-                               build_brief_sections(snap, sentiment, attribution, judge, news))
-    print(f"飞书富文本推送: {'成功' if ok else f'失败 {msg}'}")
+    # 🔴 2026-11-17 用户定方案 B：**按「决策 / 参考」切成 2 条** ✓
+    #    第 1 条 = 决策相关（数据源健康 / 心理 / 市场快照 / 风控 / 减仓 /
+    #              建仓 / Human3.0 / 六因子 / 美联储 / 新闻）✓
+    #    第 2 条 = 分析参考（情绪面 / 归因 / 裁判 / 行为清单 / 知识库 / 来源）✓
+    #    切分点：第一个「📰 情绪面」段之前 ✓
+    #    理由：三段 AI 都标着「不产生动作」✗ 却占了 60% 篇幅 ⇒ 分开放 ✓
+    _secs = build_brief_sections(snap, sentiment, attribution, judge, news)
+    _title = f"📊 多智能体投研简报 {_date_label(snap)}"
+    _split = len(_secs)
+    for _i, _s in enumerate(_secs):
+        if isinstance(_s, tuple) and _s[0].startswith("📰 情绪面"):
+            _split = _i
+            break
+    if 0 < _split < len(_secs):
+        _p1, _p2 = _secs[:_split], _secs[_split:]
+        while _p1 and _p1[-1] == "hr":       # 第 1 条末尾不留悬空分隔线
+            _p1.pop()
+        ok1, msg1 = push_feishu_rich(_title, _p1)
+        ok2, msg2 = push_feishu_rich(_title + "（续 · 分析参考）", _p2)
+        ok, msg = (ok1 and ok2), (msg1 if not ok1 else msg2)
+        print(f"飞书富文本推送: {'成功（2 条）' if ok else f'失败 {msg}'}")
+    else:                                     # 找不到切分点 ⇒ 退回单条（不丢内容）
+        ok, msg = push_feishu_rich(_title, _secs)
+        print(f"飞书富文本推送: {'成功' if ok else f'失败 {msg}'}")
     return 0 if ok else 1
 
 
