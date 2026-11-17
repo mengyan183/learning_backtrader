@@ -1,0 +1,10 @@
+{
+  "id": "t-20261117-110924-read_tail",
+  "action": "read_tail",
+  "params": {
+    "path": "Data/raw/kalshi_fed.csv",
+    "lines": "15"
+  },
+  "status": "pending",
+  "created_at": "2026-11-17T11:09:24"
+}
