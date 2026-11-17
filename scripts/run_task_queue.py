@@ -3728,6 +3728,55 @@ def _act_safe_pull_data(params):
                     % os.path.relpath(backup, ROOT)}
 
 
+#: `read_tail` 允许读的路径前缀 ✓（白名单，**禁 Data/accounts.csv 和
+#: Data/positions.csv** —— 那两个含账户/持仓明细，不该进任务回执 ✗）
+_READ_ALLOW = ("Data/raw/", "Data/features.csv", "evolution/",
+               "docs/task-queue/")
+
+
+def _act_read_tail(params):
+    """读文件末尾 N 行 ✓（2026-11-17 用户要求）
+
+    🔴 背景：`fetch_putcall.py` 只报「无新数据」**不打印内容** ✗
+       而本地 `putcall_daily_latest.csv` 只到 2026-10-12（Windows 不同步）✗
+       ⇒ 无法验证简报的 `PUT-CALL 64.4` 是否合理 ✗
+       ⇒ 需要能在 Mac 上「看一眼数据」的通用动作 ✓
+
+    ⚠️ **白名单**：只允许 `Data/raw/`、`Data/features.csv`、`evolution/`、
+       `docs/task-queue/` ✗ —— **刻意排除** `Data/accounts.csv` 和
+       `Data/positions.csv`（含账户净值/持仓明细，不该出现在任务回执里）✗
+
+    参数：
+      - `path`：相对路径（必填）
+      - `lines`：末尾行数（默认 10，上限 100）
+    """
+    rel = str(params.get("path") or "").strip().lstrip("/")
+    if not rel:
+        return {"ok": False, "error": "`path` 必填"}
+    if not rel.startswith(_READ_ALLOW):
+        return {"ok": False,
+                "error": "路径不在白名单 %s 内：%s"
+                         % (list(_READ_ALLOW), rel)}
+    try:
+        n = int(params.get("lines") or 10)
+    except (TypeError, ValueError):
+        n = 10
+    n = max(1, min(n, 100))
+
+    full = os.path.join(ROOT, rel.replace("/", os.sep))
+    if not os.path.exists(full):
+        return {"ok": False, "error": "文件不存在：%s" % rel}
+    try:
+        with open(full, encoding="utf-8", errors="replace") as f:
+            alll = f.readlines()
+    except OSError as exc:
+        return {"ok": False, "error": "读取失败：%s" % str(exc)[:150]}
+
+    tail = [x.rstrip("\n") for x in alll[-n:]]
+    return {"ok": True, "path": rel, "total_lines": len(alll),
+            "returned": len(tail), "lines": tail}
+
+
 #: `git_commit` 允许提交的路径前缀 ✓（白名单，防误提交敏感文件）
 _GIT_COMMIT_ALLOW = ("evolution/", "docs/task-queue/")
 
@@ -5629,6 +5678,7 @@ ACTIONS = {
     "sync_runtime": _act_sync_runtime,
     "git_pull": _act_git_pull,
     "git_commit": _act_git_commit,
+    "read_tail": _act_read_tail,
     "safe_pull_data": _act_safe_pull_data,
     "inspect_sync": _act_inspect_sync,
     "archive_briefs": _act_archive_briefs,
