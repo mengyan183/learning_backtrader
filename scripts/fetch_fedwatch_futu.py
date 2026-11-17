@@ -54,7 +54,7 @@ SRC = "futu-fedwatch"
 #: 与旧 `fedwatch.csv` **完全一致**的列 ✓（`fed.py` 不用改 ✓）
 COLS = ["date", "meeting", "ease_pct", "hold_pct", "hike_pct",
         "now_hold_pct", "now_hike_pct", "wk_hold_pct", "wk_hike_pct",
-        "m_hold_pct", "m_hike_pct", "src"]
+        "m_hold_pct", "m_hike_pct", "src", "note"]
 
 
 def _norm_range(s):
@@ -135,6 +135,17 @@ def main():
     # 按会议聚合 ✓
     recs = []
     for mtg, sub in df.groupby("meeting_date", sort=True):
+        # 🔴 2026-11-17：**记录富途返回了几行 target_range** ✓
+        #    实测 2026-11-17 的数据里，8 个未来会议有 7 个是
+        #    `ease=0 / hold=0 / hike=100.0` ✗
+        #    ⇒ 看起来像「填充值」，但**不是** —— 富途对远期会议
+        #      只返回**一个** target_range（最可能的），概率 100% ✗
+        #    判据：`hold_pct=0` 就是证据 —— 真实分布里「维持不变」
+        #      不可能为 0 ✗
+        #    ⇒ 用 `len(sub)`（原始行数）**客观标注**，不猜 ✓
+        #    ⚠️ 消费方 `fg_system/fed.py` **只取最近一个未来会议** ✓
+        #       （2026-11-05 已修 `iloc[-1]` 的坑 ✗）⇒ 远期数据不影响因子 ✓
+        _n_rows = len(sub)
         hold = hike = ease = 0.0
         for _, r in sub.iterrows():
             try:
@@ -170,6 +181,10 @@ def main():
             "m_hold_pct": None,
             "m_hike_pct": None,
             "src": SRC,
+            # 客观标注：富途对该会议只返回 1 个 target_range ⇒ 非完整分布 ✓
+            "note": (("富途仅返回 %d 个 target_range ⇒ 非完整分布"
+                      "（hold/ease 的 0 不代表市场真实定价 ✗）" % _n_rows)
+                     if _n_rows == 1 else None),
         })
 
     if not recs:
