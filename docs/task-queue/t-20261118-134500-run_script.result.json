@@ -1,0 +1,14 @@
+{
+  "id": "t-20261118-134500-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "evolve_verify.py",
+    "args": []
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"evolve_verify.py\", \"args\": [], \"stdout\": \"[H-005] 跳过（当前状态 falsified，不再自动复检）\\n[H-007] 跳过（当前状态 archived，不再自动复检）\\n[H-002] adopted：全历史 36 个交易日中现金<0 36 天（100%，证伪判据 ≤40%）\\n[H-003] adopted：区间 2026-09-17~2026-10-01：BTC 日收益\\\\|均值\\\\|=0.0127；杠杆产品 YINN=0.0228; GDXU=0.0685; CRCG=0.0623; CONL=0.0556; AXTX=0.1073；最大=0.1073\\n[H-004] adopted：持仓浮亏 2026-09-22=-1033.40 → 2026-11-17=-11183.93（扩大）\\n[H-006] verifying：股票账户快照仅 36 个交易日（需 ≥60），无法计算斯皮尔曼相关\\n[H-008] verifying：持仓每日快照仅 36 个交易日（需 ≥40），无法回归杠杆占比 vs 日波动\\n[H-009] verifying：持仓每日快照仅 36 个交易日，且需 T+10 前瞻收益（需 ≥10 日历史快照）\\n[hypotheses.md] 状态已更新\\n[memory] 已追加 /Users/xingguo/learning_backtrader/evolution/memory/2026-11-18.md\\n[自检] 假说表 7 列 ✓\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-18T16:52:02",
+  "finished_at": "2026-11-18T16:52:05",
+  "duration_s": 2.1
+}
