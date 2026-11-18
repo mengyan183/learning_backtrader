@@ -28,6 +28,34 @@ MEM_DIR = os.path.join(BASE, "evolution", "memory")
 
 #: `hypotheses.md` 的列数（`| id | 日期 | 假设 | 判据 | 数据 | 状态 | 备注 |`）。
 HYP_COLS = 7
+
+#: 每日验证明细的归档目录 ✓（2026-11-18：避免 `hypotheses.md` 无限膨胀）
+VERIFY_LOG_DIR = os.path.join(BASE, "evolution", "verify-log")
+
+
+def _append_verify_log(hid, note):
+    """把一条验证记录追加到 `evolution/verify-log/<H-ID>.md` ✓。
+
+    🔴 为什么必须分离 ✗（2026-11-18 用户要求治理膨胀）：
+      原实现把每天的结果 `<br>` 追加到表格备注列 ✗
+      实测 H-002 累积 **35 条**（2026-10-19 ~ 11-17）⇒ 单行几百字 ✗
+      ⇒ 表格不可读、`git diff` 噪音极大、后期 grep 也难 ✗
+      改为：明细进独立文件（可无限增长且不影响表格）✓
+            表格只留最新一条 + 链接 ✓
+    """
+    os.makedirs(VERIFY_LOG_DIR, exist_ok=True)
+    path = os.path.join(VERIFY_LOG_DIR, "%s.md" % hid)
+    first = not os.path.isfile(path)
+    try:
+        with open(path, "a", encoding="utf-8") as f:
+            if first:
+                f.write("# %s 验证记录\n\n" % hid)
+                f.write("> 由 `scripts/evolve_verify.py` 自动追加；"
+                        "`evolution/hypotheses.md` 只保留最新一条。\n"
+                        "> 日期为**北京日期**（脚本 `date.today()`）。\n\n")
+            f.write("- %s\n" % note)
+    except OSError as exc:          # 归档失败**不得**影响假说状态更新 ✓
+        print("  [warn] %s 验证日志写入失败：%s" % (hid, exc))
 #: **转义感知**切分 —— 备注里含 `\|`（绝对值竖线）时，朴素 `split("|")` 会让
 #: 状态/备注索引错位 ⇒ 把状态写进备注列 ✗（2026-10-19 实测）。
 _SPLIT = re.compile(r"(?<!\\)\|")
@@ -250,14 +278,23 @@ def update_hypotheses(results):
                       % (hid, len(cells), HYP_COLS))
                 break
             cells[5] = r["status"]
-            note = "%s 验证：%s" % (today, r["evidence"])
+            raw_note = "%s 验证：%s" % (today, r["evidence"])
             if r["note"]:
-                note += "；" + r["note"]
-            # 防御：证据里的**未转义** `|`（如 `|均值|`）会切坏表格 ✗ ⇒ 写前统一转义 ✓
-            note = re.sub(r"(?<!\\)\|", r"\\|", note)
+                raw_note += "；" + r["note"]
+            # 🔴 2026-11-18 用户要求：治理 `hypotheses.md` 膨胀 ✗
+            #    背景：原来每条验证都 `<br>` 追加到备注列 ✗
+            #    实测 H-002 已累积 **35 条**（10-19 ~ 11-17），单行几百字 ✗
+            #    ⇒ 表格不可读、每次 diff 噪音极大 ✗
+            #    改为：明细写 `evolution/verify-log/<H-ID>.md` ✓
+            #          表格只留「原始说明」+「最新一条」+「链接」✓
+            _append_verify_log(hid, raw_note)
+            # 防御：证据里的**未转义** `|`（如 `|均值|`）会切坏表格 ✗
+            note = re.sub(r"(?<!\\)\|", r"\\|", raw_note)
+            # 只保留**非每日验证**的原始说明（不含「 验证：」）
             kept = [s.strip() for s in cells[6].split("<br>")
-                    if s.strip() and not s.strip().startswith(today + " 验证：")]
-            cells[6] = "<br>".join(kept + [note])
+                    if s.strip() and " 验证：" not in s]
+            link = "明细见 `evolution/verify-log/%s.md`" % hid
+            cells[6] = "<br>".join(kept + [note, link])
             lines[i] = "| " + " | ".join(cells) + " |\n"
             hit = True
             break
