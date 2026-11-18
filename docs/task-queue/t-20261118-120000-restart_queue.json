@@ -1,0 +1,7 @@
+{
+  "id": "t-20261118-120000-restart_queue",
+  "action": "restart_queue",
+  "params": {},
+  "status": "pending",
+  "created_at": "2026-11-18T12:00:00"
+}
