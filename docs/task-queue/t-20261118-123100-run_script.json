@@ -1,0 +1,10 @@
+{
+  "id": "t-20261118-123100-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "migrate_verify_log.py",
+    "args": []
+  },
+  "status": "pending",
+  "created_at": "2026-11-18T12:31:00"
+}
