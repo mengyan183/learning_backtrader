@@ -32,6 +32,17 @@ HYP_COLS = 7
 #: 每日验证明细的归档目录 ✓（2026-11-18：避免 `hypotheses.md` 无限膨胀）
 VERIFY_LOG_DIR = os.path.join(BASE, "evolution", "verify-log")
 
+#: 假说的**统计口径**注释 ✓（2026-11-18 用户要求补齐）
+#   🔴 为什么需要 ✗：H-001 和 H-004 都写「持仓浮亏」✗ 但口径不同 ✗
+#      H-001 起点市值 4506.15 ⇒ 只覆盖 **AXTX+CRCG 两只** ✓
+#      H-004 浮亏 -11030.63 ⇒ 覆盖 **全部持仓** ✓
+#      两个数字量级接近（简报总浮亏 11195）⇒ 极易被读成同一件事 ✗
+#   ⇒ 每次 `_apply` 都确保备注里有这句；已有则不重复 ✓
+_SCOPE_NOTE = {
+    "H-001": "〔口径：AXTX+CRCG 两只合计，非全部持仓〕",
+    "H-004": "〔口径：全部持仓浮亏合计，含 BTC〕",
+}
+
 
 def _append_verify_log(hid, note):
     """把一条验证记录追加到 `evolution/verify-log/<H-ID>.md` ✓。
@@ -293,6 +304,12 @@ def update_hypotheses(results):
             # 只保留**非每日验证**的原始说明（不含「 验证：」）
             kept = [s.strip() for s in cells[6].split("<br>")
                     if s.strip() and " 验证：" not in s]
+            # 🔴 2026-11-18：确保**口径注释**存在 ✓（已有则不重复）
+            #    H-001 / H-004 的「持仓浮亏」口径不同 ⇒ 见 `_SCOPE_NOTE`
+            _scope = _SCOPE_NOTE.get(hid)
+            if _scope:
+                kept = [s for s in kept if s != _scope]
+                kept.insert(0, _scope)
             link = "明细见 `evolution/verify-log/%s.md`" % hid
             cells[6] = "<br>".join(kept + [note, link])
             lines[i] = "| " + " | ".join(cells) + " |\n"
