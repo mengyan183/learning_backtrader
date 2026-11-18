@@ -2008,7 +2008,13 @@ def _act_service_bootstrap(params):
                 "com.xingguo.fg-realtime",
                 "com.xingguo.fg-dashboard",
                 "com.xingguo.fg-sync-watcher",
-                "com.xingguo.dsh.web")
+                "com.xingguo.dsh.web",
+                # 🔴 2026-11-18：加入假说验证服务 ✓
+                #    原因：`evolve_verify.py` 由这个 launchd 定时跑 ✗
+                #    想远程触发一次验证（比如改了写入格式后测试）✗
+                #    只能重启它 ⇒ 但不在白名单 ⇒ 报「不允许的 label」✗
+                #    ⇒ 加入；它只跑只读+写 `evolution/` 的脚本，风险可控 ✓
+                "com.xingguo.fg-evolve-verify")
     label = str(params.get("label") or "").strip()
     if label not in _ALLOWED:
         return {"ok": False,
