@@ -1384,7 +1384,14 @@ def build_snapshot_lines(snap):
         pairs = " / ".join(f"{k} {v}" for k, v in items[:8])
         if len(items) > 8:
             pairs += " …"  # 超过 8 个标的时显式标注省略
+        # 🔴 2026-11-18 用户要求：加口径说明 ✓
+        #    背景：`-99.0` 这种写法**极易被读成「跌了 99%」** ✗
+        #    实际是守猪待兔系统的**贪恐系数**（-100~+100）✓
+        #      负 = 恐慌（买入区，≤ buy_line）· 正 = 贪婪（卖出区，≥ sell_line）
+        #      分界 ±60（见 `attribution_check.py` 的档位判断）
         out.append(f"守猪待兔({snap['shoutu_date']}): {pairs}")
+        out.append("（守猪待兔系数 -100~+100：负=恐慌/买入区，正=贪婪/卖出区，"
+                   "**≠ 涨跌幅**）")
     out.append("持仓:")
     for r in snap["positions"]:
         # 2026-10-29：统一 2 位小数 ✗ —— 原来直接打 pandas float，
