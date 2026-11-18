@@ -1985,6 +1985,68 @@ def _act_news_diag(params):
     return out
 
 
+#: `run_script` 允许的脚本白名单 ✓（2026-11-18 用户选择 ①）
+#   🔴 为什么需要 ✗：`service_bootstrap` 只能重启 launchd 服务 ✗
+#      ⇒ 一次性脚本（迁移/验证/诊断）只能让用户手动在 Mac 上跑 ✗
+#      实测今天 3 次「发代码 → 手动跑一次」的往返 ✗
+#      ⇒ 加这个 action，白名单 + 回传 stdout/stderr ✓
+#   ⚠️ 只放**只读或只写仓库内文件**的脚本 ✗ 不放能改系统/装包的 ✓
+_SCRIPT_ALLOWED = (
+    "migrate_verify_log.py",     # 验证明细迁移（一次性）
+    "evolve_verify.py",          # 假说验证（每日）
+    "verify_hypotheses.py",      # 假说验证（另一路径）
+    "audit_data_files.py",       # 数据文件审计
+    "putcall_factor_check.py",   # PUT-CALL 符号检验
+    "prune_dead_data.py",        # 清理死数据
+    "invest_research.py",        # 简报生成（可 --dry-run）
+)
+
+
+def _act_run_script(params):
+    """跑**白名单内**的 `scripts/*.py` 并回传 stdout/stderr ✓。
+
+    参数：
+      - `script`：脚本文件名（必须在 `_SCRIPT_ALLOWED` 里）
+      - `args`：字符串数组，原样传给脚本（可选）
+      - `timeout`：秒数（默认 900，最大 1800）
+
+    🔴 安全边界 ✗：
+      · 脚本名必须在白名单 ⇒ 不能跑任意路径 ✗
+      · `cwd=ROOT` ⇒ 脚本的相对路径行为与手动跑一致 ✓
+      · 用 `sys.executable`（队列自己的 venv）⇒ 依赖一致 ✓
+      · **不拼接 shell** ⇒ `args` 原样传参，无注入面 ✓
+    """
+    script = str(params.get("script") or "").strip()
+    if script not in _SCRIPT_ALLOWED:
+        return {"ok": False,
+                "error": "不允许的脚本：`%s` ✗（白名单：%s）"
+                         % (script, ", ".join(_SCRIPT_ALLOWED))}
+    path = os.path.join(ROOT, "scripts", script)
+    if not os.path.isfile(path):
+        return {"ok": False, "error": "脚本不存在：%s" % path}
+    raw_args = params.get("args") or []
+    if not isinstance(raw_args, list):
+        return {"ok": False, "error": "`args` 必须是数组 ✗"}
+    args = [str(a) for a in raw_args]
+    try:
+        timeout = min(int(params.get("timeout") or 900), 1800)
+    except (TypeError, ValueError):
+        timeout = 900
+    try:
+        r = subprocess.run([sys.executable, path] + args, cwd=ROOT,
+                           capture_output=True, text=True,
+                           encoding="utf-8", errors="replace",
+                           timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 %d 秒未完成" % timeout}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "script": script, "args": args,
+            "stdout": (r.stdout or "")[-3000:],
+            "stderr": (r.stderr or "")[-3000:]}
+
+
 def _act_service_bootstrap(params):
     """**硬重启** launchd 服务：`bootout` + `bootstrap` ✓（2026-11-11 用户要求修 dsh web）。
 
@@ -5714,6 +5776,7 @@ ACTIONS = {
     "futu_opend_info": _act_futu_opend_info,
     "realtime_diag": _act_realtime_diag,
     "service_bootstrap": _act_service_bootstrap,
+    "run_script": _act_run_script,
     "news_diag": _act_news_diag,
     "factor_probe": _act_factor_probe,
     "dsh_web_launch": _act_dsh_web_launch,
