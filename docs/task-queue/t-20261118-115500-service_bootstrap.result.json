@@ -1,0 +1,13 @@
+{
+  "id": "t-20261118-115500-service_bootstrap",
+  "action": "service_bootstrap",
+  "params": {
+    "label": "com.xingguo.fg-evolve-verify"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"label\": \"com.xingguo.fg-evolve-verify\", \"plist\": \"/Users/xingguo/Library/LaunchAgents/com.xingguo.fg-evolve-verify.plist\", \"target\": \"gui/501/com.xingguo.fg-evolve-verify\", \"steps\": {\"bootout\": {\"rc\": 0, \"out\": \"\"}, \"bootstrap\": {\"rc\": 0, \"out\": \"\"}, \"launchctl_list\": [\"-\\t0\\tcom.xingguo.fg-evolve-verify\"], \"processes\": [\"(launchctl list 里没有数字 PID ⇒ 进程未运行)\"], \"log_path\": \"/Users/xingguo/learning_backtrader/logs/evolve_verify.log\", \"log_tail\": \"[memory] 已追加 /Users/xingguo/learning_backtrader/evolution/memory/2026-11-15.md\\n[自检] 假说表 7 列 ✓\\n[跳过] 2 条已判伪/已归档，不再复检：H-005、H-007\\n[样本不足] 3 条verifying：H-006、H-008、H-009\\n[维持] 3 条adopted：H-002、H-003、H-004\\n[hypotheses.md] 状态已更新\\n[memory] 已追加 /Users/xingguo/learning_backtrader/evolution/memory/2026-11-16.md\\n[自检] 假说表 7 列 ✓\\n[跳过] 2 条已判伪/已归档，不再复检：H-005、H-007\\n[样本不足] 3 条verifying：H-006、H-008、H-009\\n[维持] 3 条adopted：H-002、H-003、H-004\\n[hypotheses.md] 状态已更新\\n[memory] 已追加 /Users/xingguo/learning_backtrader/evolution/memory/2026-11-17.md\\n[自检] 假说表 7 列 ✓\\n[跳过] 2 条已判伪/已归档，不再复检：H-005、H-007\\n[样本不足] 3 条verifying：H-006、H-008、H-009\\n[维持] 3 条adopted：H-002、H-003、H-004\\n[hypotheses.md] 状态已更新\\n[memory] 已追加 /Users/xingguo/learning_backtrader/evolution/memory/2026-11-18.md\\n[自检] 假说表 7 列 ✓\\n\"}, \"ok\": false, \"hint\": \"服务没起来 ✗ ⇒ 看 `log_tail` 的真实报错；若日志为空，说明进程启动后立刻退出\"}",
+  "started_at": "2026-11-18T13:56:08",
+  "finished_at": "2026-11-18T13:56:13",
+  "duration_s": 5.35
+}

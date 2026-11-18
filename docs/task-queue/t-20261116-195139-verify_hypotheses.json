@@ -1,9 +1,0 @@
-{
-  "id": "t-20261116-195139-verify_hypotheses",
-  "action": "verify_hypotheses",
-  "params": {
-    "hypotheses": "H-022,H-031,H-042,H-085"
-  },
-  "status": "pending",
-  "created_at": "2026-11-16T19:51:39"
-}
