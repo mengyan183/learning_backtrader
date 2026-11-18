@@ -1,0 +1,13 @@
+{
+  "id": "t-20261118-114500-service_bootstrap",
+  "action": "service_bootstrap",
+  "params": {
+    "label": "com.xingguo.fg-evolve-verify"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"error\": \"不允许的 label：`com.xingguo.fg-evolve-verify` ✗（白名单：com.xingguo.fg-task-queue, com.xingguo.fg-realtime, com.xingguo.fg-dashboard, com.xingguo.fg-sync-watcher, com.xingguo.dsh.web）\"}",
+  "started_at": "2026-11-18T13:39:35",
+  "finished_at": "2026-11-18T13:39:35",
+  "duration_s": 0.0
+}
