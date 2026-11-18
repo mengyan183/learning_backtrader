@@ -6212,7 +6212,14 @@ def run_once(commit=True):
 #: （Mac 上常年有测试产物/临时文件 ✗）
 #: 2026-10-30 实测教训：`factor_backtest_probe --json evolution/...` 写的裁判
 #: 产物**没进 git** ✗ ⇒ Windows 端只能看到被 `output[-2000:]` 截断的 stdout ✗
-TASK_OUTPUT_DIRS = ("evolution/experiments/factor-adoption",)
+TASK_OUTPUT_DIRS = ("evolution/experiments/factor-adoption",
+                    # 🔴 2026-11-18：验证明细归档目录 ✓
+                    #    背景：`evolve_verify.py` 把每日记录写这里 ✗
+                    #    但它不在产物清单 ⇒ `_git_commit` 只 add
+                    #    `TASK_OUTPUT_FILES` 里的 3 个明确文件 ✗
+                    #    ⇒ `verify-log/` 永远留在 Mac 本地、从不入库 ✗
+                    #    ⇒ 加入；它是纯文本 md（每个 H-ID 一个），无敏感内容 ✓
+                    "evolution/verify-log")
 
 #: 🔴 每日链的 `evolve_*` 会**改写**这些登记表 ✗ —— 队列不提交就会让 Mac 侧
 #: 永远留一份「未提交修改」⇒ 之后任何对它们的 patch 都报**冲突中止** ✗
