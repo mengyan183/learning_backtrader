@@ -317,6 +317,25 @@ def update_hypotheses(results):
             break
         if not hit:
             print("  [warn] %s 行未匹配，跳过" % hid)
+    # 🔴 2026-11-18：**独立**补口径注释 ✗（不能只在 results 循环里做）
+    #    实测：H-001 由 `evolve_h001.py` 单独验证 ✗ 不在 `results` 里 ✗
+    #    ⇒ 循环里 `_SCOPE_NOTE.get(hid)` 永远拿不到 H-001 ✗
+    #    ⇒ 单独遍历一遍所有行，只补 `_SCOPE_NOTE` 里列出的 H-ID ✓
+    for i, ln in enumerate(lines):
+        if not ln.startswith("| H-"):
+            continue
+        _cells = _row_cells(ln)
+        if len(_cells) != HYP_COLS:
+            continue
+        _hid = _cells[0].strip()
+        _sc = _SCOPE_NOTE.get(_hid)
+        if not _sc or _sc in _cells[6]:
+            continue
+        _parts = [s.strip() for s in _cells[6].split("<br>") if s.strip()]
+        _cells[6] = "<br>".join([_sc] + _parts)
+        lines[i] = "| " + " | ".join(_cells) + " |\n"
+        print("  [口径] %s 已补注释" % _hid)
+
     with open(HYP, "w", encoding="utf-8") as f:
         f.writelines(lines)
     print("[hypotheses.md] 状态已更新")
