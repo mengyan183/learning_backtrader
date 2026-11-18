@@ -188,7 +188,17 @@ class Bsk:
     #: `cooperate` 机制后，这些动作**必须**带 context，否则报
     #: `shared page control or observation changed` ✗）
     _CTX_ACTIONS = ("click", "fill", "press", "type", "extract",
-                    "reload", "snapshot", "get-html", "screenshot")
+                    "reload", "snapshot", "get-html", "screenshot",
+                    # 🔴 2026-11-17：0.5.0 下**复用会话**时 `navigate` 报
+                    #   `error: this action needs an explicit current observation`
+                    #   ⇒ 触发「复用会话失效」重建 ⇒ 新 tab ⇒ 又要人工点开会话 ✗
+                    #   ⇒ navigate 也必须带 context ✓（新会话首次 navigate 有
+                    #     初始 observation，带 context 同样可用 ✓）
+                    "navigate",
+                    # 🔴 2026-11-17：`evaluate --unverified` **仍要控制权 context** ✗
+                    #   （`--unverified` 只跳过页面比对，控制权/tab 归属照查）
+                    #   ⇒ 报 `This action requires a valid control context`
+                    "evaluate")
 
     def __init__(self, session=None, quiet=True):
         self.session = session
@@ -216,6 +226,43 @@ class Bsk:
                                % (" ".join(args), (proc.stderr or proc.stdout).strip()))
         return proc.stdout or ""
 
+    # 🔴 2026-11-17：**bsk 0.5.0 的 click 在这台机器上不可用** ✗
+    #    现象：`error: the browser's native input clock could not be calibrated`
+    #          `details: Native input clock calibration failed: Cannot attach to this target`
+    #    已排除（实测）：协议（doctor 全绿 / EXT 0.5.0 / protocol 1.9）、
+    #      `--no-focus`（改抢焦点无效）、daemon 重启（无效）、
+    #      扩展重连 + 重配对（无效）、`open --focus` 前台窗口（无效）
+    #    ⇒ 但 `evaluate` 可用 ✓（需一次性 `--observation`）
+    #    ⇒ 用 JS 派发**完整事件序列**才能触发飞书 React 合成事件 ✓
+    #      （只调 `el.click()` 实测无效：会话点不开、输入框不出现 ✗）
+    def click_js(self, text, selector="[draggable]"):
+        """按可见文本用 JS 点击（绕过 native input ✓）。
+
+        取**文本最短**的匹配项 ✓ —— 飞书列表项是嵌套的，
+        外层容器 textContent 会带上整条消息摘要，最短的才是列表项本身。
+
+        🔴 必须 `--unverified` ✗（2026-11-17 实测）：
+          用 `--observation <sync 返回的 id>` 会报
+            `error: this action needs an explicit current observation`
+            `details: The strict observation changed before this action`
+          —— 飞书消息列表**一直在变**（新消息/滚动），sync 与 evaluate
+          之间页面就变了 ⇒ 严格观测永远不通过 ✗
+          `--unverified` 不比对页面，但控制权/文档/tab 归属仍校验 ✓
+        """
+        expr = (
+            "(()=>{"
+            "const m=[...document.querySelectorAll(%r)]"
+            ".filter(n=>n.textContent.includes(%r));"
+            "if(m.length===0)return 'nf';"
+            "const el=m.sort((a,b)=>a.textContent.length-b.textContent.length)[0];"
+            "const o={bubbles:true,cancelable:true,view:window};"
+            "['pointerdown','mousedown','pointerup','mouseup','click']"
+            ".forEach(t=>el.dispatchEvent(t.startsWith('pointer')"
+            "?new PointerEvent(t,o):new MouseEvent(t,o)));"
+            "return 'ok'})()" % (selector, text)
+        )
+        return self.run("evaluate", expr, "--unverified").strip()
+
     def reap(self):
         """清掉**所有残留会话** ✓（`bsk session stop --all` ✓）。
 
@@ -225,8 +272,43 @@ class Bsk:
         """
         self.run("session", "stop", "--all", check=False, with_session=False)
 
-    def start(self, no_focus=True):
+    # 🔴 2026-11-17：**默认改成抢焦点** ✗（原来 `no_focus=True`）
+    #    bsk 0.5.0 起 `click` 走**原生输入时钟校准** ⇒ 要求窗口在前台 ✓
+    #    `--no-focus` 把窗口留在后台 ⇒ 实测报
+    #      `the browser's native input clock could not be calibrated`
+    #      `Native input clock calibration failed: Cannot attach to this target`
+    #    ⇒ 这不是协议问题（`bsk doctor` 全绿、EXT 0.5.0 / protocol 1.9 ✓）
+    def _pick_browser(self, name):
+        """从 `bsk browsers` 里挑 BROWSER 列匹配 `name` 的 instance id ✓。
+
+        输出形如：
+            INSTANCE  BROWSER           EXT    LABEL  SESSIONS
+            f155f0b7  chrome 157.0.0.0  0.5.0  -      0
+        ⇒ 取第 1 列；找不到返回 None（让 bsk 自己选）✓
+        """
+        try:
+            out = self.run("browsers", check=False, with_session=False)
+        except RuntimeError:
+            return None
+        for line in (out or "").splitlines()[1:]:
+            cols = line.split()
+            if len(cols) >= 2 and cols[1].lower().startswith(name.lower()):
+                return cols[0]
+        return None
+
+    def start(self, no_focus=False):
         args = ["session", "start"]
+        # 🔴 2026-11-18：**必须指定 Chrome** ✗（默认会挑 Edge）
+        #    Edge 157 的 `chrome.debugger.attach` 坏了 ⇒ `click`/`press` 报
+        #      `native input clock could not be calibrated`
+        #    Chrome 157 完全正常（实测 `click ok` / `fill ok` / `press ok`）✓
+        #    ⚠️ `--browser chrome` **不行** ✗ —— 报
+        #      `no online browser matches the requested selector`
+        #      它要的是 **instance id**（`f155f0b7`），且重连后会变 ✗
+        #    ⇒ 自动从 `bsk browsers` 解析 chrome 的 instance id ✓
+        browser = os.environ.get("BSK_BROWSER") or self._pick_browser("chrome")
+        if browser:
+            args += ["--browser", browser]
         if no_focus:
             args.append("--no-focus")
         # 会话创建命令不叠加 `--session` ✗（此时还没有会话 ✓）
@@ -259,7 +341,7 @@ class Bsk:
                 return old, True
         # 没有可复用的 ⇒ 先收割残留，再新建 ✓
         self.reap()
-        sid = self.start(no_focus=True)
+        sid = self.start()
         try:
             _SID_FILE.write_text(sid, encoding="utf-8")
         except OSError:
@@ -343,10 +425,37 @@ class Bsk:
         # 新版：聊天已打开（有输入框的 placeholder / 换行提示）⇒ 用选择器 ✓
         if "发送给" in vom or "Shift + Enter" in vom:
             return EDITOR_SELECTOR
+        # 🔴 2026-11-17：**`发送给` 会消失** ✗ —— 发完一条消息后 VOM 里
+        #    那行不再出现（实测），但编辑器**仍在**
+        #    （`div.zone-container.editor-kit-container.innerdocbody` ✓）
+        #    ⇒ 只用 VOM 判断会误报「找不到输入框」✗
+        #    ⇒ 兜底直接问 DOM：`evaluate` 可用（`--unverified` ✓）
+        try:
+            out = self.run("evaluate",
+                           "document.querySelectorAll("
+                           "'div[contenteditable=true]').length", "--unverified")
+            if out.strip().isdigit() and int(out.strip()) > 0:
+                return EDITOR_SELECTOR
+        except RuntimeError:
+            pass
         return None
 
     def fill(self, target, text):
-        """填文本 ✓ —— `target` 是 `@eN` 用位置参数，否则当 CSS 选择器 ✓"""
+        """填文本 ✓。
+
+        🔴 2026-11-17：**0.5.0 的 `fill` 对飞书无效** ✗（用户实测：一条都没收到）
+          `fill` 返回 `fill ok length=14 actual_value="..."`，
+          VOM 里也能看到内容 ⇒ 但飞书是 **React 受控组件** ✗
+          ⇒ 它只改了 DOM，React state 仍是空 ⇒ `press Enter` 不发消息 ✗
+          ⇒ 随后页面重渲染把 DOM 内容也清掉 ⇒ 我的「输入框已清空」判据
+            误判成「发送成功」✗（教训：清空 ≠ 发出）
+          0.5.0 还移除了 `type` 子命令（`error: unrecognized subcommand`）✗
+
+        ✅ 2026-11-18：**换 Chrome 后原生 fill 恢复正常** ✓
+          实测 `fill --selector 'div[contenteditable=true]' --value 'X'`
+            → `fill ok ... actual_value="X"` ✓ 且 `press Enter` 真发出 ✓
+          ⇒ 恢复原生实现；`execCommand` 只在 evaluate 可用时作为备用
+        """
         if str(target).startswith("@"):
             return self.run("fill", target, "--value", text, check=False)
         return self.run("fill", "--selector", target, "--value", text,
@@ -540,7 +649,7 @@ def main():
                     bsk.stop()
                 except Exception:             # noqa: BLE001
                     pass
-                sid = bsk.start(no_focus=True)
+                sid = bsk.start()
                 try:
                     bsk.run("navigate", FEISHU_URL, "--timeout", "90s")
                     _nav_err = None
@@ -571,8 +680,34 @@ def main():
             for r, l in BUTTON_RE.findall(vom)[:25]:
                 print("    %s  %s" % (r, l[:50]))
             raise SystemExit("请用 --chat 指定正确的会话名")
-        print("打开会话：%s" % label[:40])
-        bsk.run("click", ref)
+        print("会话项：%s" % label[:40])
+        # 🔴 2026-11-17：bsk 0.5.0 的 `click` 报
+        #      `native input clock could not be calibrated`
+        #      `Cannot attach to this target`
+        #    实测判据：连**同域**元素（`@e2 button "消息"`）也失败
+        #      ⇒ `chrome.debugger.attach` 整体不可用 ✗
+        #      （`edge://policy` 无 debugger/ExtensionSettings 限制；
+        #        bsk doctor 全绿；0.4.2 的 click 走 JS 合成所以能用）
+        #    ✅ 但 `fill` / `press` / `evaluate` / `request-help` **都可用** ✓
+        #    ⇒ 对策：
+        #      ① 输入框已在（复用会话 tab 常驻）⇒ **跳过点击** ✓
+        #      ② 未打开且 click 不可用 ⇒ `request-help` 请人工点一次 ✓
+        _already = bsk.find_textbox(bsk.sync()[1])
+        if _already:
+            print("  会话已打开，跳过点击")
+        else:
+            try:
+                bsk.run("click", ref)
+            except RuntimeError as _ce:
+                _msg = str(_ce)
+                if ("native input" not in _msg
+                        and "attach to this target" not in _msg):
+                    raise
+                print("  …native input 不可用，请人工点开会话")
+                bsk.run("request-help", "--prompt",
+                        "请点击左侧「%s」打开聊天窗口，然后点确认"
+                        % args.chat,
+                        "--title", "点开会话", check=False)
 
         box = None
         # 🔴 2026-11-11：提到 **20 次（40 秒）** ✗ —— 新版下聊天窗口渲染更慢，
