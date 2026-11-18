@@ -1,0 +1,14 @@
+{
+  "id": "t-20261118-123100-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "migrate_verify_log.py",
+    "args": []
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"migrate_verify_log.py\", \"args\": [], \"stdout\": \"将迁移 174 条验证记录；保留原始说明 17 条\\n已备份 → hypotheses.md.bak-20261118-151243\\n已写入 /Users/xingguo/learning_backtrader/evolution/hypotheses.md\\n归档目录：/Users/xingguo/learning_backtrader/evolution/verify-log\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-18T15:12:42",
+  "finished_at": "2026-11-18T15:12:43",
+  "duration_s": 0.69
+}
