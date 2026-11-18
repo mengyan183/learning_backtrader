@@ -1,0 +1,9 @@
+{
+  "id": "t-20261118-105905-service_bootstrap",
+  "action": "service_bootstrap",
+  "params": {
+    "label": "com.xingguo.fg-realtime"
+  },
+  "status": "pending",
+  "created_at": "2026-11-18T10:59:06"
+}
