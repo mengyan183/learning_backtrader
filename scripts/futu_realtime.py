@@ -27,6 +27,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
 
 STATE_PATH = os.path.join(REPO, "Data", "realtime_state.json")
+# 🔴 2026-11-17：连续失败落盘（launchd 没配日志，异常只 print 到 stdout ✗）
+ERR_PATH = os.path.join(REPO, "Data", "realtime_errors.log")
 ALERT_PCT = float(os.environ.get("RT_ALERT_PCT", "5.0"))
 ALERT_COOLDOWN = 3600  # 每标的小时级去重
 SYMBOL_CODES = {}      # {"QQQ": "US.QQQ", ...} 运行时填充
@@ -154,11 +156,24 @@ def snapshot_fallback():
     """降级通道：get_market_snapshot 轮询（订阅无数据时每 15s 拉一次快照）。"""
     import futu
     ctx = futu.OpenQuoteContext(host="127.0.0.1", port=11111)
+    # 🔴 2026-11-17：**连续失败落盘** ✓
+    #    背景：launchd 的 `com.xingguo.fg-realtime` 没配日志 ✗
+    #    实测告警「日志 7771 秒没动静（阈值 1800）」⇒ 监控看的是
+    #      `realtime_state.json` 的 mtime ✗ 而异常只 `print` 到 stdout ✗
+    #      ⇒ 服务挂 2 小时，**只知道它没写 state，不知道为什么** ✗
+    #    判据：`save_state` 只在 `ret == 0 and not df.empty` 时执行 ✓
+    #      ⇒ OpenD 挂 ⇒ ret≠0 ⇒ 不写 ⇒ mtime 停 ⇒ 告警 ✓（进程还活着）
+    #    ⇒ 失败 5 分钟（20 次 × 15s）记一条，之后每 1 小时（240 次）再记 ✓
+    #      恢复时也记一条（能看出中断了多久）✓
+    _fail = 0
+    _fail_since = None
     while True:
+        _ok = False
         try:
             ret, df = ctx.get_market_snapshot([SYMBOL_CODES[s] for s in holding_symbols()
                                                if s in SYMBOL_CODES])
             if ret == 0 and not df.empty:
+                _ok = True
                 for _, r in df.iterrows():
                     sym = str(r["code"]).replace("US.", "", 1)
                     price = float(r.get("last_price", 0) or 0)
@@ -173,6 +188,34 @@ def snapshot_fallback():
                 save_state(state)
         except Exception as e:
             print(f"[rt] snapshot 轮询异常: {e}")
+        # ---- 失败/恢复落盘 ----
+        if _ok:
+            if _fail >= 20:
+                try:
+                    with open(ERR_PATH, "a", encoding="utf-8") as _f:
+                        _f.write("%s 恢复（连续失败 %d 次，自 %s）\n"
+                                 % (now_iso(), _fail, _fail_since))
+                except OSError:
+                    pass
+            _fail, _fail_since = 0, None
+        else:
+            _fail += 1
+            if _fail == 20:
+                _fail_since = now_iso()
+                try:
+                    with open(ERR_PATH, "a", encoding="utf-8") as _f:
+                        _f.write("%s 连续失败 20 次（约 5 分钟）⇒ "
+                                 "疑似 OpenD 不可用（state 已停更）\n"
+                                 % now_iso())
+                except OSError:
+                    pass
+            elif _fail % 240 == 0:
+                try:
+                    with open(ERR_PATH, "a", encoding="utf-8") as _f:
+                        _f.write("%s 仍失败（累计 %d 次）\n"
+                                 % (now_iso(), _fail))
+                except OSError:
+                    pass
         time.sleep(15)
 
 
