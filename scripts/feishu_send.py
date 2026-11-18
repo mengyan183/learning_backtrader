@@ -625,18 +625,18 @@ def main():
         #    ⇒ 无条件 navigate 一次，保证页面是新鲜的 ✓
         #    代价：失去「跳过 navigate」的 30~45 秒加速 ✗
         #      但仍保留「跳过 `start`」的收益（创建会话更慢）✓
-        if True:                              # noqa: SIM103 —— 保留缩进便于回退
-            # 🔴 2026-11-18：navigate **必须**先有 context ✗（0.5.0 严格模式）
-            #    `navigate` 已加入 `_CTX_ACTIONS` ⇒ `run()` 会追加 `--context` ✓
-            #    但**复用会话**路径里 `self.ctx` 还是 `None` ✗（没调过 `sync()`）
-            #    ⇒ 实测报
-            #      `error: this action needs an explicit current observation` ✗
-            #    ⇒ 触发下面的「复用会话失效」误判 ⇒ 白重建一个会话 ✗
-            #    ⇒ 先 sync 一次拿 ctx；失败也继续（新会话有初始 observation）✓
-            try:
-                bsk.sync()
-            except Exception as _e:          # noqa: BLE001
-                print("[navigate] 预 sync 失败（不影响后续）：%s" % str(_e)[:80])
+        # 🔴 2026-11-18：**复用会话必须跳过 navigate** ✗（0.5.0 observation 一次性）
+        #    实测三种写法全失败：
+        #      ① 不带 context ⇒ `this action needs an explicit current observation` ✗
+        #      ② 先 sync 再带 context ⇒ `shared page control or observation changed`
+        #         `details: This context belongs to a different or superseded observation` ✗
+        #         （`sync()` 拿到的 ctx 在 navigate 时已被它自己的 VOM 消耗掉 ✗）
+        #      ③ 不 sync 直接带旧 ctx ⇒ 同样「已过期」✗
+        #    ⇒ 结论：0.5.0 下**复用会话的 tab 无法再 navigate**（observation 已被历史动作消耗）
+        #    ✅ 只有**新会话**的 navigate 能成功（它有初始 observation）✓
+        #    ⇒ 改回「复用 ⇒ 跳过 navigate」；闲置导致编辑器卸载的场景
+        #      由后面的 `find_textbox` 20 次重试 + 每 5 次重点会话兜住 ✓
+        if not reused:                        # 仅新会话需要 navigate ✓
             _nav_err = None
             for _i in range(2):
                 try:
