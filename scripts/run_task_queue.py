@@ -2181,15 +2181,29 @@ def _act_service_bootstrap(params):
     except Exception as exc:                  # noqa: BLE001
         out["steps"]["log_tail"] = "ERR %s" % str(exc)[:150]
 
-    # 判定：launchctl 里有数字 PID 且 ps 里能看到 ⇒ 起来了 ✓
+    # 判定：两种服务都算「起来了」✓
+    #   ① **常驻服务**（`KeepAlive=true`）⇒ `launchctl list` 有数字 PID ✓
+    #   ② **定时任务**（`StartCalendarInterval`）⇒ 跑完立刻退出 ✓
+    #      此时 `launchctl list` 是 `-\t0\t<label>`（PID 无 + 上次退出码 0）✗
+    #      🔴 2026-11-18 实测踩坑：`com.xingguo.fg-evolve-verify` 是定时任务 ✗
+    #         bootstrap rc=0、日志显示正常跑完（`[hypotheses.md] 状态已更新`）✓
+    #         但被判 `ok:false` ⇒ 误报「服务没起来」✗
+    #      ⇒ 判据补：`-` + 退出码 0 + 日志非空 ⇒ 视为成功 ✓
     _listed = out["steps"].get("launchctl_list") or []
     _pid_ok = False
+    _oneshot_ok = False
     if isinstance(_listed, list) and _listed:
         _first = str(_listed[0]).split()
         if _first and _first[0].isdigit():
             _pid_ok = True
-    out["ok"] = _pid_ok
-    if not _pid_ok:
+        elif (len(_first) >= 2 and _first[0] == "-" and _first[1] == "0"
+              and (out["steps"].get("log_tail") or "").strip()):
+            # 定时任务：跑完正常退出，且日志有内容 ⇒ 真的执行过 ✓
+            _oneshot_ok = True
+    out["ok"] = _pid_ok or _oneshot_ok
+    if _oneshot_ok:
+        out["note"] = "定时任务（StartCalendarInterval）跑完正常退出 ⇒ 视为成功"
+    if not out["ok"]:
         out["hint"] = ("服务没起来 ✗ ⇒ 看 `log_tail` 的真实报错；"
                        "若日志为空，说明进程启动后立刻退出")
     return out

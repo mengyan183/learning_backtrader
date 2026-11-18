@@ -626,6 +626,17 @@ def main():
         #    代价：失去「跳过 navigate」的 30~45 秒加速 ✗
         #      但仍保留「跳过 `start`」的收益（创建会话更慢）✓
         if True:                              # noqa: SIM103 —— 保留缩进便于回退
+            # 🔴 2026-11-18：navigate **必须**先有 context ✗（0.5.0 严格模式）
+            #    `navigate` 已加入 `_CTX_ACTIONS` ⇒ `run()` 会追加 `--context` ✓
+            #    但**复用会话**路径里 `self.ctx` 还是 `None` ✗（没调过 `sync()`）
+            #    ⇒ 实测报
+            #      `error: this action needs an explicit current observation` ✗
+            #    ⇒ 触发下面的「复用会话失效」误判 ⇒ 白重建一个会话 ✗
+            #    ⇒ 先 sync 一次拿 ctx；失败也继续（新会话有初始 observation）✓
+            try:
+                bsk.sync()
+            except Exception as _e:          # noqa: BLE001
+                print("[navigate] 预 sync 失败（不影响后续）：%s" % str(_e)[:80])
             _nav_err = None
             for _i in range(2):
                 try:
