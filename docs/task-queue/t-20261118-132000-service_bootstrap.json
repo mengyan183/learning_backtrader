@@ -1,0 +1,9 @@
+{
+  "id": "t-20261118-132000-service_bootstrap",
+  "action": "service_bootstrap",
+  "params": {
+    "label": "com.xingguo.fg-evolve-verify"
+  },
+  "status": "pending",
+  "created_at": "2026-11-18T13:20:00"
+}
