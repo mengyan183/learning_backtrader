@@ -2007,6 +2007,65 @@ _SCRIPT_ALLOWED = (
 )
 
 
+#: `run_git` 允许的子命令 ✓（2026-11-19 用户选择方案 ②）
+#   🔴 为什么需要 ✗：`git rm --cached` 只能在 Mac 上做（文件在那边）✗
+#      为了清 6 个 `.bak` 让用户手动敲命令 ⇒ 违反「Mac 侧操作一律走队列」✗
+#   ⚠️ 只放**只读或只动索引**的子命令 ✗ 绝不放 push / reset / clean ✓
+_GIT_ALLOWED = (
+    "rm",              # 只允许 `--cached`（见下方强制注入）
+    "status",          # 只读
+    "log",             # 只读
+    "ls-files",        # 只读
+    "count-objects",   # 只读（仓库体积）
+    "gc",              # 压缩对象（不删工作区文件）
+)
+
+
+def _act_run_git(params):
+    """执行**白名单** git 子命令并回传输出 ✓。
+
+    参数：
+      - `sub`：子命令（必须在 `_GIT_ALLOWED`）
+      - `args`：字符串数组，原样传给 git（可选）
+      - `timeout`：秒数（默认 120，最大 600）
+
+    🔴 安全边界 ✗：
+      · `rm` **强制**注入 `--cached` ⇒ 只从索引移除，**绝不删工作区文件** ✓
+      · 不拼接 shell ⇒ 无注入面 ✓
+      · `cwd=ROOT` ⇒ 只能操作本仓库 ✓
+      · 白名单排除 `push` / `reset` / `clean` / `checkout` ⇒ 无法破坏历史或工作区 ✓
+    """
+    sub = str(params.get("sub") or "").strip()
+    if sub not in _GIT_ALLOWED:
+        return {"ok": False,
+                "error": "不允许的 git 子命令：`%s` ✗（白名单：%s）"
+                         % (sub, ", ".join(_GIT_ALLOWED))}
+    raw = params.get("args") or []
+    if not isinstance(raw, list):
+        return {"ok": False, "error": "`args` 必须是数组 ✗"}
+    args = [str(a) for a in raw]
+    # 🔴 `rm` 必须只动索引 ✓
+    if sub == "rm" and "--cached" not in args:
+        args.insert(0, "--cached")
+    try:
+        timeout = min(int(params.get("timeout") or 120), 600)
+    except (TypeError, ValueError):
+        timeout = 120
+    try:
+        r = subprocess.run(["git", sub] + args, cwd=ROOT,
+                           capture_output=True, text=True,
+                           encoding="utf-8", errors="replace",
+                           timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "reason": "超过 %d 秒未完成" % timeout}
+    except (subprocess.SubprocessError, OSError) as exc:
+        return {"ok": False, "reason": "执行失败：%s" % exc}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "cmd": "git %s %s" % (sub, " ".join(args)),
+            "stdout": (r.stdout or "")[-3000:],
+            "stderr": (r.stderr or "")[-2000:]}
+
+
 def _act_run_script(params):
     """跑**白名单内**的 `scripts/*.py` 并回传 stdout/stderr ✓。
 
@@ -5802,6 +5861,7 @@ ACTIONS = {
     "realtime_diag": _act_realtime_diag,
     "service_bootstrap": _act_service_bootstrap,
     "run_script": _act_run_script,
+    "run_git": _act_run_git,
     "news_diag": _act_news_diag,
     "factor_probe": _act_factor_probe,
     "dsh_web_launch": _act_dsh_web_launch,
