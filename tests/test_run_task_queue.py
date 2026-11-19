@@ -8,6 +8,7 @@
 import json
 import os
 import sys
+from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                 "scripts"))
@@ -15,8 +16,15 @@ import run_task_queue as q  # noqa: E402
 
 
 def _put(queue, tid, action, status="pending"):
+    # 🔴 2026-11-19：`created_at` **必须动态** ✗
+    #    原来写死 `2026-10-28T16:00:00` ⇒ 2026-11-19 时已 **523.8 小时（21.8 天）** ✗
+    #    被 `_stale` 逻辑判为过期 ⇒ 归档到 `_stale/` ⇒ 根本不执行 ✗
+    #    ⇒ 5 个测试集体失败（`test_runs_whitelisted_action` / `test_done_task_not_rerun`
+    #      / `test_unknown_action_fails_loudly` / `test_exception_is_recorded`
+    #      / `test_restart_tasks_run_before_older_slow_tasks`）✗
+    #    ⇒ 与代码改动**无关**，是「时间敏感测试」的自然失效 ✓
     spec = {"id": tid, "action": action, "params": {}, "status": status,
-            "created_at": "2026-10-28T16:00:00"}
+            "created_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S")}
     with open(os.path.join(queue, tid + ".json"), "w", encoding="utf-8") as f:
         json.dump(spec, f, ensure_ascii=False)
 
