@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
                                 "scripts"))
 import queue_core as qc  # noqa: E402
 import run_task_queue as q  # noqa: E402
+from queue_actions import diag as dq  # noqa: E402
 from queue_actions import launchd as lq  # noqa: E402
 
 
@@ -274,7 +275,7 @@ def test_key_diag_never_leaks_plaintext(tmp_path, monkeypatch):
         "nvidia: nvapi-%s\n" % ("A" * 16)
         + "deepseek: sk-%s\n" % ("1234567890abcdefghij"), encoding="utf-8")
 
-    r = q._act_key_diag({"dir": str(tmp_path)})
+    r = dq._act_key_diag({"dir": str(tmp_path)})
 
     assert r["ok"] is True
     hits = r["result"]["hits"]
@@ -290,7 +291,7 @@ def test_key_diag_never_leaks_plaintext(tmp_path, monkeypatch):
 
 def test_key_diag_missing_dir(tmp_path):
     """目录不存在 ⇒ 明确失败 ✓（别静默返回空）。"""
-    assert q._act_key_diag({"dir": str(tmp_path / "nope")})["ok"] is False
+    assert dq._act_key_diag({"dir": str(tmp_path / "nope")})["ok"] is False
 
 
 def test_evolution_registries_are_committed():
