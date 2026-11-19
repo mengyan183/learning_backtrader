@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 import queue_core as qc  # noqa: E402
 import run_task_queue as q  # noqa: E402
 from queue_actions import diag as dq  # noqa: E402
+from queue_actions import git as gq  # noqa: E402
 from queue_actions import launchd as lq  # noqa: E402
 
 
@@ -733,7 +734,7 @@ def test_safe_rel_rejects_dotdot():
     with pytest.raises(ValueError, match=r"\.\."):
         q._safe_rel("Data/raw/../../.env", q._READ_ALLOW)
     with pytest.raises(ValueError, match=r"\.\."):
-        q._safe_rel("evolution/../.env", q._GIT_COMMIT_ALLOW)
+        q._safe_rel("evolution/../.env", gq._GIT_COMMIT_ALLOW)
 
 
 def test_safe_rel_rejects_prefix_confusion():
@@ -744,7 +745,7 @@ def test_safe_rel_rejects_prefix_confusion():
     with pytest.raises(ValueError, match="不在白名单"):
         q._safe_rel("Data/raw-evil/x.csv", q._READ_ALLOW)
     with pytest.raises(ValueError, match="不在白名单"):
-        q._safe_rel("evolutionx/foo.md", q._GIT_COMMIT_ALLOW)
+        q._safe_rel("evolutionx/foo.md", gq._GIT_COMMIT_ALLOW)
 
 
 def test_safe_rel_accepts_whitelisted():
