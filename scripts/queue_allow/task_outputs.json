@@ -1,0 +1,11 @@
+{
+  "dirs": [
+    "evolution/experiments/factor-adoption",
+    "evolution/verify-log"
+  ],
+  "files": [
+    "evolution/hypotheses.md",
+    "evolution/factors.md",
+    "evolution/hypothesis_results.md"
+  ]
+}

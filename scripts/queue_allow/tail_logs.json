@@ -1,0 +1,8 @@
+{
+  "daily": "/tmp/fg_daily.log",
+  "task_queue": "/tmp/fg_task_queue.log",
+  "evolve_verify": "logs/evolve_verify.log",
+  "invest": "Data/health/invest_stages.log",
+  "realtime": "/tmp/fg_realtime.log",
+  "realtime_errors": "Data/realtime_errors.log"
+}
