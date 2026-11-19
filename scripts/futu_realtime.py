@@ -20,6 +20,7 @@
 import json
 import os
 import sys
+import threading
 import time
 from datetime import datetime
 
@@ -97,12 +98,66 @@ def load_state():
     return {"updated": None, "prices": {}, "preview_index": None, "alerts": {}}
 
 
+def _call_with_timeout(fn, timeout=30, default=None):
+    """在守护线程里执行 `fn`，**超时返回 default** ✓。
+
+    🔴 为什么必须加 ✗（2026-11-19 实测根因）：
+       OpenD 断连后 futu SDK 的 `get_market_snapshot` 会**永久阻塞** ✗
+       日志证据：`on_disconnect: Disconnected: conn=0(18)` ~ `conn=0(23)`
+       连续 6 次断连后，主循环彻底卡住 ⇒
+         · `realtime_state.json` mtime 停更 **14521 秒（4 小时）**✗
+         · 进程**还活着**（`launchctl list` 有 PID）⇒ 监控只报
+           「日志 9298 秒没动静」⇒ 看不出是 SDK 挂起 ✗
+       ⇒ 用守护线程 + `join(timeout)` 把它变成**可恢复的超时** ✓
+         超时后主循环继续下一轮，`_fail` 计数会落盘到 `realtime_errors.log` ✓
+    ⚠️ 守护线程无法强杀 ⇒ 超时后它仍占着 SDK 连接 ✗
+       但**主循环不再被拖死** ✓（这是本次要解决的核心问题）
+    """
+    box = {"r": default, "done": False}
+
+    def _run():
+        try:
+            box["r"] = fn()
+            box["done"] = True
+        except Exception as e:          # noqa: BLE001 —— 不让子线程异常逃逸
+            print("[rt] 调用异常：%s" % e)
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(timeout)
+    if t.is_alive():
+        print("[rt] 调用超时（>%ds）⇒ 返回默认值，主循环继续" % timeout)
+        return default
+    return box["r"]
+
+
 def save_state(state):
+    """原子写 state ✓ —— **目录不存在也能自愈** ✓。
+
+    🔴 2026-11-19 实测踩坑：`os.replace` 报
+        `FileNotFoundError: '/Users/xingguo/learning_backtrader/Dat...'`
+      成因：`tmp` 能创建（line 103 成功）但 `os.replace` 失败 ✗
+      ⇒ 只能是**在 open 和 replace 之间目录被删了** ✗
+         （`fg-sync` 入库 / `prune_dead_data` 的瞬时窗口）
+      ⇒ 而 `FileNotFoundError` 会穿透 `except KeyboardInterrupt` ✗
+      ⇒ **整个 `main()` 退出** ⇒ 进程死 ⇒ state 停更 ⇒ 告警「日志 N 秒没动静」✗
+      （实测停了 14521 秒 / 4 小时，而 `launchctl` 里还残留旧 PID ✗）
+    ⇒ 对策：写前 `makedirs(exist_ok=True)` + `OSError` 重试一次 ✓
+    """
     state["updated"] = now_iso()
-    tmp = STATE_PATH + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(state, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, STATE_PATH)
+    for _try in range(2):
+        try:
+            os.makedirs(os.path.dirname(STATE_PATH), exist_ok=True)
+            tmp = STATE_PATH + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(state, f, ensure_ascii=False, indent=1)
+            os.replace(tmp, STATE_PATH)
+            return True
+        except OSError as e:
+            print("[rt] save_state 失败（第 %d 次）：%s" % (_try + 1, e))
+            if _try == 0:
+                time.sleep(0.5)
+    return False
 
 
 def holding_symbols():
@@ -170,8 +225,14 @@ def snapshot_fallback():
     while True:
         _ok = False
         try:
-            ret, df = ctx.get_market_snapshot([SYMBOL_CODES[s] for s in holding_symbols()
-                                               if s in SYMBOL_CODES])
+            # 🔴 2026-11-19：**必须加超时** ✗ —— OpenD 断连后 SDK 永久阻塞 ✗
+            #    实测 `on_disconnect` 连 6 次后主循环卡死 14521 秒 ✗
+            _res = _call_with_timeout(
+                lambda: ctx.get_market_snapshot(
+                    [SYMBOL_CODES[s] for s in holding_symbols()
+                     if s in SYMBOL_CODES]),
+                timeout=30, default=(None, None))
+            ret, df = _res if isinstance(_res, tuple) else (None, None)
             if ret == 0 and not df.empty:
                 _ok = True
                 for _, r in df.iterrows():
@@ -417,7 +478,11 @@ def main():
     from futu import OpenQuoteContext
     ctx = OpenQuoteContext(host="127.0.0.1", port=11111)
     # 先拉一次初始快照，让状态文件立即有值
-    ret, df = ctx.get_market_snapshot([SYMBOL_CODES[s] for s in syms])
+    # 🔴 2026-11-19：启动首拉也要超时 ✗（OpenD 未就绪时会永久阻塞 ✗）
+    _res0 = _call_with_timeout(
+        lambda: ctx.get_market_snapshot([SYMBOL_CODES[s] for s in syms]),
+        timeout=30, default=(None, None))
+    ret, df = _res0 if isinstance(_res0, tuple) else (None, None)
     if ret == 0 and not df.empty:
         for _, r in df.iterrows():
             sym = str(r["code"]).replace("US.", "", 1)
@@ -447,28 +512,40 @@ def main():
     no_update_since = time.time()
     try:
         while True:
-            time.sleep(60)
-            for sym, st in list(state.get("prices", {}).items()):
-                if isinstance(st, dict):
-                    check_alert(sym, st)
-            save_state(state)
-            pi = preview_index()
-            if pi:
-                state["preview_index"] = pi
-                state["market_signal"] = build_market_signal(state, pi)
+            # 🔴 2026-11-19：**单轮异常不得杀死主循环** ✗
+            #    实测：`save_state` 抛 `FileNotFoundError`（目录瞬时消失）✗
+            #    而外层只有 `except KeyboardInterrupt` ⇒ 异常**穿透** ✗
+            #    ⇒ `main()` 退出 ⇒ 进程死 ⇒ state 停更 14521 秒 ✗
+            #    ⇒ 加内层 `except Exception`，只记录不退出 ✓
+            try:
+                time.sleep(60)
+                for sym, st in list(state.get("prices", {}).items()):
+                    if isinstance(st, dict):
+                        check_alert(sym, st)
                 save_state(state)
-                print(f"[rt] 预览指数 {pi['fg_index']} {pi['zone']} (收盘 {pi['closed_index']}, Δ{pi['delta']:+.1f})")
-            # 兜底：若最近 180s 内回调无任何更新，切 snapshot 轮询线程
-            any_new = any(
-                (time.time() - _ts_of(v)) < 180
-                for v in state["prices"].values() if isinstance(v, dict)
-            )
-            if not any_new and time.time() - last_snapshot > 180:
-                print("[rt] 订阅无新数据，降级 snapshot 轮询")
-                import threading
-                threading.Thread(target=snapshot_fallback, args=(),
-                                 daemon=True).start()
-                last_snapshot = time.time()
+                pi = preview_index()
+                if pi:
+                    state["preview_index"] = pi
+                    state["market_signal"] = build_market_signal(state, pi)
+                    save_state(state)
+                    print(f"[rt] 预览指数 {pi['fg_index']} {pi['zone']} (收盘 {pi['closed_index']}, Δ{pi['delta']:+.1f})")
+                # 兜底：若最近 180s 内回调无任何更新，切 snapshot 轮询线程
+                any_new = any(
+                    (time.time() - _ts_of(v)) < 180
+                    for v in state["prices"].values() if isinstance(v, dict)
+                )
+                if not any_new and time.time() - last_snapshot > 180:
+                    print("[rt] 订阅无新数据，降级 snapshot 轮询")
+                    threading.Thread(target=snapshot_fallback, args=(),
+                                     daemon=True).start()
+                    last_snapshot = time.time()
+            except Exception as _e:       # noqa: BLE001 —— 绝不退出主循环
+                print("[rt] 轮次异常（继续）：%s" % _e)
+                try:
+                    with open(ERR_PATH, "a", encoding="utf-8") as _f:
+                        _f.write("%s 轮次异常：%s\n" % (now_iso(), _e))
+                except OSError:
+                    pass
     except KeyboardInterrupt:
         print("[rt] 退出")
     finally:
