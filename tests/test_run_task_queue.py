@@ -15,6 +15,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                 "scripts"))
 import queue_core as qc  # noqa: E402
+import queue_store as qs  # noqa: E402
 import run_task_queue as q  # noqa: E402
 from queue_actions import data as ddq  # noqa: E402
 from queue_actions import diag2 as d2  # noqa: E402
@@ -22,6 +23,37 @@ from queue_actions import files as fq  # noqa: E402
 from queue_actions import diag as dq  # noqa: E402
 from queue_actions import git as gq  # noqa: E402
 from queue_actions import launchd as lq  # noqa: E402
+
+
+def _q(monkeypatch, path):
+    """把队列目录重定向到临时目录 ✓。
+
+    🔴 2026-11-19 第十一轮：`QUEUE` 搬进 `queue_store` ✗ ——
+       只 patch `run_task_queue.QUEUE` **不影响**读写（读写走 queue_store）✗
+       ⇒ 两处都要 patch ✓
+    """
+    monkeypatch.setattr(qs, "QUEUE", str(path))
+    monkeypatch.setattr(q, "QUEUE", str(path))
+
+
+@pytest.fixture(autouse=True)
+def _isolate_queue(monkeypatch, tmp_path):
+    """每个测试**默认**把队列目录指向 tmp ✓ —— 忘了 `_q` 也不会动真实目录 ✗。
+
+    🔴 2026-11-19 实测事故：`QUEUE` 搬进 `queue_store` 后，旧的
+       `monkeypatch.setattr(q, "QUEUE", ...)` 不再生效 ⇒
+       `_prune_queue()` 直接跑了真实队列目录，删掉 42 个已跟踪的任务文件 ✗
+       （靠 `git checkout -- docs/task-queue/` 恢复）
+    ⇒ ① 默认隔离（预防）+ ② 事后断言真实目录没变（检测）✓
+    """
+    real = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "docs", "task-queue")
+    before = set(os.listdir(real))
+    monkeypatch.setattr(qs, "QUEUE", str(tmp_path))
+    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    yield
+    assert set(os.listdir(real)) == before, \
+        "测试改动了真实队列目录 %s ✗" % real
 
 
 def _put(queue, tid, action, status="pending"):
@@ -45,7 +77,7 @@ def _result(queue, tid):
 
 
 def test_runs_whitelisted_action(tmp_path, monkeypatch):
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     calls = []
     monkeypatch.setattr(q, "ACTIONS", {"demo": lambda p: calls.append(p) or {"ok": True}})
     _put(str(tmp_path), "t1", "demo")
@@ -88,7 +120,7 @@ def test_restart_tasks_run_before_older_slow_tasks(tmp_path, monkeypatch):
     2026-11-06 实测：`restart_dashboard` 12:40 下发，13:55 才执行 ✗
     —— 排在 `fetch_prices`（timeout 1800s）后面白等 16 分钟。
     """
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     order = []
     monkeypatch.setattr(q, "ACTIONS", {
         "fetch_prices": lambda p: order.append("fetch") or {"ok": True},
@@ -103,7 +135,7 @@ def test_restart_tasks_run_before_older_slow_tasks(tmp_path, monkeypatch):
 
 def test_unknown_action_fails_loudly(tmp_path, monkeypatch):
     """未知 action **不能静默跳过** ✗ —— 否则下发方以为还在排队。"""
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     monkeypatch.setattr(q, "ACTIONS", {})
     _put(str(tmp_path), "t2", "rm_rf_everything")
 
@@ -115,7 +147,7 @@ def test_unknown_action_fails_loudly(tmp_path, monkeypatch):
 
 def test_exception_is_recorded(tmp_path, monkeypatch):
     """action 抛异常也要落 result ✓（否则页面永远显示 pending）。"""
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
 
     def boom(_p):
         raise RuntimeError("炸了")
@@ -135,7 +167,7 @@ def test_auto_clean_triggers_above_threshold(tmp_path, monkeypatch):
                         lambda now: {"count": sh.BACKLOG_WARN + 10})
     monkeypatch.setattr(sh, "archive_backlog",
                         lambda **k: moved.append(1) or {"moved": 5, "dest": "/x"})
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     monkeypatch.setattr(q, "ACTIONS", {})
     q.run_once(commit=False)
     assert moved == [1], "超阈值时必须归档 ✗"
@@ -148,7 +180,7 @@ def test_auto_clean_skips_below_threshold(tmp_path, monkeypatch):
     monkeypatch.setattr(sh, "_bypass_stats", lambda now: {"count": 5})
     monkeypatch.setattr(sh, "archive_backlog",
                         lambda **k: moved.append(1) or {"moved": 0})
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     monkeypatch.setattr(q, "ACTIONS", {})
     q.run_once(commit=False)
     assert moved == []
@@ -170,7 +202,7 @@ def test_install_agent_refuses_off_mac(monkeypatch):
 
 def test_done_task_not_rerun(tmp_path, monkeypatch):
     """已有 result 且 status 非 pending ⇒ 不再执行 ✓（幂等，launchd 每 10s 会重复扫）。"""
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     hits = []
     monkeypatch.setattr(q, "ACTIONS", {"demo": lambda p: hits.append(1) or {"ok": True}})
     _put(str(tmp_path), "t4", "demo")
@@ -201,7 +233,7 @@ def test_broken_task_file_is_quarantined(tmp_path, monkeypatch, capsys):
     ⇒ `json.load` 抛 ValueError ⇒ 被 `except: continue` 吞掉 ✗
     ⇒ 日志里**完全没有这条任务**，也永远不会执行 ✗。
     """
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     bad = tmp_path / "t-20261029-1936-demo.json"
     bad.write_text('{"id": "x", "action": "demo"}\ndiff --git a/x b/x\n',
                    encoding="utf-8")
@@ -218,7 +250,7 @@ def test_pending_is_sorted_by_id(tmp_path, monkeypatch):
     id 是 `t-YYYYmmdd-HHMMSS-<action>`，字典序恒等于时间序 ✓；
     而 `created_at` 可能缺失（缺失会排最前，抢跑 ✗）。
     """
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     for tid, created in (("t-20261029-2000-demo", ""),
                          ("t-20261029-1930-demo", "2026-10-29T19:30:00"),
                          ("t-20261029-1945-demo", "2026-10-29T19:45:00")):
@@ -236,7 +268,7 @@ def test_prune_queue_keeps_recent_and_never_drops_pending(tmp_path, monkeypatch)
 
     🔴 未完成的任务（没有 `.result.json`）**一律不删** ✗ —— 删了就永远不会执行 ✗。
     """
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     for i in range(13):
         tid = "t-202601%02d-0000-demo" % i
         (tmp_path / (tid + ".json")).write_text("{}", encoding="utf-8")
@@ -385,7 +417,7 @@ def test_collect_reinstall_writes_back_result(tmp_path, monkeypatch, capsys):
     2026-10-29：`install_daily_plist` 对队列作业只能延迟 8 秒重装（当场 bootout
     会把自己杀掉 ✗）⇒ 它返回的 `ok:true` 只代表**拷贝成功** ✗，重装成没成无人回收 ✗。
     """
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     tid = "t-1"
     (tmp_path / (tid + ".result.json")).write_text(json.dumps({
         "id": tid, "action": "install_daily_plist",
@@ -405,7 +437,7 @@ def test_collect_reinstall_writes_back_result(tmp_path, monkeypatch, capsys):
 
 def test_collect_reinstall_reports_failure(tmp_path, monkeypatch, capsys):
     """重装失败也必须**明确回写** ✓ —— 否则队列 agent 死了都没人知道 ✗。"""
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     tid = "t-2"
     (tmp_path / (tid + ".result.json")).write_text(json.dumps({
         "id": tid, "action": "install_daily_plist", "status": "done"}),
@@ -423,7 +455,7 @@ def test_collect_reinstall_reports_failure(tmp_path, monkeypatch, capsys):
 
 def test_collect_reinstall_ignores_missing_result(tmp_path, monkeypatch):
     """结果文件不在时不能崩 ✓（标记仍要清掉，别让它永远挡着）。"""
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     (tmp_path / "t-3.reinstall.json").write_text(
         json.dumps({"ok": True}), encoding="utf-8")
     assert q._collect_reinstall() == []
@@ -432,7 +464,7 @@ def test_collect_reinstall_ignores_missing_result(tmp_path, monkeypatch):
 
 def test_running_marker_roundtrip(tmp_path, monkeypatch):
     """「执行中」旁路标记的写/删 ✓ —— 不回写任务 json（崩溃后仍能重试）✗。"""
-    monkeypatch.setattr(q, "QUEUE", str(tmp_path))
+    _q(monkeypatch, tmp_path)
     q._mark_running("t-1")
     assert (tmp_path / "t-1.running").exists()
     q._clear_running("t-1")
@@ -766,7 +798,7 @@ def test_tid_cannot_be_overridden(tmp_path, monkeypatch):
     """
     queue = tmp_path / "q"
     queue.mkdir()
-    monkeypatch.setattr(q, "QUEUE", str(queue))
+    _q(monkeypatch, queue)
 
     seen = {}
 
@@ -883,6 +915,50 @@ def test_all_subprocess_goes_through_run_helper():
     # 调度器里**一处都不许有**；core 里只许 `run()` 自己那一处 ✓
     assert offenders(q, set()) == [], "调度器里有裸 subprocess.run ✗"
     assert offenders(qc, {"run"}) == [], "core 里有第二处 subprocess.run ✗"
+
+
+def test_action_packages_have_no_undefined_names():
+    """包内用到的名字必须在本模块**定义或 import** ✓ —— 防「搬函数漏搬依赖」✗。
+
+    🔴 2026-11-19 实测：`research.py` 的 `_compute_fg_base` 调
+       `_fg_pos_tendency`，但那函数漏搬 ⇒ `factor_probe(fg_base)` 会
+       `NameError`，而测试没覆盖到 ✗
+    ⇒ 静态扫一遍：每个包的 `Name(Load)` 减去「文件里任何地方定义过的名字」
+      和 builtins，必须为空 ✓
+    """
+    import ast
+    import builtins
+    import glob
+    import os
+
+    here = os.path.dirname(os.path.abspath(q.__file__))
+    files = sorted(glob.glob(os.path.join(here, "queue_actions", "*.py")))
+    files += [os.path.join(here, "queue_store.py"),
+              os.path.join(here, "queue_core.py")]
+    bad = []
+    for p in files:
+        with open(p, encoding="utf-8") as fh:
+            tree = ast.parse(fh.read())
+        defined = set(dir(builtins)) | {"__file__", "__name__", "__doc__"}
+        for n in ast.walk(tree):
+            if isinstance(n, (ast.FunctionDef, ast.ClassDef, ast.AsyncFunctionDef)):
+                defined.add(n.name)
+            elif isinstance(n, ast.Name) and isinstance(n.ctx, (ast.Store, ast.Del)):
+                defined.add(n.id)
+            elif isinstance(n, ast.arg):
+                defined.add(n.arg)
+            elif isinstance(n, ast.alias):
+                defined.add(n.asname or n.name.split(".")[0])
+            elif isinstance(n, ast.ExceptHandler) and n.name:
+                defined.add(n.name)
+            elif isinstance(n, (ast.Global, ast.Nonlocal)):
+                defined.update(n.names)
+        used = {n.id for n in ast.walk(tree)
+                if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+        missing = sorted(used - defined)
+        if missing:
+            bad.append((os.path.basename(p), missing))
+    assert not bad, "包里有未定义的名字（漏搬？）：%s" % bad
 
 
 def test_action_packages_stay_off_the_scheduler():

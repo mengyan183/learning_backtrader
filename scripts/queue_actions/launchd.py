@@ -15,16 +15,25 @@ import sys
 import time
 
 from queue_core import BSK_BIN, ROOT, run as _run
+from queue_store import QUEUE
 
 #: launchd 定时器（本脚本每 10s 被调一次）—— 看板可一键安装 ✓
+
+
 LABEL = "com.xingguo.fg-task-queue"
+
+
 PLIST_SRC = os.path.join(ROOT, "scripts", LABEL + ".plist")
+
+
 PLIST_DST = os.path.join(os.path.expanduser("~"), "Library", "LaunchAgents",
                          LABEL + ".plist")
 
 #: 🔴 允许操作的 launchd 服务 label ✓（2026-11-19 合并）
 #: 原来 `plist_path_append` / `service_bootstrap` / `restart_queue` **各抄一份** ✗
 #: ⇒ 加一个服务要改 3 处，漏一处就报「不允许的 label」✗
+
+
 LAUNCHD_LABELS = ("com.xingguo.fg-task-queue",
                   "com.xingguo.fg-realtime",
                   "com.xingguo.fg-dashboard",
@@ -1129,6 +1138,117 @@ def _act_restart_dashboard(params):
     return out
 
 
+PLISTS = ["com.xingguo.fg-daily.plist", "com.xingguo.fg-task-queue.plist",
+          # 2026-11-03 新增：每周一 07:30 跑 `weekly_review.py` ✓
+          # （必须在 Mac ✗ Windows 的 Data/raw 只是旧快照 ✗）
+          "com.xingguo.fg-weekly-review.plist"]
+
+#: ⚠️ 这个动作**留在调度器**（没进 `queue_actions/launchd.py`）✗ ——
+#:    它要往 `QUEUE/<tid>.reinstall.json` 写延迟重装回执 ✗，
+#:    而 `QUEUE` 是调度器状态（测试靠 `monkeypatch.setattr(q, "QUEUE", ...)` 重定向）
+#:    ⇒ 搬进包会让它读 core 的未 patch 值 ✓
+
+
+def _act_install_daily_plist(params):
+    """把仓库里的 plist 装到 `~/Library/LaunchAgents` 并重新 bootstrap ✓。
+
+    动机（2026-10-29）：plist 只改仓库副本**不生效** ✗ —— 真身是
+    `~/Library/LaunchAgents/*.plist`，launchd 读的是那份 ✗。
+    （每日链套 `run_guarded`、队列加 PATH 都靠这一步落地 ✓。）
+
+    🔴 `com.xingguo.fg-task-queue` **不能当场 bootout** ✗ —— 执行本任务的进程
+    正是它启动的 ✗，当场 bootout 会把自己杀掉、结果永远写不出来 ✗
+    ⇒ 用**延迟 8 秒的游离 shell** 去重装 ✓。
+    """
+    agent = os.path.expanduser("~/Library/LaunchAgents")
+    domain = "gui/%d" % os.getuid()
+    out = {}
+    for name in PLISTS:
+        src = os.path.join(ROOT, "scripts", name)
+        if not os.path.exists(src):
+            out[name] = "缺文件 %s" % src
+            continue
+        dst = os.path.join(agent, name)
+        label = name[:-len(".plist")]
+        try:
+            os.makedirs(agent, exist_ok=True)
+            shutil.copy2(src, dst)
+        except OSError as exc:
+            out[name] = "拷贝失败：%s" % exc
+            continue
+        if label.endswith("fg-task-queue"):
+            # 延迟重装：先让本任务把结果写完 ✓
+            # 🔴 2026-10-29：重装结果**必须落盘** ✗ —— 原来起个游离 shell 就返回，
+            # `ok:true` 只代表「拷贝成功」，8 秒后成没成无人回收 ✗
+            # ⇒ 那个 shell 把结果写进 `<tid>.reinstall.json` ✓，下一轮 `_collect_reinstall`
+            #   读回来并回写进任务结果 ✓（看板可见 ✓）。
+            tid = str(params.get("_tid") or ("plist-" + time.strftime("%H%M%S")))
+            marker = os.path.join(QUEUE, tid + ".reinstall.json")
+            script = (
+                "sleep 8; "
+                "launchctl bootout {dom}/{lab} 2>/dev/null; "
+                "launchctl bootstrap {dom} {dst}; RC=$?; "
+                "launchctl enable {dom}/{lab} 2>/dev/null; "
+                "printf '{{\"ok\": %s, \"rc\": %s, \"at\": \"%s\","
+                " \"label\": \"{lab}\"}}' "
+                "\"$([ $RC -eq 0 ] && echo true || echo false)\" \"$RC\" "
+                "\"$(date +%Y-%m-%dT%H:%M:%S)\" > {marker}"
+            ).format(dom=domain, lab=label, dst=dst, marker=marker)
+            subprocess.Popen(["/bin/sh", "-c", script],
+                             start_new_session=True,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            out[name] = "已拷贝（8 秒后重装，结果下轮回写）"
+            continue
+        try:
+            _run(["launchctl", "bootout", "%s/%s" % (domain, label)], 30)
+            r = _run(["launchctl", "bootstrap", domain, dst], 60)
+            _run(["launchctl", "enable", "%s/%s" % (domain, label)], 30)
+            out[name] = "ok" if r.returncode == 0 else (r.stderr or "")[-200:]
+        except (subprocess.SubprocessError, OSError) as exc:
+            out[name] = "launchctl 失败：%s" % exc
+    # 🔴 2026-11-03 用户要求：**装完必须验证** ✗
+    #    原来只返回「拷贝成功」✗ 无法证明
+    #    ① 代理变量真的进了 `~/Library/LaunchAgents/*.plist` ✗
+    #    ② launchd 认了这份配置 ✗
+    #    ⇒ 而 `launchctl print` **不显示 EnvironmentVariables** ✗
+    #    ⇒ 只能「回读已安装的 plist 文件」+「看 launchd 状态」两条并用 ✓
+    verify = {}
+    for name in PLISTS:
+        dst = os.path.join(agent, name)
+        v = {}
+        try:
+            import plistlib as _pl
+            with open(dst, "rb") as f:
+                d = _pl.load(f)
+            ev = d.get("EnvironmentVariables") or {}
+            v["proxy_in_file"] = {
+                k: ev.get(k) for k in
+                ("FG_LLM_PROXY", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY")
+                if k in ev
+            }
+            v["env_keys"] = sorted(ev)
+        except Exception as exc:            # noqa: BLE001
+            v["file_error"] = str(exc)[:120]
+        label = name[:-len(".plist")]
+        try:
+            r = _run(["launchctl", "print", "%s/%s" % (domain, label)], 60)
+            txt = r.stdout or r.stderr or ""
+            keep = [ln.strip() for ln in txt.splitlines()
+                    if any(k in ln for k in ("state =", "last exit",
+                                             "runs =", "path ="))]
+            v["launchd"] = " | ".join(keep[:4]) or "(无输出)"
+        except Exception as exc:            # noqa: BLE001
+            v["launchd"] = "查不到：%s" % exc
+        verify[name] = v
+
+    return {"ok": all(v.startswith("ok") or v.startswith("已拷贝")
+                      for v in out.values()),
+            "result": out,
+            "verify": verify,
+            "note": "⚠️ `launchctl print` **不显示 EnvironmentVariables** ✗ "
+                    "⇒ 代理是否生效看 `verify.*.proxy_in_file` ✓；"
+                    "真实生效要等下次链跑（看 fetch 耗时）✓"}
+
 ACTIONS = {
     "plist_path_append": _act_plist_path_append,
     "autostart_list": _act_autostart_list,
@@ -1140,4 +1260,5 @@ ACTIONS = {
     "restart_queue": _act_restart_queue,
     "restart_dashboard": _act_restart_dashboard,
     "install_evolve_tasks": _act_install_evolve_tasks,
+    "install_daily_plist": _act_install_daily_plist,
 }
