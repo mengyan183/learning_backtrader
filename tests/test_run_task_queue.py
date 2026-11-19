@@ -765,3 +765,21 @@ def test_tid_cannot_be_overridden(tmp_path, monkeypatch):
         "`_tid` 被任务 JSON 控制了 ⇒ 注入漏洞未修 ✗"
     assert "_tid" not in seen or seen["_tid"] is None, \
         "`run_script` 不需要 `_tid` ⇒ 应为空 ✗"
+
+
+def test_inspect_csv_rejects_absolute_path():
+    """`inspect_csv` 必须拒绝绝对路径 ✓。
+
+    🔴 原写法 `if not os.path.isabs(path): path = join(ROOT, path)` ✗
+       ⇒ `/etc/passwd`、`~/.ssh/id_rsa` 都能被读取并回传到飞书 ✗
+    """
+    r = q._act_inspect_csv({"path": "/etc/passwd"})
+    assert r["ok"] is False
+    assert "绝对路径" in r["error"]
+
+
+def test_inspect_csv_rejects_dotdot():
+    """`inspect_csv` 必须拒绝 `..` 逃逸 ✓。"""
+    r = q._act_inspect_csv({"path": "Data/raw/../../.env"})
+    assert r["ok"] is False
+    assert ".." in r["error"] or "白名单" in r["error"]

@@ -4791,9 +4791,18 @@ def _act_inspect_csv(params):
           `n`（尾部行数 ✗ 默认 5 ✓）
     """
     import pandas as _pd
-    path = str(params.get("path") or "Data/raw/prices.csv")
-    if not os.path.isabs(path):
-        path = os.path.join(ROOT, path)
+    # 🔴 2026-11-19 安全评审第三处：**原来完全没有白名单** ✗
+    #    原写法：`if not os.path.isabs(path): path = join(ROOT, path)` ✗
+    #    ⇒ ① 绝对路径直接放行（`/etc/passwd`、`~/.ssh/id_rsa` 都能读）✗
+    #      ② 相对路径的 `..` 也不校验（`Data/raw/../../.env`）✗
+    #    ⇒ 改用 `_safe_rel`：拒绝绝对路径 + 拒绝 `..` + 限定 `_READ_ALLOW` ✓
+    _raw = str(params.get("path") or "Data/raw/prices.csv")
+    if os.path.isabs(_raw):
+        return {"ok": False, "error": "不接受绝对路径：%s ✗" % _raw}
+    try:
+        path = _safe_rel(_raw, _READ_ALLOW)
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
     n = int(params.get("n") or 5)
     syms = [x.strip().upper() for x in
             str(params.get("symbol") or "").split(",") if x.strip()]
