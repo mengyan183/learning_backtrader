@@ -4996,6 +4996,12 @@ TAIL_LOGS = {
     # 2026-10-29：简报阶段级日志 ✓ —— 队列超时杀进程时 stdout 全丢 ✗，
     # 只有这个文件能看出卡在新闻还是某个 LLM 阶段 ✓
     "invest": os.path.join(ROOT, "Data", "health", "invest_stages.log"),
+    # 🔴 2026-11-19：realtime 两个日志 ✓
+    #   `realtime` ⇒ launchd 的 stdout（plist 里 StandardOutPath）
+    #   `realtime_errors` ⇒ `futu_realtime.py` 的**连续失败落盘**（fix_1117g）
+    #     它是判「OpenD 挂了」还是「Binance 抖动」的唯一直接证据 ✓
+    "realtime": "/tmp/fg_realtime.log",
+    "realtime_errors": os.path.join(ROOT, "Data", "realtime_errors.log"),
 }
 
 
