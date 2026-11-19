@@ -165,4 +165,25 @@
 - **Windows 端**：默认 `python` = **3.14 且无 `backtrader`** ⇒ 跑测试**必须 `py -3.10`**；无公网 ⇒ 凡"需真实 `Data` / 需抓数"任务登记 `docs/mac-tasks.md`。
 - **Mac 端**：venv `.venv/bin/python`（Py3.10），有公网与真实 `Data/`；push 目标是 **github**（远端 `origin`）。
 - **同步链路**：Mac → github → gitee 镜像 → Windows 从 gitee 拉取；Windows → 飞书分片（`###FG:`）→ Mac `fg-sync` 入库。
+
+### 12.1 Windows 改完代码怎么送到 Mac（**唯一通道，别直接 push**）
+
+🔴 **Mac 的远端是 github，Windows 的远端是 gitee 镜像 ⇒ Windows `git push` 到 gitee，Mac 拉不到** ✗
+⇒ 送到 Mac **只能**走飞书分包。三步：
+
+```bash
+# ① 打包（--patch 只发 diff；新文件必须单独一个包，否则整包降级 full）
+PYTHONIOENCODING=utf-8 py -3.10 scripts/pack_many.py <包名> <文件...> --patch --base-ref origin/main
+
+# ② 发送（后台跑，约 5~20 秒/片；日志在 %TEMP%\send_<包名>.log）
+cmd //c start "" "scripts\send_pkg.bat" <包名>
+
+# ③ 等 Mac 入库后拉回执（约 60~120 秒）
+git fetch origin && git log --oneline -3 origin/main
+```
+
+- **回执**：任务结果在 `docs/task-queue/<任务id>.result.json`（`git show origin/main:...` 看）。
+- **`send_pkg.bat` 失败**：先看 `%TEMP%\send_<包名>.log`；单片上限 **1700 字符**（`pack_many` 的 `MAX_CHARS=1600` 是留余量）。
+- **`full` vs `patch`**：包里含**新文件**或 diff ≥ 整文件 ⇒ 自动降级 full（`pack_many.py:289/500`）。
+- **Mac 侧操作**：不要手动 ssh，走 `docs/task-queue/*.json` 下发 action（`run_script` / `run_git` / `daily_log_tail` 等，见 `run_task_queue.py` 的 `ACTIONS`）。
 - **任务表**：`docs/windows-tasks.md`（WT 系列）与 `docs/mac-tasks.md`（MT 系列）为双端唯一任务清单，状态列以 ✅ 收口，不得"已实现但状态仍待做"。
