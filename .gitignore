@@ -159,3 +159,11 @@ Data/raw/fedwatch_session.json
 #    需要「从 Mac 同步数据」的独立机制（未实现 ✗）
 # ⚠️ 但 evolution/*.json（研究产物）**仍入库** ✓ 二者性质不同 ✗
 Data/raw/
+
+# 🔴 2026-11-19：`verify-log` 的备份文件**不入库** ✗
+#    背景：`dedup_verify_log.py` 删除前会 `shutil.copy2` 生成 `.bak-<时间戳>` ✓
+#    而 `run_task_queue.py` 的 `TASK_OUTPUT_DIRS` 含 `evolution/verify-log` ✗
+#    ⇒ `_git_commit` 的 `git add evolution/verify-log` 会把 `.bak` 一起提交 ✗
+#    ⇒ 实测 6 个 `H-*.md.bak-20261119-133554` 已入库（纯噪音）✗
+#    ⇒ 加此规则；已入库的用 `git rm --cached` 移除 ✓
+evolution/verify-log/*.bak-*
