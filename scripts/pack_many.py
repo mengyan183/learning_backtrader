@@ -48,7 +48,16 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 OUT_DIR = os.path.join(REPO, "dist", "feishu", "text")
-MAX_CHARS = 1500
+# 🔴 2026-11-19：1500 → **1600**（**不能更大** ✗）
+#    背景：`fix_1119b` 累积 diff 约 100 KB ⇒ 切成 66 片 ⇒ 发送 18 分钟 ✗
+#    原本想提到 4000，但实测被 `feishu_send.py:580` 拦住 ✗：
+#      `over = [(n, len(t)) for n, t in chunks if len(t) > 1700]`
+#      `raise SystemExit("❌ 有 N 条超过飞书 1700 字符上限")`
+#    ⇒ **1700 是飞书的硬上限**（`feishu_send.py` 的防御性检查，历史实测）✗
+#    ⇒ 只能 1500 → 1600（留 100 字符余量给 `###FG:...###` 头尾）✓
+#    ⚠️ 真正解决「发送慢」要靠**不累积 diff**（每次改完立刻发）✗
+#       而不是调大上限 —— 1700 是平台约束，改不了 ✓
+MAX_CHARS = 1600
 DEFAULT_BASE_REF = "origin/main"
 
 # 🔴 patch 模式的 tar 条目前缀 —— **不得**命中 Mac 白名单目录
@@ -171,6 +180,56 @@ def _in_base(rel, base_ref):
     return bool(out.stdout.strip())
 
 
+def _base_behind_warn(rels, base_ref):
+    """⚠️ 检查 `rels` 在 `<base_ref>` 上是否有**本地未包含**的更新 ✓
+
+    🔴 2026-11-16 用户要求（实测事故）：
+       `fix_1122c`（navigate 重试）没入库时，直接发了 `fix_1122d`
+       （会话复用）—— 而 `fix_1122d` 的 patch 是**基于 `fix_1122c` 已应用**
+       的版本生成的 ✗
+       ⇒ Mac 端 `patch 应用失败（fix_1122d.diff → scripts/feishu_send.py）` ✗
+       ⇒ 分片保留待排查，白跑一轮 ✗
+
+    同类事故今天已发生两次：
+      · `fix_1121z`（代码包）+ `task_1113m`（任务包）同分钟发出
+        ⇒ 任务先跑，用的还是旧代码 ✗
+      · `fix_1122c` + `fix_1122d` 改同一文件，后者 patch 上下文对不上 ✗
+
+    ⇒ **在打包阶段就警告**，而不是等 Mac 报 patch 失败 ✓
+       提示两条出路：① 先 `git merge <base_ref>` ② 或把多次改动攒成一个包
+    """
+    cmd = ["git", "-C", REPO]
+    proxy = os.environ.get("FG_PROXY", "")
+    if proxy:
+        cmd += ["-c", "http.proxy=%s" % proxy, "-c", "https.proxy=%s" % proxy]
+    # 🔴 2026-11-16 用户要求：**判据从 `git log` 改成 `git diff`** ✓
+    #    为什么：`git log base..HEAD -- <file>` 数的是**commit**，不是内容 ✗
+    #    实测 `run_task_queue.py` 报「63 个未入库提交」，但
+    #    `git diff --stat origin/main -- <file>` 是**空的** ✗
+    #    ⇒ 因为 Mac 侧用**整文件模式**入库（产生自己的 `fg-sync: fix_xxx`
+    #      commit），不 merge 我的 commit ⇒ 我的 commit 永远「领先」但内容已同步 ✗
+    #    ⇒ 用 `git diff --stat -w`（`-w` 忽略空白）只认真实内容差异 ✓
+    #      `-w` 必要：Windows `core.autocrlf=true` ⇒ 本地 CRLF / 远端 LF，
+    #      不加 `-w` 会把整仓 100 个文件都报成「有改动」✗
+    cmd += ["diff", "--stat", "-w", base_ref, "--"] + list(rels)
+    try:
+        out = subprocess.run(cmd, capture_output=True, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return
+    txt = out.stdout.decode("utf-8", "replace").strip()
+    if not txt:
+        return
+    print("\n" + "=" * 62)
+    print("⚠️  **未入库内容警告**：这些文件和 `%s` 有**实际内容差异**" % base_ref)
+    for ln in txt.splitlines()[:8]:
+        print("     %s" % ln)
+    print("   ⇒ patch 的上下文**包含了这些改动** ⇒ Mac 上若还没它们，apply 会失败 ✗")
+    print("   ⇒ 两条出路：")
+    print("     ① **等上一批入库**后再打包（推荐 ✓）")
+    print("     ② 或把多次改动**攒成一个包**（diff 会自动覆盖全部改动 ✓）")
+    print("=" * 62 + "\n")
+
+
 def _git_blob_sha(ref, rel):
     """取 `<ref>:<rel>` 的 blob SHA（7 位）；失败返回 None。"""
     cmd = ["git", "-C", REPO]
@@ -213,6 +272,8 @@ def _patch_payload(srcs, base_ref):
     """
     reasons = []
     chunks = []
+    # 🔴 2026-11-16：打包前先查 **base 是否落后** ✓（见 `_base_behind_warn`）
+    _base_behind_warn(srcs, base_ref)
     for rel in srcs:
         cur = open(os.path.join(REPO, rel.replace("/", os.sep)),
                    encoding="utf-8", errors="replace").read()
