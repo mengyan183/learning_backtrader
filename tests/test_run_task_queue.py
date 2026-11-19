@@ -839,6 +839,26 @@ def test_allow_json_rejects_dotdot_and_absolute(tmp_path, monkeypatch):
         q._task_outputs()
 
 
+def test_all_subprocess_goes_through_run_helper():
+    """子进程调用必须走 `_run` ✓ —— 不许再散落 `subprocess.run(...)` ✗。
+
+    🔴 2026-11-19 第二轮：87 处收敛成 1 处（`cwd`/编码/捕获统一）✗
+       ⇒ 新写的调用若绕过它，launchd 的 C locale 会让中文输出解码崩 ✗
+    """
+    import ast
+    import inspect
+    tree = ast.parse(inspect.getsource(q))
+    helper = next(n for n in tree.body
+                  if isinstance(n, ast.FunctionDef) and n.name == "_run")
+    bad = [n.lineno for n in ast.walk(tree)
+           if isinstance(n, ast.Call)
+           and isinstance(n.func, ast.Attribute) and n.func.attr == "run"
+           and isinstance(n.func.value, ast.Name)
+           and n.func.value.id in ("subprocess", "_sp")
+           and not (helper.lineno <= n.lineno <= helper.end_lineno)]
+    assert bad == [], "这些行绕过了 _run：%s" % bad
+
+
 def test_launchd_labels_is_single_source():
     """三处 label 白名单必须共用 `LAUNCHD_LABELS` ✓ —— 不许再各抄一份 ✗。"""
     import inspect

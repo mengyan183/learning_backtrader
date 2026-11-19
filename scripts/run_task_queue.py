@@ -54,13 +54,26 @@ LAUNCHD_LABELS = ("com.xingguo.fg-task-queue",
                   "com.xingguo.dsh.web")
 
 
+def _run(cmd, timeout, cwd=ROOT, env=None):
+    """跑子进程并**统一捕获/解码** ✓ —— 原来散落 87 处的 `subprocess.run(...)` 收敛到这里。
+
+    · `cwd` 默认 `ROOT` ✓（plist 的 `WorkingDirectory` 就是仓库根 ⇒ 与手动跑一致）
+    · `encoding="utf-8", errors="replace"` ⇒ launchd 的 locale 可能是 C/POSIX ✗，
+      不加会因中文输出 `UnicodeDecodeError` 崩掉 ✓
+    · 🔴 **不吞异常** ✗ —— `TimeoutExpired` / `SubprocessError` / `OSError` 的
+      处理每个调用点都不一样，必须留在原地 ✓
+    """
+    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace",
+                          timeout=timeout, env=env)
+
+
 def agent_status():
     """定时器是否已安装 / 已加载（看板据此决定要不要显示安装按钮）。"""
     installed = os.path.isfile(PLIST_DST)
     loaded = False
     try:
-        r = subprocess.run(["launchctl", "list"], capture_output=True,
-                           text=True, timeout=15)
+        r = _run(["launchctl", "list"], 15)
         loaded = LABEL in (r.stdout or "")
     except (subprocess.SubprocessError, OSError):
         pass
@@ -87,10 +100,8 @@ def install_agent():
     dom = "gui/%d" % os.getuid()
     try:
         # 先卸再装（幂等）：未加载时 bootout 会报错，忽略即可 ✓
-        subprocess.run(["launchctl", "bootout", dom + "/" + LABEL],
-                       capture_output=True, timeout=30)
-        r = subprocess.run(["launchctl", "bootstrap", dom, PLIST_DST],
-                           capture_output=True, text=True, timeout=60)
+        _run(["launchctl", "bootout", dom + "/" + LABEL], 30)
+        r = _run(["launchctl", "bootstrap", dom, PLIST_DST], 60)
     except (subprocess.SubprocessError, OSError) as exc:
         return {"ok": False, "reason": "launchctl 执行失败：%s" % exc}
     st = agent_status()
@@ -126,8 +137,7 @@ def _act_weekly_review(params):
     cmd = [sys.executable, os.path.join(ROOT, "scripts", "weekly_review.py"),
            "--days", str(days)]
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=600)
+        r = _run(cmd, 600)
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": "超过 600 秒"}
     return {"ok": r.returncode == 0, "days": days,
@@ -151,8 +161,7 @@ def _act_archive_briefs(params):
     cmd = [sys.executable, os.path.join(ROOT, "scripts", "archive_briefs.py"),
            "--keep", str(keep)]
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=600)
+        r = _run(cmd, 600)
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": "超过 600 秒"}
     return {"ok": r.returncode == 0, "keep": keep,
@@ -241,8 +250,7 @@ def _act_audit_data(params):
         # 🔴 2026-11-03：`text=True` 在 Windows 用 **GBK** 解码 ✗
         #    而审计输出含 `✓`/`✗` ⇒ `UnicodeDecodeError` ✗（Mac 上无此问题 ✓）
         #    ⇒ 显式指定 utf-8 + replace ✓ 两边都稳 ✓
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=900)
+        r = _run(cmd, 900)
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": "超过 900 秒"}
 
@@ -310,8 +318,7 @@ def _act_prune_dead_data(params):
     elif str(params.get("apply") or "").lower() in ("1", "true", "yes"):
         cmd.append("--apply")
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=600)
+        r = _run(cmd, 600)
     except subprocess.TimeoutExpired:
         return {"ok": False, "error": "超过 600 秒"}
     return {"ok": r.returncode == 0,
@@ -465,10 +472,8 @@ def _find_bsk_bin():
     #    （只 source `.zshenv` / `.zprofile` / `.zlogin`）
     #    而 bsk 常挂在 `.zshrc` 配的 PATH 上 ✗ ⇒ 必须**显式 source** ✓
     try:
-        import subprocess as _sp
-        r = _sp.run(["/bin/zsh", "-lc",
-                     "source ~/.zshrc 2>/dev/null; command -v bsk"],
-                    capture_output=True, text=True, timeout=20)
+        r = _run(["/bin/zsh", "-lc",
+                  "source ~/.zshrc 2>/dev/null; command -v bsk"], 20)
         for ln in (r.stdout or "").splitlines():
             ln = ln.strip()
             if ln and os.path.isfile(ln) and os.access(ln, os.X_OK):
@@ -578,8 +583,7 @@ def _act_verify_hypotheses(params):
         cmd.append("--dry-run")
 
     t0 = time.time()
-    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
-                       errors="replace", timeout=1800, cwd=ROOT)
+    r = _run(cmd, 1800)
     secs = round(time.time() - t0, 1)
     so = (r.stdout or "").strip()
     se = (r.stderr or "").strip()
@@ -645,12 +649,11 @@ def _act_rerun_brief(params):
         #    因为 `python -c` 的 `sys.path[0]` 是 `""`（cwd ✗）
         #    而 `cwd=ROOT` 下 `fg_system` **应该能找到** ✗ 但被别的
         #    路径顺序干扰 ✗ ⇒ 显式 insert ✓
-        r = subprocess.run(
+        r = _run(
             [sys.executable, "-c",
              "import sys; sys.path.insert(0, '.'); "
              "from fg_system import pipeline; pipeline.run(write=True)"],
-            capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=900, cwd=ROOT)
+            900)
         out["steps"]["pipeline"] = {
             "rc": r.returncode, "seconds": round(time.time() - t0, 1),
             "stdout": (r.stdout or "")[-800:],
@@ -666,9 +669,7 @@ def _act_rerun_brief(params):
     cmd = [sys.executable, "scripts/invest_research.py"]
     if not push:
         cmd.append("--dry-run")        # 不加 --dry-run 才会推飞书 ✓
-    r = subprocess.run(
-        cmd, capture_output=True, text=True, encoding="utf-8",
-        errors="replace", timeout=1200, cwd=ROOT)
+    r = _run(cmd, 1200)
     # 🔴 2026-11-05 **关键**：`--dry-run` 的 **stdout 只有运行日志** ✗
     #    实测 stdout 只有 1083 字（`[warn]` + `简报已写入: ...` ✗）
     #    而**完整简报写到了 `Data/invest_brief_<日期>.md`** ✓
@@ -723,13 +724,13 @@ def _call_with_timeout(fn, seconds=90):
     import threading
     box = {}
 
-    def _run():
+    def _worker():
         try:
             box["v"] = fn()
         except Exception as exc:              # noqa: BLE001
             box["e"] = exc
 
-    th = threading.Thread(target=_run, daemon=True)
+    th = threading.Thread(target=_worker, daemon=True)
     th.start()
     th.join(seconds)
     if th.is_alive():
@@ -808,8 +809,7 @@ def _act_futu_opend_update(params):
 
     # ② 停 OpenD
     try:
-        r = subprocess.run(["pkill", "-f", "OpenD"], capture_output=True,
-                           text=True, timeout=30)
+        r = _run(["pkill", "-f", "OpenD"], 30)
         out["steps"]["kill"] = "pkill rc=%s" % r.returncode
     except Exception as exc:              # noqa: BLE001
         out["steps"]["kill"] = "pkill err %s" % str(exc)[:80]
@@ -823,9 +823,7 @@ def _act_futu_opend_update(params):
     cmd = [bin_path] + (["-cfg_file", xml] if xml else []) + ["update"]
     out["steps"]["cmd"] = " ".join(cmd)
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace",
-                           timeout=600, cwd=base)
+        r = _run(cmd, 600, cwd=base)
         out["steps"]["update"] = {
             "rc": r.returncode,
             "stdout": (r.stdout or "").strip()[-1200:],
@@ -843,7 +841,7 @@ def _act_futu_opend_update(params):
     for c in (["open", "-a", "FutuOpenD"], [bin_path] + (["-cfg_file", xml] if xml else [])):
         try:
             if c[0] == "open":
-                r = subprocess.run(c, capture_output=True, text=True, timeout=30)
+                r = _run(c, 30)
                 started.append({"cmd": " ".join(c), "rc": r.returncode})
                 if r.returncode == 0:
                     break
@@ -892,8 +890,7 @@ def _act_verify_hyp(params):
     for h in ids:
         cmd += ["-H", h]
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True,
-                           timeout=900, cwd=ROOT)
+        r = _run(cmd, 900)
     except subprocess.TimeoutExpired:
         return {"ok": False, "ids": ids, "error": "verify_hypotheses 超时（900s）"}
     out = (r.stdout or "") + (("\n[stderr]\n" + r.stderr) if r.stderr else "")
@@ -983,8 +980,7 @@ def _act_dsh_web_diag(params):
 
     # ② launchctl list
     try:
-        r = subprocess.run(["launchctl", "list"], capture_output=True,
-                           text=True, timeout=20)
+        r = _run(["launchctl", "list"], 20)
         out["steps"]["launchctl"] = [ln for ln in (r.stdout or "").splitlines()
                                      if "dsh" in ln.lower()] or ["(没有 dsh 相关项)"]
     except Exception as exc:              # noqa: BLE001
@@ -1030,10 +1026,9 @@ def _act_dsh_web_diag(params):
 
     # ⑤ 进程
     try:
-        r = subprocess.run(["/bin/sh", "-c",
-                            "ps ax -o pid,etime,comm | grep -i dsh "
-                            "| grep -v grep | head -10"],
-                           capture_output=True, text=True, timeout=20)
+        r = _run(["/bin/sh", "-c",
+                  "ps ax -o pid,etime,comm | grep -i dsh "
+                  "| grep -v grep | head -10"], 20)
         out["steps"]["processes"] = [ln.strip() for ln in
                                      (r.stdout or "").splitlines() if ln.strip()] or ["(无)"]
     except Exception as exc:              # noqa: BLE001
@@ -1042,9 +1037,8 @@ def _act_dsh_web_diag(params):
     # ⑥ launchctl print（含 last exit status）
     try:
         uid = os.getuid() if hasattr(os, "getuid") else 501
-        r = subprocess.run(["launchctl", "print",
-                            "gui/%s/com.xingguo.dsh.web" % uid],
-                           capture_output=True, text=True, timeout=20)
+        r = _run(["launchctl", "print",
+                  "gui/%s/com.xingguo.dsh.web" % uid], 20)
         txt = (r.stdout or "") + (r.stderr or "")
         keep = [ln.strip() for ln in txt.splitlines()
                 if any(k in ln for k in ("state", "last exit", "runs",
@@ -1079,8 +1073,7 @@ def _act_autostart_list(params):
         """读 Label 与 ProgramArguments（用 plutil -p，纯文本输出好解析）。"""
         info = {"path": os.path.relpath(p, home)}
         try:
-            r = subprocess.run(["/usr/bin/plutil", "-p", p],
-                               capture_output=True, text=True, timeout=15)
+            r = _run(["/usr/bin/plutil", "-p", p], 15)
             txt = r.stdout or ""
         except Exception as exc:              # noqa: BLE001
             info["error"] = str(exc)[:100]
@@ -1109,10 +1102,10 @@ def _act_autostart_list(params):
 
     # ③ 登录项
     try:
-        r = subprocess.run(
+        r = _run(
             ["osascript", "-e",
              'tell application "System Events" to get the name of every login item'],
-            capture_output=True, text=True, timeout=20)
+            20)
         out["login_items"] = [x.strip() for x in (r.stdout or "").split(",")
                               if x.strip()]
     except Exception as exc:                  # noqa: BLE001
@@ -1120,10 +1113,9 @@ def _act_autostart_list(params):
 
     # ④ 正在跑的进程（dsh / harness / deepseek）
     try:
-        r = subprocess.run(["/bin/sh", "-c",
-                            "ps ax -o pid,comm | grep -i -E "
-                            "'dsh|harness|deepseek' | grep -v grep | head -15"],
-                           capture_output=True, text=True, timeout=20)
+        r = _run(["/bin/sh", "-c",
+                  "ps ax -o pid,comm | grep -i -E "
+                  "'dsh|harness|deepseek' | grep -v grep | head -15"], 20)
         out["running"] = [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
     except Exception as exc:                  # noqa: BLE001
         out["running"] = ["ERR %s" % str(exc)[:100]]
@@ -1241,8 +1233,7 @@ def _act_plist_path_append(params):
 
     # ③ plutil -lint 校验（不通过就回滚）
     try:
-        r = subprocess.run(["/usr/bin/plutil", "-lint", plist],
-                           capture_output=True, text=True, timeout=20)
+        r = _run(["/usr/bin/plutil", "-lint", plist], 20)
         lint_ok = (r.returncode == 0)
         out["steps"]["lint"] = {"rc": r.returncode,
                                 "out": ((r.stdout or "") + (r.stderr or "")).strip()[:200]}
@@ -1263,8 +1254,7 @@ def _act_plist_path_append(params):
     # ④ bootout + bootstrap
     def _sh(cmd, t=30):
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=t)
+            r = _run(cmd, t)
             return {"rc": r.returncode,
                     "out": ((r.stdout or "") + (r.stderr or "")).strip()[:300]}
         except Exception as exc:          # noqa: BLE001
@@ -1278,8 +1268,7 @@ def _act_plist_path_append(params):
 
     # ⑤ 状态
     try:
-        r = subprocess.run(["launchctl", "list"], capture_output=True,
-                           text=True, timeout=20)
+        r = _run(["launchctl", "list"], 20)
         lst = [ln for ln in (r.stdout or "").splitlines() if label in ln]
         out["steps"]["launchctl_list"] = lst or ["(列表里没有它)"]
     except Exception as exc:              # noqa: BLE001
@@ -1299,8 +1288,7 @@ def _act_plist_path_append(params):
 
     # 日志尾巴（token 打码）
     try:
-        r = subprocess.run(["/usr/bin/plutil", "-p", plist],
-                           capture_output=True, text=True, timeout=15)
+        r = _run(["/usr/bin/plutil", "-p", plist], 15)
         mm = _re.search(r'"StandardOutPath"\s*=>\s*"([^"]+)"', r.stdout or "")
         if mm and os.path.exists(mm.group(1)):
             with open(mm.group(1), encoding="utf-8", errors="replace") as fh:
@@ -1426,8 +1414,7 @@ def _act_dsh_web_launch(params):
         else:
             sid = ""
             try:
-                r1 = subprocess.run([exe, "session", "start", "--no-focus"],
-                                    capture_output=True, text=True, timeout=60)
+                r1 = _run([exe, "session", "start", "--no-focus"], 60)
                 _s1 = (r1.stdout or "").strip().splitlines()
                 sid = _s1[-1].strip() if _s1 else ""
                 out["steps"]["bsk_session"] = sid or "(start 失败)"
@@ -1435,9 +1422,8 @@ def _act_dsh_web_launch(params):
                 out["steps"]["bsk_session"] = "ERR %s" % str(exc)[:120]
             if sid:
                 try:
-                    r2 = subprocess.run([exe, "navigate", url, "--session", sid,
-                                         "--timeout", "60s"],
-                                        capture_output=True, text=True, timeout=90)
+                    r2 = _run([exe, "navigate", url, "--session", sid,
+                               "--timeout", "60s"], 90)
                     _o = ((r2.stdout or "") + (r2.stderr or "")).strip()
                     _o = _re.sub(r"(token=)([A-Za-z0-9_\-]{8})([A-Za-z0-9_\-]*)",
                                  lambda m: m.group(1) + m.group(2) + "…(%d)"
@@ -1464,16 +1450,14 @@ def _act_dsh_web_launch(params):
                 except Exception as exc:  # noqa: BLE001
                     out["steps"]["bsk_navigate"] = "ERR %s" % str(exc)[:150]
                 try:
-                    subprocess.run([exe, "session", "stop", sid],
-                                   capture_output=True, text=True, timeout=30)
+                    _run([exe, "session", "stop", sid], 30)
                 except Exception:         # noqa: BLE001
                     pass
 
     # ---- 系统浏览器（兜底 / both 时并用）----
     if mode in ("open", "both"):
         try:
-            r = subprocess.run(["open", url], capture_output=True, text=True,
-                               timeout=20)
+            r = _run(["open", url], 20)
             out["steps"]["open"] = {"rc": r.returncode,
                                     "err": (r.stderr or "").strip()[:150]}
             ok_any = ok_any or (r.returncode == 0)
@@ -1713,7 +1697,6 @@ def _act_factor_probe(params):
        （可用 `params.direction` 覆盖 ✓）
     """
     import glob as _glob
-    import subprocess as _sp
 
     out = {"steps": {}}
     root = ROOT
@@ -1838,11 +1821,11 @@ def _act_factor_probe(params):
                                         str(exc)[:150])}
                 continue
         try:
-            r = _sp.run([py, os.path.join(root, "scripts",
-                                          "factor_backtest_probe.py"),
-                         "--factor", factor, "--symbol", sym,
-                         "--direction", direction, "--features", _feat],
-                        capture_output=True, text=True, timeout=300, cwd=root)
+            r = _run([py, os.path.join(root, "scripts",
+                                       "factor_backtest_probe.py"),
+                      "--factor", factor, "--symbol", sym,
+                      "--direction", direction, "--features", _feat],
+                     300, cwd=root)
             tail = ((r.stdout or "") + (r.stderr or "")).strip()[-500:]
             runs[sym] = {"rc": r.returncode, "tail": tail}
         except Exception as exc:          # noqa: BLE001
@@ -2069,10 +2052,7 @@ def _act_run_git(params):
     except (TypeError, ValueError):
         timeout = 120
     try:
-        r = subprocess.run(["git", sub] + args, cwd=ROOT,
-                           capture_output=True, text=True,
-                           encoding="utf-8", errors="replace",
-                           timeout=timeout)
+        r = _run(["git", sub] + args, timeout)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 %d 秒未完成" % timeout}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -2115,10 +2095,7 @@ def _act_run_script(params):
     except (TypeError, ValueError):
         timeout = 900
     try:
-        r = subprocess.run([sys.executable, path] + args, cwd=ROOT,
-                           capture_output=True, text=True,
-                           encoding="utf-8", errors="replace",
-                           timeout=timeout)
+        r = _run([sys.executable, path] + args, timeout)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 %d 秒未完成" % timeout}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -2167,8 +2144,7 @@ def _act_service_bootstrap(params):
 
     def _sh(cmd, t=30):
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=t)
+            r = _run(cmd, t)
             return {"rc": r.returncode,
                     "out": ((r.stdout or "") + (r.stderr or "")).strip()[:400]}
         except Exception as exc:              # noqa: BLE001
@@ -2198,8 +2174,7 @@ def _act_service_bootstrap(params):
 
     # ③ 状态
     try:
-        r = subprocess.run(["launchctl", "list"], capture_output=True,
-                           text=True, timeout=20)
+        r = _run(["launchctl", "list"], 20)
         out["steps"]["launchctl_list"] = [
             ln for ln in (r.stdout or "").splitlines() if label in ln
         ] or ["(列表里没有它)"]
@@ -2221,8 +2196,7 @@ def _act_service_bootstrap(params):
         _pid = None
     if _pid:
         try:
-            r = subprocess.run(["ps", "-p", _pid, "-o", "pid,etime,command"],
-                               capture_output=True, text=True, timeout=20)
+            r = _run(["ps", "-p", _pid, "-o", "pid,etime,command"], 20)
             _lns = [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
             out["steps"]["processes"] = _lns[1:] or ["(ps 无输出)"]
         except Exception as exc:              # noqa: BLE001
@@ -2232,8 +2206,7 @@ def _act_service_bootstrap(params):
 
     # ④ 日志尾巴（dsh.web 的 token 会在这里 ✓ 打码后回）
     try:
-        r = subprocess.run(["/usr/bin/plutil", "-p", plist],
-                           capture_output=True, text=True, timeout=15)
+        r = _run(["/usr/bin/plutil", "-p", plist], 15)
         m = _re.search(r'"StandardOutPath"\s*=>\s*"([^"]+)"', r.stdout or "")
         if m:
             lp = m.group(1)
@@ -2296,8 +2269,7 @@ def _act_realtime_diag(params):
 
     # ① launchctl
     try:
-        r = subprocess.run(["launchctl", "list"], capture_output=True, text=True,
-                           timeout=20)
+        r = _run(["launchctl", "list"], 20)
         hits = [ln for ln in (r.stdout or "").splitlines()
                 if "realtime" in ln.lower()]
         out["steps"]["launchctl"] = hits[:5] or ["(launchctl list 里没有 realtime 相关项)"]
@@ -2453,8 +2425,7 @@ def _act_dsh_webauth_find(params):
             if not os.path.exists(pl):
                 continue
             try:
-                r = subprocess.run(["/usr/bin/plutil", "-p", pl],
-                                   capture_output=True, text=True, timeout=20)
+                r = _run(["/usr/bin/plutil", "-p", pl], 20)
                 out["app_search"]["%s 版本" % n] = (r.stdout or "")[:600]
             except Exception:             # noqa: BLE001
                 pass
@@ -2499,8 +2470,7 @@ def _act_futu_opend_info(params):
         plist = os.path.join(c, "Contents", "Info.plist")
         if os.path.exists(plist):
             try:
-                r = subprocess.run(["/usr/bin/plutil", "-p", plist],
-                                   capture_output=True, text=True, timeout=20)
+                r = _run(["/usr/bin/plutil", "-p", plist], 20)
                 txt = r.stdout or ""
                 for k in ("CFBundleShortVersionString", "CFBundleVersion"):
                     m = _re.search(r'"%s"\s*=>\s*"([^"]+)"' % k, txt)
@@ -2599,9 +2569,7 @@ def _act_dsh_web_open(params):
         }
         for k, c in _cmds.items():
             try:
-                r = subprocess.run(c, capture_output=True, text=True,
-                                   encoding="utf-8", errors="replace",
-                                   timeout=25)
+                r = _run(c, 25)
                 out["search"][k] = ((r.stdout or "").strip()[:800] or "(空)")
             except Exception as exc:      # noqa: BLE001
                 out["search"][k] = "ERR %s" % str(exc)[:100]
@@ -2658,8 +2626,7 @@ def _act_dsh_web_open(params):
         if url:
             out["url"] = _mask_url(url)
             try:
-                r = subprocess.run(["open", url], capture_output=True,
-                                   text=True, timeout=20)
+                r = _run(["open", url], 20)
                 out["opened"] = r.returncode == 0
                 if r.returncode != 0:
                     out["open_err"] = (r.stderr or "").strip()[:150]
@@ -2705,8 +2672,7 @@ def _act_futu_upgrade_restart(params):
 
     def _ver():
         try:
-            r = subprocess.run([sys.executable, "-m", "pip", "show", "futu-api"],
-                               capture_output=True, text=True, timeout=60)
+            r = _run([sys.executable, "-m", "pip", "show", "futu-api"], 60)
             for ln in (r.stdout or "").splitlines():
                 if ln.lower().startswith("version:"):
                     return ln.split(":", 1)[1].strip()
@@ -2726,9 +2692,7 @@ def _act_futu_upgrade_restart(params):
 
     # ② 升级（超时 300s；pip 有时会卡在编译 ⇒ 必须设上限 ✓）
     try:
-        r = subprocess.run([sys.executable, "-m", "pip", "install", "-U", "futu-api"],
-                           capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=300)
+        r = _run([sys.executable, "-m", "pip", "install", "-U", "futu-api"], 300)
         out["steps"]["pip"] = {"rc": r.returncode,
                                "tail": (r.stdout or r.stderr or "").strip()[-500:]}
     except subprocess.TimeoutExpired:
@@ -2739,8 +2703,7 @@ def _act_futu_upgrade_restart(params):
     # ④ 杀 OpenD
     killed = []
     try:
-        r = subprocess.run(["pkill", "-f", "OpenD"], capture_output=True,
-                           text=True, timeout=30)
+        r = _run(["pkill", "-f", "OpenD"], 30)
         killed.append("pkill rc=%s" % r.returncode)
     except Exception as exc:              # noqa: BLE001
         killed.append("pkill err %s" % str(exc)[:80])
@@ -2761,7 +2724,7 @@ def _act_futu_upgrade_restart(params):
                 ["open", os.path.expanduser("~/futu_OpenD/OpenD.app")],
                 [os.path.expanduser("~/futu_OpenD/OpenD")]):
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            r = _run(cmd, 30)
             started.append({"cmd": " ".join(cmd), "rc": r.returncode,
                             "err": (r.stderr or "").strip()[:150]})
             if r.returncode == 0:
@@ -2967,33 +2930,31 @@ def _act_probe_url(params):
         return {"ok": False, "error": "必须给 `url` ✗"}
     wait_ms = int(params.get("wait_ms") or 15000)
 
-    def _run(args, timeout=120):
+    def _bsk(args, timeout=120):
         """跑一条 `bsk` 命令 ✓（本文件的本地 helper ✗）。"""
         try:
-            r = subprocess.run([BSK_BIN] + list(args), capture_output=True,
-                               text=True, encoding="utf-8",
-                               errors="replace", timeout=timeout)
+            r = _run([BSK_BIN] + list(args), timeout)
             return r.returncode, (r.stdout or ""), (r.stderr or "")
         except FileNotFoundError:
             return -1, "", "**找不到 bsk** ✗（BSK_BIN=%s ✗）" % BSK_BIN
         except subprocess.TimeoutExpired:
             return -2, "", "bsk 超时（%ds ✗）" % timeout
 
-    rc, o, e = _run(["session", "start"], timeout=60)
+    rc, o, e = _bsk(["session", "start"], timeout=60)
     sid = (o or "").strip().splitlines()[-1].strip() if o else ""
     if rc != 0 or not sid:
         return {"ok": False, "error": "session start 失败 ✗",
                 "stderr": e[-300:]}
     out = {"url": url, "steps": {}}
     try:
-        rc, o, e = _run(["navigate", url, "--session", sid,
+        rc, o, e = _bsk(["navigate", url, "--session", sid,
                          "--timeout", "90s"], timeout=180)
         out["steps"]["navigate"] = {"rc": rc, "out": o[-250:], "err": e[-250:]}
         if rc != 0:
             return out
-        _run(["wait-ms", str(wait_ms)], timeout=90)
+        _bsk(["wait-ms", str(wait_ms)], timeout=90)
 
-        rc, html, e = _run(["get-html", "--session", sid], timeout=120)
+        rc, html, e = _bsk(["get-html", "--session", sid], timeout=120)
         pcts = re.findall(r"\d{1,3}\.\d\s*%", html or "")
         out["steps"]["html"] = {
             "rc": rc, "len": len(html or ""),
@@ -3002,14 +2963,14 @@ def _act_probe_url(params):
             "has_iframe": "<iframe" in (html or "").lower(),
         }
 
-        rc, o, e = _run(["observe", "--session", sid], timeout=120)
+        rc, o, e = _bsk(["observe", "--session", sid], timeout=120)
         out["steps"]["observe"] = {
             "rc": rc, "lines": len((o or "").splitlines()),
             "data_hits": sum(o.count(k) for k in ("%", "ZQ", "利率", "概率")),
             "head": (o or "")[:600],
         }
 
-        rc, o, e = _run(["network", "--session", sid, "--json",
+        rc, o, e = _bsk(["network", "--session", sid, "--json",
                          "--limit", "200"], timeout=120)
         urls = re.findall(r"https?://[^\s\"'<>\\]+", o or "")
         api = [u for u in urls if any(k in u.lower() for k in
@@ -3019,7 +2980,7 @@ def _act_probe_url(params):
             "api_urls": sorted(set(api))[:20],
         }
     finally:
-        _run(["session", "stop", sid], timeout=60)
+        _bsk(["session", "stop", sid], timeout=60)
 
     h = out["steps"].get("html") or {}
     out["ok"] = True
@@ -3228,9 +3189,7 @@ def _act_bsk_update(params):
     # ① 升级前版本 ✓
     def _ver():
         try:
-            r = subprocess.run([BSK_BIN, "--version"], capture_output=True,
-                               text=True, encoding="utf-8",
-                               errors="replace", timeout=30)
+            r = _run([BSK_BIN, "--version"], 30)
             return (r.stdout or r.stderr or "").strip()[:120]
         except Exception as exc:            # noqa: BLE001
             return "查不到：%s" % str(exc)[:100]
@@ -3249,9 +3208,7 @@ def _act_bsk_update(params):
     cmd = [BSK_BIN, "update"] + (["--check"] if dry else [])
     t0 = time.time()
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace",
-                           timeout=900, env=env, cwd=ROOT)
+        r = _run(cmd, 900, env=env)
         rc, so, se = r.returncode, r.stdout or "", r.stderr or ""
     except FileNotFoundError:
         return {"ok": False, "error": "**找不到 bsk** ✗（设 FG_BSK ✗）"}
@@ -3261,12 +3218,10 @@ def _act_bsk_update(params):
 
     after = _ver()
 
-    def _run(args, timeout=90):
+    def _bsk(args, timeout=90):
         """跑一条 bsk 子命令并回显（daemon 操作用）✓。"""
         try:
-            r = subprocess.run([BSK_BIN] + list(args), capture_output=True,
-                               text=True, encoding="utf-8", errors="replace",
-                               timeout=timeout, env=env, cwd=ROOT)
+            r = _run([BSK_BIN] + list(args), timeout, env=env)
             return {"rc": r.returncode,
                     "out": (r.stdout or r.stderr or "").strip()[:1500]}
         except Exception as exc:            # noqa: BLE001
@@ -3284,8 +3239,8 @@ def _act_bsk_update(params):
            if rc == 0 and not dry else ""}
     if restart_daemon:
         # stop 之后**不需要** start：任何 bsk 命令都会自动拉起（SKILL.md）
-        out["daemon_stop"] = _run(["daemon", "stop"])
-        out["status_after"] = _run(["status", "--json"])
+        out["daemon_stop"] = _bsk(["daemon", "stop"])
+        out["status_after"] = _bsk(["status", "--json"])
     return out
 
 
@@ -3334,9 +3289,7 @@ def _act_update_crypto(params):
     before = _snap()
     t0 = time.time()
     try:
-        r = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
-                           capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=1800)
+        r = _run([sys.executable, "-c", code], 1800)
         rc, so, se = r.returncode, r.stdout or "", r.stderr or ""
     except subprocess.TimeoutExpired:
         rc, so, se = 124, "", "超过 1800 秒"
@@ -3443,9 +3396,7 @@ def _act_run_fetch_step(params):
     t0 = time.time()
     cmd = [sys.executable, os.path.join(ROOT, "scripts", script)] + extra
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=limit,
-                           env=run_env)
+        r = _run(cmd, limit, env=run_env)
         rc, so, se = r.returncode, r.stdout or "", r.stderr or ""
     except subprocess.TimeoutExpired:
         rc, so, se = 124, "", "超过 %d 秒被强杀" % limit
@@ -3517,8 +3468,7 @@ def _act_futu_probe(params):
 
     # ① 进程
     try:
-        r = subprocess.run(["ps", "aux"], capture_output=True,
-                           text=True, timeout=20)
+        r = _run(["ps", "aux"], 20)
         # 🔴 2026-11-16 用户要求：**精确匹配** ✓
         #    原来用 `"opend" in ln.lower()` ⇒ 误匹配 macOS 系统进程
         #    `/usr/libexec/opendirectoryd` ✗（实测回执里混进来了）
@@ -3630,9 +3580,8 @@ def _act_diagnose_data(params):
 
     # ③ launchd 状态
     try:
-        r = subprocess.run(["launchctl", "print", "gui/%d/com.xingguo.fg-daily"
-                            % os.getuid()],
-                           capture_output=True, text=True, timeout=60)
+        r = _run(["launchctl", "print", "gui/%d/com.xingguo.fg-daily"
+                  % os.getuid()], 60)
         txt = r.stdout or r.stderr or ""
         keep = [ln.strip() for ln in txt.splitlines()
                 if any(k in ln for k in ("state =", "last exit", "runs =",
@@ -3730,9 +3679,7 @@ def _act_inspect_sync(params):
     # ③ 当前追踪状态
     def _git(*a):
         try:
-            r = subprocess.run(["git", "-C", ROOT] + list(a),
-                               capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=120)
+            r = _run(["git", "-C", ROOT] + list(a), 120)
             return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
         except Exception as e:              # noqa: BLE001
             return -1, "", str(e)
@@ -3805,9 +3752,7 @@ def _act_safe_pull_data(params):
     # ② pull
     def _git(*a):
         try:
-            r = subprocess.run(["git", "-C", ROOT] + list(a),
-                               capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=300)
+            r = _run(["git", "-C", ROOT] + list(a), 300)
             return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
         except Exception as e:              # noqa: BLE001
             return -1, "", str(e)
@@ -4001,9 +3946,7 @@ def _act_git_commit(params):
         # 🔴 2026-11-16 实测：`_sp` 是**局部导入**（见 line 457/1710）✗
         #    模块级只有 `import subprocess` ⇒ 这里写 `_sp.run` 报
         #    `NameError: name '_sp' is not defined` ✗（`task_1116l` 实测）
-        r = subprocess.run(["git", "-C", ROOT] + list(a),
-                           capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=180)
+        r = _run(["git", "-C", ROOT] + list(a), 180)
         return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
 
     # ① 看提交前有哪些改动（诊断用 ✓）
@@ -4068,8 +4011,7 @@ def _act_git_pull(params):
 
     def _git(*a):
         try:
-            r = _sp.run(["git", "-C", ROOT] + list(a),
-                        capture_output=True, text=True, timeout=300)
+            r = _run(["git", "-C", ROOT] + list(a), 300)
             return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
         except _sp.TimeoutExpired:
             return -1, "", "超过 300 秒"
@@ -4160,8 +4102,7 @@ def _act_install_evolve_tasks(params):
     if not os.path.exists(script):
         return {"ok": False, "reason": "找不到 %s" % script}
     try:
-        r = subprocess.run(["bash", script], cwd=ROOT, capture_output=True,
-                           text=True, timeout=180)
+        r = _run(["bash", script], 180)
     except (subprocess.SubprocessError, OSError) as exc:
         return {"ok": False, "reason": "执行失败：%s" % exc}
     return {"ok": r.returncode == 0, "rc": r.returncode,
@@ -4240,12 +4181,9 @@ def _act_install_daily_plist(params):
             out[name] = "已拷贝（8 秒后重装，结果下轮回写）"
             continue
         try:
-            subprocess.run(["launchctl", "bootout", "%s/%s" % (domain, label)],
-                           capture_output=True, timeout=30)
-            r = subprocess.run(["launchctl", "bootstrap", domain, dst],
-                               capture_output=True, text=True, timeout=60)
-            subprocess.run(["launchctl", "enable", "%s/%s" % (domain, label)],
-                           capture_output=True, timeout=30)
+            _run(["launchctl", "bootout", "%s/%s" % (domain, label)], 30)
+            r = _run(["launchctl", "bootstrap", domain, dst], 60)
+            _run(["launchctl", "enable", "%s/%s" % (domain, label)], 30)
             out[name] = "ok" if r.returncode == 0 else (r.stderr or "")[-200:]
         except (subprocess.SubprocessError, OSError) as exc:
             out[name] = "launchctl 失败：%s" % exc
@@ -4274,10 +4212,7 @@ def _act_install_daily_plist(params):
             v["file_error"] = str(exc)[:120]
         label = name[:-len(".plist")]
         try:
-            r = subprocess.run(
-                ["launchctl", "print", "%s/%s" % (domain, label)],
-                capture_output=True, text=True, encoding="utf-8",
-                errors="replace", timeout=60)
+            r = _run(["launchctl", "print", "%s/%s" % (domain, label)], 60)
             txt = r.stdout or r.stderr or ""
             keep = [ln.strip() for ln in txt.splitlines()
                     if any(k in ln for k in ("state =", "last exit",
@@ -4311,8 +4246,7 @@ def _act_sync_positions(params):
     # ⇒ 队列必须显式传 live ✓（否则「验证 OKX 拆分」这个目的达不到 ✗）
     env = dict(os.environ, FG_SYNC_MODE="live")
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=300, env=env)
+        r = _run(cmd, 300, env=env)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 300 秒未完成"}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -4380,8 +4314,7 @@ def _act_fetch_prices(params):
         code += ";print('indices:', fetch.update_indices())"
 
     try:
-        r = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
-                           capture_output=True, text=True, timeout=1800)
+        r = _run([sys.executable, "-c", code], 1800)
         so, se, rc = r.stdout or "", r.stderr or "", r.returncode
     except subprocess.TimeoutExpired:
         so, se, rc = "", "超过 1800 秒", -1
@@ -4413,8 +4346,7 @@ def _act_fetch_indices(params):
     code = ("from fg_system.data import fetch;"
             "print(fetch.update_indices())")
     try:
-        r = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
-                           capture_output=True, text=True, timeout=600)
+        r = _run([sys.executable, "-c", code], 600)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 600 秒未完成"}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -4458,8 +4390,7 @@ def _act_c5_backtest(params):
     out = []
     for cmd in steps:
         try:
-            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                               timeout=1800)
+            r = _run(cmd, 1800)
         except subprocess.TimeoutExpired:
             out.append({"cmd": " ".join(cmd[1:]), "rc": -1,
                         "stdout": "", "stderr": "超过 1800 秒"})
@@ -4517,8 +4448,7 @@ def _act_factor_reduce_probe(params):
     if tf:
         cmd.append("--trend-filter")
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=1800)
+        r = _run(cmd, 1800)
     except subprocess.TimeoutExpired:
         return {"ok": False, "factor": factor, "trend_filter": tf,
                 "error": "超过 1800 秒"}
@@ -4558,8 +4488,7 @@ def _act_f_factor_backtest(params):
     out = []
     for cmd in steps:
         try:
-            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                               timeout=1800)
+            r = _run(cmd, 1800)
         except subprocess.TimeoutExpired:
             out.append({"cmd": " ".join(cmd[1:]), "rc": -1,
                         "stdout": "", "stderr": "超过 1800 秒"})
@@ -4588,8 +4517,7 @@ def _act_fetch_fred(params):
     if str(params.get("debug") or "") in ("1", "true", "yes"):
         cmd.append("--debug")
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=900)
+        r = _run(cmd, 900)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 900 秒未完成"}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -4613,8 +4541,7 @@ def _act_fetch_pe_ratio(params):
     if ser in ("pe", "cape", "both"):
         cmd += ["--series", ser]
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=180)
+        r = _run(cmd, 180)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 180 秒未完成"}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -4657,8 +4584,7 @@ def _act_c1_backtest(params):
     out = []
     for cmd in steps:
         try:
-            r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                               timeout=1800)
+            r = _run(cmd, 1800)
         except subprocess.TimeoutExpired:
             out.append({"cmd": " ".join(cmd[1:]), "rc": -1,
                         "stdout": "", "stderr": "超过 1800 秒"})
@@ -4697,8 +4623,7 @@ def _act_fetch_shoutu_history(params):
     if str(params.get("capture_all") or "") in ("1", "true", "yes"):
         cmd.append("--capture-all")
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=900)
+        r = _run(cmd, 900)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 900 秒未完成"}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -4721,8 +4646,7 @@ def _act_backtest_plan(params):
     if out:
         cmd += ["--json", out if os.path.isabs(out) else os.path.join(ROOT, out)]
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=900)
+        r = _run(cmd, 900)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 900 秒未完成"}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -4863,8 +4787,7 @@ def _act_run_pipeline(params):
             "cr=pipeline.run_crypto(write=True);"
             "pipeline.run_portfolio(us, cr, write=True)")
     try:
-        r = subprocess.run([sys.executable, "-c", code], cwd=ROOT,
-                           capture_output=True, text=True, timeout=1800)
+        r = _run([sys.executable, "-c", code], 1800)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 1800 秒未完成"}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -4923,9 +4846,9 @@ def _act_factor_diag(params):
         out["features 尾行"] = "读不出：%s" % exc
 
     try:
-        r = subprocess.run(
+        r = _run(
             [sys.executable, os.path.join(ROOT, "scripts", "check_freshness.py")],
-            cwd=ROOT, capture_output=True, text=True, timeout=180)
+            180)
         out["check_freshness"] = {"rc": r.returncode,
                                   "out": (r.stdout or "")[-800:]}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -5060,8 +4983,7 @@ def _act_eval_baa10y(params):
     if out:
         cmd += ["--json", out if os.path.isabs(out) else os.path.join(ROOT, out)]
     try:
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=900)
+        r = _run(cmd, 900)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 900 秒未完成"}
     except (subprocess.SubprocessError, OSError) as exc:
@@ -5086,8 +5008,7 @@ def _act_run_invest_research(params):
         # 🔴 2026-10-29：600 → **900** 秒 ✗ —— 实测一次 dry-run 到 600 秒被杀，
         # 而串行版历史耗时 478 秒（并发版不该更慢）⇒ 说明阶段耗时波动很大 ✗。
         # 与每日链 `run_guarded` 给这步的 900 秒对齐 ✓。
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
-                           timeout=900)
+        r = _run(cmd, 900)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "超过 900 秒未完成"
                 "（阶段级进度见 daily_log_tail --which invest）"}
@@ -5240,8 +5161,7 @@ def _act_run_task_monitor(params):
     if str(params.get("push") or "").lower() in ("1", "true", "yes"):
         args.append("--push-alert")
     try:
-        r = subprocess.run(args, cwd=ROOT, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=300)
+        r = _run(args, 300)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "task_monitor 超过 300 秒"}
     return {"ok": r.returncode in (0, 1),          # 1 = 有异常项，不是跑挂
@@ -5480,7 +5400,7 @@ def _act_agent_probe(params):
     for cmd in (["/usr/sbin/lsof", "-nP", "-iTCP", "-sTCP:LISTEN"],
                 ["lsof", "-nP", "-iTCP", "-sTCP:LISTEN"]):
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+            r = _run(cmd, 20)
             for ln in (r.stdout or "").splitlines()[1:]:
                 parts = ln.split()
                 if len(parts) >= 9:
@@ -5492,8 +5412,7 @@ def _act_agent_probe(params):
             errs.append("%s: %s" % (cmd[0], type(exc).__name__))
     if not ports:                          # 兜底：netstat
         try:
-            r = subprocess.run(["netstat", "-an", "-p", "tcp"],
-                               capture_output=True, text=True, timeout=20)
+            r = _run(["netstat", "-an", "-p", "tcp"], 20)
             for ln in (r.stdout or "").splitlines():
                 if "LISTEN" not in ln:
                     continue
@@ -5569,8 +5488,7 @@ def _act_git_state(params):
     for c in cmds:
         key = " ".join(c[1:])
         try:
-            r = subprocess.run(c, cwd=ROOT, capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=30)
+            r = _run(c, 30)
             out[key] = (r.stdout or r.stderr or "").strip()[:1500] or "(空)"
         except Exception as exc:          # noqa: BLE001
             out[key] = "ERR %s" % str(exc)[:120]
@@ -5579,9 +5497,7 @@ def _act_git_state(params):
     #    成功则顺手把积压推掉 ✓ 失败则把 GH013 的第 2 行起带回来 ✓
     if str(params.get("push") or "1").lower() not in ("0", "false", "no"):
         try:
-            r = subprocess.run(["git", "push", "origin", "main"], cwd=ROOT,
-                               capture_output=True, text=True, encoding="utf-8",
-                               errors="replace", timeout=180)
+            r = _run(["git", "push", "origin", "main"], 180)
             out["push"] = {
                 "rc": r.returncode,
                 "stdout": (r.stdout or "").strip()[-1500:],
@@ -5590,9 +5506,7 @@ def _act_git_state(params):
         except Exception as exc:          # noqa: BLE001
             out["push"] = {"error": "%s: %s" % (type(exc).__name__, str(exc)[:150])}
         try:
-            r2 = subprocess.run(["git", "status", "-sb"], cwd=ROOT,
-                                capture_output=True, text=True, encoding="utf-8",
-                                errors="replace", timeout=30)
+            r2 = _run(["git", "status", "-sb"], 30)
             out["status_after_push"] = (r2.stdout or "").strip()[:400]
         except Exception:                 # noqa: BLE001
             pass
@@ -5774,10 +5688,7 @@ def _act_bsk_probe(params):
     ⇒ 用户要求「避免在 Mac 上反复重试」✗ ⇒ 改成一次跑完全部候选调用 ✓
     """
     try:
-        r = subprocess.run(
-            [sys.executable, os.path.join(ROOT, "scripts", "bsk_probe.py")],
-            cwd=ROOT, capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=600)
+        r = _run([sys.executable, os.path.join(ROOT, "scripts", "bsk_probe.py")], 600)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "bsk_probe 超过 600 秒"}
     return {"ok": r.returncode == 0, "rc": r.returncode,
@@ -5822,9 +5733,7 @@ def _act_restart_dashboard(params):
     url = str(params.get("url") or "http://127.0.0.1:8000/")
     uid = os.getuid() if hasattr(os, "getuid") else 501
     try:
-        r = _sp.run(["launchctl", "kickstart", "-k", "gui/%s/%s" % (uid, label)],
-                    capture_output=True, text=True, encoding="utf-8",
-                    errors="replace", timeout=30)
+        r = _run(["launchctl", "kickstart", "-k", "gui/%s/%s" % (uid, label)], 30)
     except (OSError, _sp.SubprocessError) as exc:
         return {"ok": False, "reason": "launchctl 失败：%s" % exc}
     out = {"ok": r.returncode == 0, "rc": r.returncode,
@@ -5855,9 +5764,7 @@ def _act_run_pytest(params):
     files = [x.strip() for x in str(params.get("files") or "tests/").split(",")
              if x.strip()]
     try:
-        r = subprocess.run([sys.executable, "-m", "pytest"] + files + ["-q"],
-                           cwd=ROOT, capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=900)
+        r = _run([sys.executable, "-m", "pytest"] + files + ["-q"], 900)
     except subprocess.TimeoutExpired:
         return {"ok": False, "reason": "pytest 超过 900 秒"}
     tail = (r.stdout or "").strip().splitlines()[-40:]
@@ -6237,14 +6144,12 @@ def _try_push_pending(interval=300):
         return
     _PUSH_RETRY["ts"] = now
     try:
-        r = subprocess.run(["git", "rev-list", "--count", "@{u}..HEAD"],
-                           cwd=ROOT, capture_output=True, text=True, timeout=30)
+        r = _run(["git", "rev-list", "--count", "@{u}..HEAD"], 30)
         if r.returncode != 0:
             return                      # 没有上游 / 不是仓库 ⇒ 静默跳过 ✓
         if int((r.stdout or "0").strip() or 0) <= 0:
             return                      # 没有待推提交 ✓
-        p = subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
-                           capture_output=True, text=True, timeout=180)
+        p = _run(["git", "push", "origin", "HEAD"], 180)
         if p.returncode == 0:
             print("[push] 补推成功（之前失败的提交已同步）")
         else:
@@ -6386,8 +6291,7 @@ def _git_commit(done):
         #    ⇒ 改为：**逐个 add** ✓ 失败的单独报警但不中断 ✓
         bad = []
         for pth in paths:
-            r = subprocess.run(["git", "add", "--", pth], cwd=ROOT,
-                               capture_output=True, text=True, timeout=60)
+            r = _run(["git", "add", "--", pth], 60)
             if r.returncode != 0:
                 bad.append((pth, (r.stderr or "").strip()[:120]))
         if bad:
@@ -6395,12 +6299,10 @@ def _git_commit(done):
             for pth, err in bad:
                 print("   %s —— %s" % (pth, err))
         msg = "task: %s" % "; ".join("%s=%s" % (i, s) for i, s in done)
-        r = subprocess.run(["git", "commit", "-m", msg], cwd=ROOT,
-                           capture_output=True, text=True, timeout=120)
+        r = _run(["git", "commit", "-m", msg], 120)
         if r.returncode != 0:          # 无变更可提交 ⇒ 不是错误 ✓
             return
-        p = subprocess.run(["git", "push", "origin", "HEAD"], cwd=ROOT,
-                           capture_output=True, text=True, timeout=180)
+        p = _run(["git", "push", "origin", "HEAD"], 180)
         # 🔴 推送失败**必须留痕** ✗ —— 原来 `except: pass` 把一切吞掉 ⇒
         # 结果文件只躺在 Mac 本地，Windows 端永远看不到任务结果 ✗
         # （2026-10-28 实测：`t-…-clean_sync_partial.result.json` 至今没进 gitee ✗）
