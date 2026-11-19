@@ -48,6 +48,8 @@ def _call_with_timeout(fn, seconds=90):
     if "e" in box:
         raise box["e"]
     return True, box.get("v")
+
+
 def _act_futu_opend_update(params):
     """用 OpenD **内置 `update` 命令**升级 ✓（2026-11-10 用户提供官方用法）。
 
@@ -175,6 +177,8 @@ def _act_futu_opend_update(params):
         out["hint"] = ("OpenD 没起来 ✗ ⇒ 看 `update` 的 stdout："
                        "若它已把旧版删掉但新版没下完，需要手动从官网重装")
     return out
+
+
 def _act_realtime_diag(params):
     """排查 `com.xingguo.fg-realtime` 为什么没更新 BTC 价 ✓（2026-11-10 用户要求）。
 
@@ -239,6 +243,8 @@ def _act_realtime_diag(params):
 
     out["ok"] = True
     return out
+
+
 def _act_futu_opend_info(params):
     """**探测 FutuOpenD 版本/路径 + 抓官网下载链接** ✓（2026-11-10 用户要求升级 OpenD）。
 
@@ -321,6 +327,8 @@ def _act_futu_opend_info(params):
     out["notes"].append("PyPI 只有 10.12.7208 / 10.11.7108，**没有 10.11.7188**")
     out["ok"] = True
     return out
+
+
 def _act_futu_upgrade_restart(params):
     """**升级 futu-api + 重启 OpenD** ✓（2026-11-10 用户要求）。
 
@@ -418,6 +426,8 @@ def _act_futu_upgrade_restart(params):
         out["hint"] = ("OpenD 没能起来 ✗ ⇒ 大概率是**登录态失效**，"
                        "需要你在 Mac 上手动打开 OpenD 并重新登录富途账号")
     return out
+
+
 def _act_test_futu_fed(params):
     """**验证富途 OpenD 的 `get_fed_watch_target_rate`** ✓（2026-11-05）。
 
@@ -574,6 +584,8 @@ def _act_test_futu_fed(params):
                        "（`~/futu_OpenD/OpenD` 或 GUI 版 ✗）")
     # ⚠️ 子进程已 `communicate()` / `kill()` 收尸 ✓ ⇒ 无残留线程 ✓
     return out
+
+
 def _act_futu_probe(params):
     """验证**富途 OpenD 是否可用** ✓（2026-11-16 用户要求）
 
@@ -666,6 +678,8 @@ def _act_futu_probe(params):
     out["verdict"] = ("✅ **可用**（四层全过）" if _snap_ok
                       else "❌ **不可用** —— 看 steps 哪一层失败")
     return out
+
+
 def _act_futu_preflight(params):
     """探一次富途 OpenD 端口 ✓ —— 只读、2 秒超时、零副作用 ✓。
 
@@ -678,6 +692,8 @@ def _act_futu_preflight(params):
     ok, why = futu_health.preflight()
     futu_health.write_status(ok, why, "queue:futu_preflight")
     return {"ok": bool(ok), "reason": why}
+
+
 def _act_sync_positions(params):
     """跑一次持仓/账户同步 ✓（`scripts/sync_positions.py`）。
 
