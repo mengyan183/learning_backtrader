@@ -1,0 +1,16 @@
+{
+  "id": "t-20261119-110100-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "env_check.py",
+    "args": [
+      "--json"
+    ]
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"env_check.py\", \"args\": [\"--json\"], \"stdout\": \"{\\n \\\"python\\\": \\\"/Users/xingguo/learning_backtrader/.venv/bin/python\\\",\\n \\\"version\\\": \\\"3.10.9\\\",\\n \\\"cwd\\\": \\\"/Users/xingguo/learning_backtrader\\\",\\n \\\"repo\\\": \\\"/Users/xingguo/learning_backtrader\\\",\\n \\\"repo_exists\\\": true,\\n \\\"fg_system_dir\\\": \\\"/Users/xingguo/learning_backtrader/fg_system\\\",\\n \\\"fg_system_dir_exists\\\": true,\\n \\\"fg_system_init_exists\\\": true,\\n \\\"sys_path_head\\\": [\\n  \\\"/Users/xingguo/learning_backtrader\\\",\\n  \\\"/Users/xingguo/learning_backtrader/scripts\\\",\\n  \\\"/Users/xingguo/anaconda3/lib/python310.zip\\\",\\n  \\\"/Users/xingguo/anaconda3/lib/python3.10\\\",\\n  \\\"/Users/xingguo/anaconda3/lib/python3.10/lib-dynload\\\"\\n ],\\n \\\"data_dir_exists\\\": true,\\n \\\"fg_system_importable\\\": true,\\n \\\"fg_system_file\\\": \\\"/Users/xingguo/learning_backtrader/fg_system/__init__.py\\\",\\n \\\"fetch_importable\\\": true,\\n \\\"files\\\": {\\n  \\\"features.csv\\\": {\\n   \\\"exists\\\": true,\\n   \\\"size\\\": 453387,\\n   \\\"age_hours\\\": 5.48\\n  },\\n  \\\"positions.csv\\\": {\\n   \\\"exists\\\": true,\\n   \\\"size\\\": 22793,\\n   \\\"age_hours\\\": 5.48\\n  },\\n  \\\"realtime_state.json\\\": {\\n   \\\"exists\\\": true,\\n   \\\"size\\\": 1386,\\n   \\\"age_hours\\\": 0.0\\n  },\\n  \\\"realtime_errors.log\\\": {\\n   \\\"exists\\\": false,\\n   \\\"size\\\": null,\\n   \\\"age_hours\\\": null\\n  },\\n  \\\"state.json\\\": {\\n   \\\"exists\\\": true,\\n   \\\"size\\\": 670,\\n   \\\"age_hours\\\": 5.48\\n  }\\n },\\n \\\"features_last_date\\\": \\\"2026-11-18\\\",\\n \\\"checked_at\\\": \\\"2026-11-19T11:19:51\\\"\\n}\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-19T11:19:51",
+  "finished_at": "2026-11-19T11:19:51",
+  "duration_s": 0.68
+}
