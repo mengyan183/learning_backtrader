@@ -24,6 +24,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #      路径逃逸洞（见 `safe_rel`）重新开一遍 ✗
 ALLOW_DIR = os.path.join(ROOT, "scripts", "queue_allow")
 
+#: `read_tail` / `inspect_csv` 允许读的路径前缀 ✓（**禁 `Data/accounts.csv`
+#: 和 `Data/positions.csv`** —— 那两个含账户/持仓明细，不该进任务回执 ✗✗）
+#: 🔴 2026-11-19：放 core 是因为 `data` 包和调度器（`read_tail`）都要用 ✓
+READ_ALLOW = ("Data/raw/", "Data/features.csv", "evolution/",
+              "docs/task-queue/")
+
 
 def run(cmd, timeout, cwd=ROOT, env=None):
     """跑子进程并**统一捕获/解码** ✓ —— 原来散落 87 处的 `subprocess.run(...)` 收敛到这里。

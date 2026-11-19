@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
                                 "scripts"))
 import queue_core as qc  # noqa: E402
 import run_task_queue as q  # noqa: E402
+from queue_actions import data as ddq  # noqa: E402
 from queue_actions import diag as dq  # noqa: E402
 from queue_actions import git as gq  # noqa: E402
 from queue_actions import launchd as lq  # noqa: E402
@@ -185,7 +186,7 @@ def test_clean_sync_partial_removes_only_that_package(tmp_path, monkeypatch):
     for n in ("sync_1028w_1.md", "sync_1028w_2.md",
               "sync_1028x_1.md", "sync_1028w_1.md.done"):
         (tmp_path / n).write_text("x", encoding="utf-8")
-    r = q._act_clean_sync_partial({"pkg": "sync_1028w"})
+    r = ddq._act_clean_sync_partial({"pkg": "sync_1028w"})
     assert r["ok"] is True and r["count"] == 2
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "sync_1028w_1.md.done", "sync_1028x_1.md"]
@@ -552,7 +553,7 @@ def test_git_commit_warns_when_push_fails(monkeypatch, capsys):
 def test_clean_sync_partial_rejects_bad_pkg():
     """包名非法必须报错 ✓ —— 不许借 `..` / `/` / `*` 越出分片目录 ✗。"""
     for bad in ("", "..", "a/b", "a b", "*"):
-        r = q._act_clean_sync_partial({"pkg": bad})
+        r = ddq._act_clean_sync_partial({"pkg": bad})
         assert r["ok"] is False, "非法包名 %r 被放行了 ✗" % bad
 
 
@@ -794,14 +795,14 @@ def test_inspect_csv_rejects_absolute_path():
     🔴 原写法 `if not os.path.isabs(path): path = join(ROOT, path)` ✗
        ⇒ `/etc/passwd`、`~/.ssh/id_rsa` 都能被读取并回传到飞书 ✗
     """
-    r = q._act_inspect_csv({"path": "/etc/passwd"})
+    r = ddq._act_inspect_csv({"path": "/etc/passwd"})
     assert r["ok"] is False
     assert "绝对路径" in r["error"]
 
 
 def test_inspect_csv_rejects_dotdot():
     """`inspect_csv` 必须拒绝 `..` 逃逸 ✓。"""
-    r = q._act_inspect_csv({"path": "Data/raw/../../.env"})
+    r = ddq._act_inspect_csv({"path": "Data/raw/../../.env"})
     assert r["ok"] is False
     assert ".." in r["error"] or "白名单" in r["error"]
 
