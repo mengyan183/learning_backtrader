@@ -1996,6 +1996,7 @@ _SCRIPT_ALLOWED = (
     #    背景：每日链报 `No module named 'fg_system'` ✗ 但 `cd "$REPO"` 明明有 ✗
     #    ⇒ 需要远程确认「解释器 / cwd / 包位置 / 数据新鲜度」✓
     "env_check.py",
+    "dedup_verify_log.py",       # 清理 verify-log 历史重复（一次性）
     "migrate_verify_log.py",     # 验证明细迁移（一次性）
     "evolve_verify.py",          # 假说验证（每日）
     "verify_hypotheses.py",      # 假说验证（另一路径）

@@ -57,14 +57,26 @@ def _append_verify_log(hid, note):
     os.makedirs(VERIFY_LOG_DIR, exist_ok=True)
     path = os.path.join(VERIFY_LOG_DIR, "%s.md" % hid)
     first = not os.path.isfile(path)
+    line = "- %s\n" % note
     try:
+        # 🔴 2026-11-19：**同一天重复跑要去重** ✗
+        #    实测 H-002 的 `2026-11-18 验证：...` 记了 **3 次** ✗
+        #    原因：我手动 `run_script` 触发 2 次 + launchd 定时任务 1 次 ✗
+        #    每次 `_apply` 都会追加 ⇒ 归档文件里全是重复行 ✗
+        #    ⇒ 追加前检查**最后一行**是否完全相同 ✓
+        #      （只比最后一行：同一天多次跑内容必然相同，且不影响跨天追加）
+        if not first:
+            with open(path, encoding="utf-8") as f:
+                tail = f.readlines()
+            if tail and tail[-1] == line:
+                return          # 完全相同 ⇒ 静默跳过
         with open(path, "a", encoding="utf-8") as f:
             if first:
                 f.write("# %s 验证记录\n\n" % hid)
                 f.write("> 由 `scripts/evolve_verify.py` 自动追加；"
                         "`evolution/hypotheses.md` 只保留最新一条。\n"
                         "> 日期为**北京日期**（脚本 `date.today()`）。\n\n")
-            f.write("- %s\n" % note)
+            f.write(line)
     except OSError as exc:          # 归档失败**不得**影响假说状态更新 ✓
         print("  [warn] %s 验证日志写入失败：%s" % (hid, exc))
 #: **转义感知**切分 —— 备注里含 `\|`（绝对值竖线）时，朴素 `split("|")` 会让
