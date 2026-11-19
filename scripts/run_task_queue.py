@@ -3880,6 +3880,37 @@ _READ_ALLOW = ("Data/raw/", "Data/features.csv", "evolution/",
                "docs/task-queue/")
 
 
+def _safe_rel(rel, allow):
+    """把任务参数里的相对路径**锁死在白名单目录内** ✓。
+
+    🔴 2026-11-19 安全评审发现（**唯一「出事不可回滚」的问题**）✗
+      原来的检查是 `rel.startswith(_READ_ALLOW)` ✗
+      但 `"Data/raw/../../.env".startswith("Data/raw/")` 是 **True** ✗
+      ⇒ `git_commit` 的 `files` 参数传 `"evolution/../.env"` 就能让
+        `.env`（含 API key）被 `git add` + `push` 到 **gitee** ✗
+      ⇒ 而飞书群里**任何人**都能发起任务（只要知道格式）✗
+      ⇒ 事后只能改密钥，git 历史无法撤回 ✗
+
+    ✅ 三重校验：
+      ① 显式拒绝 `..` 路径段（`split` 后逐段比对，不靠字符串匹配）
+      ② `realpath` 解析后再比前缀（防符号链接绕过）
+      ③ 必须落在某个白名单目录**之内**（`+ os.sep` 防止 `Data/raw-evil`）
+
+    返回**绝对路径**；不合法抛 `ValueError`（调用方转成 `{"ok": False}`）✓
+    """
+    rel = str(rel or "").strip().lstrip("/").replace("\\", "/")
+    if not rel:
+        raise ValueError("路径为空")
+    if ".." in rel.split("/"):
+        raise ValueError("路径含 `..`：%s" % rel)
+    full = os.path.realpath(os.path.join(ROOT, rel.replace("/", os.sep)))
+    for a in allow:
+        base = os.path.realpath(os.path.join(ROOT, a))
+        if full == base or full.startswith(base + os.sep):
+            return full
+    raise ValueError("路径不在白名单 %s 内：%s" % (list(allow), rel))
+
+
 def _act_read_tail(params):
     """读文件末尾 N 行 ✓（2026-11-17 用户要求）
 
@@ -3899,17 +3930,17 @@ def _act_read_tail(params):
     rel = str(params.get("path") or "").strip().lstrip("/")
     if not rel:
         return {"ok": False, "error": "`path` 必填"}
-    if not rel.startswith(_READ_ALLOW):
-        return {"ok": False,
-                "error": "路径不在白名单 %s 内：%s"
-                         % (list(_READ_ALLOW), rel)}
+    # 🔴 2026-11-19：改用 `_safe_rel`（原 `startswith` 可被 `..` 绕过 ✗）
+    try:
+        full = _safe_rel(rel, _READ_ALLOW)
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
     try:
         n = int(params.get("lines") or 10)
     except (TypeError, ValueError):
         n = 10
     n = max(1, min(n, 100))
 
-    full = os.path.join(ROOT, rel.replace("/", os.sep))
     if not os.path.exists(full):
         return {"ok": False, "error": "文件不存在：%s" % rel}
     try:
@@ -3948,11 +3979,14 @@ def _act_git_commit(params):
     if not files:
         return {"ok": False, "error": "`files` 必填（逗号分隔的相对路径）"}
 
-    bad = [f for f in files if not f.startswith(_GIT_COMMIT_ALLOW)]
-    if bad:
-        return {"ok": False,
-                "error": "路径不在白名单 %s 内：%s"
-                         % (list(_GIT_COMMIT_ALLOW), bad)}
+    # 🔴 2026-11-19：改用 `_safe_rel`（原 `startswith` 可被 `..` 绕过 ✗）
+    #    `"evolution/../.env".startswith("evolution/")` 是 True ✗
+    #    ⇒ `.env` 会被 `git add` + `push` 到 gitee（密钥泄露，不可撤回）✗
+    for f in files:
+        try:
+            _safe_rel(f, _GIT_COMMIT_ALLOW)
+        except ValueError as e:
+            return {"ok": False, "error": str(e)}
 
     msg = str(params.get("message") or "").strip()
     if not msg:
@@ -6243,7 +6277,11 @@ def run_once(commit=True):
             # 其它动作的 params（有测试锁着「动作收到的就是下发的那份」✗）
             _params = dict(spec.get("params") or {})
             if action in NEEDS_TID:
-                _params.setdefault("_tid", spec["id"])
+                # 🔴 2026-11-19：**必须覆盖，不能用 `setdefault`** ✗
+                #    原写法：任务 JSON 里预先塞 `"_tid": "任意值"` ⇒
+                #    `setdefault` 不覆盖 ⇒ 攻击者控制 `_tid` ✗
+                #    （`_tid` 用于生成文件名/日志路径 ⇒ 可路径穿越）
+                _params["_tid"] = spec["id"]
             # 🔴 2026-11-02：**环境变量白名单** ✓ —— 执行期间 `os.environ`
             # 被收窄成该动作声明的集合 ✗ ⇒ 动作读不到无关密钥 ✓
             with _scoped_env(action):
