@@ -111,8 +111,26 @@ fi
 # ⚠️ 数据源有请求前节流，24 个标的约 1~3 分钟，属正常等待。
 # ⚠️ **无硬超时上界**（24 标的 × 重试 × 节流，最坏可十几分钟）—— 挂起的发现方式：
 #    `logs/shoutu_daily.log` 里只有 `===== start` 而没有对应的 `===== end`。
-"$PY" -c "from fg_system.data import fetch; _, a = fetch.update_prices(); print('prices.csv 新增 %d 行' % sum(a.values()))" >> "$LOG" 2>&1
-RC3=$?
+# 🔴 2026-11-19：**加重试** ✗ —— `No module named 'fg_system'` 是**偶发** ✗
+#    实测（2026-11-19 每日链）：这一步跑 1147 秒后报
+#      `失败：No module named 'fg_system'`
+#    但同一时刻 `env_check.py` 报 `fg_system_importable: true` ✓
+#    且 `shoutu_daily.sh` 明确有 `cd "$REPO"` ✓
+#    ⇒ 根因：`fg-sync` 入库时（`git checkout` / `git clean`）会让
+#      `fg_system/` 或 `Data/` **瞬时不可用** ✗
+#      同一个窗口还导致 `futu_realtime.py` 的 `save_state` 报
+#      `FileNotFoundError`（已单独加固 ✓）
+#    ⇒ 重试 3 次 × 10 秒，把撞窗口的概率降到接近零 ✓
+#    ⚠️ 不改 RC 语义：最终 `RC3` 仍是**最后一次**的退出码 ✓
+_TRY=1
+while [ "$_TRY" -le 3 ]; do
+    "$PY" -c "from fg_system.data import fetch; _, a = fetch.update_prices(); print('prices.csv 新增 %d 行' % sum(a.values()))" >> "$LOG" 2>&1
+    RC3=$?
+    [ "$RC3" -eq 0 ] && break
+    echo "===== prices retry $_TRY/3 (rc=$RC3) =====" >> "$LOG"
+    _TRY=$((_TRY + 1))
+    [ "$_TRY" -le 3 ] && sleep 10
+done
 echo "===== prices exit=$RC3 =====" >> "$LOG"
 if [ "$RC3" -ne 0 ]; then
     echo "===== prices FAILED rc=$RC3 (see traceback above) =====" >> "$LOG"
