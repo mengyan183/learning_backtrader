@@ -629,20 +629,33 @@ def test_unknown_action_hints_code_not_ingested():
     assert "先确认代码入库" in src, "缺少「先入库再下发」的约定 ✗"
 
 
-def test_sync_positions_forces_live_mode():
+def test_sync_positions_forces_live_mode(monkeypatch):
     """`sync_positions` 动作必须传 `FG_SYNC_MODE=live` ✓（2026-11-02）。
 
     `sync_positions.py` 默认 **static** ✗ —— 不调任何外部 API、
     不碰 accounts/positions ✗ ⇒ 任务报 done 但什么都没验证到 ✗
     （第一次下发就是这么被骗的 ✗）
     而每日链 plist 里是 `FG_SYNC_MODE=live ... sync_positions.py` ✓
-    """
-    import io
-    import os
 
-    src = io.open(os.path.join(os.path.dirname(__file__), "..", "scripts",
-                               "run_task_queue.py"), encoding="utf-8").read()
-    assert 'FG_SYNC_MODE="live"' in src, "队列没强制 live ✗"
+    🔴 2026-11-19：改成**行为断言** ✗ —— 原来 grep 主文件源码 ✗，
+       动作搬进 `queue_actions/futu.py` 后必然失效 ✓
+    """
+    from queue_actions import futu as f
+    seen = {}
+
+    class _R:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(cmd, timeout, cwd=None, env=None):
+        seen["env"] = env
+        return _R()
+
+    monkeypatch.setattr(f, "_run", fake_run)
+    assert f._act_sync_positions({})["ok"] is True
+    assert (seen["env"] or {}).get("FG_SYNC_MODE") == "live", \
+        "队列没给 sync_positions 传 live ✗"
 
 
 def test_env_whitelist_blocks_unrelated_secrets(monkeypatch):
@@ -864,6 +877,32 @@ def test_all_subprocess_goes_through_run_helper():
     # 调度器里**一处都不许有**；core 里只许 `run()` 自己那一处 ✓
     assert offenders(q, set()) == [], "调度器里有裸 subprocess.run ✗"
     assert offenders(qc, {"run"}) == [], "core 里有第二处 subprocess.run ✗"
+
+
+def test_action_packages_stay_off_the_scheduler():
+    """动作包不许 import 调度器或彼此 ✓ —— 否则成环、拆包白做 ✗。
+
+    🔴 2026-11-19 第四轮约定（`queue_actions/__init__.py`）：
+       包只 import `queue_core` + 标准库 ✓
+    """
+    import ast
+    import glob
+    import os
+    here = os.path.dirname(os.path.abspath(q.__file__))
+    pkgs = glob.glob(os.path.join(here, "queue_actions", "*.py"))
+    assert pkgs, "没找到动作包 ✗"
+    for p in pkgs:
+        with open(p, encoding="utf-8") as fh:
+            tree = ast.parse(fh.read())
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Import):
+                bad = [a.name for a in n.names
+                       if a.name.split(".")[0] in ("run_task_queue", "queue_actions")]
+                assert not bad, "%s 违规 import %s ✗" % (p, bad)
+            elif isinstance(n, ast.ImportFrom):
+                mod = (n.module or "").split(".")[0]
+                assert mod not in ("run_task_queue", "queue_actions"), \
+                    "%s 违规 import %s ✗" % (p, n.module)
 
 
 def test_launchd_labels_is_single_source():
