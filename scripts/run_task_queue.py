@@ -42,6 +42,17 @@ PLIST_SRC = os.path.join(ROOT, "scripts", LABEL + ".plist")
 PLIST_DST = os.path.join(os.path.expanduser("~"), "Library", "LaunchAgents",
                          LABEL + ".plist")
 
+#: 🔴 允许操作的 launchd 服务 label ✓（2026-11-19 合并）
+#: 原来 `plist_path_append` / `service_bootstrap` / `restart_queue` **各抄一份** ✗
+#: ⇒ 加一个服务要改 3 处，漏一处就报「不允许的 label」✗
+LAUNCHD_LABELS = ("com.xingguo.fg-task-queue",
+                  "com.xingguo.fg-realtime",
+                  "com.xingguo.fg-dashboard",
+                  "com.xingguo.fg-sync-watcher",
+                  # `evolve_verify.py` 由它定时跑 ⇒ 要能远程重启触发一次验证 ✓
+                  "com.xingguo.fg-evolve-verify",
+                  "com.xingguo.dsh.web")
+
 
 def agent_status():
     """定时器是否已安装 / 已加载（看板据此决定要不要显示安装按钮）。"""
@@ -1164,16 +1175,11 @@ def _act_plist_path_append(params):
     """
     import re as _re
 
-    _ALLOWED = ("com.xingguo.dsh.web",
-                "com.xingguo.fg-task-queue",
-                "com.xingguo.fg-realtime",
-                "com.xingguo.fg-dashboard",
-                "com.xingguo.fg-sync-watcher")
     label = str(params.get("label") or "").strip()
-    if label not in _ALLOWED:
+    if label not in LAUNCHD_LABELS:
         return {"ok": False,
                 "error": "不允许的 label：`%s` ✗（白名单：%s）"
-                         % (label, ", ".join(_ALLOWED))}
+                         % (label, ", ".join(LAUNCHD_LABELS))}
 
     home = os.path.expanduser("~")
     plist = os.path.join(home, "Library", "LaunchAgents", label + ".plist")
@@ -1985,26 +1991,37 @@ def _act_news_diag(params):
     return out
 
 
-#: `run_script` 允许的脚本白名单 ✓（2026-11-18 用户选择 ①）
-#   🔴 为什么需要 ✗：`service_bootstrap` 只能重启 launchd 服务 ✗
-#      ⇒ 一次性脚本（迁移/验证/诊断）只能让用户手动在 Mac 上跑 ✗
-#      实测今天 3 次「发代码 → 手动跑一次」的往返 ✗
-#      ⇒ 加这个 action，白名单 + 回传 stdout/stderr ✓
-#   ⚠️ 只放**只读或只写仓库内文件**的脚本 ✗ 不放能改系统/装包的 ✓
-_SCRIPT_ALLOWED = (
-    # 🔴 2026-11-19：环境自检 ✓
-    #    背景：每日链报 `No module named 'fg_system'` ✗ 但 `cd "$REPO"` 明明有 ✗
-    #    ⇒ 需要远程确认「解释器 / cwd / 包位置 / 数据新鲜度」✓
-    "env_check.py",
-    "dedup_verify_log.py",       # 清理 verify-log 历史重复（一次性）
-    "migrate_verify_log.py",     # 验证明细迁移（一次性）
-    "evolve_verify.py",          # 假说验证（每日）
-    "verify_hypotheses.py",      # 假说验证（另一路径）
-    "audit_data_files.py",       # 数据文件审计
-    "putcall_factor_check.py",   # PUT-CALL 符号检验
-    "prune_dead_data.py",        # 清理死数据
-    "invest_research.py",        # 简报生成（可 --dry-run）
-)
+#: 🔴 外置白名单目录 ✓（2026-11-19 用户裁定：加脚本 = 加文件，零改 py）
+#   · `*.py`               ⇒ `run_script` 可跑的脚本名（**文件名即白名单**）
+#   · `tail_logs.json`     ⇒ `daily_log_tail` 可读的日志（每轮重读，不用重启 ✓）
+#   · `task_outputs.json`  ⇒ `_git_commit` 会提交的产物目录/文件
+#   ⚠️ 加载器**只读**且**拒绝 `..`** ✗ —— 否则等于把 2026-11-19 刚堵的
+#      路径逃逸洞（见 `_safe_rel`）重新开一遍 ✗
+_ALLOW_DIR = os.path.join(ROOT, "scripts", "queue_allow")
+
+
+def _allow_json(name):
+    """读 `scripts/queue_allow/<name>` ✓ —— 每轮重读 ⇒ 改白名单不用重启队列 ✓。"""
+    with open(os.path.join(_ALLOW_DIR, name), encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _rel_ok(rel):
+    """白名单条目必须是**仓库内相对路径** ✓ —— 绝对路径 / `..` / 空 一律拒绝 ✗。"""
+    rel = str(rel or "").strip()
+    if (not rel or os.path.isabs(rel) or rel.startswith(("/", "\\"))
+            or ".." in rel.replace("\\", "/").split("/")):
+        raise ValueError("白名单条目非法：%r" % rel)
+    return rel
+
+
+def _script_allowed():
+    """扫 `scripts/queue_allow/*.py` 得到可跑脚本名集合 ✓（文件名即白名单）。"""
+    try:
+        return {e.name for e in os.scandir(_ALLOW_DIR)
+                if e.is_file() and e.name.endswith(".py")}
+    except OSError:
+        return set()
 
 
 #: `run_git` 允许的子命令 ✓（2026-11-19 用户选择方案 ②）
@@ -2081,10 +2098,11 @@ def _act_run_script(params):
       · **不拼接 shell** ⇒ `args` 原样传参，无注入面 ✓
     """
     script = str(params.get("script") or "").strip()
-    if script not in _SCRIPT_ALLOWED:
+    allowed = _script_allowed()
+    if script not in allowed:
         return {"ok": False,
-                "error": "不允许的脚本：`%s` ✗（白名单：%s）"
-                         % (script, ", ".join(_SCRIPT_ALLOWED))}
+                "error": "不允许的脚本：`%s` ✗（白名单 = scripts/queue_allow/*.py：%s）"
+                         % (script, ", ".join(sorted(allowed)))}
     path = os.path.join(ROOT, "scripts", script)
     if not os.path.isfile(path):
         return {"ok": False, "error": "脚本不存在：%s" % path}
@@ -2130,22 +2148,11 @@ def _act_service_bootstrap(params):
     """
     import re as _re
 
-    _ALLOWED = ("com.xingguo.fg-task-queue",
-                "com.xingguo.fg-realtime",
-                "com.xingguo.fg-dashboard",
-                "com.xingguo.fg-sync-watcher",
-                "com.xingguo.dsh.web",
-                # 🔴 2026-11-18：加入假说验证服务 ✓
-                #    原因：`evolve_verify.py` 由这个 launchd 定时跑 ✗
-                #    想远程触发一次验证（比如改了写入格式后测试）✗
-                #    只能重启它 ⇒ 但不在白名单 ⇒ 报「不允许的 label」✗
-                #    ⇒ 加入；它只跑只读+写 `evolution/` 的脚本，风险可控 ✓
-                "com.xingguo.fg-evolve-verify")
     label = str(params.get("label") or "").strip()
-    if label not in _ALLOWED:
+    if label not in LAUNCHD_LABELS:
         return {"ok": False,
                 "error": "不允许的 label：`%s` ✗（白名单：%s）"
-                         % (label, ", ".join(_ALLOWED))}
+                         % (label, ", ".join(LAUNCHD_LABELS))}
 
     home = os.path.expanduser("~")
     plist = os.path.join(home, "Library", "LaunchAgents", label + ".plist")
@@ -3142,16 +3149,11 @@ def _act_restart_queue(params):
     #    但 `running: []` ⇒ 进程没在跑 ✗
     #    ⇒ 这就是 `dsh web authentication required` 的根因 ✓
     #    ⇒ 加进白名单，可以用同一个动作把它拉起来 ✓
-    _ALLOWED = ("com.xingguo.fg-task-queue",
-                "com.xingguo.fg-realtime",
-                "com.xingguo.fg-dashboard",
-                "com.xingguo.fg-sync-watcher",
-                "com.xingguo.dsh.web")
     label = str(params.get("label") or "com.xingguo.fg-task-queue").strip()
-    if label not in _ALLOWED:
+    if label not in LAUNCHD_LABELS:
         return {"ok": False,
                 "error": "不允许的 label：`%s` ✗（白名单：%s）"
-                         % (label, ", ".join(_ALLOWED))}
+                         % (label, ", ".join(LAUNCHD_LABELS))}
     delay = int(params.get("delay") or 5)
     uid = os.getuid() if hasattr(os, "getuid") else 501
     target = "gui/%s/%s" % (uid, label)
@@ -4797,7 +4799,9 @@ def _act_inspect_csv(params):
     #      ② 相对路径的 `..` 也不校验（`Data/raw/../../.env`）✗
     #    ⇒ 改用 `_safe_rel`：拒绝绝对路径 + 拒绝 `..` + 限定 `_READ_ALLOW` ✓
     _raw = str(params.get("path") or "Data/raw/prices.csv")
-    if os.path.isabs(_raw):
+    # 🔴 2026-11-19：`os.path.isabs("/etc/passwd")` 在 Windows 上是 **False** ✗
+    #    ⇒ 补一条「以分隔符开头」的判断，两个平台语义一致 ✓
+    if os.path.isabs(_raw) or _raw.startswith(("/", "\\")):
         return {"ok": False, "error": "不接受绝对路径：%s ✗" % _raw}
     try:
         path = _safe_rel(_raw, _READ_ALLOW)
@@ -5096,20 +5100,22 @@ def _act_run_invest_research(params):
 #: 允许 tail 的日志 —— **固定白名单** ✓（不接受任意路径 ✗，否则等于远程读文件 ✗）
 #: `evolve_verify` 是**仓库内** logs/ 下的日志（plist 的 StandardOutPath）✓ ——
 #: 2026-10-29 加：验证 06:10 那次复检有没有真的带上 `--quiet` ✓
-TAIL_LOGS = {
-    "daily": "/tmp/fg_daily.log",
-    "task_queue": "/tmp/fg_task_queue.log",
-    "evolve_verify": os.path.join(ROOT, "logs", "evolve_verify.log"),
-    # 2026-10-29：简报阶段级日志 ✓ —— 队列超时杀进程时 stdout 全丢 ✗，
-    # 只有这个文件能看出卡在新闻还是某个 LLM 阶段 ✓
-    "invest": os.path.join(ROOT, "Data", "health", "invest_stages.log"),
-    # 🔴 2026-11-19：realtime 两个日志 ✓
-    #   `realtime` ⇒ launchd 的 stdout（plist 里 StandardOutPath）
-    #   `realtime_errors` ⇒ `futu_realtime.py` 的**连续失败落盘**（fix_1117g）
-    #     它是判「OpenD 挂了」还是「Binance 抖动」的唯一直接证据 ✓
-    "realtime": "/tmp/fg_realtime.log",
-    "realtime_errors": os.path.join(ROOT, "Data", "realtime_errors.log"),
-}
+#: 🔴 2026-11-19：清单**外置**到 `scripts/queue_allow/tail_logs.json` ✓ ——
+#:   加一个日志只改 json，不用重启队列 ✓（`/tmp/*` 用绝对路径，其余按仓库相对 ✓）
+def _tail_logs():
+    """读 `tail_logs.json` ⇒ {名字: 绝对路径} ✓ —— 每轮重读 ✓。
+
+    ⚠️ 只接受**非空、不含 `..`** 的路径 ✗（绝对路径必须支持：`/tmp/fg_daily.log`）
+    """
+    out = {}
+    for name, rel in _allow_json("tail_logs.json").items():
+        rel = str(rel or "").strip()
+        if not rel or ".." in rel.replace("\\", "/").split("/"):
+            raise ValueError("tail_logs.json 条目非法：%s=%r" % (name, rel))
+        # 以 `/` 开头即绝对路径 ✓（Windows 的 `os.path.isabs("/tmp/x")` 是 False ✗）
+        abs_ = rel.startswith("/") or os.path.isabs(rel)
+        out[str(name)] = rel if abs_ else os.path.join(ROOT, rel)
+    return out
 
 
 def _act_daily_log_tail(params):
@@ -5120,10 +5126,14 @@ def _act_daily_log_tail(params):
     `which` 走白名单，`lines` 上限 200 ✓。
     """
     which = str(params.get("which") or "daily")
-    path = TAIL_LOGS.get(which)
+    try:
+        logs = _tail_logs()
+    except (OSError, ValueError) as exc:
+        return {"ok": False, "reason": "读不到白名单 tail_logs.json：%s" % exc}
+    path = logs.get(which)
     if not path:
         return {"ok": False,
-                "reason": "未知日志 %r（可选：%s）" % (which, ", ".join(sorted(TAIL_LOGS)))}
+                "reason": "未知日志 %r（可选：%s）" % (which, ", ".join(sorted(logs)))}
     try:
         n = max(1, min(int(params.get("lines") or 60), 200))
     except (TypeError, ValueError):
@@ -6332,42 +6342,43 @@ def run_once(commit=True):
     return done
 
 
-#: 任务会写出的**产物目录** ✓ —— 只提交这些，**绝不用 `git add -A`** ✗
+#: 任务会写出的**产物目录/文件** ✓ —— 只提交这些，**绝不用 `git add -A`** ✗
 #: （Mac 上常年有测试产物/临时文件 ✗）
 #: 2026-10-30 实测教训：`factor_backtest_probe --json evolution/...` 写的裁判
 #: 产物**没进 git** ✗ ⇒ Windows 端只能看到被 `output[-2000:]` 截断的 stdout ✗
-TASK_OUTPUT_DIRS = ("evolution/experiments/factor-adoption",
-                    # 🔴 2026-11-18：验证明细归档目录 ✓
-                    #    背景：`evolve_verify.py` 把每日记录写这里 ✗
-                    #    但它不在产物清单 ⇒ `_git_commit` 只 add
-                    #    `TASK_OUTPUT_FILES` 里的 3 个明确文件 ✗
-                    #    ⇒ `verify-log/` 永远留在 Mac 本地、从不入库 ✗
-                    #    ⇒ 加入；它是纯文本 md（每个 H-ID 一个），无敏感内容 ✓
-                    "evolution/verify-log")
+#: 🔴 2026-11-19：清单**外置**到 `scripts/queue_allow/task_outputs.json` ✓
+#:   `{"dirs": [...], "files": [...]}` —— 加产物路径只改 json ✓
+def _task_outputs():
+    """读 `task_outputs.json` ⇒ `(dirs, files)` ✓。
 
-#: 🔴 每日链的 `evolve_*` 会**改写**这些登记表 ✗ —— 队列不提交就会让 Mac 侧
-#: 永远留一份「未提交修改」⇒ 之后任何对它们的 patch 都报**冲突中止** ✗
-#: （2026-10-30 实测：`sync_1028dn` 因 `evolution/hypotheses.md` 冲突入库失败 ✗）
-TASK_OUTPUT_FILES = ("evolution/hypotheses.md",
-                     "evolution/factors.md",
-                     "evolution/hypothesis_results.md")
+    ⚠️ 只接受**仓库内相对路径** ✗ —— `_git_commit` 拿它做 `git add`，
+       绝对路径 / `..` 会越出仓库（同 2026-11-19 `_safe_rel` 那类洞）
+    """
+    data = _allow_json("task_outputs.json")
+    return ([_rel_ok(d) for d in data.get("dirs") or []],
+            [_rel_ok(f) for f in data.get("files") or []])
+
+
 # 🔴 2026-11-03 移除：`Data/raw/sp500_pe.csv` / `sp500_cape.csv` /
 #    `fred_DGS10.csv` 曾在这里 ✗（2026-10-30 为让 Windows 看到 C2 数据 ✗）
 #    但 2026-11-03 用户裁定「数据不入库」⇒ `Data/raw/` 已进 `.gitignore` ✗
-#    ⇒ 这几个路径**会被 git 拒绝** ✗ 而 `_git_commit` 的 `git add` 用了
-#       `check=True` ✗ ⇒ **抛异常 ⇒ 整个提交（含 `docs/task-queue` 的结果）
-#       全被跳过** ✗
-#    ⇒ 现象：Mac 上任务跑了、页面显示失败 ✗ 但 gitee 上**没有任何 result** ✗
-#    （用户 2026-11-03 反馈的正是这个 ✗）
+#    ⇒ 别再把 `Data/raw/*` 加回 `task_outputs.json` ✗ —— 会被 git 拒绝
+#       （`_git_commit` 已改为逐个 add，不会整体失败，但会刷一堆 warn ✓）
 
 
 def _git_commit(done):
     """提交 `docs/task-queue/` + **任务产物目录** ✓ —— 不碰其他脏文件 ✗。"""
     try:
+        try:
+            out_dirs, out_files = _task_outputs()
+        except (OSError, ValueError) as exc:
+            # 白名单坏了 ⇒ 只提交任务结果，别把整个提交搞丢 ✗
+            print("[warn] 产物白名单读取失败（本轮只提交任务结果）：%s" % exc)
+            out_dirs, out_files = [], []
         paths = ["docs/task-queue"] + [
-            d for d in TASK_OUTPUT_DIRS
+            d for d in out_dirs
             if os.path.isdir(os.path.join(ROOT, d))] + [
-            f for f in TASK_OUTPUT_FILES
+            f for f in out_files
             if os.path.isfile(os.path.join(ROOT, f))]
         # 🔴 2026-11-03：**不能 `check=True`** ✗ —— 只要有一个路径被
         #    `.gitignore` 拒绝（如 `Data/raw/*` ✗），git 就**整体失败** ✗

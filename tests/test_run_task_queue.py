@@ -298,9 +298,10 @@ def test_evolution_registries_are_committed():
     **有未提交修改** ⇒ 入库中止（冲突不覆盖）✗。
     根因是队列只提交 `docs/task-queue/`，而每日链的 `evolve_*` 会改写登记表 ✗。
     """
-    assert "evolution/hypotheses.md" in q.TASK_OUTPUT_FILES
-    assert "evolution/factors.md" in q.TASK_OUTPUT_FILES
-    for f in q.TASK_OUTPUT_FILES:
+    _dirs, files = q._task_outputs()
+    assert "evolution/hypotheses.md" in files
+    assert "evolution/factors.md" in files
+    for f in files:
         assert not f.startswith("/") and ".." not in f
 
 
@@ -310,8 +311,9 @@ def test_task_output_dirs_are_explicit_allowlist():
     2026-10-30 实测教训：`factor_backtest_probe --json evolution/...` 写的
     裁判产物没进 git ✗ ⇒ Windows 端只看到被 `output[-2000:]` 截断的 stdout ✗。
     """
-    assert "evolution/experiments/factor-adoption" in q.TASK_OUTPUT_DIRS
-    for d in q.TASK_OUTPUT_DIRS:
+    dirs, _files = q._task_outputs()
+    assert "evolution/experiments/factor-adoption" in dirs
+    for d in dirs:
         assert isinstance(d, str) and d and not d.startswith("-")
         assert ".." not in d, "白名单里不能出现上级目录 ✗"
 
@@ -484,14 +486,16 @@ def test_try_push_pending_pushes_when_ahead(monkeypatch, capsys):
 
 def test_tail_logs_include_evolve_verify():
     """`evolve_verify` 日志必须在 tail 白名单里 ✓ —— 否则明天没法确认 `--quiet` 生效 ✗。"""
-    assert "evolve_verify" in q.TAIL_LOGS
-    assert q.TAIL_LOGS["evolve_verify"].endswith("evolve_verify.log")
+    logs = q._tail_logs()
+    assert "evolve_verify" in logs
+    assert logs["evolve_verify"].endswith("evolve_verify.log")
 
 
 def test_tail_logs_include_invest_stages():
     """简报阶段日志必须在白名单里 ✓ —— 超时被杀时它是唯一线索 ✗。"""
-    assert "invest" in q.TAIL_LOGS
-    assert q.TAIL_LOGS["invest"].endswith("invest_stages.log")
+    logs = q._tail_logs()
+    assert "invest" in logs
+    assert logs["invest"].endswith("invest_stages.log")
 
 
 def test_install_evolve_tasks_reports_failure(monkeypatch):
@@ -504,7 +508,7 @@ def test_daily_log_tail_reads_only_whitelisted(tmp_path, monkeypatch):
     """`daily_log_tail` 只读**白名单**日志 ✓ —— 任意路径等于远程读文件 ✗。"""
     log = tmp_path / "d.log"
     log.write_text("\n".join("行%d" % i for i in range(100)), encoding="utf-8")
-    monkeypatch.setattr(q, "TAIL_LOGS", {"daily": str(log)})
+    monkeypatch.setattr(q, "_tail_logs", lambda: {"daily": str(log)})
     r = q._act_daily_log_tail({"which": "daily", "lines": 5})
     assert r["ok"] is True and r["lines"] == 5
     assert r["tail"].strip().endswith("行99"), "tail 必须取**最后**几行 ✗"
@@ -513,7 +517,7 @@ def test_daily_log_tail_reads_only_whitelisted(tmp_path, monkeypatch):
     # lines 上限 200（文件只有 100 行 ⇒ 全给）
     assert q._act_daily_log_tail({"which": "daily", "lines": 9999})["lines"] == 100
     # 文件不存在 ⇒ 明确失败
-    monkeypatch.setattr(q, "TAIL_LOGS", {"daily": str(tmp_path / "nope.log")})
+    monkeypatch.setattr(q, "_tail_logs", lambda: {"daily": str(tmp_path / "nope.log")})
     assert q._act_daily_log_tail({"which": "daily"})["ok"] is False
 
 
@@ -783,3 +787,63 @@ def test_inspect_csv_rejects_dotdot():
     r = q._act_inspect_csv({"path": "Data/raw/../../.env"})
     assert r["ok"] is False
     assert ".." in r["error"] or "白名单" in r["error"]
+
+
+# ============================================================
+# 白名单外置（2026-11-19 第一轮重构）
+# ============================================================
+# 🔴 约束：外置加载器必须**只读 + 拒绝 `..`** ✗ ——
+#    否则等于把 2026-11-19 刚堵的路径逃逸洞（`_safe_rel`）重新开一遍 ✗
+
+def test_script_allow_dir_drives_whitelist(tmp_path, monkeypatch):
+    """加脚本 = 加文件 ✓ —— 白名单来自 `scripts/queue_allow/*.py` 的文件名。"""
+    (tmp_path / "a.py").write_text("", encoding="utf-8")
+    (tmp_path / "b.py").write_text("", encoding="utf-8")
+    (tmp_path / "note.txt").write_text("", encoding="utf-8")
+    (tmp_path / "c.py").mkdir()          # 目录不算白名单条目 ✗
+    monkeypatch.setattr(q, "_ALLOW_DIR", str(tmp_path))
+    assert q._script_allowed() == {"a.py", "b.py"}
+
+
+def test_run_script_rejects_non_allowlisted(tmp_path, monkeypatch):
+    """allow 目录里没有的脚本一律拒绝 ✓（不能借 `run_script` 跑任意脚本）。"""
+    monkeypatch.setattr(q, "_ALLOW_DIR", str(tmp_path))
+    r = q._act_run_script({"script": "run_task_queue.py"})
+    assert r["ok"] is False and "不允许的脚本" in r["error"]
+
+
+def test_tail_logs_reread_each_call(tmp_path, monkeypatch):
+    """改 json ⇒ 下一轮就生效 ✓（不用重启队列）。"""
+    p = tmp_path / "tail_logs.json"
+    p.write_text('{"a": "x.log"}', encoding="utf-8")
+    monkeypatch.setattr(q, "_ALLOW_DIR", str(tmp_path))
+    assert set(q._tail_logs()) == {"a"}
+    p.write_text('{"a": "x.log", "b": "/tmp/b.log"}', encoding="utf-8")
+    assert q._tail_logs()["b"] == "/tmp/b.log"
+
+
+def test_allow_json_rejects_dotdot_and_absolute(tmp_path, monkeypatch):
+    """外置白名单也必须拒 `..` / 绝对路径 ✓ —— 否则刚堵的洞又开了 ✗。"""
+    monkeypatch.setattr(q, "_ALLOW_DIR", str(tmp_path))
+    (tmp_path / "tail_logs.json").write_text('{"x": "../../.env"}', encoding="utf-8")
+    (tmp_path / "task_outputs.json").write_text(
+        '{"dirs": ["../evil"], "files": []}', encoding="utf-8")
+    with pytest.raises(ValueError, match=r"\.\."):
+        q._tail_logs()
+    with pytest.raises(ValueError, match=r"\.\."):
+        q._task_outputs()
+    # 绝对路径：tail 日志允许（`/tmp/*` ✓），产物白名单不允许（`git add` 会越界 ✗）
+    (tmp_path / "task_outputs.json").write_text(
+        '{"dirs": [], "files": ["/etc/passwd"]}', encoding="utf-8")
+    with pytest.raises(ValueError, match="非法"):
+        q._task_outputs()
+
+
+def test_launchd_labels_is_single_source():
+    """三处 label 白名单必须共用 `LAUNCHD_LABELS` ✓ —— 不许再各抄一份 ✗。"""
+    import inspect
+    for fn in (q._act_plist_path_append, q._act_service_bootstrap,
+               q._act_restart_queue):
+        src = inspect.getsource(fn)
+        assert "LAUNCHD_LABELS" in src, "%s 没用统一常量 ✗" % fn.__name__
+        assert "_ALLOWED" not in src, "%s 又抄了一份局部白名单 ✗" % fn.__name__
