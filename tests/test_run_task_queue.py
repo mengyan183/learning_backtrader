@@ -10,6 +10,8 @@ import os
 import sys
 from datetime import datetime
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                 "scripts"))
 import run_task_queue as q  # noqa: E402
@@ -694,3 +696,72 @@ def test_env_home_falls_back_when_missing(monkeypatch):
     monkeypatch.delenv("HOME", raising=False)
     env = q._env_for("sync_positions")
     assert env.get("HOME"), "HOME 缺失时没兜底 ✗"
+
+
+# ============================================================
+# 安全：路径逃逸（2026-11-19 安全评审发现）
+# ============================================================
+# 🔴 背景：原来的检查是 `rel.startswith(_READ_ALLOW)` ✗
+#    但 `"Data/raw/../../.env".startswith("Data/raw/")` 是 **True** ✗
+#    ⇒ `git_commit` 的 `files` 传 `"evolution/../.env"` 就能让
+#      `.env`（含 API key）被 `git add` + `push` 到 **gitee** ✗
+#    ⇒ 飞书群里**任何人**都能发起任务 ⇒ 密钥泄露，git 历史不可撤回 ✗
+#    ⇒ `_safe_rel` 三重校验：拒绝 `..` 段 + `realpath` 解析 + 前缀比对 ✓
+
+def test_safe_rel_rejects_dotdot():
+    """`..` 路径段必须被拒绝 ✓。"""
+    with pytest.raises(ValueError, match=r"\.\."):
+        q._safe_rel("Data/raw/../../.env", q._READ_ALLOW)
+    with pytest.raises(ValueError, match=r"\.\."):
+        q._safe_rel("evolution/../.env", q._GIT_COMMIT_ALLOW)
+
+
+def test_safe_rel_rejects_prefix_confusion():
+    """`Data/raw-evil/` 这种**前缀相似**的目录必须拒绝 ✓。
+
+    ⇒ 靠 `base + os.sep` 比对，而不是裸 `startswith` ✓
+    """
+    with pytest.raises(ValueError, match="不在白名单"):
+        q._safe_rel("Data/raw-evil/x.csv", q._READ_ALLOW)
+    with pytest.raises(ValueError, match="不在白名单"):
+        q._safe_rel("evolutionx/foo.md", q._GIT_COMMIT_ALLOW)
+
+
+def test_safe_rel_accepts_whitelisted():
+    """白名单内的正常路径必须通过 ✓（不能把功能堵死）。"""
+    p = q._safe_rel("Data/raw/prices.csv", q._READ_ALLOW)
+    assert p.endswith(os.path.join("Data", "raw", "prices.csv"))
+
+
+def test_tid_cannot_be_overridden(tmp_path, monkeypatch):
+    """任务 JSON 里预塞 `_tid` 必须被**覆盖**成真实 id ✓。
+
+    🔴 原写法 `_params.setdefault("_tid", spec["id"])` ✗
+       任务 JSON 塞 `"_tid": "../../evil"` ⇒ 不覆盖 ⇒ 攻击者控制 ✗
+       （`_tid` 用于生成文件名/日志路径 ⇒ 可路径穿越）
+    """
+    queue = tmp_path / "q"
+    queue.mkdir()
+    monkeypatch.setattr(q, "QUEUE", str(queue))
+
+    seen = {}
+
+    def fake(params):
+        seen.update(params)
+        return {"ok": True}
+
+    monkeypatch.setattr(q, "ACTIONS", {"run_script": fake})
+    spec = {"id": "t-evil", "action": "run_script", "status": "pending",
+            "params": {"script": "env_check.py", "_tid": "../../evil"},
+            "created_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S")}
+    with open(str(queue / "t-evil.json"), "w", encoding="utf-8") as f:
+        json.dump(spec, f, ensure_ascii=False)
+
+    q.run_once(commit=False)
+    # 🔴 断言「恶意值没生效」而不是「等于 t-evil」✗
+    #    `run_script` **不在** `NEEDS_TID` ⇒ 修复后 `_tid` 被 pop 掉（None）✓
+    #    所以正确断言是「不等于注入值」✓
+    assert seen.get("_tid") != "../../evil", \
+        "`_tid` 被任务 JSON 控制了 ⇒ 注入漏洞未修 ✗"
+    assert "_tid" not in seen or seen["_tid"] is None, \
+        "`run_script` 不需要 `_tid` ⇒ 应为空 ✗"

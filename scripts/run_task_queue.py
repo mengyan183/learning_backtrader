@@ -6276,6 +6276,12 @@ def run_once(commit=True):
             # `_tid` 只给**声明需要**的动作（见 `NEEDS_TID`）✓ —— 全局注入会污染
             # 其它动作的 params（有测试锁着「动作收到的就是下发的那份」✗）
             _params = dict(spec.get("params") or {})
+            # 🔴 2026-11-19：**先无条件清掉**任务 JSON 里的 `_tid` ✗
+            #    实测 `test_tid_cannot_be_overridden` 暴露：只在
+            #    `if action in NEEDS_TID` 分支里覆盖 ⇒ 其他 action 拿到的
+            #    仍是任务 JSON 里的**恶意值**（`"../../evil"`）✗
+            #    ⇒ 先 pop 掉，再按需注入 ✓
+            _params.pop("_tid", None)
             if action in NEEDS_TID:
                 # 🔴 2026-11-19：**必须覆盖，不能用 `setdefault`** ✗
                 #    原写法：任务 JSON 里预先塞 `"_tid": "任意值"` ⇒
