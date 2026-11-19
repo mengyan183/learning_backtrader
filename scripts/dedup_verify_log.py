@@ -75,6 +75,17 @@ def main():
                 f.writelines(new)
         except OSError as e:
             print("  [warn] %s 写入失败：%s" % (os.path.basename(p), e))
+            continue
+        # 🔴 2026-11-19：**只保留最近 1 次备份** ✗
+        #    背景：每跑一次就生成 6 个 `.bak-<时间戳>` ✗
+        #    实测首次跑完就有 6 个入库（`.gitignore` 已挡新入库 ✓）
+        #    但 Mac 本地会持续堆积 ⇒ 每次跑完清掉旧的 ✓
+        _olds = sorted(glob.glob(p + ".bak-*"))
+        for _o in _olds[:-1]:          # 排序后除最后一个（最新）全删
+            try:
+                os.remove(_o)
+            except OSError:
+                pass
 
     print()
     print("扫描 %d 个文件；%d 个有重复；共删 %d 行%s"
