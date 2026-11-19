@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
                                 "scripts"))
 import queue_core as qc  # noqa: E402
 import run_task_queue as q  # noqa: E402
+from queue_actions import launchd as lq  # noqa: E402
 
 
 def _put(queue, tid, action, status="pending"):
@@ -150,9 +151,9 @@ def test_auto_clean_skips_below_threshold(tmp_path, monkeypatch):
 
 def test_agent_status_shape():
     """定时器状态必须可读且不抛 ✓（看板据此决定是否显示安装按钮）。"""
-    st = q.agent_status()
+    st = q.agent_status()   # 看板就是调 q.agent_status（re-export）✓
     assert set(st) >= {"installed", "loaded", "label"}
-    assert st["label"] == q.LABEL
+    assert st["label"] == lq.LABEL
 
 
 def test_install_agent_refuses_off_mac(monkeypatch):
@@ -501,8 +502,8 @@ def test_tail_logs_include_invest_stages():
 
 def test_install_evolve_tasks_reports_failure(monkeypatch):
     """定时器重装：脚本不存在 / 返回非 0 ⇒ `ok=False` ✓（不许静默成功 ✗）。"""
-    monkeypatch.setattr(q, "ROOT", "/nonexistent-root")
-    assert q._act_install_evolve_tasks({})["ok"] is False
+    monkeypatch.setattr(lq, "ROOT", "/nonexistent-root")
+    assert lq._act_install_evolve_tasks({})["ok"] is False
 
 
 def test_daily_log_tail_reads_only_whitelisted(tmp_path, monkeypatch):
@@ -610,7 +611,7 @@ def test_sync_positions_registered_bsk_update_present():
     # `bsk_status` 仍不需要 ✗（`bsk_update` 已含版本查询 ✓）
     assert "bsk_status" not in q.ACTIONS
     # 自动探测函数必须存在 ✓（否则 launchd 下又找不到 ✗）
-    assert callable(getattr(q, "_find_bsk_bin", None))
+    assert callable(getattr(qc, "_find_bsk_bin", None))
 
 
 def test_unknown_action_hints_code_not_ingested():
@@ -908,8 +909,8 @@ def test_action_packages_stay_off_the_scheduler():
 def test_launchd_labels_is_single_source():
     """三处 label 白名单必须共用 `LAUNCHD_LABELS` ✓ —— 不许再各抄一份 ✗。"""
     import inspect
-    for fn in (q._act_plist_path_append, q._act_service_bootstrap,
-               q._act_restart_queue):
+    for fn in (lq._act_plist_path_append, lq._act_service_bootstrap,
+               lq._act_restart_queue):
         src = inspect.getsource(fn)
         assert "LAUNCHD_LABELS" in src, "%s 没用统一常量 ✗" % fn.__name__
         assert "_ALLOWED" not in src, "%s 又抄了一份局部白名单 ✗" % fn.__name__

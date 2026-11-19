@@ -119,3 +119,57 @@ def task_outputs():
     data = allow_json("task_outputs.json")
     return ([rel_ok(d) for d in data.get("dirs") or []],
             [rel_ok(f) for f in data.get("files") or []])
+
+
+def _find_bsk_bin():
+    """**自动探测 `bsk` 路径** ✓（2026-11-05）。
+
+    🔴 为什么不能直接用 `"bsk"` ✗：
+       launchd 的 `PATH` **不含 `~/.local/bin`** ✗
+       实测 `fetch_fedwatch_bsk.py` 在 Mac 上报
+         `session_start rc=-1  **找不到 bsk** ✗`
+       而 bsk 确实装着 ✓
+    """
+    env = os.environ.get("FG_BSK")
+    if env and os.path.exists(env):
+        return env
+    import shutil
+    w = shutil.which("bsk")
+    if w:
+        return w
+    home = os.path.expanduser("~")
+    cands = [
+        os.path.join(home, ".local", "bin", "bsk"),
+        "/opt/homebrew/bin/bsk",
+        "/usr/local/bin/bsk",
+        os.path.join(home, ".npm-global", "bin", "bsk"),
+    ]
+    import glob as _g
+    cands += sorted(_g.glob(os.path.join(
+        home, "Library", "Python", "*", "bin", "bsk")), reverse=True)
+    # 🔴 2026-11-11：补 `~/opt/node*/bin/bsk` ✓ ——
+    #    `dsh_web_diag` 回执显示 dsh 在 `/Users/xingguo/opt/node24/bin/dsh` ✗
+    #    ⇒ 用户用 `~/opt/nodeXX/` 管 node ⇒ **npm 全局包也装在那** ✓
+    #    （之前 5 个候选路径全不中，就是漏了这一处 ✗）
+    cands += sorted(_g.glob(os.path.join(home, "opt", "node*", "bin", "bsk")),
+                    reverse=True)
+    # 🔴 2026-11-11：`zsh -lc` 是**非交互登录 shell，不 source `.zshrc`** ✗
+    #    （只 source `.zshenv` / `.zprofile` / `.zlogin`）
+    #    而 bsk 常挂在 `.zshrc` 配的 PATH 上 ✗ ⇒ 必须**显式 source** ✓
+    try:
+        r = run(["/bin/zsh", "-lc",
+                  "source ~/.zshrc 2>/dev/null; command -v bsk"], 20)
+        for ln in (r.stdout or "").splitlines():
+            ln = ln.strip()
+            if ln and os.path.isfile(ln) and os.access(ln, os.X_OK):
+                cands.insert(0, ln)
+                break
+    except Exception:                     # noqa: BLE001
+        pass
+    for c in cands:
+        if os.path.exists(c) and os.access(c, os.X_OK):
+            return c
+    return "bsk"
+
+
+BSK_BIN = _find_bsk_bin()
