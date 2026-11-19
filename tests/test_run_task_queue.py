@@ -14,6 +14,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                 "scripts"))
+import queue_core as qc  # noqa: E402
 import run_task_queue as q  # noqa: E402
 
 
@@ -453,7 +454,7 @@ def test_try_push_pending_is_silent_without_upstream(monkeypatch, capsys):
         def run(cmd, **kw):
             return _R()
 
-    monkeypatch.setattr(q, "subprocess", _SP)
+    monkeypatch.setattr(qc, "subprocess", _SP)
     monkeypatch.setattr(q, "_PUSH_RETRY", {"ts": 0.0})
     q._try_push_pending(interval=0)
     assert capsys.readouterr().out == ""
@@ -477,7 +478,7 @@ def test_try_push_pending_pushes_when_ahead(monkeypatch, capsys):
             calls.append(cmd)
             return _R(0, "2\n") if "rev-list" in cmd else _R(0)
 
-    monkeypatch.setattr(q, "subprocess", _SP)
+    monkeypatch.setattr(qc, "subprocess", _SP)
     monkeypatch.setattr(q, "_PUSH_RETRY", {"ts": 0.0})
     q._try_push_pending(interval=0)
     assert any("push" in c for c in calls), "有 2 个待推提交却没推 ✗"
@@ -540,7 +541,7 @@ def test_git_commit_warns_when_push_fails(monkeypatch, capsys):
         def run(cmd, **kw):
             return _R(0) if cmd[1] in ("add", "commit") else _R(1, "denied")
 
-    monkeypatch.setattr(q, "subprocess", _SP)
+    monkeypatch.setattr(qc, "subprocess", _SP)
     q._git_commit([("t1", "done")])
     assert "推送失败" in capsys.readouterr().out
 
@@ -801,13 +802,13 @@ def test_script_allow_dir_drives_whitelist(tmp_path, monkeypatch):
     (tmp_path / "b.py").write_text("", encoding="utf-8")
     (tmp_path / "note.txt").write_text("", encoding="utf-8")
     (tmp_path / "c.py").mkdir()          # 目录不算白名单条目 ✗
-    monkeypatch.setattr(q, "_ALLOW_DIR", str(tmp_path))
+    monkeypatch.setattr(qc, "ALLOW_DIR", str(tmp_path))
     assert q._script_allowed() == {"a.py", "b.py"}
 
 
 def test_run_script_rejects_non_allowlisted(tmp_path, monkeypatch):
     """allow 目录里没有的脚本一律拒绝 ✓（不能借 `run_script` 跑任意脚本）。"""
-    monkeypatch.setattr(q, "_ALLOW_DIR", str(tmp_path))
+    monkeypatch.setattr(qc, "ALLOW_DIR", str(tmp_path))
     r = q._act_run_script({"script": "run_task_queue.py"})
     assert r["ok"] is False and "不允许的脚本" in r["error"]
 
@@ -816,7 +817,7 @@ def test_tail_logs_reread_each_call(tmp_path, monkeypatch):
     """改 json ⇒ 下一轮就生效 ✓（不用重启队列）。"""
     p = tmp_path / "tail_logs.json"
     p.write_text('{"a": "x.log"}', encoding="utf-8")
-    monkeypatch.setattr(q, "_ALLOW_DIR", str(tmp_path))
+    monkeypatch.setattr(qc, "ALLOW_DIR", str(tmp_path))
     assert set(q._tail_logs()) == {"a"}
     p.write_text('{"a": "x.log", "b": "/tmp/b.log"}', encoding="utf-8")
     assert q._tail_logs()["b"] == "/tmp/b.log"
@@ -824,7 +825,7 @@ def test_tail_logs_reread_each_call(tmp_path, monkeypatch):
 
 def test_allow_json_rejects_dotdot_and_absolute(tmp_path, monkeypatch):
     """外置白名单也必须拒 `..` / 绝对路径 ✓ —— 否则刚堵的洞又开了 ✗。"""
-    monkeypatch.setattr(q, "_ALLOW_DIR", str(tmp_path))
+    monkeypatch.setattr(qc, "ALLOW_DIR", str(tmp_path))
     (tmp_path / "tail_logs.json").write_text('{"x": "../../.env"}', encoding="utf-8")
     (tmp_path / "task_outputs.json").write_text(
         '{"dirs": ["../evil"], "files": []}', encoding="utf-8")
@@ -847,16 +848,22 @@ def test_all_subprocess_goes_through_run_helper():
     """
     import ast
     import inspect
-    tree = ast.parse(inspect.getsource(q))
-    helper = next(n for n in tree.body
-                  if isinstance(n, ast.FunctionDef) and n.name == "_run")
-    bad = [n.lineno for n in ast.walk(tree)
-           if isinstance(n, ast.Call)
-           and isinstance(n.func, ast.Attribute) and n.func.attr == "run"
-           and isinstance(n.func.value, ast.Name)
-           and n.func.value.id in ("subprocess", "_sp")
-           and not (helper.lineno <= n.lineno <= helper.end_lineno)]
-    assert bad == [], "这些行绕过了 _run：%s" % bad
+
+    def offenders(mod, helper_names):
+        tree = ast.parse(inspect.getsource(mod))
+        h = [n for n in tree.body if isinstance(n, ast.FunctionDef)
+             and n.name in helper_names]
+        lo, hi = (h[0].lineno, h[0].end_lineno) if h else (-1, -1)
+        return [n.lineno for n in ast.walk(tree)
+                if isinstance(n, ast.Call)
+                and isinstance(n.func, ast.Attribute) and n.func.attr == "run"
+                and isinstance(n.func.value, ast.Name)
+                and n.func.value.id in ("subprocess", "_sp")
+                and not (lo <= n.lineno <= hi)]
+
+    # 调度器里**一处都不许有**；core 里只许 `run()` 自己那一处 ✓
+    assert offenders(q, set()) == [], "调度器里有裸 subprocess.run ✗"
+    assert offenders(qc, {"run"}) == [], "core 里有第二处 subprocess.run ✗"
 
 
 def test_launchd_labels_is_single_source():

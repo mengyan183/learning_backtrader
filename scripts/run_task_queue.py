@@ -33,7 +33,16 @@ import subprocess
 import sys
 import time
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+#: 🔴 动作侧基础设施在 `queue_core.py` ✓（2026-11-19 第三轮抽出）
+#:   下一步按 8 个包拆 action 时，包与调度器共用这一层，避免互相 import 成环 ✓
+#:   这里用**别名导入** ⇒ `q._run` / `q._safe_rel` 等旧名字仍然可用（测试靠它 patch）✓
+import queue_core as _qc                                          # noqa: E402
+from queue_core import (ROOT, run as _run, safe_rel as _safe_rel,  # noqa: E402
+                        allow_json as _allow_json, rel_ok as _rel_ok,
+                        script_allowed as _script_allowed,
+                        tail_logs as _tail_logs,
+                        task_outputs as _task_outputs)
+
 QUEUE = os.path.join(ROOT, "docs", "task-queue")
 
 #: launchd 定时器（本脚本每 10s 被调一次）—— 看板可一键安装 ✓
@@ -52,20 +61,6 @@ LAUNCHD_LABELS = ("com.xingguo.fg-task-queue",
                   # `evolve_verify.py` 由它定时跑 ⇒ 要能远程重启触发一次验证 ✓
                   "com.xingguo.fg-evolve-verify",
                   "com.xingguo.dsh.web")
-
-
-def _run(cmd, timeout, cwd=ROOT, env=None):
-    """跑子进程并**统一捕获/解码** ✓ —— 原来散落 87 处的 `subprocess.run(...)` 收敛到这里。
-
-    · `cwd` 默认 `ROOT` ✓（plist 的 `WorkingDirectory` 就是仓库根 ⇒ 与手动跑一致）
-    · `encoding="utf-8", errors="replace"` ⇒ launchd 的 locale 可能是 C/POSIX ✗，
-      不加会因中文输出 `UnicodeDecodeError` 崩掉 ✓
-    · 🔴 **不吞异常** ✗ —— `TimeoutExpired` / `SubprocessError` / `OSError` 的
-      处理每个调用点都不一样，必须留在原地 ✓
-    """
-    return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True,
-                          encoding="utf-8", errors="replace",
-                          timeout=timeout, env=env)
 
 
 def agent_status():
@@ -1974,39 +1969,6 @@ def _act_news_diag(params):
     return out
 
 
-#: 🔴 外置白名单目录 ✓（2026-11-19 用户裁定：加脚本 = 加文件，零改 py）
-#   · `*.py`               ⇒ `run_script` 可跑的脚本名（**文件名即白名单**）
-#   · `tail_logs.json`     ⇒ `daily_log_tail` 可读的日志（每轮重读，不用重启 ✓）
-#   · `task_outputs.json`  ⇒ `_git_commit` 会提交的产物目录/文件
-#   ⚠️ 加载器**只读**且**拒绝 `..`** ✗ —— 否则等于把 2026-11-19 刚堵的
-#      路径逃逸洞（见 `_safe_rel`）重新开一遍 ✗
-_ALLOW_DIR = os.path.join(ROOT, "scripts", "queue_allow")
-
-
-def _allow_json(name):
-    """读 `scripts/queue_allow/<name>` ✓ —— 每轮重读 ⇒ 改白名单不用重启队列 ✓。"""
-    with open(os.path.join(_ALLOW_DIR, name), encoding="utf-8") as fh:
-        return json.load(fh)
-
-
-def _rel_ok(rel):
-    """白名单条目必须是**仓库内相对路径** ✓ —— 绝对路径 / `..` / 空 一律拒绝 ✗。"""
-    rel = str(rel or "").strip()
-    if (not rel or os.path.isabs(rel) or rel.startswith(("/", "\\"))
-            or ".." in rel.replace("\\", "/").split("/")):
-        raise ValueError("白名单条目非法：%r" % rel)
-    return rel
-
-
-def _script_allowed():
-    """扫 `scripts/queue_allow/*.py` 得到可跑脚本名集合 ✓（文件名即白名单）。"""
-    try:
-        return {e.name for e in os.scandir(_ALLOW_DIR)
-                if e.is_file() and e.name.endswith(".py")}
-    except OSError:
-        return set()
-
-
 #: `run_git` 允许的子命令 ✓（2026-11-19 用户选择方案 ②）
 #   🔴 为什么需要 ✗：`git rm --cached` 只能在 Mac 上做（文件在那边）✗
 #      为了清 6 个 `.bak` 让用户手动敲命令 ⇒ 违反「Mac 侧操作一律走队列」✗
@@ -3827,37 +3789,6 @@ _READ_ALLOW = ("Data/raw/", "Data/features.csv", "evolution/",
                "docs/task-queue/")
 
 
-def _safe_rel(rel, allow):
-    """把任务参数里的相对路径**锁死在白名单目录内** ✓。
-
-    🔴 2026-11-19 安全评审发现（**唯一「出事不可回滚」的问题**）✗
-      原来的检查是 `rel.startswith(_READ_ALLOW)` ✗
-      但 `"Data/raw/../../.env".startswith("Data/raw/")` 是 **True** ✗
-      ⇒ `git_commit` 的 `files` 参数传 `"evolution/../.env"` 就能让
-        `.env`（含 API key）被 `git add` + `push` 到 **gitee** ✗
-      ⇒ 而飞书群里**任何人**都能发起任务（只要知道格式）✗
-      ⇒ 事后只能改密钥，git 历史无法撤回 ✗
-
-    ✅ 三重校验：
-      ① 显式拒绝 `..` 路径段（`split` 后逐段比对，不靠字符串匹配）
-      ② `realpath` 解析后再比前缀（防符号链接绕过）
-      ③ 必须落在某个白名单目录**之内**（`+ os.sep` 防止 `Data/raw-evil`）
-
-    返回**绝对路径**；不合法抛 `ValueError`（调用方转成 `{"ok": False}`）✓
-    """
-    rel = str(rel or "").strip().lstrip("/").replace("\\", "/")
-    if not rel:
-        raise ValueError("路径为空")
-    if ".." in rel.split("/"):
-        raise ValueError("路径含 `..`：%s" % rel)
-    full = os.path.realpath(os.path.join(ROOT, rel.replace("/", os.sep)))
-    for a in allow:
-        base = os.path.realpath(os.path.join(ROOT, a))
-        if full == base or full.startswith(base + os.sep):
-            return full
-    raise ValueError("路径不在白名单 %s 内：%s" % (list(allow), rel))
-
-
 def _act_read_tail(params):
     """读文件末尾 N 行 ✓（2026-11-17 用户要求）
 
@@ -5016,27 +4947,6 @@ def _act_run_invest_research(params):
         return {"ok": False, "reason": "执行失败：%s" % exc}
     return {"ok": r.returncode == 0, "rc": r.returncode, "push": push,
             "stdout": (r.stdout or "")[-1500:], "stderr": (r.stderr or "")[-500:]}
-
-
-#: 允许 tail 的日志 —— **固定白名单** ✓（不接受任意路径 ✗，否则等于远程读文件 ✗）
-#: `evolve_verify` 是**仓库内** logs/ 下的日志（plist 的 StandardOutPath）✓ ——
-#: 2026-10-29 加：验证 06:10 那次复检有没有真的带上 `--quiet` ✓
-#: 🔴 2026-11-19：清单**外置**到 `scripts/queue_allow/tail_logs.json` ✓ ——
-#:   加一个日志只改 json，不用重启队列 ✓（`/tmp/*` 用绝对路径，其余按仓库相对 ✓）
-def _tail_logs():
-    """读 `tail_logs.json` ⇒ {名字: 绝对路径} ✓ —— 每轮重读 ✓。
-
-    ⚠️ 只接受**非空、不含 `..`** 的路径 ✗（绝对路径必须支持：`/tmp/fg_daily.log`）
-    """
-    out = {}
-    for name, rel in _allow_json("tail_logs.json").items():
-        rel = str(rel or "").strip()
-        if not rel or ".." in rel.replace("\\", "/").split("/"):
-            raise ValueError("tail_logs.json 条目非法：%s=%r" % (name, rel))
-        # 以 `/` 开头即绝对路径 ✓（Windows 的 `os.path.isabs("/tmp/x")` 是 False ✗）
-        abs_ = rel.startswith("/") or os.path.isabs(rel)
-        out[str(name)] = rel if abs_ else os.path.join(ROOT, rel)
-    return out
 
 
 def _act_daily_log_tail(params):
@@ -6247,23 +6157,8 @@ def run_once(commit=True):
     return done
 
 
-#: 任务会写出的**产物目录/文件** ✓ —— 只提交这些，**绝不用 `git add -A`** ✗
-#: （Mac 上常年有测试产物/临时文件 ✗）
-#: 2026-10-30 实测教训：`factor_backtest_probe --json evolution/...` 写的裁判
-#: 产物**没进 git** ✗ ⇒ Windows 端只能看到被 `output[-2000:]` 截断的 stdout ✗
-#: 🔴 2026-11-19：清单**外置**到 `scripts/queue_allow/task_outputs.json` ✓
-#:   `{"dirs": [...], "files": [...]}` —— 加产物路径只改 json ✓
-def _task_outputs():
-    """读 `task_outputs.json` ⇒ `(dirs, files)` ✓。
-
-    ⚠️ 只接受**仓库内相对路径** ✗ —— `_git_commit` 拿它做 `git add`，
-       绝对路径 / `..` 会越出仓库（同 2026-11-19 `_safe_rel` 那类洞）
-    """
-    data = _allow_json("task_outputs.json")
-    return ([_rel_ok(d) for d in data.get("dirs") or []],
-            [_rel_ok(f) for f in data.get("files") or []])
-
-
+#: 🔴 任务产物白名单已外置到 `scripts/queue_allow/task_outputs.json` ✓
+#: （`{"dirs": [...], "files": [...]}` —— 加产物路径只改 json ✓）
 # 🔴 2026-11-03 移除：`Data/raw/sp500_pe.csv` / `sp500_cape.csv` /
 #    `fred_DGS10.csv` 曾在这里 ✗（2026-10-30 为让 Windows 看到 C2 数据 ✗）
 #    但 2026-11-03 用户裁定「数据不入库」⇒ `Data/raw/` 已进 `.gitignore` ✗
