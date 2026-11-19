@@ -17,6 +17,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 import queue_core as qc  # noqa: E402
 import run_task_queue as q  # noqa: E402
 from queue_actions import data as ddq  # noqa: E402
+from queue_actions import diag2 as d2  # noqa: E402
+from queue_actions import files as fq  # noqa: E402
 from queue_actions import diag as dq  # noqa: E402
 from queue_actions import git as gq  # noqa: E402
 from queue_actions import launchd as lq  # noqa: E402
@@ -73,8 +75,8 @@ def test_bsk_update_can_restart_daemon(monkeypatch):
         return _R()
 
     monkeypatch.setattr(q.subprocess, "run", fake_run)
-    monkeypatch.setattr(q, "BSK_BIN", "/fake/bsk")
-    out = q._act_bsk_update({"daemon": "restart"})
+    monkeypatch.setattr(d2, "BSK_BIN", "/fake/bsk")
+    out = d2._act_bsk_update({"daemon": "restart"})
     assert ["/fake/bsk", "daemon", "stop"] in calls
     assert ["/fake/bsk", "status", "--json"] in calls
     assert "daemon_stop" in out and "status_after" in out
@@ -513,17 +515,17 @@ def test_daily_log_tail_reads_only_whitelisted(tmp_path, monkeypatch):
     """`daily_log_tail` 只读**白名单**日志 ✓ —— 任意路径等于远程读文件 ✗。"""
     log = tmp_path / "d.log"
     log.write_text("\n".join("行%d" % i for i in range(100)), encoding="utf-8")
-    monkeypatch.setattr(q, "_tail_logs", lambda: {"daily": str(log)})
-    r = q._act_daily_log_tail({"which": "daily", "lines": 5})
+    monkeypatch.setattr(fq, "_tail_logs", lambda: {"daily": str(log)})
+    r = fq._act_daily_log_tail({"which": "daily", "lines": 5})
     assert r["ok"] is True and r["lines"] == 5
     assert r["tail"].strip().endswith("行99"), "tail 必须取**最后**几行 ✗"
     # 白名单外的名字一律拒绝（不能借它读任意文件）
-    assert q._act_daily_log_tail({"which": "/etc/passwd"})["ok"] is False
+    assert fq._act_daily_log_tail({"which": "/etc/passwd"})["ok"] is False
     # lines 上限 200（文件只有 100 行 ⇒ 全给）
-    assert q._act_daily_log_tail({"which": "daily", "lines": 9999})["lines"] == 100
+    assert fq._act_daily_log_tail({"which": "daily", "lines": 9999})["lines"] == 100
     # 文件不存在 ⇒ 明确失败
-    monkeypatch.setattr(q, "_tail_logs", lambda: {"daily": str(tmp_path / "nope.log")})
-    assert q._act_daily_log_tail({"which": "daily"})["ok"] is False
+    monkeypatch.setattr(fq, "_tail_logs", lambda: {"daily": str(tmp_path / "nope.log")})
+    assert fq._act_daily_log_tail({"which": "daily"})["ok"] is False
 
 
 def test_git_commit_warns_when_push_fails(monkeypatch, capsys):
@@ -826,7 +828,7 @@ def test_script_allow_dir_drives_whitelist(tmp_path, monkeypatch):
 def test_run_script_rejects_non_allowlisted(tmp_path, monkeypatch):
     """allow 目录里没有的脚本一律拒绝 ✓（不能借 `run_script` 跑任意脚本）。"""
     monkeypatch.setattr(qc, "ALLOW_DIR", str(tmp_path))
-    r = q._act_run_script({"script": "run_task_queue.py"})
+    r = fq._act_run_script({"script": "run_task_queue.py"})
     assert r["ok"] is False and "不允许的脚本" in r["error"]
 
 
