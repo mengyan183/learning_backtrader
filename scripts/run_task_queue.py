@@ -1992,6 +1992,10 @@ def _act_news_diag(params):
 #      ⇒ 加这个 action，白名单 + 回传 stdout/stderr ✓
 #   ⚠️ 只放**只读或只写仓库内文件**的脚本 ✗ 不放能改系统/装包的 ✓
 _SCRIPT_ALLOWED = (
+    # 🔴 2026-11-19：环境自检 ✓
+    #    背景：每日链报 `No module named 'fg_system'` ✗ 但 `cd "$REPO"` 明明有 ✗
+    #    ⇒ 需要远程确认「解释器 / cwd / 包位置 / 数据新鲜度」✓
+    "env_check.py",
     "migrate_verify_log.py",     # 验证明细迁移（一次性）
     "evolve_verify.py",          # 假说验证（每日）
     "verify_hypotheses.py",      # 假说验证（另一路径）
