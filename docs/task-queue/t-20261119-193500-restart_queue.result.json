@@ -1,5 +1,5 @@
 {
-  "id": "t-20261119-161400-restart_queue",
+  "id": "t-20261119-193500-restart_queue",
   "action": "restart_queue",
   "params": {
     "delay": 120
@@ -7,7 +7,7 @@
   "status": "done",
   "rc": 0,
   "output": "{\"ok\": true, \"error\": \"\", \"label\": \"com.xingguo.fg-task-queue\", \"target\": \"gui/501/com.xingguo.fg-task-queue\", \"delay_seconds\": 120, \"script\": \"dist/_restart_fg_task_queue.sh\", \"env_before_restart\": {\"FG_LLM_PROXY\": \"\", \"HTTP_PROXY\": \"\", \"HTTPS_PROXY\": \"\"}, \"note\": \"⚠️ 120 秒后重启 ✓ 重启后**新进程会读新 plist** ✓代理生效 ✓；⚠️ 队列里正在跑的任务会被杀 ✗ ⇒ 下次拉取时看 `run_fetch_step` 的 `has_proxy` ✓\"}",
-  "started_at": "2026-11-19T16:14:59",
-  "finished_at": "2026-11-19T16:14:59",
+  "started_at": "2026-11-19T19:35:28",
+  "finished_at": "2026-11-19T19:35:28",
   "duration_s": 0.0
 }
