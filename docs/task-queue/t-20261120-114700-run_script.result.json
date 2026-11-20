@@ -1,0 +1,17 @@
+{
+  "id": "t-20261120-114700-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "fetch_shoutu_api.py",
+    "args": [
+      "--dry-run"
+    ],
+    "timeout": 300
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"fetch_shoutu_api.py\", \"args\": [\"--dry-run\"], \"stdout\": \"取得 8 个标的：\\n  CONL  lever=2 emo_area=coin   score=-100.0 price=1.72\\n  YINN  lever=3 emo_area=a      score=-91.0  price=18.95\\n  GDXU  lever=3 emo_area=other  score=-98.0  price=40.4\\n  AXTX  lever=2 emo_area=us     score=-100.0 price=4.48\\n  CRCG  lever=2 emo_area=other  score=-97.0  price=4.09\\n  TQQQ  lever=3 emo_area=us     score=-97.0  price=47.37\\n  SOXL  lever=3 emo_area=us     score=-100.0 price=41.88\\n  UPRO  lever=3 emo_area=us     score=-74.0  price=115.83\\n（--dry-run：未写入）\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-20T13:37:13",
+  "finished_at": "2026-11-20T13:37:22",
+  "duration_s": 8.58
+}
