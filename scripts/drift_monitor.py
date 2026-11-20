@@ -446,12 +446,22 @@ def main():
     lines.append(f"信号: 系统贪恐指数 fg_index（{signal.index.min().date()} → {signal.index.max().date()}，{len(signal)} 交易日）")
     lines.append(f"目标: SPY 未来 {HORIZON} 交易日收益 | 滚动 IC 窗口 {IC_WINDOW} | 近窗 {RECENT} 交易日")
     lines.append("")
+    # 🔴 2026-11-20（第 12.48 条）：ICIR 已按**重叠倍数**折算 ✓
+    #    滚动窗 60 + 前瞻 20 ⇒ 相邻 IC 共享 40 个观测 ⇒ std 被低估 ⇒ ICIR 放大 ✗
+    #    这里同时给出原始值，便于和历史报告对照 ✓
     if full:
-        lines.append("全窗基线: IC均值 {:.3f} | ICIR {:.2f} | IC正值比 {:.1%} | n={}".format(
-            full["ic_mean"], full["icir"], full["ic_positive_ratio"], full["n"]))
+        lines.append(
+            "全窗基线: IC均值 {:.3f} | ICIR {:.2f}（原始 {:.2f}，重叠×{} 已折算）"
+            " | IC正值比 {:.1%} | n={}".format(
+                full["ic_mean"], full["icir"], full.get("icir_raw", full["icir"]),
+                full.get("overlap", 1), full["ic_positive_ratio"], full["n"]))
     if recent:
-        lines.append("近窗({}): IC均值 {:.3f} | ICIR {:.2f} | IC正值比 {:.1%} | n={}".format(
-            RECENT, recent["ic_mean"], recent["icir"], recent["ic_positive_ratio"], recent["n"]))
+        lines.append(
+            "近窗({}): IC均值 {:.3f} | ICIR {:.2f}（原始 {:.2f}）"
+            " | IC正值比 {:.1%} | n={}".format(
+                RECENT, recent["ic_mean"], recent["icir"],
+                recent.get("icir_raw", recent["icir"]),
+                recent["ic_positive_ratio"], recent["n"]))
     level, note = decide(full, recent)
     lines.append("")
     lines.append(f"漂移判定: {level} —— {note}")

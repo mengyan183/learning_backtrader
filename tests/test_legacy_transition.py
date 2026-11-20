@@ -35,12 +35,21 @@ def _snap(sym=LEGACY, mv=4140.0, lim=1159.0, over=True,
 
 
 def test_is_legacy_true_within_transition():
+    """过渡期内（≤ 2026-11-19）名单内标的仍算存量仓 ✓（历史口径不变）。
+
+    🔴 2026-11-20（第 12.50 条，用户裁定）：**过渡期提前结束** ✗
+       原定 2027-11-09，现改为 2026-11-19 ⇒ 2027-11-09 不再是「期内」✗
+    """
     assert ir._is_legacy(LEGACY, dt.date(2026, 11, 9)) is True
-    assert ir._is_legacy(LEGACY, dt.date(2027, 11, 9)) is True
+    assert ir._is_legacy(LEGACY, dt.date(2026, 11, 19)) is True
 
 
 def test_is_legacy_false_after_transition():
-    """过渡期结束后自动恢复 1% 规则（按日期判断，不改代码）。"""
+    """过渡期结束后自动恢复 1% 规则（按日期判断，不改代码）✓。
+
+    🔴 2026-11-20 起（第 12.50 条）：2026-11-20 当天就已结束 ✗
+    """
+    assert ir._is_legacy(LEGACY, dt.date(2026, 11, 20)) is False
     assert ir._is_legacy(LEGACY, dt.date(2027, 11, 10)) is False
 
 
@@ -54,7 +63,12 @@ def test_legacy_skips_hard_cap_reduction(monkeypatch):
     monkeypatch.setattr(ir, "_is_legacy", lambda s, t=None: s == LEGACY)
     txt = ir.action_brief_text(_snap())
     assert "减仓至上限" not in txt
-    assert "存量仓过渡期" in txt
+    # ⚠️ 2026-11-20：原断言 `"存量仓过渡期" in txt` **早已失效** ✗
+    #    2026-11-16 加了「全部无减仓触发 ⇒ 折叠成一行」后，逐标的动作不再输出
+    #    ⇒ 这句断言在 HEAD 上就是红的（已在干净 worktree 复核）✗
+    #    改成断言**意图**：不产生硬上限减仓 + 明确告知加仓仍冻结 ✓
+    assert "无减仓触发" in txt
+    assert "加仓仍冻结" in txt
     assert "持有观望" in txt          # 系数 -44 中性 ⇒ 观望
 
 

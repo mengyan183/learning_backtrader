@@ -215,3 +215,50 @@ def test_kill_switch_not_triggered_below_threshold():
     acc = _acc_frame(6000.0, -50.0, prev_mv=6100.0, cur_mv=6050.0)
     latest = acc[acc["date"] == "2026-11-19"]
     assert ir._kill_switch(latest, acc, 6000.0) is None
+
+
+# ---------------------------------------------------------------- 防抖进简报（12.49）
+def _instr_snap(mv=5000.0, net=10000.0, target=0.45):
+    return {
+        "fg": {"date": "2026-11-19", "target_position": target,
+               "extreme": False},
+        "positions": [{"symbol": "YINN", "mv": mv}],
+        "accounts": {"stock": net},
+    }
+
+
+def test_instruction_line_shows_not_actionable_below_threshold():
+    """偏离不足 10pp ⇒ 简报必须写「**不可操作**」✓，而不是只给目标仓位 ✗。
+
+    🔴 2026-11-20（第 12.49 条）：防抖只在 `instruction_card()`（CLI）里生效，
+       简报展示的是**未防抖**的原始目标 ⇒ 读者以为「目标 45%」就是该调的 ✗
+    """
+    from fg_system import signal as sig
+
+    snap = _instr_snap(mv=5000.0, net=10000.0, target=0.45)   # 当前 50%，目标 45%
+    txt = ir._instruction_line(snap, state=sig.SignalState())
+    assert "不可操作" in txt
+    assert "阈值" in txt
+    assert "50.0%" in txt and "45.0%" in txt
+
+
+def test_instruction_line_shows_actionable_above_threshold():
+    """偏离 ≥10pp ⇒ 写「可操作 → 减仓 Xpp（调整后目标 Y%）」✓。"""
+    from fg_system import signal as sig
+
+    snap = _instr_snap(mv=8000.0, net=10000.0, target=0.45)   # 当前 80%
+    txt = ir._instruction_line(snap, state=sig.SignalState())
+    assert "可操作" in txt
+    assert "减仓" in txt
+    assert "pp" in txt
+    # 单次调仓上限 30pp ⇒ 80% 只能减到 50%，不是直接到 45%
+    assert "50.0%" in txt
+
+
+def test_instruction_line_empty_without_positions():
+    """没有持仓 / 净值 ⇒ 返回空串（不猜）✓。"""
+    from fg_system import signal as sig
+
+    snap = {"fg": {"target_position": 0.45}, "positions": [],
+            "accounts": {"stock": 10000.0}}
+    assert ir._instruction_line(snap, state=sig.SignalState()) == ""

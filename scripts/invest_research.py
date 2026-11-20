@@ -425,6 +425,8 @@ def build_snapshot():
             "fg_index_abs": _abs,
             "zone": row["zone"], "target_position": row["target_position"],
             "drawdown": row["drawdown"], "circuit_breaker": bool(row["circuit_breaker"]),
+            # 第 12.49 条：防抖要 `extreme`（极端规则豁免）⇒ 从 features 带出来 ✓
+            "extreme": bool(row["extreme"]) if "extreme" in row.index else False,
         }
     else:
         snap["fg"] = None
@@ -1672,7 +1674,58 @@ def risk_brief_text(snap):
                      " ≥ 2%% 阈值%s，建议停止开新仓/当日收工（Peter Brandt 风控）"
                      % (ks["day_pnl"], ks.get("prev_net") or 0, ks["pct"], _sold,
                         "（持仓快照 %s，非实时）" % _pos_date if _pos_date else ""))
+    # 第 12.49 条：防抖结论（可操作 / 不可操作）—— 简报原来**看不到** ✗
+    _ins = _instruction_line(snap)
+    if _ins:
+        lines.append(_ins)
     return "\n".join(lines) if lines else None
+
+
+def _instruction_line(snap, state=None):
+    """把 `throttle_ok()` 的结论搬进简报 ✓（第 12.49 条）。
+
+    🔴 为什么需要 ✗：防抖三条（10pp 阈值 / 5 天冷却 / 单次 ≤30pp）只在
+       `pipeline.instruction_card()` 里生效，而那个函数**只被 `cli.py` 调用** ✗
+       ⇒ 简报展示的是**未防抖**的原始 `target_position` ✗
+       ⇒ 读者会以为「目标 45%」就是今天该调到的仓位 ✗
+       （实测：偏离 6pp 时策略说「不可操作」，而简报只写「目标 45%」✗）
+
+    当前仓位 = `Σ持仓市值 / Σ账户净值`（与 `instruction_card` 同口径）✓
+    拿不到 state / 仓位 / 目标 ⇒ 返回空串（不猜）✓
+    """
+    try:
+        if str(REPO) not in sys.path:
+            sys.path.insert(0, str(REPO))
+        from fg_system import signal as _sig
+        f = snap.get("fg") or {}
+        tgt = f.get("target_position")
+        total = sum(float(v or 0) for v in (snap.get("accounts") or {}).values())
+        pos = snap.get("positions") or []
+        if not pos or total <= 0 or tgt is None:
+            return ""
+        cur = sum(float(r.get("mv") or 0) for r in pos) / total
+        st = state
+        if st is None:
+            with open(os.path.join(str(REPO), "Data", "state.json"),
+                      encoding="utf-8") as fh:
+                st_raw = json.load(fh)
+            # `state.json` 两种形态（v1 扁平 / v2 嵌套）⇒ 统一成扁平再解析 ✓
+            if "portfolio" in st_raw or "us_equity" in st_raw:
+                st_raw = st_raw.get("us_equity") or st_raw.get("portfolio") or {}
+            st = _sig.SignalState.from_dict(st_raw)
+        ok, reason = _sig.throttle_ok(
+            st, cur, float(tgt), str(f.get("date") or ""),
+            extreme=bool(f.get("extreme")))
+        if ok:
+            adj = _sig.clip_adjustment(cur, float(tgt))
+            act = "加仓" if adj > cur else "减仓"
+            return ("· 指令：**可操作 → %s %.1fpp**"
+                    "（当前 %.1f%% → 调整后 %.1f%%）"
+                    % (act, abs(adj - cur) * 100, cur * 100, adj * 100))
+        return ("· 指令：**不可操作** → %s（当前 %.1f%%，目标 %.1f%%）"
+                % (reason, cur * 100, float(tgt) * 100))
+    except Exception:                      # noqa: BLE001 —— 少一行比崩了强 ✓
+        return ""
 
 
 def _is_legacy(sym, today=None):

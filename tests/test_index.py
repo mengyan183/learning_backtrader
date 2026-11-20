@@ -30,11 +30,22 @@ def _factors_from(scores):
 
 
 def test_weighted_average_of_all_factors():
+    """加权平均：vix/term 给 100 分、其余 0 分 ⇒ 结果 = 两者权重占比。
+
+    🔴 2026-11-20（第 12.47 条）：**期望值改为从 `config.WEIGHTS` 派生** ✗
+       原来硬编码 `45.0`（注释还写着 0.30/0.15/0.25/0.15/0.15 的**五因子**口径，
+       早就过期 ✗）⇒ 权重一改测试就红，但红得没意义 ✗
+       现在：`putcall` 未参与 ⇒ 按**剩余权重归一**，期望值现算 ✓
+    """
+    from fg_system import config
+
     s = _scores(vix=[100.0] * 3, term=[100.0] * 3, price=[0.0] * 3,
                 breadth=[0.0] * 3, fed=[0.0] * 3)
     out = idx.combine(s, _factors_from(s))
-    # 0.30*100 + 0.15*100 + 0.25*0 + 0.15*0 + 0.15*0 = 45
-    assert out.iloc[0] == pytest.approx(45.0)
+    w = config.WEIGHTS
+    present = ("vix", "term", "price", "breadth", "fed")
+    expect = (w["vix"] + w["term"]) / sum(w[k] for k in present) * 100.0
+    assert out.iloc[0] == pytest.approx(expect)
 
 
 def test_missing_factor_renormalizes_weights():
@@ -129,9 +140,14 @@ def test_combine_renormalizes_for_equity_when_one_missing():
          "breadth": [float("nan")], "fed": [90.0]},
         index=pd.to_datetime(["2026-01-01"]))
     out = index.combine(scores, market="us_equity")
-    # 权重 0.30/0.15/0.25/0.15，breadth 缺失 → 按剩余 4 因子归一化
-    expected = (80 * 0.30 + 60 * 0.15 + 40 * 0.25 + 90 * 0.15) / \
-        (0.30 + 0.15 + 0.25 + 0.15)
+    # 🔴 2026-11-20（第 12.47 条）：期望值从 `config.WEIGHTS` 派生 ✗
+    #    原来硬编码 0.30/0.15/0.25/0.15（五因子旧口径）⇒ 权重一改就红 ✗
+    from fg_system import config
+
+    w = config.WEIGHTS
+    present = ("vix", "term", "price", "fed")      # breadth 缺失
+    expected = (80 * w["vix"] + 60 * w["term"] + 40 * w["price"]
+                + 90 * w["fed"]) / sum(w[k] for k in present)
     assert out.iloc[0] == pytest.approx(expected)
 
 
@@ -153,3 +169,53 @@ def test_build_index_returns_series_for_market():
     assert isinstance(out, pd.Series)
     assert out.iloc[0] == pytest.approx(90.0)
     assert out.iloc[1] == pytest.approx(10.0)
+
+
+# ---------------------------------------------------------------- ICIR 折算（12.48）
+def test_icir_deflates_by_overlap():
+    """ICIR 必须按**重叠倍数**折算 ✓ —— 否则滚动窗口把 std 压低、ICIR 放大 ✗。
+
+    🔴 2026-11-20（第 12.48 条）：`IC_WINDOW=60` + `HORIZON=20` ⇒ 相邻 IC
+       共享 40 个观测 ⇒ 有效样本 ≈ n/3 ⇒ 按 1/sqrt(3) 折算 ✓
+    """
+    import math
+
+    import numpy as np
+    import pandas as pd
+
+    from fg_system.factors.eval import icir
+
+    rng = np.random.default_rng(7)
+    s = pd.Series(rng.normal(-0.3, 0.2, 200))
+    raw = icir(s)
+    adj = icir(s, overlap=3)
+    assert raw["overlap"] == 1
+    assert adj["overlap"] == 3
+    assert adj["icir_raw"] == pytest.approx(raw["icir"])
+    assert adj["icir"] == pytest.approx(raw["icir"] / math.sqrt(3))
+    # 均值/正值比/n 不受折算影响 ✓
+    assert adj["ic_mean"] == pytest.approx(raw["ic_mean"])
+    assert adj["n"] == raw["n"]
+
+
+def test_evaluate_carries_overlap_from_window_and_horizon():
+    """`evaluate()` 必须把 `overlap = ceil(window/horizon)` 带进结果 ✓。
+
+    ⚠️ `window_stats()` 靠这个字段保证**全窗与近窗用同一系数** ✗
+       —— 两者不一致会让对比失去意义 ✗
+    """
+    import numpy as np
+    import pandas as pd
+
+    from fg_system.factors.eval import evaluate, window_stats
+
+    n = 300
+    idx = pd.date_range("2020-01-01", periods=n, freq="B")
+    rng = np.random.default_rng(11)
+    sig = pd.Series(rng.normal(50, 10, n), index=idx)
+    close = pd.Series(100 + np.cumsum(rng.normal(0, 1, n)), index=idx)
+    res = evaluate(sig, close, horizons=(20,), window=60)
+    assert res[20]["overlap"] == 3          # ceil(60/20)
+    ws = window_stats(res, 20)
+    assert ws["stats"]["overlap"] == 3
+    assert ws["recent_stats"]["overlap"] == 3
