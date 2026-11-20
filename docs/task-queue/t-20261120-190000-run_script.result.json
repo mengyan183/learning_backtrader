@@ -1,0 +1,14 @@
+{
+  "id": "t-20261120-190000-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "factor_swap_eval.py",
+    "timeout": 900
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"factor_swap_eval.py\", \"args\": [], \"stdout\": \"指数区间: 2016-09-26 → 2026-11-19（2552 交易日）\\n现有因子: ['vix', 'term', 'price', 'breadth', 'fed', 'putcall']\\n\\n==============================================================\\n① 数据可用性\\n==============================================================\\n  credit_spread  {'rows': 1797, 'start': '2019-09-26', 'end': '2026-11-19', 'missing_pct': 29.6}\\n  erp            {'rows': 2552, 'start': '2016-09-26', 'end': '2026-11-19', 'missing_pct': 0.0}\\n\\n==============================================================\\n② 正交性（Spearman ρ，与 vix 越接近 0 越好）\\n==============================================================\\n       factor   vix  term  price  breadth   fed  putcall\\ncredit_spread  0.47  0.19   0.32     0.09 -0.71     0.08\\n          erp -0.47  0.06  -0.22     0.02  0.72    -0.02\\n\\n  ⚠️ 判据：与 `vix` 的 |ρ| < 0.50 才算「解决共线性」✗\\n     现有 term 与 vix 的 ρ 也列在下表，作为对照 ✓\\n     对照：term ↔ vix  ρ = 0.43\\n\\n==============================================================\\n③ 单因子 IC（SPY 未来 20 日，ICIR 已按重叠折算）\\n==============================================================\\n  credit_spread  IC -0.179 | ICIR -0.26（原始 -0.46，重叠×3） | 正值比 32.1% | n=1718\\n  erp            IC +0.093 | ICIR +0.12（原始 +0.21，重叠×3） | 正值比 58.4% | n=2421\\n  term(对照)       IC -0.318 | ICIR -0.54（原始 -0.94，重叠×3） | 正值比 17.0% | n=1714\\n\\n  ⚠️ 判据：|IC| ≥ 0.10 且方向为**负**（贪恐指数是逆向指标）✗\\n\\n==============================================================\\n预注册判据（第 12.55 条，达标才进入回测阶段）\\n==============================================================\\n  · 与 vix 的 |ρ| < 0.50\\n  · 单因子 |IC| ≥ 0.10 且为负\\n  · 覆盖 ≥ 5 年、缺失率 < 10%\\n  · 三条全过 ⇒ 才做「替换 term」的 A/B 组合回测 ✓\\n\", \"stderr\": \"/Users/xingguo/learning_backtrader/fg_system/factors/vix.py:16: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\\n  chg5 = vix.pct_change(5)\\n\"}",
+  "started_at": "2026-11-20T19:24:16",
+  "finished_at": "2026-11-20T19:24:19",
+  "duration_s": 2.75
+}
