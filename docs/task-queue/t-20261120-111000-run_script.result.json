@@ -1,0 +1,17 @@
+{
+  "id": "t-20261120-111000-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "fetch_trades_futu.py",
+    "args": [
+      "--quiet"
+    ],
+    "timeout": 900
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"fetch_trades_futu.py\", \"args\": [\"--quiet\"], \"stdout\": \"2026-11-20 11:20:17,299 | 40931 | 140704410952128 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7529383087774896902(1) context=<futu.trade.open_trade_context.OpenSecTradeContext object at 0x7fcd7a07cf40>\\n2026-11-20 11:21:11,214 | 40931 | 123145511944192 | [open_context_base.py:522] on_disconnect: Disconnected: conn=0(1) reason=CallClose\\n✅ 已写 /Users/xingguo/learning_backtrader/Data/trade_log_futu.csv（110 笔：buy 54 / sell 39，标的 28 个）\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-20T11:20:16",
+  "finished_at": "2026-11-20T11:21:11",
+  "duration_s": 54.94
+}
