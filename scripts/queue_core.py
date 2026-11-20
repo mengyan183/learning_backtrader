@@ -241,6 +241,12 @@ def env_for(action):
             env["HOME"] = os.path.expanduser("~")
         except Exception:                   # noqa: BLE001
             pass
+    if "PATH" not in env:
+        # 🔴 2026-11-20 实测：plist 里写了 PATH，但**跑着的 job 还是旧环境** ✗
+        #    （`launchctl kickstart` 用的是已加载的 job 定义，不重读 plist ✗）
+        #    ⇒ 子进程只能退回 execvp 的默认搜索路径，`git`/`python` 之类按名
+        #      调用会看运气 ✗ ⇒ 这里给个显式兜底 ✓
+        env["PATH"] = os.defpath
     spec = ACTION_ENV.get(action) or ()
     if isinstance(spec, dict):
         env.update({k: str(v) for k, v in spec.items()})

@@ -917,6 +917,18 @@ def test_all_subprocess_goes_through_run_helper():
     assert offenders(qc, {"run"}) == [], "core 里有第二处 subprocess.run ✗"
 
 
+def test_env_for_falls_back_to_defpath(monkeypatch):
+    """`PATH` 缺失时必须**兜底** ✓ —— 不许让动作环境里没有 PATH ✗。
+
+    🔴 2026-11-20 实测：Mac 上 plist 写了 PATH，但跑着的 job 仍是旧环境 ✗
+       ⇒ `env_for()` 返回 `{'HOME': ...}` ⇒ 子进程按名调 `git`/`python`
+         只能靠 execvp 的默认路径 ✗
+    """
+    monkeypatch.delenv("PATH", raising=False)
+    env = q._env_for("factor_diag")
+    assert env.get("PATH"), "PATH 缺失时没兜底 ✗"
+
+
 def test_action_packages_have_no_undefined_names():
     """包内用到的名字必须在本模块**定义或 import** ✓ —— 防「搬函数漏搬依赖」✗。
 
