@@ -1,0 +1,14 @@
+{
+  "id": "t-20261120-144600-restart_queue",
+  "action": "restart_queue",
+  "params": {
+    "label": "com.xingguo.fg-shoutu-refresh",
+    "delay": 30
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"error\": \"\", \"label\": \"com.xingguo.fg-shoutu-refresh\", \"target\": \"gui/501/com.xingguo.fg-shoutu-refresh\", \"delay_seconds\": 30, \"script\": \"dist/_restart_fg_shoutu_refresh.sh\", \"env_before_restart\": {\"FG_LLM_PROXY\": \"\", \"HTTP_PROXY\": \"\", \"HTTPS_PROXY\": \"\"}, \"note\": \"⚠️ 30 秒后 bootout+bootstrap 重启 ✓ —— **只有这条路会重读 plist** ✓（`kickstart` 用的是已加载的旧 job ✗）；每步 rc 见日志尾部；⚠️ 队列里正在跑的任务会被杀 ✗\"}",
+  "started_at": "2026-11-20T14:47:56",
+  "finished_at": "2026-11-20T14:47:56",
+  "duration_s": 0.0
+}
