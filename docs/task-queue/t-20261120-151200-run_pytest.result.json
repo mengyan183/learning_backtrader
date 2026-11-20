@@ -1,0 +1,13 @@
+{
+  "id": "t-20261120-151200-run_pytest",
+  "action": "run_pytest",
+  "params": {
+    "files": "tests/test_run_task_queue.py"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"failed\": [], \"tail\": \"....................................................................     [100%]\\n68 passed in 3.85s\"}",
+  "started_at": "2026-11-20T15:11:51",
+  "finished_at": "2026-11-20T15:11:55",
+  "duration_s": 4.58
+}
