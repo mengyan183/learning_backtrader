@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""F-011 Put-Call 情绪因子（CBOE 总 P/C 比，§5.2 扩展，2026-10-10 提案采纳）。
+"""F-011 Put-Call 情绪因子（CBOE 总 P/C 比，§5.2 扩展，2026-10-10 提案采纳；
+权重见 `config.WEIGHTS`）。
 
 方向：**逆向**——P/C 高 = 市场恐慌 = 低分（恐惧端）；P/C 低 = 贪婪 = 高分。
 数据源：wide 宽表 `("PUT_CALL", "ratio")`（load_wide 从 Data/raw/putcall.csv 读入，

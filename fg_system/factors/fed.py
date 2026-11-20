@@ -10,7 +10,7 @@
 2026-01-01 之前与未来返回 NaN（历史无政策数据 → combine 自动按剩余权重归一化，
 指数历史口径仅微变；避免前瞻）。
 
-权重见 config.WEIGHTS（fed 0.20，2026 前缺因子自动重归一）。
+权重见 `config.WEIGHTS`（2026 前缺因子时 `combine` 自动按剩余权重归一）。
 """
 import datetime as dt
 

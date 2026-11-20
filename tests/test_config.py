@@ -214,3 +214,34 @@ def test_trend_filter_factor_is_one_after_c3_option_b():
     """C-3 批准 2026-10-15：选项 B 移除趋势折扣 ⇒ 常数恒 1.0。"""
     from fg_system import config
     assert config.TREND_FILTER_FACTOR == 1.0
+
+
+def test_factor_docstrings_do_not_hardcode_weights():
+    """因子 docstring **不许写死权重数字** ✗ —— 唯一来源是 `config.WEIGHTS` ✓。
+
+    🔴 2026-11-20 评审（第④条）：
+       六份因子 docstring 写的是 `30% / 20% / 30% / 20%` + `fed 0.20`，
+       而 `config.WEIGHTS` 是 `.27 / .135 / .225 / .135 / .135 / .10`
+       ⇒ **全部不一致**，且没有任何文档记录变更原因 ✗
+       2026-10-10 加 `putcall` 时就是这样漏的（其余五个 ×0.9，docstring 没动）✗
+
+    ⇒ 根因不是「忘了同步」，而是**同一事实在两处各写一遍** ✗
+    ⇒ 正确做法：docstring 只指向 config，不写数字 ✓
+    """
+    import glob
+    import os
+    import re
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    files = sorted(glob.glob(os.path.join(root, "fg_system", "factors", "*.py")))
+    assert files, "没找到因子文件 ✗"
+    bad = []
+    for p in files:
+        with open(p, encoding="utf-8") as fh:
+            src = fh.read()
+        # 只查 docstring 区（前 30 行）里的硬编码权重表述
+        head = "\n".join(src.splitlines()[:30])
+        if re.search(r"先验权重\s*\d+\s*%|权重\s*\d+\.\d+|fed\s+0\.\d+", head):
+            bad.append(os.path.basename(p))
+    assert not bad, \
+        "这些因子 docstring 又写死了权重（应改成指向 config.WEIGHTS）✗：%s" % bad

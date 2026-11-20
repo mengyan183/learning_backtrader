@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""F1 VIX 水位与变化率（先验权重 30%，§5.2）。
+"""F1 VIX 水位与变化率（权重见 `config.WEIGHTS`，§5.2）。
 
 反转因子：VIX 高 = 恐惧 = 低分。
 数据源：Data/raw/vix.csv（CBOE，1990 起）。
