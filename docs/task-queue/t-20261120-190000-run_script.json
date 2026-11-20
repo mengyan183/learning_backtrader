@@ -1,0 +1,10 @@
+{
+  "id": "t-20261120-190000-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "factor_swap_eval.py",
+    "timeout": 900
+  },
+  "status": "pending",
+  "created_at": "2026-11-20T19:00:00"
+}
