@@ -20,15 +20,8 @@
     .venv/bin/python scripts/run_task_queue.py --no-commit  # 只执行不提交（调试）
 """
 import argparse
-import glob
 import json
-import contextlib
 import os
-# 🔴 2026-11-05：`probe_url` 用 `re.findall` 提取 URL/百分比 ✗
-#    而模块顶部**一直没导入 `re`** ✗
-#    ⇒ 三个 `probe_url` 任务全报 `NameError: name 're' is not defined` ✗
-import re
-import shutil
 import subprocess
 import sys
 import time
@@ -81,8 +74,6 @@ if ROOT not in sys.path:
 
 #: 需要 `_tid` 的动作 ✓ —— 只有「结果要延迟回写」的才需要知道自己是哪个任务
 #: （`install_daily_plist` 的游离 shell 要把结果写成 `<tid>.reinstall.json` ✓）
-
-
 NEEDS_TID = {"install_daily_plist"}
 
 
@@ -101,14 +92,10 @@ ACTIONS = {
 
 
 #: 标记超过这么久 ⇒ 视为**残留**（进程已死），看板不再显示执行中 ✓
-
-
 RUNNING_STALE_SEC = 1200
 
 
 #: 补推节流：launchd 每 10s 一轮，失败时别把日志刷爆 ✗
-
-
 _PUSH_RETRY = {"ts": 0.0}
 
 
@@ -175,8 +162,11 @@ def run_once(commit=True):
             continue
         # 2026-10-29：执行期打「运行中」旁路标记 ✓ —— 否则 8 分钟的简报任务
         # 在看板上一直显示「排队中」，用户以为卡住了 ✗
-        _mark_running(spec["id"])
         try:
+            # ⚠️ `_mark_running` 放 try 里 ✓ —— 原来在 try 外，若它抛
+            #    OSError（磁盘满/权限），异常会冒出循环 ⇒ **整轮死** ✗
+            #    且 `.running` 标记残留（看板一直显示执行中）✗
+            _mark_running(spec["id"])
             # `_tid` 只给**声明需要**的动作（见 `NEEDS_TID`）✓ —— 全局注入会污染
             # 其它动作的 params（有测试锁着「动作收到的就是下发的那份」✗）
             _params = dict(spec.get("params") or {})

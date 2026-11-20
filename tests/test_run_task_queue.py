@@ -973,6 +973,31 @@ def test_action_packages_have_no_undefined_names():
     assert not bad, "包里有未定义的名字（漏搬？）：%s" % bad
 
 
+def test_main_file_has_no_actions():
+    """主文件**不许再长 action** ✓ —— 拆包成果靠这条锁住 ✗。
+
+    🔴 2026-11-20 评审：拆完是 338 行、主文件里 0 个 `_act_*`，
+       但**没有任何机制**阻止下次有人把 `_act_xxx` 直接写回来 ✗
+       ⇒ 约定要变成断言 ✓
+
+    同时锁注册表形态：`ACTIONS` 字面量里只许 `**_XX_ACTIONS` 展开，
+    不许出现裸字符串键（否则就是「又把 action 写回主文件」的第一步）✗
+    """
+    import ast
+    import inspect
+    tree = ast.parse(inspect.getsource(q))
+    leftover = [n.name for n in tree.body
+                if isinstance(n, ast.FunctionDef)
+                and n.name.startswith("_act_")]
+    assert leftover == [], "主文件里又出现 action 了，应放进 queue_actions/ 包 ✗：%s" % leftover
+    for n in tree.body:
+        if (isinstance(n, ast.Assign)
+                and getattr(n.targets[0], "id", "") == "ACTIONS"):
+            bare = [k.value for k in n.value.keys if isinstance(k, ast.Constant)]
+            assert bare == [], \
+                "ACTIONS 里不许出现裸键（必须 **_XX_ACTIONS）✗：%s" % bare
+
+
 def test_action_packages_stay_off_the_scheduler():
     """动作包不许 import 调度器或彼此 ✓ —— 否则成环、拆包白做 ✗。
 
