@@ -1,0 +1,18 @@
+{
+  "id": "t-20261120-171500-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "accounts_tail.py",
+    "args": [
+      "-n",
+      "10"
+    ],
+    "timeout": 120
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"accounts_tail.py\", \"args\": [\"-n\", \"10\"], \"stdout\": \"文件 /Users/xingguo/learning_backtrader/Data/accounts.csv\\n总行数 76 · 全部列 ['date', 'account', 'net_value', 'securities_mv', 'cash', 'unrealized_pnl', 'day_pnl', 'currency', 'note']\\n\\n--- 尾部 10 行（只列 ['date', 'account', 'net_value', 'day_pnl']）---\\n      date account  net_value  day_pnl\\n2026-11-13  crypto    2387.69  -197.52\\n2026-11-13   stock    8233.17  -761.17\\n2026-11-16  crypto    2379.31    -8.38\\n2026-11-16   stock    7809.69  -423.48\\n2026-11-17  crypto    2370.74    -8.57\\n2026-11-17   stock    7664.41  -145.28\\n2026-11-18  crypto    2354.46   -16.28\\n2026-11-18   stock    6949.19  -715.22\\n2026-11-19  crypto    2302.48   -51.98\\n2026-11-19   stock    5876.40 -1072.79\\n\\n--- 最新日期 2026-11-19 的行序（决定 .iloc[-1] 取到谁）---\\n  iloc[0]  account=crypto   net_value=2302.48    day_pnl=-51.98000000000002\\n  iloc[1]  account=stock    net_value=5876.4     day_pnl=-1072.79\\n\\n⇒ `.iloc[-1]` 取到：account=stock  day_pnl=-1072.79\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-20T17:01:59",
+  "finished_at": "2026-11-20T17:01:59",
+  "duration_s": 0.47
+}
