@@ -1,0 +1,14 @@
+{
+  "id": "t-20261120-104700-daily_log_tail",
+  "action": "daily_log_tail",
+  "params": {
+    "which": "task_queue",
+    "lines": 40
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"which\": \"task_queue\", \"path\": \"/tmp/fg_task_queue.log\", \"lines\": 40, \"tail\": \"  File \\\"/Users/xingguo/learning_backtrader/scripts/run_task_queue.py\\\", line 61, in <module>\\n    from queue_actions.research import ACTIONS as _RESEARCH_ACTIONS  # noqa: E402\\nModuleNotFoundError: No module named 'queue_actions.research'\\nTraceback (most recent call last):\\n  File \\\"/Users/xingguo/learning_backtrader/scripts/run_task_queue.py\\\", line 61, in <module>\\n    from queue_actions.research import ACTIONS as _RESEARCH_ACTIONS  # noqa: E402\\nModuleNotFoundError: No module named 'queue_actions.research'\\n[push] 补推成功（之前失败的提交已同步）\\n[auto-clean] 已归档 67 个插件层文件 -> /Users/xingguo/.openclaw/tmp/fg-sync-bypass-in/archive_1119-2056\\n[prune] 清理 6 个旧任务文件（只留最近 10 个）\\nt-20261119-210000-restart_queue -> done\\nt-20261119-210100-run_script -> done\\nt-20261119-210200-factor_diag -> done\\n[push] 补推成功（之前失败的提交已同步）\\n[prune] 清理 8 个旧任务文件（只留最近 10 个）\\nt-20261120-085000-restart_queue -> done\\nt-20261120-085100-run_script -> done\\nt-20261120-085200-factor_diag -> done\\nt-20261120-085300-run_pytest -> failed\\n[prune] 清理 4 个旧任务文件（只留最近 10 个）\\nt-20261120-090000-install_daily_plist -> done\\nt-20261120-090100-daily_log_tail -> done\\n[reinstall] t-20261120-090000-install_daily_plist 重装成功 ✓（rc=0）\\n[push] 补推成功（之前失败的提交已同步）\\n[prune] 清理 2 个旧任务文件（只留最近 10 个）\\nt-20261120-094000-run_pytest -> failed\\n[warn] 补推仍失败（rc=1）：/main': is at 8b4f656d2b85e2528dde71b3ca21c18e4409d363 but expected d4224398dffcc26b2c9131b651405739a8b221a1)\\nerror: failed to push some refs to 'https://github.com/mengyan183/learning_backtrader.git'\\n[prune] 清理 2 个旧任务文件（只留最近 10 个）\\nt-20261120-100000-run_pytest -> failed\\n[push] 补推成功（之前失败的提交已同步）\\n[restart] 2026-11-20 10:35:28 start com.xingguo.fg-task-queue\\n[prune] 清理 2 个旧任务文件（只留最近 10 个）\\nt-20261120-103800-restart_queue -> done\\n[restart] bootout rc=0\\n[restart] bootstrap try 1 rc=0\\n[restart] kickstart rc=0\\ngui/501/com.xingguo.fg-task-queue = {\\n\\tactive count = 1\\n\\tpath = /Users/xingguo/Library/LaunchAgents/com.xingguo.fg-task-queue.plist\\n\"}",
+  "started_at": "2026-11-20T10:46:16",
+  "finished_at": "2026-11-20T10:46:16",
+  "duration_s": 0.01
+}
