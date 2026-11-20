@@ -12,7 +12,9 @@
 
 - **权重锁定 40.5%（vol 主导）**：`vix .270 / price .225 / term .135 / breadth .135 / fed .135 / putcall .100`
 - **系统定位已改写**为「**波动率主导的逆向情绪指数**」（README / `fg_system/index.py` /
-  `docs/factor-weights-decision.md` 三处已改）⇒ 40.5% 是本质，不是缺陷
+  `docs/factor-weights-decision.md` 三处已改）⇒ **40.5% 是先验选择**，不是"本质"
+  （2026-11-20 三轮评审降级，见 12.57：518 日样本、年化 SE≈21pp，三档统计上不可区分；
+  有硬证据的只是"波动率主导"方向 —— fed 缺失重归一下 `vix+term=46.8%`）
 - 测试：`tests/test_run_task_queue.py` **68 passed**；全量 29 failed 全为**缺依赖**
   （`flask` → dashboard 测试；`backtrader` → 回测测试），非代码回归 ✓
 
