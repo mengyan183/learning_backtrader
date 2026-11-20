@@ -101,6 +101,49 @@ def smooth(fg_index, days=None):
 ZONE_NAMES = ["极度恐惧", "恐惧", "中性", "贪婪", "极度贪婪"]
 
 
+def absolute_index(wide):
+    """**绝对水平**指数（0-100，高分 = 贪婪）—— 不过滚动分位 ✓。
+
+    🔴 为什么需要它（2026-11-20 评审）✗：
+       `combine()` 的六个因子**全部**走 756 日滚动百分位 ⇒ `fg_index` 在
+       结构上**恒为均匀分布** ✗ ⇒ 它只能回答「相对过去三年排第几」✗，
+       回答不了「绝对水平高不高」✗
+       （VIX 若连续三年 40，分位会自动漂回 50 ⇒ 主指数认为「平静」✗）
+
+    这里用**固定阈值**直接映射原始值（不做任何滚动归一化）：
+
+      · `vix`     10 → 100（极安静） / 40 → 0（极恐慌）
+      · `term`    VIX/VIX3M 0.8 → 100 / 1.3 → 0（倒挂 = 恐慌）
+      · `breadth` MA200 上方比例，原生 0~1 → 0~100（**本就是绝对量**）
+
+    三个子项**等权**，缺项按剩余项归一（`DataFrame.mean` 天然跳过 NaN）✓
+
+    ⚠️ 阈值是**判断取值**，不是优化结果 —— 改阈值等于改口径，须同步
+       `docs/factor-weights-decision.md` 并重跑回测 ✓
+    """
+    parts = {}
+    cols = wide.columns
+    if ("VIX", "close") in cols:
+        vix = wide[("VIX", "close")].astype(float)
+        parts["vix"] = ((40.0 - vix) / 30.0 * 100.0).clip(0.0, 100.0)
+        if ("VIX3M", "close") in cols:
+            ratio = (vix / wide[("VIX3M", "close")].astype(float)
+                     ).rolling(5).mean()
+            parts["term"] = ((1.3 - ratio) / 0.5 * 100.0).clip(0.0, 100.0)
+    syms = list(config.BREADTH_SYMBOLS)
+    if syms and all((s, "close") in cols for s in syms):
+        above = None
+        for s in syms:
+            px = wide[(s, "close")].astype(float)
+            ma = px.rolling(200, min_periods=200).mean()
+            flag = (px > ma).astype(float).where(ma.notna())
+            above = flag if above is None else above + flag
+        parts["breadth"] = (above / len(syms) * 100.0).clip(0.0, 100.0)
+    if not parts:
+        return pd.Series(np.nan, index=wide.index)
+    return pd.DataFrame(parts).mean(axis=1).clip(0.0, 100.0)
+
+
 def factor_zone(score):
     """单因子 0-100 分 → 档位（0 极恐 / 1 恐 / 2 中性 / 3 贪 / 4 极贪）。
 

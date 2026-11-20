@@ -8,6 +8,11 @@ DATA_DIR = os.path.join(ROOT, "Data")
 RAW_DIR = os.path.join(DATA_DIR, "raw")
 FEATURES_PATH = os.path.join(DATA_DIR, "features.csv")
 STATE_PATH = os.path.join(DATA_DIR, "state.json")
+#: 🔴 2026-11-20：`run_portfolio()` 原来**也写 STATE_PATH** ✗ —— 每日链里它
+#:   在 `run()` 之后跑 ⇒ 用嵌套形态（`{"portfolio":…,"us_equity":…}`）覆盖扁平
+#:   形态（`{"ammo_released":[…]}`）✗ ⇒ 读 `state.json` 的代码要猜是哪种形态 ✗
+#:   ⇒ 拆开：v1 `run()` 写 `state.json`，v2 组合写 `portfolio_state.json` ✓
+PORTFOLIO_STATE_PATH = os.path.join(DATA_DIR, "portfolio_state.json")
 TRADE_LOG_PATH = os.path.join(DATA_DIR, "trade_log.csv")
 REPORTS_DIR = os.path.join(ROOT, "reports")
 EXTERNAL_INDEX_PATH = os.path.join(RAW_DIR, "external_index.csv")
@@ -172,6 +177,16 @@ DRAWDOWN_BATCHES = [0.20, 0.40, 0.60]
 # 每批释放额 = 池子上限 / 批数。**必须由 AMMO_CAP 派生**，避免手工算出不一致。
 AMMO_PER_BATCH = AMMO_CAP / len(DRAWDOWN_BATCHES)   # v2.4：20% / 3 ≈ 6.67%
 DRAWDOWN_LOOKBACK = 252    # 回撤基准滚动窗口（52 周）
+
+# 🔴 2026-11-20：**弹药池重新装填** ✓ —— 原来 `ammo_released` 只增不减 ✗
+#    ⇒ 一生只有 20% 子弹（实测 state=[0,1]，2/3 已用，剩的一批要 -60% ✗）
+#    ⇒ 机制在第一次大熊市后名存实亡 ✗
+# 现在：回撤从触发位**修复到 ≤ 5%**（52 周高点附近）⇒ 判定「本轮危机结束」
+#       ⇒ 清空已释放批次，弹药重新装填 ✓
+# 为什么不用「按年重置」：长期阴跌（-20% 持续三年）会每年重放同一批 ✗
+#       ⇒ 变成「每年定投 6.67%」，与「分批抄底」的意图相悖 ✗
+AMMO_RESET_LEVEL = 0.05     # 回撤修复到此水平 ⇒ 装填
+AMMO_RESET_MIN_DAYS = 90    # 两次装填的最短间隔（自然日，防 -20% 附近抖动）
 
 # ---------------------------------------------------------------- 极端规则
 EXTREME_GREED_TRIGGER = 85

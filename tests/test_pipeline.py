@@ -43,10 +43,21 @@ def test_target_position_never_exceeds_one(features):
     assert valid.between(0.0, 1.0).all()
 
 
-def test_ammo_position_is_monotonic_non_decreasing(features):
-    """状态化规则必须按时间顺序推进（§10.5）：弹药释放只增不减。"""
+def test_ammo_position_only_grows_or_resets_to_zero(features):
+    """弹药**在一轮回撤内**只增不减 ✓；回撤修复后允许**归零重装** ✓。
+
+    🔴 2026-11-20 改口径：原来断言 `is_monotonic_increasing` ✗ ——
+       弹药池改为「回撤修复到 ≤5% 且距上次 ≥90 天 ⇒ 重新装填」后，
+       单调递增不再成立（也不该成立）✗
+       ⇒ 新断言：**任何减少都必须正好落到 0**（即整池重装，
+         不允许「部分回吐」这种半吊子状态）✓
+    """
     ammo = features["ammo_position"].dropna()
-    assert ammo.is_monotonic_increasing
+    diff = ammo.diff().dropna()
+    for d in diff[diff < -1e-9].index:
+        assert ammo.loc[d] == 0, \
+            "弹药只能整池归零重装，不能部分减少 ✗（%s 处降到 %.4f）" % (
+                d, ammo.loc[d])
 
 
 def test_target_position_is_shifted_by_one_day(features):

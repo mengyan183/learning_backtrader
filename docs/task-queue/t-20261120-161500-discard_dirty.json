@@ -1,0 +1,10 @@
+{
+  "id": "t-20261120-161500-discard_dirty",
+  "action": "discard_dirty",
+  "params": {
+    "paths": ["fg_system/config.py", "fg_system/signal/legacy.py"],
+    "reason": "fix_1120l 门禁拒绝提交后留下的脏文件，fix_1120n 会重新投递同样内容"
+  },
+  "status": "pending",
+  "created_at": "2026-11-20T16:15:00"
+}

@@ -47,6 +47,8 @@ class SignalState:
     cb_trigger_date: str = None
     cb_low_price: dict = field(default_factory=dict)      # symbol -> 熔断后最低价
     last_extreme_fear_date: str = None
+    #: 🔴 2026-11-20：上次「弹药重新装填」的日期 ✓ —— 用于 90 天最短间隔 ✗
+    last_ammo_reset: str = None
 
     def to_dict(self):
         return {
@@ -57,6 +59,7 @@ class SignalState:
             "cb_trigger_date": self.cb_trigger_date,
             "cb_low_price": dict(self.cb_low_price),
             "last_extreme_fear_date": self.last_extreme_fear_date,
+            "last_ammo_reset": self.last_ammo_reset,
         }
 
     @classmethod
@@ -71,6 +74,7 @@ class SignalState:
             cb_trigger_date=data.get("cb_trigger_date"),
             cb_low_price=dict(data.get("cb_low_price") or {}),
             last_extreme_fear_date=data.get("last_extreme_fear_date"),
+            last_ammo_reset=data.get("last_ammo_reset"),
         )
 
 
@@ -104,16 +108,44 @@ def core_position(fg_index):
 
 
 # ---------------------------------------------------------------- 弹药池（§7.3）
-def update_ammo(state, drawdown):
+def _ammo_reset_ok(state, date):
+    """距上次装填是否已过 `AMMO_RESET_MIN_DAYS` ✓（无记录 ⇒ 允许）。"""
+    if not state.last_ammo_reset:
+        return True
+    gap = (pd.Timestamp(date) - pd.Timestamp(state.last_ammo_reset)).days
+    return gap >= config.AMMO_RESET_MIN_DAYS
+
+
+def update_ammo(state, drawdown, date=None):
     """按**标的指数**回撤释放弹药。每批只释放一次。
 
     返回 (新状态, 弹药仓位, 本次新释放的批次列表)。
+
+    🔴 2026-11-20：**回撤修复 ⇒ 弹药重新装填** ✓
+       原来 `ammo_released` 只增不减 ✗ ⇒ 一生只有 20% 子弹 ✗
+       （实测 `state=[0,1]`：2/3 已用，剩的一批要 -60% 回撤才触发 ✗）
+       ⇒ 回撤修复到 ≤ `AMMO_RESET_LEVEL`（5%，52 周高点附近）视为
+         「本轮危机结束」⇒ 清空已释放批次，并记 `last_ammo_reset` ✓
+       ⇒ `AMMO_RESET_MIN_DAYS`（90 天）最短间隔，防 -20% 附近反复穿越抖动 ✓
+
+    ⚠️ `date=None` 时**不做装填判断** ✗ —— 兼容旧调用（测试里不带日期）。
     """
     if _is_nan(drawdown):
         return state, ammo_position(state), []
 
     state = _copy(state)
     newly = []
+
+    # ① 先判「危机结束 ⇒ 重新装填」（回撤 5% 不可能触发释放，顺序无歧义）
+    if (date is not None and state.ammo_released
+            and drawdown <= config.AMMO_RESET_LEVEL
+            and _ammo_reset_ok(state, date)):
+        state.ammo_released = []
+        # 极恐冷却一并清空：整轮危机结束，不该再被 84 天前的记录挡住 ✓
+        state.last_extreme_fear_date = None
+        state.last_ammo_reset = date
+
+    # ② 再判释放
     for i, trigger in enumerate(config.DRAWDOWN_BATCHES):
         if drawdown >= trigger and i not in state.ammo_released:
             state.ammo_released.append(i)

@@ -86,6 +86,10 @@ def run(raw_dir=None, write=True, shift_inputs=0):
 
     scores = index_mod.factor_scores(wide)
     fg_index = index_mod.smooth(index_mod.combine(scores))
+    # 🔴 2026-11-20：**绝对水平**指数（固定阈值，不过滚动分位）✓
+    #    `fg_index` 是「相对过去三年排第几」，答不了「绝对风险多大」✗
+    #    （VIX 连续三年高位时，分位会漂回 50 ✗）⇒ 并存一条绝对口径 ✓
+    fg_abs = index_mod.absolute_index(wide)
     dd = drawdown_series(wide)
 
     rows = []
@@ -99,7 +103,8 @@ def run(raw_dir=None, write=True, shift_inputs=0):
         # 顺序严格按 §8.3 优先级：极恐加仓（改弹药状态）→ 弹药释放 → 极贪熔断
         state, _, fear_reason = signal_mod.apply_extreme_fear(state, idx_val, date_str)
         core = signal_mod.core_position(idx_val)
-        state, ammo, newly = signal_mod.update_ammo(state, dd_val)
+        # 传 `date_str` ⇒ 支持「回撤修复到 ≤5% 且距上次 ≥90 天 ⇒ 弹药重新装填」✓
+        state, ammo, newly = signal_mod.update_ammo(state, dd_val, date_str)
         # warmup 期（指数无效）target 保持 None → 写盘为 NaN，回测自然跳过。
         # 不能写成 0.0——那会被回测当成"策略主动空仓"，污染净值对比与逐年表现。
         target = None if core is None else core + ammo
@@ -110,6 +115,8 @@ def run(raw_dir=None, write=True, shift_inputs=0):
         rows.append({
             "date": dt,
             "fg_index": idx_val,
+            # 绝对水平（固定阈值口径）✓ —— 与 fg_index 并列，不参与仓位映射 ✓
+            "fg_index_abs": fg_abs.get(dt, np.nan),
             "zone": (signal_mod.zone_of(idx_val)
                      if not (idx_val is None or (isinstance(idx_val, float) and np.isnan(idx_val)))
                      else np.nan),
@@ -936,7 +943,9 @@ def run_portfolio(us_features, crypto_features, write=True, us_core=None,
     if write:
         os.makedirs(os.path.dirname(config.PORTFOLIO_FEATURES_PATH), exist_ok=True)
         out.to_csv(config.PORTFOLIO_FEATURES_PATH, encoding="utf-8")
-        with open(config.STATE_PATH, "w", encoding="utf-8") as f:
+        # 🔴 2026-11-20：**不能写 STATE_PATH** ✗ —— 那会用嵌套形态覆盖
+        #    `run()` 写的扁平形态（每日链里本函数后跑）✗ ⇒ 读方要猜格式 ✗
+        with open(config.PORTFOLIO_STATE_PATH, "w", encoding="utf-8") as f:
             json.dump({"portfolio": state.to_dict(),
                        "us_equity": us_state.to_dict(),
                        "crypto": cr_state.to_dict()},

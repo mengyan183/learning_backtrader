@@ -293,3 +293,59 @@ def test_cb_low_price_is_deep_copied():
                                       prices={"TQQQ": 100.0}, target=0.7)
     st2.cb_low_price["TQQQ"] = 1.0
     assert st.cb_low_price == {}
+
+
+# ---------------------------------------------------------------- 弹药装填（2026-11-20）
+def test_ammo_reset_when_drawdown_recovers():
+    """回撤修复到 ≤5% ⇒ 弹药**重新装填** ✓（原来只增不减 ✗）。
+
+    背景：实测 `state=[0,1]` —— 2/3 已释放，剩的一批要 -60% 才触发 ✗
+    ⇒ 机制在第一次大熊市后名存实亡 ✗
+    """
+    st = signal.SignalState()
+    st, ammo, _ = signal.update_ammo(st, drawdown=0.25, date="2022-06-16")
+    assert ammo == pytest.approx(config.AMMO_PER_BATCH)
+    assert st.ammo_released == [0]
+
+    st, ammo, _ = signal.update_ammo(st, drawdown=0.45, date="2022-09-30")
+    assert len(st.ammo_released) == 2
+
+    # 修复到 3%（≤ 5%）⇒ 清空
+    st, ammo, _ = signal.update_ammo(st, drawdown=0.03, date="2023-06-01")
+    assert st.ammo_released == [], "回撤修复后弹药没装填 ✗"
+    assert ammo == pytest.approx(0.0)
+    assert st.last_ammo_reset == "2023-06-01"
+
+
+def test_ammo_reset_respects_min_interval():
+    """两次装填之间必须隔 `AMMO_RESET_MIN_DAYS` ✓ —— 防 -20% 附近抖动 ✗。"""
+    st = signal.SignalState()
+    st, _, _ = signal.update_ammo(st, 0.25, "2022-06-16")
+    st, _, _ = signal.update_ammo(st, 0.03, "2023-06-01")     # 装填 #1
+    assert st.ammo_released == []
+
+    # 又跌到 -25% 再修复，但只隔 10 天 ⇒ 不许装填
+    st, _, _ = signal.update_ammo(st, 0.25, "2023-06-11")
+    assert st.ammo_released == [0]
+    st, _, _ = signal.update_ammo(st, 0.03, "2023-06-21")
+    assert st.ammo_released == [0], "间隔不足却装填了 ✗"
+
+    # 距装填 #1 满 90 天后才允许
+    st, _, _ = signal.update_ammo(st, 0.03, "2023-09-01")
+    assert st.ammo_released == [], "满 90 天后应当装填 ✗"
+
+
+def test_ammo_reset_skipped_without_date():
+    """不传 `date` ⇒ 不做装填判断 ✓（向后兼容旧调用与测试）。"""
+    st = signal.SignalState(ammo_released=[0, 1])
+    st2, ammo, _ = signal.update_ammo(st, drawdown=0.01)
+    assert st2.ammo_released == [0, 1], "无日期时不该装填 ✗"
+    assert ammo == pytest.approx(2 * config.AMMO_PER_BATCH)
+
+
+def test_ammo_reset_clears_extreme_fear_cooldown():
+    """装填时一并清 `last_extreme_fear_date` ✓ —— 整轮危机结束，
+    不该再被 84 天前的极恐记录挡住 ✓。"""
+    st = signal.SignalState(ammo_released=[0], last_extreme_fear_date="2025-04-04")
+    st, _, _ = signal.update_ammo(st, drawdown=0.02, date="2026-01-05")
+    assert st.last_extreme_fear_date is None

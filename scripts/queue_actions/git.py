@@ -11,7 +11,8 @@ import os
 import subprocess
 import time
 
-from queue_core import ROOT, run as _run, safe_rel as _safe_rel
+from queue_core import (ROOT, run as _run, safe_rel as _safe_rel,  # noqa: F401
+                        rel_ok as _rel_ok)
 
 
 #: `run_git` 允许的子命令 ✓（2026-11-19 用户选择方案 ②）
@@ -499,6 +500,52 @@ def _act_git_state(params):
     return out
 
 
+def _act_discard_dirty(params):
+    """把**指定文件**的工作区改动收进 `git stash` ✓ —— 让工作区变干净。
+
+    参数：
+      - `paths`：仓库内相对路径数组（**必填**；也接受逗号分隔字符串）
+      - `reason`：stash 消息（可选）
+
+    🔴 为什么需要它（2026-11-20 实测）✗：
+       `fix_1120l` 的代码写盘成功，但 Mac 的 `pre-commit-discipline.sh`
+       拒绝提交（规则代码没带 docs）✗ ⇒ 两个文件留在工作区变脏 ✗
+       ⇒ 下一个包（`fix_1120n`）被「与本地未提交修改冲突」挡住 ✗
+       ⇒ 远程**没有任何手段**清理，只能等人上机敲命令 ✗
+
+    🔴 为什么用 `stash` 而不是 `checkout --` ✗：
+       `checkout -- <path>` **永久丢弃**工作区内容 ✗
+       `stash push -- <path>` 只是把它移进 `stash@{0}` ✓ —— 真丢错了还能
+       `git stash pop` 找回来 ✓（`run_git` 的白名单**故意**排除 checkout ✗，
+       这条边界不破）
+
+    ⚠️ 只能操作**仓库内相对路径**：`..` / 绝对路径一律拒绝 ✗
+    """
+    raw = params.get("paths") or []
+    if isinstance(raw, str):
+        raw = [x.strip() for x in raw.split(",") if x.strip()]
+    if not raw:
+        return {"ok": False, "error": "`paths` 不能为空 ✗"}
+    paths = []
+    for p in raw:
+        try:
+            paths.append(_rel_ok(str(p)))
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+
+    msg = "fg-sync: %s" % (params.get("reason") or "discard dirty")
+    before = _run(["git", "status", "--short", "--"] + paths, 60)
+    st = _run(["git", "stash", "push", "-m", msg, "--"] + paths, 120)
+    after = _run(["git", "status", "--short", "--"] + paths, 60)
+    return {
+        "ok": st.returncode == 0,
+        "stashed": (st.stdout or "").strip()[-300:],
+        "status_before": (before.stdout or "").strip()[-600:],
+        "status_after": (after.stdout or "").strip()[-600:],
+        "note": "内容已进 stash（`git stash list` 可见）⇒ 可 `git stash pop` 找回",
+    }
+
+
 ACTIONS = {
     "git_state": _act_git_state,
     "git_pull": _act_git_pull,
@@ -506,4 +553,5 @@ ACTIONS = {
     "run_git": _act_run_git,
     "safe_pull_data": _act_safe_pull_data,
     "inspect_sync": _act_inspect_sync,
+    "discard_dirty": _act_discard_dirty,
 }
