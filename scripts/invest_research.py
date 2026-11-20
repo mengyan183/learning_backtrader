@@ -1863,6 +1863,42 @@ _PERSPECTIVE_PROMPTS = (
 )
 
 
+def _ammo_line():
+    """弹药池的**真实**状态 ✓ —— 读 `state.json`，不靠回撤推断 ✗。
+
+    🔴 2026-11-20 实测（简报文案与实际状态不一致）：
+       原文案「回撤未达首档 ⇒ 弹药还在，没提前打光」✗
+       · 前半句没错：当日指数回撤 13.62% < 首档 20% ⇒ **今天**没有新触发 ✓
+       · 但它把「今天没触发」说成了「弹药还在」✗
+         实际 `state.json` = `ammo_released: [0, 1]` ⇒ **2/3 已释放**
+         （已投 13.33%），只剩 1 批 6.67%，而且要 **-60% 回撤**才触发 ✗
+       · 读者会以为「还有 20% 弹药可抄底」，据此加仓 ⇒ 与真实状态相反 ✗
+
+    `ammo_released` 只增不减（无重置逻辑）⇒ 这个数字必须直接读盘，不能推。
+    """
+    try:
+        from fg_system import config as _cfg
+        with open(os.path.join(str(REPO), "Data", "state.json"),
+                  encoding="utf-8") as fh:
+            st = json.load(fh)
+        total = len(_cfg.DRAWDOWN_BATCHES)
+        released = sorted(st.get("ammo_released") or [])
+        per = _cfg.AMMO_PER_BATCH * 100
+        triggers = _cfg.DRAWDOWN_BATCHES
+    except Exception:                      # noqa: BLE001 —— 少一行比整段崩了强 ✓
+        return ""
+    if not released:
+        return "弹药池满（0/%d 已释放）⇒ %d 档回撤都有子弹" % (total, total)
+    if len(released) >= total:
+        return ("弹药池**已空**（%d/%d 已释放，共投 %.2f%%）⇒ 无子弹可用"
+                % (len(released), total, len(released) * per))
+    nxt = next(i for i in range(total) if i not in released)
+    return ("弹药 %d/%d 已释放（已投 %.2f%%），剩 %d 批；"
+            "下一批需回撤 ≥ -%.0f%%"
+            % (len(released), total, len(released) * per,
+               total - len(released), triggers[nxt] * 100))
+
+
 def _psych_section(snap):
     """🧘 持仓心理状态（2026-11-17 用户要求：简报加心理按摩）
 
@@ -1893,8 +1929,9 @@ def _psych_section(snap):
     good = []
     if zi <= 1:
         good.append("恐惧档位**没恐慌割肉** ⇒ 不动是纪律允许的，不是逃避")
-    if dd is None or abs(dd) < 0.20:
-        good.append("回撤未达首档 ⇒ 弹药还在，没提前打光")
+    _ammo = _ammo_line()
+    if _ammo:
+        good.append(_ammo)
     if zi <= 2:
         good.append("**没在恐慌里加仓** ⇒ 避开了「越跌越买」的典型错误")
     if len(good) < 3:
