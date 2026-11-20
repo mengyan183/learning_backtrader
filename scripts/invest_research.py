@@ -503,25 +503,68 @@ def build_snapshot():
             r["sys_fg_note"] = "不可用"
 
     # 连亏 kill switch：当日亏损 ≥2% 净值 → 提示收工（知识库：Peter Brandt 风控）
-    snap["kill_switch"] = None
-    # 🔴 2026-11-20：**必须按 account 过滤再取尾行** ✗ ——
-    #    `acc_latest` 里同时有 `stock` 和 `crypto` 两行 ✗，
-    #    原来直接 `.dropna().iloc[-1]` ⇒ 取到的是**排序最后那个账户** ✗
-    #    （本地实测：`iloc[-1]` 是 **crypto**，不是 stock ✗）
-    #    而分母是 `stock_net` ⇒ **跨账户混算** ✗
-    #    实测症状：简报写「当日亏损 -1072.79 (-18.3% 股票净值)」，
-    #    但同一份简报里股票净值 6202.5 → 5876.4，差只有 **-326.1** ✗
-    #    （-1072.79 / 5876.4 = -18.26% ⇒ 与显示的 -18.3% 完全吻合，
-    #      说明分子确实取到了别的账户/别的日期的那一行 ✗）
-    #    ⇒ 只取 stock 账户；拿不到 stock 行就不给结论（不猜）✓
-    _day_pnl = _stock_day_pnl(acc_latest)
-    if _day_pnl is not None and stock_net:
-        if _day_pnl <= -0.02 * stock_net:
-            snap["kill_switch"] = {
-                "day_pnl": round(_day_pnl, 2),
-                "pct": round(_day_pnl / stock_net * 100.0, 2),
-            }
+    # 🔴 2026-11-20：**分母改「期初净值」** ✓（第 12.46 条）——
+    #    原来用当日**收盘**净值 ⇒ 亏得越多分母越小 ⇒ 比率被系统性放大 ✗
+    #    实测 11-19：-1072.79 / 5876.40 = -18.3%（旧）
+    #                -1072.79 / 6949.19 = -15.4%（新）✗
+    #    `day_pnl` 是净值差分 ⇒ 期初 = 期末 - day_pnl ✓（同源，不会对不上）
+    # ⚠️ 分子按 **stock 账户**过滤（`_stock_day_pnl`）✗ —— 不许跨账户取尾行
+    snap["kill_switch"] = _kill_switch(acc_latest, acc, stock_net)
     return snap
+
+
+def _kill_switch(acc_latest, acc, stock_net, thresh=0.02):
+    """连亏保护判定 ✓ —— **期初净值**为分母（第 12.46 条）。
+
+    返回 dict（触发）或 None（未触发 / 数据不足）。
+
+    口径：
+      · 分子 = **stock 账户**的 `day_pnl`（`_stock_day_pnl`，不许跨账户 ✗）
+      · 分母 = **期初净值** = 当日净值 − `day_pnl` ✓
+      · `day_pnl` 里含卖出滑点 ⇒ `sold=True` 时文案要标注 ✓
+    """
+    _day_pnl = _stock_day_pnl(acc_latest)
+    if _day_pnl is None or not stock_net:
+        return None
+    _prev_net = float(stock_net) - _day_pnl
+    if _prev_net <= 0 or _day_pnl > -thresh * _prev_net:
+        return None
+    _sold, _sell_ratio = _sell_slippage_hint(acc)
+    return {
+        "day_pnl": round(_day_pnl, 2),
+        "pct": round(_day_pnl / _prev_net * 100.0, 2),
+        "prev_net": round(_prev_net, 2),
+        "sold": bool(_sold),
+        "sell_ratio": (round(_sell_ratio, 4) if _sell_ratio is not None else None),
+    }
+
+
+def _sell_slippage_hint(acc, thresh=0.15):
+    """当日是否有**大额减仓** ✓ —— 用 stock 的 `securities_mv` 降幅判断。
+
+    返回 `(是否, 降幅占净值比例)`；数据不全返回 `(False, None)`。
+
+    为什么需要（第 12.46 条）✗：`day_pnl` 里既有市场下跌，也有**卖出时的
+    执行滑点**（一次性）✗ —— 实测 11-19 拆开是「-746.7 市场 + -326.1 滑点」，
+    不标注的话读者会把一次性成本当成趋势 ✗
+
+    阈值 15% 的依据：正常交易日证券市值随大盘波动一般 <5%；实测清仓日
+    4072 / 5876 = **69%** ⇒ 15% 能稳稳区分两者 ✓
+    """
+    if "securities_mv" not in acc.columns or "account" not in acc.columns:
+        return False, None
+    s = acc[acc["account"] == "stock"].sort_values("date")
+    if len(s) < 2:
+        return False, None
+    try:
+        drop = float(s.iloc[-2]["securities_mv"]) - float(s.iloc[-1]["securities_mv"])
+        nv = float(s.iloc[-1]["net_value"])
+    except (TypeError, ValueError, KeyError):
+        return False, None
+    if nv <= 0 or drop <= 0:
+        return False, None
+    ratio = drop / nv
+    return ratio >= thresh, ratio
 
 
 def _stock_day_pnl(acc_latest):
@@ -1622,9 +1665,12 @@ def risk_brief_text(snap):
         #    读者会以为是「今天实时亏了 1004」⇒ 必须写明是快照日口径 ✓
         # `snap["date"]` 就是**持仓快照日** ✓（见上方 `2026-10-29` 那条注释）
         _pos_date = str(snap.get("date") or "").strip()
-        lines.append("🔴 连亏保护触发：当日亏损 %s (%.1f%% **股票净值**)"
+        # 🔴 2026-11-20（第 12.46 条）：分母改**期初净值** + 标注减仓滑点 ✗
+        #    旧文案「(%.1f%% 股票净值)」用期末净值当分母 ⇒ 亏越多比率越被放大 ✗
+        _sold = ("，**含当日减仓的执行滑点**" if ks.get("sold") else "")
+        lines.append("🔴 连亏保护触发：当日亏损 %s = 期初净值 %.0f 的 **%.1f%%**%s"
                      " ≥ 2%% 阈值%s，建议停止开新仓/当日收工（Peter Brandt 风控）"
-                     % (ks["day_pnl"], ks["pct"],
+                     % (ks["day_pnl"], ks.get("prev_net") or 0, ks["pct"], _sold,
                         "（持仓快照 %s，非实时）" % _pos_date if _pos_date else ""))
     return "\n".join(lines) if lines else None
 

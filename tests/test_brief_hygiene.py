@@ -154,3 +154,64 @@ def test_stock_day_pnl_tolerates_legacy_file_without_account_column():
     import pandas as pd
     df = pd.DataFrame([{"net_value": 5876.4, "day_pnl": -326.1}])
     assert ir._stock_day_pnl(df) == -326.1
+
+
+def _acc_frame(stock_nv, stock_pnl, prev_mv, cur_mv, crypto_pnl=-51.98):
+    """构造两日 accounts.csv 形态（stock + crypto）。"""
+    import pandas as pd
+    return pd.DataFrame([
+        {"date": "2026-11-18", "account": "stock", "net_value": stock_nv - stock_pnl,
+         "securities_mv": prev_mv, "day_pnl": -715.22},
+        {"date": "2026-11-18", "account": "crypto", "net_value": 2354.46,
+         "securities_mv": 0.0, "day_pnl": -16.28},
+        {"date": "2026-11-19", "account": "stock", "net_value": stock_nv,
+         "securities_mv": cur_mv, "day_pnl": stock_pnl},
+        {"date": "2026-11-19", "account": "crypto", "net_value": 2302.48,
+         "securities_mv": 0.0, "day_pnl": crypto_pnl},
+    ])
+
+
+def test_kill_switch_uses_opening_nav_as_denominator():
+    """分母必须是**期初净值** ✓（第 12.46 条）。
+
+    🔴 2026-11-19 实测：-1072.79 / 5876.40 = **-18.3%**（期末，被放大）
+       正确：           -1072.79 / 6949.19 = **-15.4%**（期初）
+    """
+    import pandas as pd
+    acc = _acc_frame(5876.40, -1072.79, prev_mv=7086.0, cur_mv=3014.0)
+    latest = acc[acc["date"] == pd.Timestamp("2026-11-19").strftime("%Y-%m-%d")]
+    if latest.empty:
+        latest = acc[acc["date"] == "2026-11-19"]
+    ks = ir._kill_switch(latest, acc, 5876.40)
+    assert ks is not None, "该触发却没触发 ✗"
+    assert ks["prev_net"] == 6949.19
+    assert ks["pct"] == -15.44, "分母不是期初净值 ✗：%s" % ks["pct"]
+    assert ks["pct"] != -18.26, "还在用期末净值 ✗"
+
+
+def test_kill_switch_flags_liquidation_slippage():
+    """证券市值大幅下降 ⇒ `sold=True`（文案要标注「含减仓滑点」）✓。"""
+    import pandas as pd
+    acc = _acc_frame(5876.40, -1072.79, prev_mv=7086.0, cur_mv=3014.0)
+    latest = acc[acc["date"] == "2026-11-19"]
+    ks = ir._kill_switch(latest, acc, 5876.40)
+    assert ks["sold"] is True
+    assert ks["sell_ratio"] and ks["sell_ratio"] > 0.5
+
+
+def test_kill_switch_no_sell_flag_on_normal_day():
+    """正常波动（证券市值只小幅变化）⇒ `sold=False`，不误标 ✓。"""
+    import pandas as pd
+    acc = _acc_frame(6000.0, -300.0, prev_mv=6300.0, cur_mv=6100.0)
+    latest = acc[acc["date"] == "2026-11-19"]
+    ks = ir._kill_switch(latest, acc, 6000.0)
+    assert ks is not None
+    assert ks["sold"] is False
+
+
+def test_kill_switch_not_triggered_below_threshold():
+    """亏损不到 2% 期初净值 ⇒ 不触发 ✓。"""
+    import pandas as pd
+    acc = _acc_frame(6000.0, -50.0, prev_mv=6100.0, cur_mv=6050.0)
+    latest = acc[acc["date"] == "2026-11-19"]
+    assert ir._kill_switch(latest, acc, 6000.0) is None
