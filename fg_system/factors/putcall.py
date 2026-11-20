@@ -32,6 +32,11 @@ class PutCallFactor(Factor):
         if self.COL not in wide.columns:
             return pd.Series(float("nan"), index=wide.index)
         s = wide[self.COL].astype(float)
+        # 🔴 2026-11-20（第 12.58 条）：**不要**改成 `ffill(limit=5)` ✗ ——
+        #   数据侧存在 2019-10-07~2023-12-29 的 1066 交易日空洞（本机副本），
+        #   而 rolling_pct 的 min_periods=756 ⇒ 限幅会让全样本只剩 12 个有效日、
+        #   OOS 为 0 天（等于静默删除 10% 权重）✗
+        #   ⇒ 正确顺序：先修数据（MT-88）→ 再改这里 → 再回测（MT-89）
         s = s.ffill()                             # 缺失日前值填充（审批口径；
                                                   #   rolling.apply 窗口含 NaN 会全灭）
         pct = rolling_pct(s, config.RANK_WINDOW)  # [0,1] 滚动分位（无 NaN 输入）

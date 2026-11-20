@@ -258,9 +258,12 @@ def throttle_ok(state, current, target, date, extreme=False):
         return False, "未达调仓阈值 %.0fpp（偏离 %.1fpp）" % (
             config.REBALANCE_THRESHOLD * 100, abs(target - current) * 100)
     if state.last_rebalance_date:
-        gap = (pd.Timestamp(date) - pd.Timestamp(state.last_rebalance_date)).days
+        # 🔴 2026-11-20（第 12.59 条）：原用 `.days`（自然日）✗ —— 纪律 5.1 要求
+        #   「≥5 个**交易日**」，5 自然日只等于 3~4 个交易日 ✗
+        #   shortcut: 用工作日近似交易日，未排除美国假日；接入真实交易日历时替换
+        gap = len(pd.bdate_range(state.last_rebalance_date, date)) - 1
         if gap < config.REBALANCE_COOLDOWN:
-            return False, "处于调仓冷却期（距上次 %d 天 < %d 天）" % (
+            return False, "处于调仓冷却期（距上次 %d 个交易日 < %d）" % (
                 gap, config.REBALANCE_COOLDOWN)
     return True, "可操作"
 
