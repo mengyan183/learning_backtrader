@@ -160,10 +160,17 @@ def erp_monthly(pe=None, dgs10=None):
 
 def _align(df, target_index, value_col):
     """按 `available_date` 对齐到日频 ✓（只用 merge_asof，禁止 ffill ✗）。"""
-    right = df[["available_date", value_col]].dropna().sort_values(
-        "available_date").reset_index(drop=True)
-    left = pd.DataFrame({"t": pd.to_datetime(pd.Index(target_index))}
-                        ).sort_values("t").reset_index(drop=True)
+    # 🔴 2026-11-20：**两侧时间精度必须统一** ✗ —— pandas 3.0 起
+    #    `merge_asof` 对 `datetime64[s]` vs `[us]` 直接报
+    #    「incompatible merge keys」✗（本地 pandas 3.0.5 实测）
+    #    CSV 解析出 `[us]`，而 `load_wide()` 的索引是 `[s]` ⇒ 必须显式归一 ✓
+    right = df[["available_date", value_col]].dropna().copy()
+    right["available_date"] = (pd.to_datetime(right["available_date"])
+                               .astype("datetime64[ns]"))
+    right = right.sort_values("available_date").reset_index(drop=True)
+    left = pd.DataFrame({
+        "t": pd.to_datetime(pd.Index(target_index)).astype("datetime64[ns]")}
+    ).sort_values("t").reset_index(drop=True)
     merged = pd.merge_asof(left, right, left_on="t",
                            right_on="available_date", direction="backward",
                            allow_exact_matches=True)

@@ -89,13 +89,18 @@ def align_to(df, target_index, lag_days=0):
     if df is None or len(df) == 0:
         return pd.Series(dtype=float, name="baa10y")
     right = df[["available_date", "value"]].copy()
-    right["available_date"] = pd.to_datetime(right["available_date"])
+    # 🔴 2026-11-20：**两侧时间精度必须统一** ✗ —— pandas 3.0 起
+    #    `merge_asof` 对 `datetime64[s]` vs `[us]` 直接报
+    #    「incompatible merge keys」✗ ⇒ 显式归一 ✓（与 `erp._align` 同因）
+    right["available_date"] = (pd.to_datetime(right["available_date"])
+                               .astype("datetime64[ns]"))
     if lag_days:
         right["available_date"] = (right["available_date"]
                                    + pd.Timedelta(days=int(lag_days)))
     right = right.sort_values("available_date").reset_index(drop=True)
 
-    left = pd.DataFrame({"t": pd.to_datetime(pd.Index(target_index))})
+    left = pd.DataFrame({
+        "t": pd.to_datetime(pd.Index(target_index)).astype("datetime64[ns]")})
     left = left.sort_values("t").reset_index(drop=True)
 
     out = pd.merge_asof(left, right, left_on="t", right_on="available_date",
