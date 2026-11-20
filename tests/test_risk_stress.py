@@ -245,3 +245,31 @@ def test_brief_stress_section_renders_when_breached():
     txt = _stress_text([("YINN", 0.44), ("GDXU", 0.28), ("CONL", 0.15)])
     assert "击穿 -50% 预算" in txt
     assert "%%" not in txt, "纯字符串分支不该出现 `%%` ✗"
+
+
+def test_brief_stress_section_shows_leverage_zero_point():
+    """**杠杆归零点**必须显示 ✓，且单标的损失不许超过其全部市值 ✗。
+
+    3 倍 ETF 在标的跌 **33.3%** 时数学上归零 ✗ —— 这比「-46.6%」这种
+    精确到小数点的数字有用得多 ✓
+
+    🔴 2026-11-20 实测：原线性模型按 `pos × (-0.35 × 3) = -105%` 算，
+       单标的亏超 100% ✗（物理上最多亏光）⇒ 必须 `max(shock, -1.0)` 截断 ✓
+    """
+    txt = _stress_text([("YINN", 0.30), ("GDXU", 0.20)])
+    assert "杠杆归零点" in txt
+    assert "YINN 3x ⇒ 指数跌 33% 归零" in txt
+    assert "GDXU 3x ⇒ 指数跌 33% 归零" in txt
+    # ⚠️ 必须只看 **35% 那一行** ✗ —— 第一版写的是 `"-50.0%" in txt`，
+    #    结果「全部归零」那行也是 -50.0% ⇒ 断言永远成立 ⇒ **假守卫** ✗
+    #    （变异验证：去掉截断后测试仍绿，才发现 ✗）
+    line35 = next(l for l in txt.splitlines()
+                  if l.startswith("· 指数再跌 35%"))
+    assert "-50.0%" in line35, "35%% 情景没截断在该标的市值上 ✗：%s" % line35
+    assert "-52.5%" not in line35, "单标的亏超 100%% 了（没截断）✗"
+
+
+def test_brief_stress_section_skips_zero_point_for_unleveraged():
+    """1 倍标的（无杠杆）不产生归零点行 ✓ —— 它不会归零，别吓人 ✗。"""
+    txt = _stress_text([("BTC", 0.20)])
+    assert "杠杆归零点" not in txt

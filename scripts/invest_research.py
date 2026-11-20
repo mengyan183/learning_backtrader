@@ -1512,9 +1512,19 @@ def _stress_section(snap):
 
     budget = 0.50
     lines = []
+    # 🔴 2026-11-20：**杠杆归零点** ✓ —— 这是比「损失百分比」更有用的信息 ✗
+    #    N 倍杠杆 ETF 在标的跌 1/N 时**数学上归零**（3x ⇒ 33.3%，2x ⇒ 50%）✗
+    #    原来的线性模型照算 -105%（3x × -35%）⇒ 单标的亏超 100%，
+    #    物理上不可能（最多亏光）✗ ⇒ 下面用 max(shock, -1.0) 截断 ✓
+    zeros = sorted((1.0 / lev[s], s) for s in holdings if lev.get(s, 1.0) > 1.0)
+    if zeros:
+        lines.append("· 杠杆归零点：%s" % " · ".join(
+            "%s %gx ⇒ 指数跌 %.0f%% 归零"
+            % (s, lev[s], p * 100) for p, s in zeros))
     for drop in (0.20, 0.35):
         rep = _rs.stress_report(
-            holdings, shocks={s: -drop * lev[s] for s in holdings},
+            holdings,
+            shocks={s: max(-drop * lev[s], -1.0) for s in holdings},
             budget=budget)
         w = rep["by_scenario"][_rs.SCENARIO_WORST]
         if not w["symbols"]:
