@@ -407,8 +407,14 @@ def build_snapshot():
     valid = feat.dropna(subset=["fg_index"])
     if len(valid):
         row = valid.iloc[-1]
+        # 🔴 2026-11-20：绝对水平（固定阈值口径）✓ —— 旧 features.csv 没这列，
+        #    取不到就是 None（不猜、不崩）✓
+        _abs = row.get("fg_index_abs")
+        _abs = (round(float(_abs), 1)
+                if _abs is not None and _abs == _abs else None)
         snap["fg"] = {
             "date": str(row["date"].date()), "fg_index": round(float(row["fg_index"]), 1),
+            "fg_index_abs": _abs,
             "zone": row["zone"], "target_position": row["target_position"],
             "drawdown": row["drawdown"], "circuit_breaker": bool(row["circuit_breaker"]),
         }
@@ -1378,6 +1384,12 @@ def build_snapshot_lines(snap):
         # 2026-10-29：目标仓位打**百分比** ✗ —— 原来直接打 float，
         # 简报里出现 `0.4708333333333333` ✗
         out.append(f"系统贪恐指数 {f['fg_index']} [{f['zone']}] · 目标仓位 {float(f['target_position']):.1%} · 回撤 {f['drawdown']:.2%} · 熔断{'已触发' if f['circuit_breaker'] else '未触发'}")
+        # 🔴 2026-11-20：**绝对水平**与相对分位并列 ✓
+        #    `fg_index` 只答「相对过去三年排第几」✗（滚动分位决定）
+        #    ⇒ 补一条绝对口径，答「绝对风险高不高」✓
+        if f.get("fg_index_abs") is not None:
+            out.append(f"绝对水平 {f['fg_index_abs']}（固定阈值口径："
+                       f"VIX/期限结构/广度，**不是**滚动分位）")
     if snap.get("shoutu"):
         # 全量展示（修复 2026-10-07 审查发现的 [:6] 静默截断：UPRO/YINN 被隐藏）
         items = list(snap["shoutu"].items())
@@ -1449,6 +1461,70 @@ def build_snapshot_lines(snap):
     if eff:
         out.append("有效敞口: %s" % eff)
     return "\n".join(out)
+
+
+def _stress_section(snap):
+    """🩺 压力测试节 —— 把「这个仓位能不能扛住 -50%」变成数字 ✓。
+
+    🔴 2026-11-20 接线：`fg_system/risk_stress.py` 早就写好了
+       （`stress_report` / `zero_out_answer`），但 **grep 不到任何调用** ✗
+       ⇒ 用户只能看到「已经浮亏多少」，看不到「再跌会怎样」✗
+
+    情景（全是**假设**，不是预测）：
+      · 指数再跌 20% / 35% —— 按 `SHOUTU_API_PARAMS` 的 lever 传导（2x/3x）
+      · 全部归零 —— 杠杆 ETF 在极端行情可归零，作为尾部上界
+    预算取 **-50%**（用户 2026-11-20 明确问的那个数）。
+    """
+    try:
+        if str(REPO) not in sys.path:
+            sys.path.insert(0, str(REPO))
+        from fg_system import config as _cfg
+        from fg_system import risk_stress as _rs
+    except Exception:                      # noqa: BLE001
+        return ""
+    pos = snap.get("positions") or []
+    total = sum(float(v or 0) for v in (snap.get("accounts") or {}).values())
+    if not pos or total <= 0:
+        return ""
+
+    holdings, lev, defaulted = {}, {}, []
+    for r in pos:
+        sym = str(r.get("symbol") or "")
+        w = float(r.get("mv") or 0) / total
+        if not sym or w <= 1e-6:
+            continue
+        holdings[sym] = holdings.get(sym, 0.0) + w
+    for sym in holdings:
+        prm = _cfg.SHOUTU_API_PARAMS.get(sym.upper())
+        if prm:
+            lev[sym] = float(prm[0])
+        else:
+            lev[sym] = 1.0
+            defaulted.append(sym)
+
+    budget = 0.50
+    lines = []
+    for drop in (0.20, 0.35):
+        rep = _rs.stress_report(
+            holdings, shocks={s: -drop * lev[s] for s in holdings},
+            budget=budget)
+        w = rep["by_scenario"][_rs.SCENARIO_WORST]
+        if not w["symbols"]:
+            continue
+        tail = ("**击穿 -50% 预算**" if w["breaches_budget"]
+                else "距 -50% 预算还有 %.0fpp"
+                     % ((budget + w["total_loss"]) * 100))
+        lines.append("· 指数再跌 %.0f%% ⇒ 组合净值 %.1f%%（%s）"
+                     % (drop * 100, w["total_loss"] * 100, tail))
+    z = _rs.stress_report(holdings, budget=budget)["by_scenario"][
+        _rs.SCENARIO_ZERO]
+    lines.append("· 全部归零（极端尾部）⇒ 组合净值 %.1f%%（%s）"
+                 % (z["total_loss"] * 100,
+                    "**击穿**" if z["breaches_budget"] else "未击穿"))
+    if defaulted:
+        lines.append("⚠️ 无杠杆映射、按 1x 计：%s" % " / ".join(sorted(defaulted)))
+    lines.append("⚠️ 研究参考，不预测；杠杆取 `SHOUTU_API_PARAMS` 的 lever")
+    return "\n".join(lines)
 
 
 def risk_brief_text(snap):
@@ -1877,12 +1953,23 @@ def _ammo_line():
     `ammo_released` 只增不减（无重置逻辑）⇒ 这个数字必须直接读盘，不能推。
     """
     try:
+        # ⚠️ 不能指望调用方已经把 ROOT 塞进 sys.path ✗ —— 本函数可能在
+        #    简报生成的很早阶段被调用（那时只有 `scripts/` 在 path 里）✗
+        if str(REPO) not in sys.path:
+            sys.path.insert(0, str(REPO))
         from fg_system import config as _cfg
         with open(os.path.join(str(REPO), "Data", "state.json"),
                   encoding="utf-8") as fh:
             st = json.load(fh)
         total = len(_cfg.DRAWDOWN_BATCHES)
-        released = sorted(st.get("ammo_released") or [])
+        # 🔴 state.json 有**两种形态** ✗ —— 每日链里 `run()` 先写扁平形态，
+        #    随后 `run_portfolio()` 用嵌套形态覆盖（后者是最后一次写入）✗
+        #    ⇒ 只读 `st["ammo_released"]` 在 Mac 上会拿到 None ⇒ 误报「弹药池满」✗
+        if "portfolio" in st or "us_equity" in st:        # v2 嵌套形态
+            _src = st.get("us_equity") or st.get("portfolio") or {}
+            released = sorted(_src.get("ammo_released") or [])
+        else:                                             # v1 扁平形态
+            released = sorted(st.get("ammo_released") or [])
         per = _cfg.AMMO_PER_BATCH * 100
         triggers = _cfg.DRAWDOWN_BATCHES
     except Exception:                      # noqa: BLE001 —— 少一行比整段崩了强 ✓
@@ -2357,6 +2444,10 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     if _risk_sec:
         secs.append(("🛡️ 风控仓位（1%风险规则）", _risk_sec))
         secs.append("hr")
+    _stress_sec = _stress_section(snap)
+    if _stress_sec:
+        secs.append(("🩺 压力测试（能不能扛住 -50%）", _stress_sec))
+        secs.append("hr")
     _act_sec = action_brief_text(snap)
     if _act_sec:
         secs.append(("📉 减仓操作（双引擎：价格风控 × 贪恐系数）", _act_sec))
@@ -2760,6 +2851,9 @@ def build_brief(snap, sentiment, attribution, judge, news=None):
     _risk_sec = risk_brief_text(snap)
     if _risk_sec:
         lines += ["## 🛡️ 风控仓位（1%风险规则）", _risk_sec, ""]
+    _stress_sec = _stress_section(snap)
+    if _stress_sec:
+        lines += ["## 🩺 压力测试（能不能扛住 -50%）【研究参考】", _stress_sec, ""]
     _act_sec = action_brief_text(snap)
     if _act_sec:
         lines += ["## 📉 减仓操作（双引擎：价格风控 × 贪恐系数）【研究参考】", _act_sec, ""]
