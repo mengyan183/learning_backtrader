@@ -48,3 +48,57 @@ def test_sum_unrealized_skips_rows_without_cost():
         ["d", "stock", "B", "b", 5.0, 11.0, 10.0, 55.0, 55.0, "", "system", "USD"],
     ]
     assert sp._sum_unrealized(rows) == 5.0
+
+
+def test_refuses_to_overwrite_existing_snapshot(monkeypatch):
+    """当日快照已存在 ⇒ **默认拒绝覆盖** ✓（2026-11-20 实测事故）。
+
+    盘后手动补跑（北京 11-20 11:26 = 美东 11-19 22:26）会被
+    `trading_date()` 判成 11-19 ⇒ 把「11-19 收盘 6 个持仓」覆盖成
+    「盘后清仓后的 2 个」✗ ⇒ 历史时间轴错一天，且 `derive_trades`
+    靠相邻日差集反推 ⇒ 反推不出卖出 ✗
+    """
+    import pandas as pd
+
+    date = "2026-11-19"
+    a = pd.DataFrame([{"date": date, "account": "futu", "net_value": 1.0}])
+    p = pd.DataFrame([{"date": date, "symbol": "YINN", "quantity": 1}])
+
+    monkeypatch.setattr(sp, "load_existing", lambda: (a.copy(), p.copy()))
+    monkeypatch.setattr(sp, "trading_date", lambda: date)
+    monkeypatch.setattr(sp, "write_snapshot",
+                        lambda *x: (_ for _ in ()).throw(
+                            AssertionError("不该写盘 ✗")))
+    monkeypatch.setenv("FG_SYNC_MODE", "live")
+    monkeypatch.setattr(sp.sys, "argv", ["sync_positions.py"])
+
+    assert sp.main() == 0, "拒绝覆盖时应当安静返回 0（不是失败）"
+
+
+def test_allow_overwrite_flag_lets_it_through(monkeypatch):
+    """显式 `--allow-overwrite` ⇒ 不再拦在门口 ✓。"""
+    import pandas as pd
+
+    date = "2026-11-19"
+    a = pd.DataFrame([{"date": date, "account": "futu", "net_value": 1.0}])
+    p = pd.DataFrame([{"date": date, "symbol": "YINN", "quantity": 1}])
+    called = {"n": 0}
+
+    monkeypatch.setattr(sp, "load_existing", lambda: (a.copy(), p.copy()))
+    monkeypatch.setattr(sp, "trading_date", lambda: date)
+    monkeypatch.setattr(sp, "futu_health", type("H", (), {
+        "preflight": staticmethod(lambda: (False, "测试跳过")),
+        "guard": staticmethod(lambda **kw: None),
+        "done": staticmethod(lambda: None),
+        "write_status": staticmethod(lambda *a, **kw: None),
+    }))
+    monkeypatch.setattr(sp, "sync_okx", lambda acc, pos, d: (acc, pos))
+    monkeypatch.setattr(sp, "write_snapshot",
+                        lambda acc, pos: called.__setitem__("n", 1))
+    monkeypatch.setenv("FG_SYNC_MODE", "live")
+    monkeypatch.setattr(sp.sys, "argv",
+                        ["sync_positions.py", "--allow-overwrite"])
+
+    sp.main()
+    # 两源都没新增 ⇒ 走「不写盘」分支，但**已经过了覆盖检查** ✓
+    assert called["n"] == 0

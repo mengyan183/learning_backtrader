@@ -477,6 +477,8 @@ def sync_okx(accounts, positions, date):
 def main():
     ap = argparse.ArgumentParser(description="账户/持仓快照同步（实盘数据运行时生成）")
     ap.add_argument("--check", action="store_true", help="仅查看当前快照状态，不执行任何同步")
+    ap.add_argument("--allow-overwrite", action="store_true",
+                    help="允许覆盖当日已存在的快照（默认拒绝，见 2026-11-20 事故）")
     args = ap.parse_args()
 
     mode = os.environ.get("FG_SYNC_MODE", "static").strip().lower()
@@ -512,6 +514,20 @@ def main():
     print(f"[sync] FG_SYNC_MODE=live：动态同步 {date}"
           f"（美东交易日口径，{MARKET_CLOSE_HOUR_ET}:00 ET 为收盘线）")
     accounts, positions = load_existing()
+    # 🔴 2026-11-20：**默认不覆盖**当日已存在的快照 ✗
+    #    实测事故：北京 11-20 11:26 = 美东 11-19 22:26（已收盘）
+    #    ⇒ `trading_date()` 返回 11-19 ⇒ 盘后手动补跑把「11-19 收盘 6 个持仓」
+    #      覆盖成「盘后清仓后的 2 个」✗
+    #    ⇒ 历史时间轴错一天，且 `derive_trades` 靠相邻日差集反推 ⇒ 反推不出卖出 ✗
+    #    ⇒ 默认拒绝；确实要覆盖时加 `--allow-overwrite` ✓
+    _has_today = bool(
+        (not accounts.empty and (accounts["date"] == date).any())
+        or (not positions.empty and (positions["date"] == date).any()))
+    if _has_today and not args.allow_overwrite:
+        print("[sync] ⛔ %s 的快照已存在 ⇒ **拒绝覆盖**（默认行为）" % date)
+        print("     原因：盘后补跑会用「更晚的持仓」覆盖「已收盘日」的快照 ✗")
+        print("     确实要覆盖 ⇒ 加 `--allow-overwrite`")
+        return 0
     # 当日覆盖写：同一交易日已有快照行时先剔除，避免重复追加导致下游重复计入
     accounts = accounts[accounts["date"] != date].reset_index(drop=True)
     positions = positions[positions["date"] != date].reset_index(drop=True)
