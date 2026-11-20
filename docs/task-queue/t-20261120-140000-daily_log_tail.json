@@ -1,0 +1,10 @@
+{
+  "id": "t-20261120-140000-daily_log_tail",
+  "action": "daily_log_tail",
+  "params": {
+    "which": "shoutu_refresh_out",
+    "lines": 60
+  },
+  "status": "pending",
+  "created_at": "2026-11-20T14:00:00"
+}
