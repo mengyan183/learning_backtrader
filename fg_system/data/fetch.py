@@ -293,8 +293,15 @@ def merge_incremental(old, new):
             .sort_values(["symbol", "date"]).reset_index(drop=True))
 
 
-def update_prices(path=None, symbols=None, sleep=1.0):
+def update_prices(path=None, symbols=None, sleep=1.0, max_fail=3,
+                  deadline_s=180):
     """增量更新价格文件。返回 (合并后 DataFrame, 各标的本次新增行数)。
+
+    🔴 2026-11-20 加固（每日链实测 1364s 才失败）✗：
+       · `max_fail`：**连续**这么多个标的失败 ⇒ 熔断，不再逐个撞超时 ✓
+       · `deadline_s`：整步总预算，到点就收 ✓
+       · 两种提前结束都**先落盘已取到的数据**，再抛 `RuntimeError`
+         ⇒ 数据不丢 + 每日链台账照记 rc=1 ✓（不静默成功 ✗）
 
     增量语义：本地已有该标的时，只请求 missing_ranges 给出的起始日期之后的数据
     （Nasdaq 的 fromdate 参数生效，见设计文档 §4.1）；本地没有该标的时从
@@ -310,25 +317,61 @@ def update_prices(path=None, symbols=None, sleep=1.0):
                      for sym in symbols}
 
     frames = []
+    fails = 0
+    t0 = time.time()
+    aborted = None
     for sym in symbols:
+        # 🔴 2026-11-20 实测：网络断时 39 标的 × 5 次重试 × 35s 超时
+        #    ⇒ 这一步跑了 **1364s** 才失败 ✗ 每日链白等 23 分钟 ✗
+        #    ⇒ 连续失败熔断 + 总预算，两个都到就停 ✓
+        if fails >= max_fail:
+            aborted = "连续 %d 个标的抓取失败" % fails
+            break
+        if time.time() - t0 > deadline_s:
+            aborted = "超过 %ds 预算" % deadline_s
+            break
         start, _ = missing_ranges(old, sym)
         fromdate = start.strftime("%Y-%m-%d") if start is not None else "2010-01-01"
-        frames.append(fetch_symbol(sym, fromdate=fromdate))
+        try:
+            frames.append(fetch_symbol(sym, fromdate=fromdate))
+            fails = 0
+        except Exception as exc:          # noqa: BLE001
+            fails += 1
+            print("[warn] %s 抓取失败（连续 %d/%d）：%s: %s"
+                  % (sym, fails, max_fail, type(exc).__name__, exc))
         time.sleep(sleep)
 
-    merged = merge_incremental(old, pd.concat(frames, ignore_index=True) if frames else pd.DataFrame())
+    if aborted is None and fails >= max_fail:
+        # 失败发生在**末尾**时循环是自然结束的 ⇒ 这里补一次判定 ✓
+        aborted = "连续 %d 个标的抓取失败" % fails
+
+    # ⚠️ 空 `frames` 必须带列名 ✗ —— `merge_incremental` 里要按
+    #    `["symbol", "date"]` 排序，无列的 DataFrame 会抛 KeyError ✓
+    fresh = (pd.concat(frames, ignore_index=True) if frames
+             else pd.DataFrame(columns=PRICE_COLUMNS))
+    merged = merge_incremental(old, fresh)
     # 拆股前复权（事件表 + 杠杆确认的自动识别，幂等）—— 未复权的拆股日会让
     # 下游看到 -71% 的假跌幅（2026-11-05 SOXX 1:3 实测）
-    before = merged["close"].copy()
-    merged = splits.apply(merged, splits.load())
-    for sym in sorted(set(merged.loc[(before != merged["close"]).values, "symbol"])):
-        print("[split] %s: 已按拆股比例前复权历史价格" % sym)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    merged.to_csv(path, index=False, encoding="utf-8")
+    # ⚠️ 熔断路径下 `frames` 可能为空、`old` 也可能不存在 ⇒ merged 没有列 ✗
+    #    ⇒ 先判列，别让 `merged["close"]` 抛 KeyError 盖住真正的失败原因 ✓
+    if "close" in merged.columns:
+        before = merged["close"].copy()
+        merged = splits.apply(merged, splits.load())
+        for sym in sorted(set(merged.loc[(before != merged["close"]).values,
+                                         "symbol"])):
+            print("[split] %s: 已按拆股比例前复权历史价格" % sym)
+    if not merged.empty:                  # 熔断且本地无旧文件 ⇒ 别写出空表 ✗
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        merged.to_csv(path, index=False, encoding="utf-8")
 
     # added 必须按「合并后的实际新增行数」统计。注意 fresh 是**增量窗口**而非累计量，
     # 用 len(fresh) - before 在增量语义下会得到错误（甚至负数）的计数。
     added = {sym: len(merged[merged["symbol"] == sym]) - before_counts[sym] for sym in symbols}
+    if aborted:
+        # 已落盘 ⇒ 抛出去让每日链记 rc=1（静默成功会让「数据停更」查不出来 ✗）
+        raise RuntimeError(
+            "update_prices 提前结束（%s）：只更新了 %d/%d 个标的，"
+            "其余保留本地旧数据" % (aborted, len(frames), len(symbols)))
     return merged, added
 
 

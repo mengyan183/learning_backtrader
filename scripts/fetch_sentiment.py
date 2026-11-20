@@ -13,6 +13,7 @@
 """
 import os
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -28,13 +29,33 @@ OKX_URLS = {
 }
 
 
-def fetch(url: str, proxy: bool = False, timeout: int = 15) -> str:
-    """下载文本；proxy=True 走本地代理（海外端点）。"""
-    handler = urllib.request.ProxyHandler({"http": PROXY, "https": PROXY}) if proxy else urllib.request.ProxyHandler({})
-    opener = urllib.request.build_opener(handler)
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with opener.open(req, timeout=timeout) as r:
-        return r.read().decode("utf-8", "replace")
+def fetch(url: str, proxy: bool = False, timeout: int = 15,
+          retries: int = 3) -> str:
+    """下载文本；proxy=True 走本地代理（海外端点）。
+
+    🔴 2026-11-20 加**重试** ✗ —— 实测 CBOE CDN 偶发
+       `TimeoutError: The read operation timed out`，一次失败就让整条
+       `fetch_sentiment.py` rc=1 ⇒ `vix.csv` 停在 T-1 ⇒ features 的
+       `vix`/`term` 为 NaN ✗
+    """
+    last = None
+    for i in range(retries):
+        handler = (urllib.request.ProxyHandler({"http": PROXY, "https": PROXY})
+                   if proxy else urllib.request.ProxyHandler({}))
+        opener = urllib.request.build_opener(handler)
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        try:
+            with opener.open(req, timeout=timeout) as r:
+                return r.read().decode("utf-8", "replace")
+        except Exception as exc:              # noqa: BLE001
+            last = exc
+            if i + 1 < retries:
+                wait = 2 * (i + 1)
+                print("  [retry] %s 第 %d/%d 次失败（%s），%ds 后重试"
+                      % (url.split("/")[-1], i + 1, retries,
+                         type(exc).__name__, wait))
+                time.sleep(wait)
+    raise last
 
 
 def sync_vix():
@@ -110,6 +131,16 @@ def build_sentiment():
 
 if __name__ == "__main__":
     RAW.mkdir(parents=True, exist_ok=True)
-    sync_vix()
+    # 🔴 2026-11-20：VIX 失败**不再**中断后面两步 ✗ —— 原来一挂全挂，
+    #   资金费率/PutCall 明明能拿到也白丢 ✓；退出码仍非 0（台账要记）✓
+    vix_ok = True
+    try:
+        sync_vix()
+    except Exception as exc:                  # noqa: BLE001
+        vix_ok = False
+        print("[warn] VIX 同步失败（%s: %s）⇒ 继续跑资金费率 / PutCall"
+              % (type(exc).__name__, exc))
     sync_funding()
     build_sentiment()
+    if not vix_ok:
+        sys.exit(1)
