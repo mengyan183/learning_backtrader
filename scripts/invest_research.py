@@ -34,6 +34,14 @@ from contextlib import contextmanager
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+# 🔴 2026-11-20：**仓库根也要进 `sys.path`** ✗ ——
+#    本脚本是 `python scripts/invest_research.py` 跑的 ⇒ `sys.path[0]` 是
+#    `scripts/`，**不是**仓库根 ✗ ⇒ 任何 `from fg_system import ...` 都会
+#    `ModuleNotFoundError: No module named 'fg_system'` ✗
+#    实测症状（每日链日志）：`[warn] 有效敞口计算失败：No module named
+#    'fg_system'` ⇒ 简报里的「有效敞口」一直是**回退值**，没人发现 ✗
+#    ⚠️ 顺序：先插 REPO 再插 scripts ⇒ scripts 仍在 index 0（同名时优先）✓
+sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(REPO / "scripts"))
 DATA = REPO / "Data"
 

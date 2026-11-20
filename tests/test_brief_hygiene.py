@@ -89,3 +89,35 @@ def test_strip_removes_markdown_heading():
     assert "##" not in out
     assert "一、逐标的归因" in out
     assert "二、组合风险点" in out
+
+
+def test_repo_root_on_sys_path_so_fg_system_importable():
+    """脚本上下文（`sys.path` 无 cwd）下必须能 `from fg_system import ...` ✓。
+
+    🔴 2026-11-20 实测（每日链日志里一直有）✗：
+       `[warn] 有效敞口计算失败：No module named 'fg_system'` ✗
+       根因：本脚本以 `python scripts/invest_research.py` 运行 ⇒
+       `sys.path[0]` 是 `scripts/`，**仓库根不在其中** ✗
+       ⇒ `build_snapshot()` 里那句 `from fg_system import position_plan`
+         每轮都抛 ModuleNotFoundError ⇒ 简报的「有效敞口」**一直是回退值** ✗
+       （不崩、不报警，只是悄悄少一行 ⇒ 谁也没发现 ✗）
+
+    这条测试用**子进程**模拟脚本上下文：先把 `''`/`'.'`（cwd）从 sys.path
+    剔掉，再只放 `scripts/` —— 与真实运行方式一致 ✓
+    """
+    import subprocess
+
+    code = (
+        "import sys\n"
+        "sys.path = [p for p in sys.path if p not in ('', '.')]\n"
+        "sys.path.insert(0, 'scripts')\n"
+        "import invest_research as ir\n"
+        "assert str(ir.REPO) in sys.path, 'REPO 不在 sys.path ✗'\n"
+        "from fg_system import position_plan as pp\n"
+        "print(pp.leverage_of('YINN'))\n"
+    )
+    r = subprocess.run([sys.executable, "-c", code], cwd=REPO,
+                       capture_output=True, text=True,
+                       encoding="utf-8", errors="replace")
+    assert r.returncode == 0, "脚本上下文导不进 fg_system ✗：%s" % (r.stderr or "")[-400:]
+    assert "3" in (r.stdout or ""), "leverage_of('YINN') 应为 3"
