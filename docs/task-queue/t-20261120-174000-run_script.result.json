@@ -1,0 +1,17 @@
+{
+  "id": "t-20261120-174000-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "portfolio_backtest.py",
+    "args": [
+      "--json"
+    ],
+    "timeout": 1800
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"portfolio_backtest.py\", \"args\": [\"--json\"], \"stdout\": \"# 组合回测层（M2.1 · 内化方案 B）：等权组合 vs 买入持有\\n\\n- 生成：2026-11-20 18:35 · scripts/portfolio_backtest.py\\n- 引擎：**内化**——复用生产回测引擎（runner.run_single + FgStrategy + next_position，含成本/执行约束/backtrader 成交）；组合 = 单标的策略日收益等权合成（TQQQ/SOXL/UPRO，各 0.333333）\\n- 交叉验证：组合日收益 ≡ Σ(1/n)·单标的日收益（构造保证）（max|diff|=0）\\n- OOS：2024-10-04 起（对齐 baseline meta.is_oos）\\n\\n| 指标 | 组合（OOS） | B0 等权买入持有（OOS） | 组合（IS） |\\n|---|---|---|---|\\n| 年化 | 11.81% | 28.09% | 6.27% |\\n| 最大回撤 | -20.31% | -61.70% | -38.93% |\\n| Sharpe | 0.50 | 0.36 | 0.30 |\\n| Calmar | 0.58 | 0.46 | 0.16 |\\n\\n## 标的腿（OOS）\\n\\n| 标的 | 组合腿年化 | B0 腿年化 | 组合腿回撤 | B0 腿回撤 |\\n|---|---|---|---|---|\\n| TQQQ | 9.22% | 17.60% | -18.46% | -58.30% |\\n| SOXL | 16.85% | 12.65% | -35.68% | -86.40% |\\n| UPRO | 7.46% | 17.78% | -15.64% | -49.09% |\\n\\n## 相关性矩阵（策略日收益）\\n\\n| 标的 | TQQQ | SOXL | UPRO |\\n|---|---|---|---|\\n| TQQQ | 1.00 | 0.90 | 0.95 |\\n| SOXL | 0.90 | 1.00 | 0.84 |\\n| UPRO | 0.95 | 0.84 | 1.00 |\\n\\n> 由 scripts/portfolio_backtest.py 生成 · 只读回测，不修改生产；\\n> A/B 对照与内化决策记录见 evolution/experiments/portfolio/decision.md\\n[portfolio] json → /Users/xingguo/learning_backtrader/evolution/experiments/portfolio/portfolio-oos.json\\n[portfolio] md → /Users/xingguo/learning_backtrader/evolution/experiments/portfolio/portfolio-oos.md\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-20T18:34:57",
+  "finished_at": "2026-11-20T18:35:00",
+  "duration_s": 3.17
+}
