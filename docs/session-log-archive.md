@@ -1,0 +1,679 @@
+# 会话交接历史档案（2026-09 ~ 2026-11-09）
+
+> 从 `docs/NEXT-SESSION.md` 拆出（2026-11-20）✓
+> `NEXT-SESSION.md` 只保留「当前状态 + 最近一条汇总 + 环境备忘」；
+> **本文件是查证用的历史条目，按日期倒序，不再更新** ✗
+> 新条目请写进 `NEXT-SESSION.md` ✓
+
+---
+
+
+## 📌 2026-11-09 美联储前瞻文案改为动态生成（`config.py` 变更记录）
+
+- **现象**：简报长期写「**10月预计维持**」✗，而 10-28 的 FOMC 早已开完（用户实测）。
+- **根因**：`config.FED_OUTLOOK_TXT` 是**冻结字符串** ✗；`FED_LAST_DECISION` 停在 `2026-09-16` ✗。
+- **改法**（`fg_system/fed.py`）：按「下次会议 + FedWatch 隐含概率」动态生成；且**只在同月时**采用概率
+  （`FOMC_MEETINGS_2026` 存会议**开始日**、`fedwatch.csv` 的 `meeting` 是**结束日**，差一天；
+  本地 fedwatch 停在 10-13/会议 10-28 ⇒ 不加同月校验会把 78% 假挂到 12 月 ✗）。
+- **`config.py` 本次只改「数据 + 文案」**：决议日 → `2026-10-28`、文案补「10月会议维持（区间未变）」；
+  **不动任何判据 / 阈值 / 权重** ⇒ 不涉及第 8 条的「先回测」，`FED_OUTLOOK_TXT` 降级为
+  「找不到下次会议」时的兜底。
+- 守卫：`tests/test_fed_outlook.py`（4 条 + 变异验证：去掉同月校验 ⇒ 测试必挂 ✓）。
+
+## 📌 2026-11-06 **交接：新会话从这里开始**
+
+### 三项交接的复核结果（2026-11-06 实测，原「未开始」是错的 ✗）
+
+| # | 任务 | 状态 | 关键信息 |
+|---|---|---|---|
+| **①** | **实现 `H-009`** | ✅ 已完成 | 2026-11-05 就已写成 `CUSTOM` runner（`verify_h009`，**不再在 `PENDING`**）。**2026-11-06 补齐判据**：加两比例 z 检验（`math.erfc`，零新依赖）⇒ `passed = 负收益率更高 且 p ≤ 0.05`（原实现只看方向 ✗ 判据原文要求 p≤0.05）；抽出纯函数 `_h009_core(pos, px)` 可测；新增 3 条行为测试 + 变异验证（去掉 p 门槛 ⇒ 测试必挂 ✓）。⚠️ 本机 `positions.csv` 仅 **1 日** ⇒ 本机 `pending`（>28% 组 0 / <20% 组 2）。**Mac 实跑回执（2026-11-06 10:40，`docs/task-queue/t-20261106-103524-verify_hypotheses.result.json`）仍是 `pending`：>28% 组 **0 个观测** / <20% 组 28 个** ⇒ 27 天快照里**没有任何标的占比 >28%**（09-22 实测最高 GDXU 26.9%）⇒ 触发条件在现有持仓规模下**从未发生** ✗；要么继续等（仓位变大才可能触发），要么按第 8 条流程重定阈值（不得私自改判据 ✗） |
+| **②** | **解释 `H-011`/`H-028`/`H-038` 为何无明确阈值** | ✅ 已答 | 见下「三条假说的判据形态」 |
+| **③** | **`_act_sync_positions` 加 `day_pnl` 非空统计** | ✅ 已交付并实测 | `scripts/run_task_queue.py` 已加 `day_pnl_nonnull` / `day_pnl_ratio` / `last_day`；Mac 实测（`docs/task-queue/t-20261105-172910-sync_positions.result.json`）：54 行 / 非空 **52** / 比例 **0.963** / `last_day {stock: 748.39, crypto: 50.48}` ⇒ `fill_day_pnl` 生效 ✓ |
+
+### ① `H-009` 实现的参考坐标
+
+```
+CUSTOM 字典位置：scripts/verify_hypotheses.py 的 `CUSTOM = {`
+runner 签名：    def verify_hNNN(df) -> dict
+返回约定：       {"passed": bool, "status": "ok"|"pending", "note": str, ...}
+                ⚠️ pending 分支**可以不给 note**（`_run_custom` 已用 .get ✓）
+数据源：         Data/positions.csv（date / symbol / market_value）
+                Data/raw/prices.csv（symbol / date / close）
+⚠️ BTC 不在 prices.csv（在 crypto_prices.csv）⇒ 要跳过
+```
+
+### ② 三条假说的判据形态（这才是「没阈值」的原因）
+
+| 假说 | 原文检验方法 | 为什么不是天数 |
+|---|---|---|
+| **H-011** | 「以信号方向（上升/下降）分组，比较各组日均浮亏变化绝对值；**样本不足则先累积至 3 组以上**」| 门槛是**信号升降周期数 ≥3** ✗ 不是交易日 |
+| **H-028** | 「统计**所有交易日**中，现金余额为正且累计盈亏为负的频率」+「频率**低于 10%** 则不成立」| 用**频率阈值** ✗ 根本没设样本量门槛 |
+| **H-038** | 「统计 zone 2.0 期间（**2026-09-25~10-05**）累计盈亏变化」| 用**固定日期区间** ✗ 不是滑动窗口 |
+
+⇒ **只有 `H-006`(≥60) / `H-008`(≥40) 写的是「≥N 交易日」** ✓ 所以只有它们能写「等数据：x/y」
+
+### 当前数据状态（2026-11-06 实测）
+
+```
+accounts.csv   54 行  date_unique 27  2026-09-22 → 2026-11-04
+positions.csv 162 行  date_unique 27  2026-09-22 → 2026-11-04
+day_pnl       已修（fill_day_pnl 按 account 分组 diff）但**尚未验证回填结果**
+```
+
+### 假说台账状态（19 条待验证）
+
+```
+verifying       3 条  H-006(27/60) H-008(27/40) H-009
+open           15 条
+pending-revise  1 条  H-085
+```
+
+### 已交付但**未验证**的改动
+
+| 改动 | 包 | 需验证什么 |
+|---|---|---|
+| 拆股识别（`loader.py`）| `sync_1106e` | `run_pipeline` 是否不再中止 ✗ |
+| `bsk_eval` 补 observe（`fetch_shoutu.py`）| `sync_1106e` | `fetch_shoutu_history` 是否成功 ✗ |
+| `--write-notes`（`verify_hypotheses.py`）| `sync_1105ay` | 台账备注是否写入「等数据：27/60」✗ |
+
+### 开新会话的第一句话建议
+
+⚠️ 原来那三句（H-009 / day_pnl / 三假说阈值）**已全部收口** ✗ 不要再派一遍 ✗
+
+```
+@command://using-superpowers  1:从gitee拉取最新代码并看有无新下发任务
+2：核对「已交付但未验证的改动」三张单的 Mac 回执
+```
+
+---
+
+## 🔴 2026-11-06 **拆股被当成数据错误**（`SOXX 1:3`，pipeline 全链中止）
+
+**症状**：`pipeline.run` 在 Mac 上 **rc=1（1 秒）** ✗ `features.csv` 停在 11-04 ✗
+
+```
+DataQualityError: 异常跳变（疑似未复权或数据错误），pipeline 中止：
+  SOXL 2026-11-05: SOXL 收益 -38.70% 与 3×SOXX 收益 -70.97% 偏离 174.21pp
+  SOXL 2026-11-05: 3×SOXX 收益 +212.91% 超绝对兜底阈值
+```
+
+**真相**（用户指出 ✓）：**`SOXX` 2026-11-05 做 1 股拆 3 股** ✗ 不是脏数据 ✓
+
+```
+SOXX: 11-04 close 451.06 → 11-05 close 130.94（-70.997%）
+     130.94 × 3 = 392.82 ⇒ 392.82/451.06 - 1 = **-12.9%**
+SOXL: 66.75 → 40.915（-38.7%）≈ 3 × (-12.9%) ✓ 完全吻合
+```
+
+**修法**：`check_split_anomalies` 加**拆股识别** ✓
+
+```python
+SPLIT_REL_TOL = 0.25
+for dt, v in und_r.dropna().items():
+    if v > -0.30:                  # 只有大跌才可能是拆股
+        continue
+    implied = 1.0 / (1.0 + v)      # 隐含「1 股拆成几股」
+    nearest = round(implied)
+    if nearest >= 2 and abs(implied - nearest) < SPLIT_REL_TOL * nearest:
+        skip.add(dt)               # 拆股日不算异常
+```
+
+**踩坑**：`1/(1-0.70997) = 3.448` ✗（混了当天跌 12.9% ✗）
+⇒ 绝对容差 0.15 ⇒ `|3.448-3| = 0.448` ✗ **识别失败** ✗
+⇒ 必须**相对** `0.25 × 3 = 0.75` ✓ ⇒ `0.448 < 0.75` ✓ **成功** ✓
+
+**验证** ✓：
+```
+[loader] WARN SOXX 2026-11-05: 疑似 3:1 拆股（标的收益 -70.97%，隐含 3.44:1）
+        ⇒ 已跳过该日检查，数据需复权
+✓ 通过（拆股被识别，未中止）: True
+```
+
+⚠️ **遗留**：数据**仍未复权** ✗ `SOXX` 的 `close` 还是拆股后的 ✗
+⇒ 依赖 `SOXX` 的因子/回测会**看到 -71% 的假跌幅** ✗
+⇒ ✅ **2026-11-06 已落地**：`fg_system/data/splits.py` 新增 `detect()`（杠杆对手盘交叉确认）+ `apply()`（前复权，幂等），`fetch.update_prices` 已接入 ⇒ Mac 下次跑抓价会自动把 SOXX 历史 ÷3 复权 ✓（真实 10 年数据实测 0 误改）
+
+### 顺带：`bsk_eval` 的 cooperate 问题
+
+`fetch_shoutu_history` 在 Mac 上失败 ✗ 报 `shared page control or observation changed`
+⇒ `bsk evaluate` **要求「刚 observe 过」** ✗
+⇒ 修法：**失败时补一次 `observe` 再重试** ✓（不无条件 observe ✗ 会慢一倍 ✗）
+
+### 教训：**不要用 `git stash` 验证「是否既有失败」**
+
+2026-11-06 我用 `git stash` + `pytest` 判断某测试是否既有失败 ✗
+⇒ `stash pop` 后**未提交的改动全丢了** ✗（拆股修复 + bsk_eval + 文档 ✗）
+⇒ 正确做法：**先 `git diff > /tmp/x.patch` 再 stash** ✓
+   或**直接看 `git log` 的基线提交** ✓ 或**只读不改地跑一次** ✓
+
+---
+
+## ✅ 2026-11-05 **CME FedWatch 最终方案：富途 OpenD 官方接口**
+
+### 🕐 简报时间标注时区（2026-11-05 用户要求）
+
+**为什么需要**：简报里混着两种时区的日期 ✗ 读者分不清 ✗
+
+| 来源 | 时区 | 依据 |
+|---|---|---|
+| `config.FOMC_MEETINGS_2026` | **美东** | federalreserve.gov 官方日程 |
+| `config.MACRO_EVENTS_2026` | **美东** | FRED 官方日程 |
+| 纪要发布日 | **美东** | 同上 |
+| `fedwatch.csv` 的 `date` | **北京** | `fetch_fedwatch_futu.py` 写 `date.today()` |
+| 会议日（`fw_meeting`）| **美东** | 富途返回的 FOMC 会议日 |
+
+**改动**（`fg_system/fed.py` 的 `fed_brief_text`）：
+
+```
+下次 FOMC：2026-12-08 **美东**（还有 33 天）
+纪要发布：2026-11-18 **美东**（13 天后）
+下次宏观数据：CPI(10月)（2026-11-10 **美东**，5 天后）
+市场预期（CME FedWatch 2026-11-05 **北京** · 会议 2026-12-09 **美东**）：...
+```
+
+**实测**：`美东 4 处 / 北京 1 处` ✓
+
+**另外 4 处用「方案 B」统一处理** ✓（`_source_footnote` 一行覆盖 ✓）：
+
+```
+... · ⚠️ 时区：除标注「北京」外，日期均为美股收盘日（美东）
+```
+
+覆盖：`守猪待兔(日期)` / `positions.csv(快照 日期)` / `数据日 日期` / 简报标题日期
+
+**为什么不全篇逐处标注**：4 类日期混着两种时区 ✗ 逐处加会显著拉长文本 ✗
+⇒ 一行说明覆盖全部 ✓ 且 `_source_footnote` 被**飞书版和 Markdown 版共用** ✓ 只改一处 ✓
+
+---
+
+### 🔴 富途版暴露的一个真 bug：`fed.py` 取错会议
+
+**症状**：简报显示
+
+```
+市场预期（CME FedWatch 2026-11-05）：维持 6.4% / 加息25bp 93.0% / 降息 0.6%
+```
+
+日期对了（11-05 ✓）但**数值错得离谱** ✗ —— 那是 **`2027-12-08`**（最远会议 ✗）
+而正确应是 **`2026-12-09`**（`hold=20.5 hike=79.5` ✗）
+
+**根因**：`_load_fedwatch()` 用 `df.iloc[-1]`
+
+```
+旧 CME 版：一次只写 **1 个会议** ⇒ iloc[-1] 恰好对 ✓
+富途版：  一次写 **9 个会议** ⇒ iloc[-1] 拿到最远的 ✗
+```
+
+**修法**：筛选「最近的未来会议」
+
+```python
+# ① 只保留最新抓取日的行
+_df = _df[_df["date"] == _df["date"].max()]
+# ② 按 meeting 升序，取第一个 >= 今天
+_fut = _tmp[_tmp["_m"] >= pd.Timestamp(dt.date.today())]
+```
+
+**验证**（模拟多会议 CSV）：
+
+```
+取到的 meeting: 2026-12-09 ✓
+  hold=20.5 ✓  hike=79.5 ✓
+**结论：✓ 正确**
+```
+
+### ✅ 已接进每日链（2026-11-05）
+
+**Mac 实测成功**：
+
+```
+fedwatch.csv  2026-10-13 → **2026-11-05** ✓   （23 天停更解决）
+seconds: **1.2 秒**                            （bsk 版要 34.5 秒 ✗ 快 29 倍）
+解析出 9 个会议：
+   meeting  ease_pct  hold_pct  hike_pct
+2026-12-09       0.0      20.5      79.5
+2027-01-27       0.0      15.8      84.2
+2027-03-17       0.0       7.2      92.8
+...（共 9 个，累计 18 行）
+```
+
+**改动**：
+
+| 项 | 内容 |
+|---|---|
+| `com.xingguo.fg-daily.plist` | 在 `fetch_kalshi_fed.py` **之前**插入 `fetch_fedwatch_futu.py`（guard 300s ✗）|
+| **删除** `scripts/fetch_fedwatch.py` | headless ✗ 实测零 `<table>` ✗ |
+| **删除** `scripts/fetch_fedwatch_bsk.py` | bsk ✗ 实测零 pct ✗ 34.5 秒 ✗ |
+| **保留** `scripts/fetch_kalshi_fed.py` | ✓ 交叉校验用 ✓ |
+| `run_task_queue.py` 白名单 | 移除 bsk 版 ✗ 加入 futu 版 ✓ |
+
+### 结论：**不用爬虫，用富途** ✓
+
+```python
+from futu import OpenQuoteContext
+ctx = OpenQuoteContext(host="127.0.0.1", port=11111)
+ret, data = ctx.get_fed_watch_target_rate()
+# ret == 0（futu.RET_OK 就是整数 0）
+# columns: ['meeting_date', 'target_range', 'probability']
+# rows: 46
+```
+
+**实测数据（2026-11-05）**：
+
+```
+2026-12-09  3.75-4.00%  18.5   ← hold（当前区间）
+2026-12-09  4.00-4.25%  81.5   ← hike 25bp
+2027-01-27  3.75-4.00%  14.2
+2027-01-27  4.00-4.25%  67.1
+2027-01-27  4.25-4.50%  18.7
+```
+
+**与 Kalshi 交叉验证**（2026-12-09）：
+
+| 来源 | ease | hold | hike |
+|---|---|---|---|
+| Kalshi | 1.0 | **18.5** | 80.5 |
+| **富途** | 0（无降息档）| **18.5** | **81.5** |
+
+⇒ **`hold` 完全一致** ✓ `hike` 差 1.0（富途数据里没有 `3.50-3.75%` 档）✓
+
+### 为什么市面其他方案都不行
+
+| 方案 | 结论 |
+|---|---|
+| `cme-fedwatch`（PyPI 0.2.1）| ✗ **已停维护**（2026-10 归档 ✗）|
+| `fed-funds-target.json` | ✗ **404**（GitHub 上的猜测是错的 ✗）|
+| `curl_cffi` / `nodriver` / `FlareSolverr` / Firecrawl | ✗ 解决的是「反爬识别」✗ 而我们卡的是「数据在 QuikStrike iframe + Referer 校验 + ASP.NET JS 渲染」✗ 无解 ✗ |
+| `cmegroup.cn` → `quikstrike.net` | ✗ 入口找对了 ✗ 但纯 HTTP 只返回 3395 字节 `Loading View...` ✗ bsk 直访被 `PerformReferrerCheck` 拒 ✗ |
+| **富途 OpenD** | **✓ 官方接口 ✓ 零新增依赖 ✓** |
+
+### 新脚本 `scripts/fetch_fedwatch_futu.py`
+
+```bash
+python scripts/fetch_fedwatch_futu.py --dry-run   # 只看不写
+python scripts/fetch_fedwatch_futu.py --debug     # 打会议明细
+python scripts/fetch_fedwatch_futu.py             # 写 fedwatch.csv
+```
+
+**转换规则**（`target_range` 分布 ⇒ `ease/hold/hike`）：
+
+```python
+cur = _norm_range(config.FED_RANGE_TXT)   # "3.75%-4.00%" ⇒ (3.75, 4.00)
+hold = prob[区间 == cur]
+hike = Σ prob[区间 > cur]
+ease = Σ prob[区间 < cur]
+```
+
+⚠️ **必须规范化**：富途返回 `"3.75-4.00%"`（**少一个 %** ✗ 用 `-` ✗）
+而 `config.FED_RANGE_TXT` 是 `"3.75%-4.00%"` ✗ ⇒ 不规范化会**匹配不上** ✗
+
+**输出列与旧 `fedwatch.csv` 完全一致** ✓ `fed.py` 不用改 ✓
+唯一损失：`wk_hold_pct` / `wk_hike_pct` / `m_*` 是 `None`（富途无历史 ✗）
+⇒ `fw_delta_1w` / `fw_curve` 为 `None` ✓ 但它们在 `fed_context` 里是**可选** ✓
+
+### 🔴 踩坑：`futu.RET_OK` **就是整数 0**
+
+```python
+# 错的：
+ok = ("RET_OK" in str(ret))    ← str(0) == "0" ✗ 永远 false ✗
+# ⇒ 接口明明成功了 ✗ 却被判失败 ✗ 还提前 return 丢掉了 data ✗
+
+# 对的：
+ok = (ret == 0) or ("RET_OK" in str(ret))
+```
+
+---
+
+## 🗄️ 2026-11-05 CME 新入口（`cmegroup.cn` → `quikstrike.net`，已废弃 ✗）
+
+### 关键突破：`insid`/`qsid` 不需要浏览器
+
+**旧方案**（已废弃 ✗）：用 headless Chrome 抓 netlog ✗ 从里面捞 `insid`/`qsid` ✗
+
+**新方案**（纯 HTTP ✓）：
+
+```
+① GET https://cmegroup-tools.quikstrike.net/User/QuikStrikeTools.aspx
+        ?viewitemid=IntegratedFedWatchTool&userId=lwolf
+        &jobRole=&company=&companyType=
+   ⇒ 返回 HTML 里 **`<form action="...&insid=XXX&qsid=YYY">`**
+      `insid`/`qsid` **由服务端自动生成** ✓ **不需要浏览器** ✓
+
+② 从 HTML 提取 `action` + `__VIEWSTATE` + `__VIEWSTATEGENERATOR`
+   + `__EVENTVALIDATION`
+
+③ POST 那个 action URL
+```
+
+### 怎么发现的
+
+```
+cmegroup.cn/fed-watch/ 的 HTML 里嵌了 iframe：
+  <iframe src="https://cmegroup-tools.quikstrike.net/User/QuikStrikeTools.aspx
+               ?viewitemid=IntegratedFedWatchTool&userId=lwolf&...">
+  ⇒ **`userId=lwolf` 是硬编码的** ✓ 不是动态的 ✓
+```
+
+### 两个网络前提（重要）
+
+| 前提 | 说明 |
+|---|---|
+| **必须走公司代理** | `cmegroup.cn` 和 `quikstrike.net` **直连都不通** ✗（`ping` 100% 丢包 ✗）|
+| **必须关证书校验** | 公司代理做 **SSL MITM** ✗ 用**弱 CA 密钥** ✗ ⇒ `CERTIFICATE_VERIFY_FAILED: CA certificate key too weak` ✗<br>⇒ `curl` 报 `(43) bad argument` ✗ 是**同一个根因** ✗<br>⇒ `ssl._create_unverified_context()` ✓ |
+
+### 当前卡点
+
+```
+GET/POST 都只返回 **3395 字节** ✗ 零个百分比 ✗
+  <div style="display:none">Loading View...</div>   ← **JS 异步加载** ✗
+  PageMethods=0  WebMethod=0  iframe=0
+⇒ 纯 HTTP 拿不到最终数据 ✗ 但**入口是对的** ✓
+⇒ 下一步：用 **bsk 打开那个 quikstrike URL** ✓ 让浏览器执行 JS ✓
+   （它是**标准 ASP.NET 页面** ✗ 不是反爬 SPA ✗ ⇒ 可能不拦 ✓）
+```
+
+---
+
+## 🟡 2026-11-05 假说推进：数据**够**，但提示语**误导**（已修）
+
+### 实测：数据一直在积累
+
+```
+inspect_snapshots：
+  accounts   54 行  date_unique **27**  date_null 0  2026-09-22 → 2026-11-04
+  positions 162 行  date_unique **27**  date_null 0  2026-09-22 → 2026-11-04
+```
+
+⇒ **27 个交易日** ✓ **不是 1 天** ✗
+
+### 但 `verify_hypotheses` 报「本机仅 **1 日**快照」
+
+**根因**：`PENDING` 字典里 `missing_dep` 是**写死的字符串** ✗
+
+```python
+PENDING = {
+    "H-006": ('...', 'Data/accounts.csv（本机仅 1 日快照，需 ≥60 交易日）'),
+    "H-017": ('...', 'Data/positions.csv（本机仅 2026-09-22 一日快照）'),
+}
+```
+
+⇒ **永远不更新** ✗ 让人误以为数据从没积累 ✗
+
+**修法**：定义后**动态读真实天数**替换 ✓
+**效果**：Windows「本机 1 个交易日」✓ Mac「本机 **27 个交易日**」✓
+
+### 结论：不是「永远验证不了」，是「等时间」
+
+| 假说 | 需要 | 现在 | 还差 |
+|---|---|---|---|
+| H-008 | ≥40 交易日 | 27 | **13 天**（约 11-18）|
+| H-006 | ≥60 交易日 | 27 | **33 天**（约 12-08）|
+| H-009 | T+10 前瞻 | 27 | 已有 10 天 ✓ 可跑 ✓ |
+
+⚠️ `accounts.csv` 的 `day_pnl` **只有 1/54 行有值** ✗
+⇒ 但 `net_value` 是 54/54 ✓ 所以「日差分」可用 `net_value` 算 ✓
+
+---
+
+## 🗄️ 2026-11-05 裁定：**暂时放弃 CME FedWatch**（已从每日链移除）
+
+### 决定性证据（`bsk --diagnose` 实测）
+
+| # | 证据 | 结论 |
+|---|---|---|
+| ① | `iframes: {count: 0}` | **不是 iframe 问题**（假设被否定）|
+| ② | `has_table_tag: false` / `pct_in_html: 0`（489 KB 主文档）| **零个表格、零个百分比** |
+| ③ | `click` **4 种 CSS 选择器全失败** + `evaluate` 失败 | 全是 `shared page control or observation changed` |
+| ④ | **本机 `example.com` 对照**：`click a` ✓ `evaluate 1+1` ✓ | **bsk 本身没问题**，是 **CME 反自动化** |
+| ⑤ | 唯一业务 API `CmeWS/mvc/quotes/v2/contracts-by-number` = **403** | 纯 HTTP 不通，`network` 也拿不到响应体 |
+
+⇒ **CME 明确在反爬** ✗ 反爬是**不可持续对抗**的 ✗
+⇒ 每天浪费 **288 秒**（Chrome 跑 3 次，2 次超时 180s）
+⇒ **Kalshi 已提供等价数据** ✓（`hike=80.5%` 比 CME 的 10-13 数据新 **23 天**）
+
+### 改了什么
+
+- `scripts/com.xingguo.fg-daily.plist`：**移除** `fetch_fedwatch.py` 那一步
+  （命令长度 3070 → 2956，guard 数 23 → 22）
+- **不改 `drift_monitor.py`** —— 它的 `fed` crosscheck 行为是
+  「任一源缺失 ⇒ 报告明示并跳过」✓ 设计好的 ✓
+- **不改 `check_freshness.py`** —— 它**没有引用 `fedwatch.csv`** ✓
+
+### 仍保留的东西
+
+- `scripts/fetch_fedwatch.py`（headless 版）和 `scripts/fetch_fedwatch_bsk.py`
+  **代码保留** ✗ 只是不进链 ✓ 将来 CME 若开放数据可复用
+- `fg_system/fed.py` 的 **Kalshi 兜底** ✓ 继续生效 ✓
+
+---
+
+## 🆕 2026-11-05 `fed` 因子的两个真 bug（已修）
+
+### bug ①：`wk == wk` 挡不住 `None` ⇒ 整个 try 块跳过
+
+```python
+wk = fw.get("wk_hike_pct")        # Kalshi 兜底返回 None ✗
+ctx["fw_delta_1w"] = (ctx["fw_hike"] - float(wk)) if wk == wk else None
+                                                    ↑ None == None 是 True ✗
+⇒ float(None) 抛 TypeError ✗ ⇒ 后面的 fw_date / fw_source 全没赋值 ✗
+```
+
+**症状**：简报显示「市场预期（CME FedWatch **None**）：维持 22.5% / 加息25bp 76.0%」
+
+**修法**：`if (wk is not None and wk == wk)` ✓
+（`wk == wk` 只能挡 `NaN` ✗ 对 `None` 无效 ✗）
+
+### bug ②：兜底没返回 `date`，也没标注来源
+
+- `fed_brief_text` 用 `ctx["fw_date"]` ✗ 而兜底 dict 没 `date` ✗
+- 硬写「CME FedWatch」✗ 但实际可能是 Kalshi ✗ 误导 ✗
+
+**修法**：
+- 兜底 dict 加 `"date": _pick("date")` ✓
+- 新增 `ctx["fw_source"]` ✓ 简报显示 `CME FedWatch 2026-10-14 · **Kalshi 兜底** ✗`
+
+### 顺带修了一个测试
+
+`tests/test_fedwatch_migration.py` 写死 `"date": "2026-10-13"` ✗
+⇒ 新鲜度检查判定过期 ⇒ 走兜底 ⇒ 兜底没 `wk_hike_pct`/`m_hike_pct` ⇒ **4 个测试全挂** ✗
+⇒ 改成 `_dt.date.today().isoformat()` ✓
+
+---
+
+## 🗄️ 2026-11-04 数据源：Stooq 已废弃 ✗ + CME 改用 bsk ✓
+
+### Stooq：**实测不可用，代码已删** ✗
+
+```
+stooq_raw_head:
+<!DOCTYPE html>...<noscript>This site requires JavaScript to verify
+your browser.</noscript><script nonce="...">(async()=>{const c="AAAA...
+```
+
+⇒ Stooq 加了 **JS 挑战** ✗ 纯 HTTP **永远拿不到 CSV** ✗
+⇒ 而 11 个标的**已全部补齐**（`TLT/XBI/ITB/KRE` 各 2514 行 ✓ 到 11-03 ✓）
+⇒ 兜底**永远不会被触发** ✗ ⇒ 已删除（`config.STOOQ_API` /
+  `fetch.parse_stooq_csv` / `fetch.fetch_symbol_stooq` / `fetch_symbol` 兜底块 /
+  `diagnose_symbols` 的 `test_stooq`）
+
+⚠️ **删代码时踩坑**：用「跳过 N 行」的粗糙脚本删 ✗ 误删了 `config.SYMBOLS` /
+`UNDERLYING_MAP` / `LEVERAGE_RATIO` ✗ ⇒ 10 个测试失败 ✗
+⇒ **已从 git 恢复 + 按「连续注释行往上吃」精确删** ✓
+⇒ 教训：**删代码必须按语义定位，不能按固定行数** ✗
+
+---
+
+## 🆕 2026-11-04 CME FedWatch：改用 **bsk**（真实 Chromium）
+
+### 为什么不用 headless
+
+| 方案 | 实测结果 |
+|---|---|
+| `--dump-dom`（headless ✗）| 287KB ✗ 有 `FedWatch` 字样、有 `ZQ` 合约代码 ✗ **零个百分比数字** ✗ |
+| 直接调 `CmeWS/mvc/quotes/v2/contracts-by-number` | **HTTP 403** ✗ |
+| **bsk（真实浏览器 ✓）** | **待验证** ✓ |
+
+### 新脚本 `scripts/fetch_fedwatch_bsk.py`
+
+```bash
+python scripts/fetch_fedwatch_bsk.py --dump-html /tmp/cme.html   # 先看结构 ✗
+python scripts/fetch_fedwatch_bsk.py --write                     # 解析并写盘 ✓
+```
+
+**流程**（严格按 bsk lifecycle ✗ 否则报
+`shared page control or observation changed` ✗）：
+```
+bsk session start            → 4 字母 id ✓
+bsk navigate <url> --session → 打开 ✓
+bsk wait-ms 8000 --session   → **等 JS 渲染** ✓（关键 ✗ 不等就是空表）
+bsk get-html --session       → 渲染后 HTML ✓
+bsk session stop <id>        → **必须停** ✓（成功/异常都停）
+```
+
+**⚠️ 已知限制**：
+- 需 Mac 上 **Chrome 常驻 + bsk daemon 在跑** ✗
+- 与 **OpenClaw agent** 抢浏览器会失败 ✗（`--retries` 缓解 ✓）
+- `parse()` 的**字段映射待确认** ✗ —— 旧正则依赖 `<td class="number">` ✗
+  而实测 `has_number_td: False` ✗ ⇒ **必须先 `--dump-html` 看真实结构** ✗
+
+**✅ 好消息：Mac 端发飞书不用 bsk** ✓
+`invest_research._send_feishu` 走**官方 API**（`open.feishu.cn` ✗ 纯 `urllib`）✓
+⇒ **bsk 抓数据与发飞书不冲突** ✓
+（只有 **Windows 侧**的 `feishu_send.py` 用 bsk 网页版 ✗）
+
+**下一步**：
+1. Mac 上 `fetch_fedwatch_bsk.py --dump-html /tmp/cme.html` ✓
+2. 看 HTML 里概率数据的**真实结构** ✗ 再改 `parse()` ✓
+3. 验证通过后接进每日链（替换 `fetch_fedwatch.py` ✗）
+
+---
+
+## 🗄️ 2026-11-04 数据源：加 Stooq 备选（已废弃 ✗ 见上）
+
+**为什么改（问题）**：
+- `config.FETCH_SYMBOLS` **39 个** ✗ 而 `prices.csv` 长期只有 **36 个** ✗
+- 缺的 11 个全是**主流 ETF**：`DIA / EWY / ITB / KRE / TLT / VGK / XBI / XLE / XLK / XLU / XLV`
+- `fetch_symbol` 已有 `assetclass=etf→stocks` 回退 + 3 轮退避重试 ✗ 仍抓不到 ✗
+- **根因**：`fetch_symbol` 抓不到时 `return 空表` ✗ ⇒ `update_prices` 对空表**不报错** ✗
+  ⇒ 该标的**静默消失** ✗（`TLT` 是 H-065 必需 ✗ `XBI`/`ITB`/`KRE` 是关注列表底层必需 ✗）
+
+**改了什么**：
+- `config.STOOQ_API = "https://stooq.com/q/d/l/?s={symbol}.us&i=d"`
+- `fetch.parse_stooq_csv()` / `fetch.fetch_symbol_stooq()`
+- `fetch_symbol` 在「Nasdaq 空表」时**自动试 Stooq** ✓（不 raise ✗ 双失败才返回空表 ✓）
+- Stooq 走 **直连→代理双路径** ✓ —— **不用 `config.PROXY`** ✗（那是**公司代理** `10.30.6.49:9090` ✗ 家里不可达 ✗）
+  顺序：`FG_PROXY` → `HTTPS_PROXY` → `HTTP_PROXY` → `config.PROXY`
+
+**为什么不直接把 `stooq.com` 加进 `PROXY_HOSTS`**：
+- `PROXY_HOSTS` 是**静态白名单** ✗ 走代理就永远走 ✗
+- 而「公司能连代理、家里不能」✗ ⇒ 静态分流**两边都会坏一边** ✗
+- 实测（国内/Windows）：`stooq.com` **直连超时** ✗ 需代理 ✓
+- ⇒ 只能**运行时先试直连、失败再试代理** ✓
+
+**已知限制**：
+- Stooq 一次返回**全历史** ✗ 不支持 `fromdate` ⇒ 本地按 `fromdate` 过滤 ✓（流量略大 ✗）
+- 失败返回纯文本 `No data` ✗ ⇒ `parse_stooq_csv` 显式识别 ✓ 返回空表 ✓
+- ⚠️ **未在 Mac 验证**（Windows 无代理 ✗ 测不通 ✗）⇒ 下次 Mac 跑 `diagnose_symbols` 时看 `fetch_ok`
+
+**待办**：
+- ① Mac 上跑一次 `diagnose_symbols`（`symbols=TLT,XBI,ITB,KRE` ✗）确认 Stooq 可用
+- ② 若 Stooq 也不通 ⇒ 换 Yahoo `v8/finance/chart/{sym}`（需代理 ✓）
+
+### 🔴 铁律（2026-11-04 用户裁定）：数据源改动**必须在 Mac 侧验证**
+
+```
+Windows 端受限于**公司网络** ✗
+  ⇒ 部分外网域名直连不通 ✗（实测 `stooq.com` 超时 ✗）
+  ⇒ 代理是**公司代理** `10.30.6.49:9090` ✗ 家里不可达 ✗
+⇒ **任何数据源改动，Windows 侧「测通」不代表可用** ✗
+⇒ 必须下发到 Mac 跑一次才算验证 ✓
+```
+
+**验证方式（按改动类型选）**：
+
+| 改动 | 验证动作 |
+|---|---|
+| 新增/修改 fetch 脚本 | `run_fetch_step --script=<名> --args=<参数>` |
+| 改 `fetch_symbol` / 备选源 | `diagnose_symbols --symbols=<清单> --test_stooq=1` |
+| 改整批抓取逻辑 | `fetch_prices`（回报 `prices.csv` 最新日期 ✓）|
+
+**⚠️ `test_stooq=1` 的意义**：
+- Nasdaq 能抓到的时候，Stooq 兜底**根本不会被触发** ✗
+- ⇒ 不单独测就**永远不知道兜底是否可用** ✗
+
+### 🆕 CME FedWatch 适配（2026-11-04 用户要求「CME 要适配」）
+
+**已加两个诊断开关**（`scripts/fetch_fedwatch.py`）：
+
+```bash
+fetch_fedwatch.py --dump-urls      # 从 netlog 列出所有相关 URL ✗ 找新接口
+fetch_fedwatch.py --keep-netlog    # 保留 8MB+ netlog 到 /tmp 供离线分析
+```
+
+**已确认事实**：`netlog 8.7MB` ✗ 但**零个 `QuikStrike` 请求** ✗
+⇒ CME 换了接口 或 加了反爬 ✗
+
+**下一步**（在 Mac 上跑）：
+```bash
+run_fetch_step --script=fetch_fedwatch.py --args=--dump-urls
+```
+⇒ 拿到 URL 清单后，看 `CmeWS/mvc/*` 或新域名，再决定怎么改解析 ✓
+
+---
+
+## 🆕 2026-10-27 MT-76：C1 BAA10Y 信用利差因子进评测池（闭环）
+
+- **分工**：① Mac 供数（带 available_date 的 `Data/raw/fred_baa10y_avail.csv`，T+5 自然日显式滞后防 lookahead）→ ② Windows 写因子 `fg_system/factors/credit_spread.py` → ③ Windows 必测 lookahead → ④ Mac 跑 IC/IR/分层单调性 → ⑤ 回写。
+- **落地**：②③ 由 Windows sync_1027b 交付（patch 因 docs 基准漂移 git apply 整包拒绝，已人工拆解）；`credit_spread.py`（level/zscore/score，`merge_asof(backward,on=available_date)` 禁 ffill）+ `tests/test_credit_spread.py`（11 passed lookahead）；④ 固化 `scripts/eval_baa10y.py`。
+- **④ 评测结果**（样本 2019-09-26→2026-10-26，z 非空 n=1779，756 warmup）：**H10 rank_ICIR=0.548（n1710，近窗0.517 无衰减，pearson 0.566）= 唯一过门槛 horizon**，verdict=通过、best_horizon=10；H5 0.473 / H20 0.459 / H40 0.411 未达 0.5；分层 mono H5/10/20=1.000、H40=0.900，top-bottom 随 horizon 单调。正交性：~putcall −0.076、~breadth −0.089（近零正交）；~vix −0.484、~fg_index −0.450（中等负相关非重复）；~fed +0.604（偏高留意）。
+- **口径**：只进评测池、**不进合成权重（走 M2.2）**；未回头调窗口/滞后凑数；待回测裁判/人工审批。已推送 `be29d57`，结论飞书回传协作群。
+
+## 🆕 2026-10-26 方向 A：每日链新鲜度治理（本轮落地）
+
+- **取证结论**：`task_monitor.collect_status()` 当前 all_ok，12 项数据全在容忍窗、9 个 launchd 任务全注册 ⇒ 任务页监控口径本身正确，用户截图里的陈旧是历史停更、现已恢复，**无需改前端/监控逻辑**（任务页 `index.html` 动态遍历 `d.data`，新增项自动渲染）。
+- **唯一现存真实停更 = FRED 三序列**：`fred_DFF`（factor_screen 生产用）/`fred_DGS10`（H-065 归因控制量）/`fred_T10Y2Y`（term 观察）此前**既不在每日链也不在监控** ⇒ 静默停更多日无人发现。
+- ✅ **修复**：① 手动补跑 `fetch_fred.py --series DFF,T10Y2Y,DGS10`（本地 key 走官方 API，补到最新工作日）；② `task_monitor.py` DATA_CHECKS 增三项（列名 `observation_date`，tol=5 自然日吸收周末/节假日/T+1）；③ `server.py` `_RETRY_MAP` 增三项 fred 页面重试映射；④ 已安装 `com.xingguo.fg-daily.plist` 在 kalshi_fed 后插入 fetch_fred 步骤并已 bootout+bootstrap 重载。
+- **研究候选不挂每日**：`BAA10Y`/`BAMLH0A0HYM2`/原油 `DCOILWTICO` 属按需研究（verify_hypotheses / crude_factor_check），非常态生产，不挂每日链、不纳入监控。
+- ✅ **plist 回流入库**：仓库 `scripts/` 新增/更新全部贪恐 launchd 副本（fg-daily 覆盖 + evolve-verify/evolve-weekly/fg-monitor/fg-realtime/fg-sync-watcher/kb-update/quarterly-walkforward/shoutu-daily/shoutu-history）；`fg-dashboard` 因含 Basic 密码只入库**脱敏模板**（`CHANGE_ME`，密码不进 git）。
+- 相关测试 118 passed（task_monitor + dashboard）；全量回归见提交说明。
+
+---
+
+## 🆕 2026-10-10 ~ 10-16 增量（本轮重点）
+
+- ✅ **双端链路加固**：`--patch` 增量包（**MT-20** ✓）+ **分片丢失根因修复**（**`9c2be0d`** ✓：失败包误写 `done` 判定加固 ✓ + 停用目录级连坐清理 ✓）
+- 🔴 **§C.3 预登记自检清单从 5 条 → 9 条** ✓（`docs/dual-end-workflow.md`）—— 由 **H-065 一条假说连踩 5 个坑**反推得出：
+  ① 自变量不含结论 / ② 判据不与定义重叠 / ③ 稀有事件禁占比比较 / ④ 措辞与意图逐字对齐 / ⑤ 指标尺度匹配机制尺度 /
+  ⑥ 样本低于下限只报数不推断 / ⑦ 非盲登记须显式标注 + 分段稳健 / ⑧ patch 基准 / ⑨a 全样本显著 ≠ 稳健 / ⑨b 子样本下限按**功效**算
+- 🔴 **patch 通道失败的真正根因 = 打包基准漂移** ✗（2026-10-19 更正 ✗）：
+  **不是**「通道不可用」✗，而是**上一包还没入库就打下一包** ✗ —— `sync_1019e` 基于 `origin/main=16ad892` 打包 ✗，而 `sync_1019d`（含 MT-36 行修复 ✗）随后才落地 ⇒ 1019e 把该修复当「新增」再带一遍 ✗ ⇒ 上下文错位 ⇒ `patch does not apply` ✗。
+  ⇒ **规则**：**同一文件在上一包入库前，不得再发新包** ✗（串行，不要并发 ✗）；表格类文档优先**整文件包** ✓；patch 只用于**大文件单发** ✓（`FG_PROXY` 必带 ✓）。
+- ✅ **C-3 趋势过滤移除已落地并真数据复核**（**MT-23** ✓）：`TREND_FILTER_FACTOR` 0.5 → 1.0 ✓；`trend` 恒 1.0 ✓；30 天观察窗已启动 ✓
+- ✅ **nuwa P0 简报渲染复核**（**MT-24** ✓）；**H-065 数据接入**（**MT-26/27/28**：TLT + DGS10 + **BAA10Y 1986 起** ✓）
+- ✅ **抗风险 S-0~S-5**（**MT-11~15** ✓）：`features.csv`/`portfolio_features.csv` 停更修复 + **组合级接入每日链** ✓、freshness 护栏 ✓、回撤预算曲线 ✓、模型目标 vs 实盘偏离行 ✓
+- ✅ **归因标尺修复**（**MT-21/22** ✓）：生产口径下趋势过滤 **收益 −5.90pp / 回撤改善 +1.72pp**；OOS **101/120 窗不劣化** ✓
+
+---
+
+## 当前状态基线（2026-10-09，历史留痕）
+
+- ✅ **回测裁判恢复**：`fg_system/backtest/*` 还原（issue #3 关闭），`evolution/baseline.json` 产出（IS 至 2024-09-30 / OOS 自 2024-10-01）
+- ✅ **A 类阻塞全解除**：H-005 rejected / H-007 adopted（2026-10-08 验证）
+- ✅ **C 系列全落地**（2026-10-08）：C-1 变体设施 / C-2 提案自动化 / C-3 审批闭环 / C-4 周报自动化 / C-5 季度 walk-forward / C-6 执行确认 / C-7 因子库扩展 / C-9 扩池策略侧 / C-10 实盘-回测归因 / C-11 衰减降级；V-H7 三标的 OOS 均不采纳（负结果如实登记，裁决 Y 纳入长期观察）
+- ✅ **B 系列**：B-6 Put-Call 免 key 链路（IC 0.044 / IR 0.58）/ B-7 新闻情绪（NewsAPI 免费 key）/ B-4 假说口径修订（H-010~H-021 按真实列重措辞）
+- ✅ **Q1-Q4**：alternative.me 市场级 FNG 交叉校验 / TokenUnlocks 受阻登记 / BeckieAnalysis 中文字幕入库 / 方法论书单进 fg-qa
+- ✅ **数学模型**：HMM 状态识别 / 档位马尔可夫矩阵 / EVT 阈值校准 / 贝叶斯假说信心（`fg_system/models/`，纯 numpy）
+- ✅ **阶段 1️⃣ 敏感性分析四组闭环**（2026-10-09）：circuit（贪婪侧不敏感/恐惧侧极恐线5敏感）、zone（基准[20,40,60,80]稳健）、core（两端敏感、0.45居中合理）、trim（阈值未介入回测路径）；`evolution/sensitivity/` 四张表 + 汇总 README
+- ✅ **阶段 2️⃣ 变体回测 V-H7/V-ATR/V-VOL**（2026-10-09）：三变体 OOS 均不采纳（收益损失>回撤收益，SOXL 上 V-VOL 回撤还恶化）⇒ **激进仓位即收益来源，防御降仓不划算**；等价性守卫全通过；提案草稿 evolution/experiments/variant_h007_2026-10-09.md
+- ✅ **阶段 2️⃣ V-CORR + V-MA 落地**（2026-10-09）：variants.py 新增 V-CORR（VIX 滚动1年80分位→仓位×0.5）与 V-MA（close<MA50→×0.5）；守卫 12 passed；**UPRO V-CORR 为阶段2首个提案候选**（年化+0.04pp、回撤持平）已按用户批复 **Z（纳入长期观察）** 审批（1134b27）
+- ✅ **V-ATR/V-VOL 归档**（2026-10-09 晚）：walk-forward 20/22 窗建议归档 → variants.py 标记 `archived: True`（9c56eeb）；**激进仓位即收益来源，防御降仓 OOS 不划算**
+- ✅ **链上金融观察池**（2026-10-09 晚，0277a02）：OBSERVE_SYMBOLS 新增 COIN/HOOD/CRCL（HOOD 补价 1305 行）；ONCHAIN_FINANCE_TAGS 研究标签（CRCL 利率敏感）；假说 H-030 量价-资金背离 / H-031 利率敏感度；微信文章 11 块入 kb（channel=wechat_article）
+- ✅ **微信研报提升点**（2026-10-09 晚，3808a1f）：H-033 币股分层 / H-034 稳定币使用效率新假说；ONCHAIN_FINANCE_TAGS 增 valuation_type 分层；7 篇文章入 kb（+19 块，集合 2816）；H-030 编号冲突修复（撞号→H-032）
+- ✅ **H-002 判据定案**（2026-10-09）：10-02 起 5 交易日现金全 <0（-879.99×5）⇒ **adopted 确认成立**（B-1 解除）
+- ✅ **C-5 walk-forward 全变体重检**（2026-10-09，40 季度窗）：**V-CORR 三标的全维持观察**（27/27/26 窗，与 OOS 提案互相印证）⇒ 待 C-3 人工审批；V-MA 仅 TQQQ 维持；V-H7 延续观察；**V-ATR/V-VOL 建议归档**
+- ✅ **知识库**：YouTube 频道字幕 → ChromaDB（yt_trading）+ `scripts/kb_search.py` + kb-search 技能；外部仓库精华沉淀 `docs/kb-insights.md`
+- ✅ **H-023** 凯利公式 vs 规则仓位假说（半凯利上限，样本 <60 日不落地）
+- ✅ **量化选型决策**：vectorbt + PyPortfolioOpt（不引入 Qlib/LEAN/vn.py）
+- ✅ **毛选方法论 skill**（mao-methodology）+ 简报归因主要矛盾标注
+- ✅ **守猪待兔修复**：历史通道重建（fetch_shoutu.py），解除信号陈旧
+- ✅ **新鲜度/简报/网页刷新系列修复**：freshness 交易日差≥1 天即触发、刷新触发 live 同步、简报减仓双引擎
+
