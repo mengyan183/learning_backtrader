@@ -1,0 +1,13 @@
+{
+  "id": "t-20261120-100000-run_pytest",
+  "action": "run_pytest",
+  "params": {
+    "files": "tests/test_run_task_queue.py,tests/test_update_prices_resilience.py,tests/test_fetch_sentiment_retry.py"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"failed\": [\"FAILED tests/test_run_task_queue.py::test_env_whitelist_blocks_unrelated_secrets\"], \"tail\": \"...............................................F.......................  [100%]\\n=================================== FAILURES ===================================\\n_________________ test_env_whitelist_blocks_unrelated_secrets __________________\\n\\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fe33877a5f0>\\n\\n    def test_env_whitelist_blocks_unrelated_secrets(monkeypatch):\\n        \\\"\\\"\\\"环境变量白名单 ✓ —— 动作读不到无关密钥（2026-11-02 用户裁定）。\\n    \\n        🔴 原来 `subprocess` **继承全部** `os.environ` ✗ ⇒\\n          动作能读到 plist 里所有密钥（`FG_LLM_KEY` / `FEISHU_OPEN_ID` …）✗\\n        \\\"\\\"\\\"\\n        monkeypatch.setenv(\\\"SOME_SECRET_KEY\\\", \\\"leak-me\\\")\\n        env = q._env_for(\\\"factor_diag\\\")\\n        assert \\\"SOME_SECRET_KEY\\\" not in env, \\\"无关密钥泄漏进动作环境 ✗\\\"\\n>       assert \\\"PATH\\\" in env, \\\"基础变量被误删 ✗\\\"\\nE       AssertionError: 基础变量被误删 ✗\\nE       assert 'PATH' in {'HOME': '/Users/xingguo'}\\n\\ntests/test_run_task_queue.py:708: AssertionError\\n=========================== short test summary info ============================\\nFAILED tests/test_run_task_queue.py::test_env_whitelist_blocks_unrelated_secrets\\n1 failed, 70 passed in 2.72s\"}",
+  "started_at": "2026-11-20T09:56:34",
+  "finished_at": "2026-11-20T09:56:37",
+  "duration_s": 3.16
+}
