@@ -40,6 +40,11 @@ LAUNCHD_LABELS = ("com.xingguo.fg-task-queue",
                   "com.xingguo.fg-sync-watcher",
                   # `evolve_verify.py` 由它定时跑 ⇒ 要能远程重启触发一次验证 ✓
                   "com.xingguo.fg-evolve-verify",
+                  # 🔴 2026-11-20：`shoutu_fng.csv` 停更 36 天（10-14 之后没再写）✗
+                  #   实测 out 日志只有 1 次成功、err 日志只有 2 个 DNS traceback
+                  #   ⇒ job 大概率**没被 launchd 加载**（plist 文件在 ≠ 已 bootstrap）✗
+                  #   ⇒ 加白名单，好让 `restart_queue` 能对它走 bootout+bootstrap ✓
+                  "com.xingguo.fg-shoutu-refresh",
                   "com.xingguo.dsh.web")
 
 
