@@ -1,0 +1,11 @@
+{
+  "id": "t-20261120-162600-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "invest_research.py",
+    "args": ["--dry-run"],
+    "timeout": 600
+  },
+  "status": "pending",
+  "created_at": "2026-11-20T16:26:00"
+}
