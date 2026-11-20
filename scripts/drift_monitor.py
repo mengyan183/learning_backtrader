@@ -59,18 +59,47 @@ def load():
     return signal, close
 
 
+#: 🔴 2026-11-20（第 12.51 条）：漂移阈值改**相对基线** ✗
+#:    旧绝对值 `0.3 / 0.5` 是相对「全窗 |ICIR| ≈ 1.16（未折算）」定的 ✗
+#:    而第 12.48 条把 ICIR 按重叠折算（×0.577）⇒ 绝对值全部缩水 ✗
+#:    ⇒ 改用「近窗 / 全窗」的**比值**，与口径无关 ✓
+#:    取整依据：旧 0.3/0.5 ÷ 基线 1.16 = **0.26 / 0.43** ⇒ 取 0.30 / 0.45 ✓
+#:    （比旧口径略严，方向偏保守 —— 宁可多报，不放过真实衰减）
+DECAY_ALERT = 0.30      # 近窗 |ICIR| < 全窗基线的 30% ⇒ 告警
+DECAY_WARN = 0.45       # < 45% ⇒ 预警
+MIN_BASE_ICIR = 0.15    # 全窗基线本身太弱 ⇒ 比值无意义，判「数据不足」
+
+
 def decide(full, recent):
-    """漂移判定（贪恐指数为逆向指标：IC 恒为负是特性，检测效力衰减与方向翻转）。"""
+    """漂移判定（贪恐指数为逆向指标：IC 恒为负是特性，检测效力衰减与方向翻转）。
+
+    🔴 2026-11-20（第 12.51 条）：判据从「绝对 |ICIR|」改为「**相对全窗的比值**」✗
+       —— 第 12.48 条折算后绝对值的量纲变了，绝对阈值必须跟着变 ✗
+       ⇒ 用比值就与口径解耦，以后再改折算方式也不用重标 ✓
+    """
     if full is None or recent is None:
         return "数据不足", "IC 样本不足，无法判定"
     # 方向翻转 = 真告警：全窗 IC 与近窗 IC 异号（负→正 或 正→负）
     if full["ic_mean"] * recent["ic_mean"] < 0 and abs(full["ic_mean"]) > 0.1:
         return "告警", f"IC 方向翻转(全窗 {full['ic_mean']:.2f} → 近窗 {recent['ic_mean']:.2f})，逆向关系可能失效"
-    if abs(recent["icir"]) < 0.3:
-        return "告警", f"近窗 |ICIR| {abs(recent['icir']):.2f} < 0.3，预测效力显著衰减"
-    if abs(recent["icir"]) < 0.5 or abs(recent["ic_mean"]) < abs(full["ic_mean"]) - full["ic_std"]:
-        return "预警", f"近窗 |ICIR| {abs(recent['icir']):.2f} < 0.5 或 |IC| 低于基线一档"
-    return "正常", f"逆向信号稳定(全窗 IC {full['ic_mean']:.2f} / 近窗 {recent['ic_mean']:.2f})"
+
+    base = abs(full["icir"])
+    if base < MIN_BASE_ICIR:
+        return ("数据不足",
+                f"全窗 |ICIR| {base:.2f} < {MIN_BASE_ICIR}，基线太弱 ⇒ 比值判据不可用")
+    ratio = abs(recent["icir"]) / base
+    if ratio < DECAY_ALERT:
+        return ("告警",
+                f"近窗 |ICIR| 仅为基线的 {ratio:.0%}（< {DECAY_ALERT:.0%}），"
+                f"预测效力显著衰减")
+    if (ratio < DECAY_WARN
+            or abs(recent["ic_mean"]) < abs(full["ic_mean"]) - full["ic_std"]):
+        return ("预警",
+                f"近窗 |ICIR| 为基线的 {ratio:.0%}（< {DECAY_WARN:.0%}）"
+                f" 或 |IC| 低于基线一档")
+    return ("正常",
+            f"逆向信号稳定(全窗 IC {full['ic_mean']:.2f} / 近窗 {recent['ic_mean']:.2f}"
+            f"，|ICIR| 维持基线 {ratio:.0%})")
 
 
 # ---------------------------------------------------------------- R1.5 数据质量闸门

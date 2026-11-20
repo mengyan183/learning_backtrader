@@ -305,3 +305,52 @@ def test_crosscheck_report_unknown_source_raises(tmp_path):
     import pytest
     with pytest.raises((KeyError, ValueError)):
         dm.crosscheck_report(source="spx")
+
+
+# ---------------------------------------------------------------- decide 相对阈值（12.51）
+def _st(ic_mean, icir, ic_std=0.1):
+    return {"ic_mean": ic_mean, "icir": icir, "ic_std": ic_std,
+            "icir_raw": icir, "overlap": 3, "ic_positive_ratio": 0.5, "n": 100}
+
+
+def test_decide_uses_ratio_not_absolute():
+    """判据必须是「近窗 / 全窗」的**比值** ✓ —— 不是绝对 |ICIR| ✗。
+
+    🔴 2026-11-20（第 12.51 条）：第 12.48 条把 ICIR 按重叠折算（×0.577）
+       ⇒ 绝对阈值 0.3/0.5 的含义变了 ✗ ⇒ 改用比值，与口径解耦 ✓
+
+    构造：基线 0.67、近窗 0.67（比值 1.0）⇒ 正常
+          基线 0.67、近窗 0.30（比值 0.45）⇒ 预警边界
+          基线 0.67、近窗 0.15（比值 0.22）⇒ 告警
+    """
+    assert dm.decide(_st(-0.35, -0.67), _st(-0.35, -0.67))[0] == "正常"
+    assert dm.decide(_st(-0.35, -0.67), _st(-0.35, -0.15))[0] == "告警"
+    assert dm.decide(_st(-0.35, -0.67), _st(-0.35, -0.30))[0] == "预警"
+
+
+def test_decide_same_ratio_same_verdict_across_scales():
+    """**同比值必须同结论** ✓ —— 这正是「与口径解耦」的意思。
+
+    基线 1.16 / 近窗 0.58（比值 0.5）与 基线 0.67 / 近窗 0.335（比值 0.5）
+    必须给同一个判定 ✗（旧绝对阈值下这两者会一个「正常」一个「预警」✗）
+    """
+
+    # 比值都取 0.40（落在 预警 区：0.30 ≤ 0.40 < 0.45）
+    a = dm.decide(_st(-0.35, -1.16), _st(-0.35, -0.464))[0]
+    b = dm.decide(_st(-0.35, -0.67), _st(-0.35, -0.268))[0]
+    assert a == b == "预警"
+
+
+def test_decide_reports_insufficient_when_baseline_too_weak():
+    """全窗基线太弱（|ICIR| < 0.15）⇒ 判「数据不足」，不拿比值硬判 ✓。"""
+
+    level, _ = dm.decide(_st(-0.02, -0.05), _st(-0.02, -0.05))
+    assert level == "数据不足"
+
+
+def test_decide_direction_flip_still_alerts():
+    """方向翻转仍是最高优先级告警 ✓（未被比值逻辑吞掉）。"""
+
+    level, note = dm.decide(_st(-0.35, -0.67), _st(+0.10, +0.20))
+    assert level == "告警"
+    assert "方向翻转" in note
