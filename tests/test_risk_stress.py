@@ -208,3 +208,40 @@ def test_report_has_stress_section(tmp_path):
     # 「直接归零」单独回答：绝对上限 + 三层
     assert "绝对上限" in html
     assert "币股高 Beta" in html
+
+
+# ---------------------------------------------------------------- 简报节（2026-11-20）
+def _stress_text(positions, net=10000.0):
+    """构造 snap 并渲染 `_stress_section` —— 两条分支都要跑到。"""
+    import os
+    import sys
+    sys.path.insert(0, os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "scripts"))
+    import invest_research as ir
+    snap = {
+        "accounts": {"stock": net},
+        "positions": [{"symbol": s, "mv": w * net} for s, w in positions],
+    }
+    return ir._stress_section(snap)
+
+
+def test_brief_stress_section_renders_without_breach():
+    """**未击穿**分支必须能渲染 ✓。
+
+    🔴 2026-11-20 线上 bug（Mac 实测）✗：
+       `"距 -50% 预算还有 %.0fpp"` 里的 `%` 被当成格式符 ⇒
+       `ValueError: unsupported format character '?' (0x9884)` ✗
+       ⇒ 整个简报生成崩掉（rc=1）✗
+       本地没发现的原因：测试数据全是重仓，全部「击穿」⇒ else 分支没跑到 ✗
+    """
+    txt = _stress_text([("YINN", 0.05), ("GDXU", 0.03)])
+    assert "距 -50% 预算还有" in txt
+    assert "pp）" in txt
+    assert "%%" not in txt, "转义漏到输出里了 ✗"
+
+
+def test_brief_stress_section_renders_when_breached():
+    """**击穿**分支也要能渲染 ✓，且百分号只有一个。"""
+    txt = _stress_text([("YINN", 0.44), ("GDXU", 0.28), ("CONL", 0.15)])
+    assert "击穿 -50% 预算" in txt
+    assert "%%" not in txt, "纯字符串分支不该出现 `%%` ✗"

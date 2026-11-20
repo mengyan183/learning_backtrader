@@ -1511,8 +1511,14 @@ def _stress_section(snap):
         w = rep["by_scenario"][_rs.SCENARIO_WORST]
         if not w["symbols"]:
             continue
+        # ⚠️ 字面量里的 `%` 必须写 `%%` ✗ —— 2026-11-20 实测：
+        #    `"距 -50% 预算..."` 会让 `%` 后那个空格+汉字被当格式符 ⇒
+        #    `ValueError: unsupported format character '?' (0x9884)` ✗
+        #    （本地没发现是因为测试数据全部「击穿」，这条 else 分支没跑到 ✗）
+        # ⚠️ 只有**走 `%` 运算的那一支**才需要 `%%` ✗ —— 前一分支是纯字符串，
+        #    写成 `%%` 会原样输出两个百分号 ✗
         tail = ("**击穿 -50% 预算**" if w["breaches_budget"]
-                else "距 -50% 预算还有 %.0fpp"
+                else "距 -50%% 预算还有 %.0fpp"
                      % ((budget + w["total_loss"]) * 100))
         lines.append("· 指数再跌 %.0f%% ⇒ 组合净值 %.1f%%（%s）"
                      % (drop * 100, w["total_loss"] * 100, tail))
