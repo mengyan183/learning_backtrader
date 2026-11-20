@@ -121,3 +121,36 @@ def test_repo_root_on_sys_path_so_fg_system_importable():
                        encoding="utf-8", errors="replace")
     assert r.returncode == 0, "脚本上下文导不进 fg_system ✗：%s" % (r.stderr or "")[-400:]
     assert "3" in (r.stdout or ""), "leverage_of('YINN') 应为 3"
+
+
+def test_stock_day_pnl_ignores_crypto_row():
+    """连亏保护的分子只能取 **stock 账户** ✓ —— 不许跨账户 ✗。
+
+    🔴 2026-11-20 线上实测：简报写「当日亏损 -1072.79 (-18.3% 股票净值)」，
+       但同一份简报里股票净值 6202.5 → 5876.4 只差 **-326.1** ✗
+       根因：`acc_latest` 同时含 stock + crypto 两行，代码 `.iloc[-1]`
+       取到了 **crypto** 那行（本地实测 iloc[-1] 就是 crypto）✗，
+       而分母是 `stock_net` ⇒ 跨账户混算 ✗
+       （-1072.79 / 5876.4 = -18.26%，与显示的 -18.3% 完全吻合）
+    """
+    import pandas as pd
+    df = pd.DataFrame([
+        {"account": "stock", "net_value": 5876.4, "day_pnl": -326.1},
+        {"account": "crypto", "net_value": 2302.48, "day_pnl": -1072.79},
+    ])
+    assert ir._stock_day_pnl(df) == -326.1, "取到 crypto 的数了 ✗"
+
+
+def test_stock_day_pnl_returns_none_without_stock_row():
+    """没有 stock 行 ⇒ 返回 None ✓（不给结论，而不是拿别的账户凑数 ✗）。"""
+    import pandas as pd
+    df = pd.DataFrame([{"account": "crypto", "net_value": 2302.48,
+                        "day_pnl": -1072.79}])
+    assert ir._stock_day_pnl(df) is None
+
+
+def test_stock_day_pnl_tolerates_legacy_file_without_account_column():
+    """老 `accounts.csv` 没有 `account` 列时退回原行为 ✓（向后兼容）。"""
+    import pandas as pd
+    df = pd.DataFrame([{"net_value": 5876.4, "day_pnl": -326.1}])
+    assert ir._stock_day_pnl(df) == -326.1

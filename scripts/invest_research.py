@@ -504,15 +504,45 @@ def build_snapshot():
 
     # 连亏 kill switch：当日亏损 ≥2% 净值 → 提示收工（知识库：Peter Brandt 风控）
     snap["kill_switch"] = None
-    _dp = acc_latest["day_pnl"].dropna()
-    if len(_dp) and stock_net:
-        _day_pnl = float(_dp.iloc[-1])
+    # 🔴 2026-11-20：**必须按 account 过滤再取尾行** ✗ ——
+    #    `acc_latest` 里同时有 `stock` 和 `crypto` 两行 ✗，
+    #    原来直接 `.dropna().iloc[-1]` ⇒ 取到的是**排序最后那个账户** ✗
+    #    （本地实测：`iloc[-1]` 是 **crypto**，不是 stock ✗）
+    #    而分母是 `stock_net` ⇒ **跨账户混算** ✗
+    #    实测症状：简报写「当日亏损 -1072.79 (-18.3% 股票净值)」，
+    #    但同一份简报里股票净值 6202.5 → 5876.4，差只有 **-326.1** ✗
+    #    （-1072.79 / 5876.4 = -18.26% ⇒ 与显示的 -18.3% 完全吻合，
+    #      说明分子确实取到了别的账户/别的日期的那一行 ✗）
+    #    ⇒ 只取 stock 账户；拿不到 stock 行就不给结论（不猜）✓
+    _day_pnl = _stock_day_pnl(acc_latest)
+    if _day_pnl is not None and stock_net:
         if _day_pnl <= -0.02 * stock_net:
             snap["kill_switch"] = {
                 "day_pnl": round(_day_pnl, 2),
                 "pct": round(_day_pnl / stock_net * 100.0, 2),
             }
     return snap
+
+
+def _stock_day_pnl(acc_latest):
+    """取 **stock 账户**的 `day_pnl` 尾值 ✓；拿不到返回 None（不猜）。
+
+    🔴 2026-11-20 实测 bug ✗：
+       `acc_latest` 里同时有 `stock` 和 `crypto` 两行 ✗，
+       原来直接 `.dropna().iloc[-1]` ⇒ 取到的是**排序最后那个账户**
+       （本地实测是 **crypto** ✗），而分母用的是 `stock_net` ✗
+       ⇒ **跨账户混算**：简报写「当日亏损 -1072.79 (-18.3% 股票净值)」，
+         同一份简报里股票净值 6202.5 → 5876.4 却只差 **-326.1** ✗
+         （-1072.79 / 5876.4 = -18.26% ⇒ 与显示的 -18.3% 完全吻合）
+    """
+    if acc_latest is None or not len(acc_latest):
+        return None
+    if "account" in acc_latest.columns:
+        s = acc_latest.loc[acc_latest["account"] == "stock",
+                           "day_pnl"].dropna()
+    else:                                   # 老文件没有 account 列
+        s = acc_latest["day_pnl"].dropna()
+    return float(s.iloc[-1]) if len(s) else None
 
 
 def snapshot_text(snap):
