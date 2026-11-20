@@ -1014,12 +1014,18 @@ def _act_restart_queue(params):
        ⇒ 实测：plist 里已有 `http://127.0.0.1:7890` ✓
          但进程环境里没有 ✗
 
-    🔴 **不能直接 `kickstart -k`** ✗：
-       那会**立即杀掉**本进程 ✗ ⇒ 本动作**自己的结果写不进去** ✗
-       ⇒ 用 `nohup` 起一个**延迟 5 秒**的脚本 ✓
-         它先等本动作写完 result ✓ 再 `kickstart -k` ✓
+    🔴 **不能直接重启** ✗：那会**立即杀掉**本进程 ⇒ 本动作**自己的结果
+       写不进去** ✗ ⇒ 用 `nohup` 起一个**延迟**脚本 ✓，等 result 写完再动 ✓
 
-    ⚠️ 重启后**新进程会读新 plist** ✓ 代理生效 ✓
+    🔴 2026-11-20：**`kickstart` 不够** ✗ ——
+       `kickstart -k` 重启的是**当前已加载的 job**，而那个 job 是登录时按
+       **旧 plist** bootstrap 进去的 ⇒ **不会重读文件** ✗
+       实测：plist 里明明写了 `PATH`，进程环境里却没有 ✗
+       ⇒ 改成 `bootout` + `bootstrap`（+ enable + kickstart）✓
+       · plist 不存在时**拒绝 bootout**（否则服务再也起不来 ✗）
+       · bootstrap 重试 3 次，全失败退回 `load -w` ✓
+       · 每步 rc 都写日志 ⇒ 下次能直接看出卡在哪 ✓
+
     ⚠️ 若队列里有**正在执行**的任务 ⇒ 会被杀 ✗（`delay` 参数可调 ✗）
     """
     # 🔴 2026-11-10：支持 `label` 参数 ✓ —— 原来写死 `fg-task-queue` ✗
@@ -1044,15 +1050,49 @@ def _act_restart_queue(params):
     # 🔴 2026-11-10：日志路径按 label 推导 ✓ —— 原来写死 `fg_task_queue.log` ✗
     #    重启 `fg-realtime` 时也写进队列日志 ⇒ 两边的日志混在一起 ✗
     _short = label.replace("com.xingguo.", "").replace("com.fg.", "")
-    _log = "/tmp/fg_%s.log" % _short.replace("-", "_")
+    # ⚠️ 原来写的是 `/tmp/fg_%s.log` ✗ —— `_short` 本身已含 `fg-` 前缀，
+    #    拼出来是 `/tmp/fg_fg_task_queue.log`（**永远没人看** ✗）
+    #    ⇒ 直接用 `_short`，与 plist 的 `StandardOutPath` 对齐 ✓
+    _log = "/tmp/%s.log" % _short.replace("-", "_").replace(".", "_")
     sh = os.path.join(ROOT, "dist", "_restart_%s.sh" % _short.replace("-", "_"))
     os.makedirs(os.path.dirname(sh), exist_ok=True)
+    #: plist 真身（`install_daily_plist` 拷过去的那份）✓
+    dst = os.path.join(os.path.expanduser("~"), "Library", "LaunchAgents",
+                       label + ".plist")
+    domain = "gui/%s" % uid
     with open(sh, "w", encoding="utf-8") as f:
-        f.write("#!/bin/bash\n"
-                "sleep %d\n"
-                "launchctl kickstart -k %s >> %s 2>&1\n"
-                "echo \"[restart] $(date '+%%F %%T') kickstart %s done\" "
-                ">> %s\n" % (delay, target, _log, label, _log))
+        f.write(
+            "#!/bin/bash\n"
+            "# 🔴 2026-11-20：`kickstart` **不重读 plist** ✗ —— job 是登录时按旧\n"
+            "#   plist bootstrap 进去的，改了文件再 kickstart 还是旧环境 ✗\n"
+            "#   （实测：plist 里明明有 PATH，进程环境里却没有 ✗）\n"
+            "#   ⇒ 必须 bootout + bootstrap 才会重新读 plist ✓\n"
+            "LOG=%s\n"
+            "DST=%s\n"
+            "echo \"[restart] $(date '+%%F %%T') start %s\" >> \"$LOG\"\n"
+            "if [ ! -f \"$DST\" ]; then\n"
+            "  echo \"[restart] 放弃：plist 不存在 $DST ✗\" >> \"$LOG\"\n"
+            "  exit 1\n"
+            "fi\n"
+            "sleep %d\n"
+            "launchctl bootout %s >> \"$LOG\" 2>&1\n"
+            "echo \"[restart] bootout rc=$?\" >> \"$LOG\"\n"
+            "for i in 1 2 3; do\n"
+            "  launchctl bootstrap %s \"$DST\" >> \"$LOG\" 2>&1\n"
+            "  rc=$?\n"
+            "  echo \"[restart] bootstrap try $i rc=$rc\" >> \"$LOG\"\n"
+            "  [ $rc -eq 0 ] && break\n"
+            "  sleep 2\n"
+            "done\n"
+            "if [ $rc -ne 0 ]; then\n"
+            "  echo \"[restart] bootstrap 三次都失败 ⇒ 退回 load -w ✗\" >> \"$LOG\"\n"
+            "  launchctl load -w \"$DST\" >> \"$LOG\" 2>&1\n"
+            "fi\n"
+            "launchctl enable %s >> \"$LOG\" 2>&1\n"
+            "launchctl kickstart -k %s >> \"$LOG\" 2>&1\n"
+            "echo \"[restart] kickstart rc=$?\" >> \"$LOG\"\n"
+            "launchctl print %s 2>/dev/null | head -3 >> \"$LOG\"\n"
+            % (_log, dst, label, delay, target, domain, target, target, target))
     os.chmod(sh, 0o755)
 
     # 记录重启前的环境 ✓
@@ -1071,11 +1111,10 @@ def _act_restart_queue(params):
     return {"ok": ok, "error": err, "label": label, "target": target,
             "delay_seconds": delay, "script": os.path.relpath(sh, ROOT),
             "env_before_restart": before,
-            "note": "⚠️ %d 秒后重启 ✓ 重启后**新进程会读新 plist** ✓"
-                    "代理生效 ✓；"
-                    "⚠️ 队列里正在跑的任务会被杀 ✗ "
-                    "⇒ 下次拉取时看 `run_fetch_step` 的 `has_proxy` ✓"
-                    % delay}
+            "note": "⚠️ %d 秒后 bootout+bootstrap 重启 ✓ —— **只有这条路"
+                    "会重读 plist** ✓（`kickstart` 用的是已加载的旧 job ✗）；"
+                    "每步 rc 见日志尾部；"
+                    "⚠️ 队列里正在跑的任务会被杀 ✗" % delay}
 
 
 def _act_install_evolve_tasks(params):
