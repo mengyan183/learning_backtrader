@@ -33,6 +33,31 @@ def _pkg_of(tid):
     return ("task-" + tid).replace("-", "_")
 
 
+def _parse_params(pairs):
+    """`--param K=V` 列表 → dict ✓；值以 `[` / `{` 开头时按 **JSON** 解析 ✓。
+
+    🔴 2026-11-23：`run_script` 的 `args` 必须是**数组** ✗（`queue_actions` 校验），
+       而 `--param` 只能传字符串 ⇒ 传 `args=--dry-run` 必被判「args 必须是数组」✗
+       （实测 `t-20261123-155350` / `t-20261123-155700` 都因此失败）
+       ⇒ 现在可写 `--param args=["--dry-run"]` ✓
+
+    ⚠️ JSON 解析失败**不静默降级成字符串** ✗ —— 那样下游仍报「必须是数组」，
+       真正原因（客户端 JSON 写错）会被掩盖 ✗ ⇒ 直接报错退出 ✓
+    """
+    out = {}
+    for kv in pairs:
+        if "=" not in kv:
+            sys.exit("--param 需要 K=V 形式：%s" % kv)
+        k, v = kv.split("=", 1)
+        if v[:1] in ("[", "{"):
+            try:
+                v = json.loads(v)
+            except ValueError as exc:
+                sys.exit("--param %s 的值像 JSON 但解析失败（%s）：%s" % (k, exc, v))
+        out[k] = v
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="下发一个 Mac 侧任务")
     ap.add_argument("--action", required=True, choices=sorted(ACTIONS))
@@ -51,12 +76,7 @@ def main(argv=None):
         while os.path.exists(os.path.join(QUEUE, tid + ".json")):
             tid = "%s-%d" % (base, n)
             n += 1
-    params = {}
-    for kv in args.param:
-        if "=" not in kv:
-            sys.exit("--param 需要 K=V 形式：%s" % kv)
-        k, v = kv.split("=", 1)
-        params[k] = v
+    params = _parse_params(args.param)
 
     spec = {"id": tid, "action": args.action, "params": params,
             "status": "pending",

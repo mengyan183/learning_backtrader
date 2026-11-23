@@ -30,3 +30,31 @@ def test_pkg_name_is_marker_safe():
     pkg = dt._pkg_of("t-20261028-1935-clean_sync_partial")
     assert re.fullmatch(r"[A-Za-z0-9_]+", pkg), "包名含非法字符 ⇒ Mac 端认不出分片 ✗"
     assert pkg.startswith("task_")
+
+
+def test_param_parses_json_array():
+    """`--param args=["--dry-run"]` 必须解析成**数组** ✓。
+
+    🔴 2026-11-23：`run_script` 的 `args` 必须是数组，而 `--param` 只能传字符串
+       ⇒ 传 `args=--dry-run` 必被判「args 必须是数组」✗
+       （`t-20261123-155350` / `t-20261123-155700` 两个任务都因此失败）
+    """
+    p = dt._parse_params(['script=renormalize_eol.py',
+                          'args=["--dry-run","--x"]'])
+    assert p["script"] == "renormalize_eol.py"
+    assert p["args"] == ["--dry-run", "--x"], p["args"]
+
+
+def test_param_plain_string_untouched():
+    """普通字符串不得被 JSON 化 ✓（`push=1` 要留成字符串）。"""
+    p = dt._parse_params(["push=1", "paths=fg_system/signal/portfolio.py"])
+    assert p["push"] == "1"
+    assert p["paths"] == "fg_system/signal/portfolio.py"
+
+
+def test_param_bad_json_exits():
+    """像 JSON 但解析失败 ⇒ **报错退出** ✓，不静默降级成字符串。"""
+    import pytest
+
+    with pytest.raises(SystemExit):
+        dt._parse_params(["args=[oops"])
