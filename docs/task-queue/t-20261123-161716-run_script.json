@@ -1,9 +1,0 @@
-{
-  "id": "t-20261123-161716-run_script",
-  "action": "run_script",
-  "params": {
-    "script": "renormalize_eol.py"
-  },
-  "status": "pending",
-  "created_at": "2026-11-23T16:17:16"
-}
