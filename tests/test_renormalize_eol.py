@@ -37,6 +37,21 @@ def test_rejects_traversal_and_absolute():
         assert ok is False, p
 
 
+def test_ignores_runtime_data_dirty(monkeypatch):
+    """`Data/` 是**运行时产物**，不得挡住 renormalize ✓。
+
+    🔴 2026-11-23 实测：Mac 上 `Data/brief_check_history.jsonl`、`Data/kb/chroma/*`
+       常态为脏 ⇒ 若纳入冲突判断，脚本**永远拒绝执行** ✗（首次执行就是这样失败的）
+    """
+
+    # ⚠️ `_git` 返回的是 `(rc, stdout, stderr)` **三元组**（不是对象）✗
+    monkeypatch.setattr(
+        rn, "_git",
+        lambda *a, **k: (0, " M Data/crypto_state.json\n M Data/briefs/index.md\n", ""))
+    res = rn.main(["--dry-run"])
+    assert res.get("ok") is True, res
+
+
 def test_default_path_is_discipline_doc(monkeypatch):
     """**无参数**调用必须默认规范化 `trading-discipline.md` ✓。
 

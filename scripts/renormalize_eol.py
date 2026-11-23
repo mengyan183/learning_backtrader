@@ -98,11 +98,16 @@ def main(argv=None):
     if rc != 0:
         return {"ok": False, "error": "git status 失败：%s" % se[:200]}
     dirty = [ln[3:].strip() for ln in so.splitlines() if ln.strip()]
-    others = [d for d in dirty if rel not in d]
+    # 🔴 2026-11-23：`Data/` 是**运行时产物**（简报索引 / chroma / 实时 state）✗
+    #   它们每次跑简报都会变 ⇒ 若纳入判断，本脚本在 Mac 上**永远拒绝执行** ✗
+    #   实测：`Data/brief_check_history.jsonl` / `Data/kb/chroma/*` 常态为脏 ✗
+    #   ⇒ 只把**代码与文档**的脏文件视为冲突 ✓（与入库白名单同口径）
+    others = [d for d in dirty
+              if rel not in d and not d.startswith(("Data/", "data/"))]
     out["steps"]["dirty_before"] = dirty[:10]
     if others:
         return {"ok": False,
-                "error": "工作区还有其他脏文件，拒绝执行（先清理）：%s"
+                "error": "工作区还有其他脏的代码/文档文件，拒绝执行（先清理）：%s"
                          % ", ".join(others[:5]),
                 "dirty": others[:10]}
 

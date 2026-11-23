@@ -353,6 +353,15 @@ def _tar_bytes(entries):
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:xz") as tf:
         for name, data in entries:
+            # 🔴 2026-11-23 事故（6 个包全栽在这）：路径必须**正斜杠** ✗
+            #   Windows 侧 `dispatch_task.py` 传进来的是 `docs\task-queue\x.json` ✗
+            #   ⇒ tar 成员名带反斜杠 ⇒ Mac(Linux) 把 `\` 当**普通字符**而非分隔符 ✗
+            #   ⇒ 解出来的文件名是 `docs\task-queue\x.json`（一个文件）✗
+            #   ⇒ 入库脚本 `os.path.join(tmp, "docs/task-queue/x.json")` 找不到 ✗
+            #   ⇒ `copied` 为空 ⇒ `git add` 无路径 ⇒ `diff --cached` 为空
+            #   ⇒ 回执「✅ 无变更需提交（幂等应用，非失败）」——**静默丢包** ✗
+            #   ⇒ 在这里统一归一化，所有调用方都受益 ✓
+            name = name.replace("\\", "/").lstrip("/")
             info = tarfile.TarInfo(name)
             info.size = len(data)
             tf.addfile(info, io.BytesIO(data))

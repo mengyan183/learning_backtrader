@@ -33,6 +33,32 @@ def _load():
 pm = _load()
 
 
+def test_tar_members_use_forward_slashes():
+    """tar 成员名必须**正斜杠** ✓（2026-11-23 静默丢包事故）。
+
+    🔴 `dispatch_task.py` 在 Windows 上把 `docs\\task-queue\\x.json` 传给 pack_many ⇒
+       成员名带反斜杠 ⇒ Mac(Linux) 把 `\\` 当**普通字符**而非分隔符 ⇒
+       解出的文件名不对 ⇒ 入库脚本 `os.path.join(tmp, rel)` 找不到 ⇒
+       `copied` 为空 ⇒ `git add` 无路径 ⇒ 回执「✅ 无变更需提交（幂等应用）」✗
+       —— 当天 6 个包因此静默丢失，且**没有任何报错**。
+    """
+    import lzma
+
+    blob = pm._tar_bytes([("docs\\task-queue\\t-x.json", b"{}")])
+    with tarfile.open(fileobj=io.BytesIO(lzma.decompress(blob))) as tf:
+        names = [m.name for m in tf.getmembers()]
+    assert names == ["docs/task-queue/t-x.json"], names
+
+
+def test_tar_members_strip_leading_slash():
+    """绝对路径必须剥成相对路径 ✓ —— 否则解压侧会整包拒绝。"""
+    import lzma
+
+    blob = pm._tar_bytes([("/etc/passwd", b"x")])
+    with tarfile.open(fileobj=io.BytesIO(lzma.decompress(blob))) as tf:
+        assert tf.getnames() == ["etc/passwd"]
+
+
 # ---------------------------------------------------------------- 工具函数
 
 def _run(monkeypatch, out_dir, argv):
