@@ -475,6 +475,15 @@ def main():
     SYMBOL_CODES = {s: "US." + s for s in syms}
     print(f"[rt] 订阅标的: {syms}")
 
+    # 🔴 2026-11-23（realtime 卡死 27 小时）：**币安线程必须先起** ✗
+    #   实测：富途 OpenD 挂 ⇒ `OpenQuoteContext(...)` / `subscribe_kline()`
+    #   卡在 SDK 重连循环（日志全是 `init connect fail`）⇒ 进程活着（PID 2020）
+    #   但**主循环和 BTC 线程都没起来** ⇒ `realtime_state.json` 停在 11-22 01:35 ✗
+    #   ⇒ 把 BTC 线程提前到富途连接**之前**：OpenD 挂了也能更新 BTC ✓
+    import threading
+    threading.Thread(target=crypto_ticker_loop, daemon=True).start()
+    print("[rt] 币安 BTC 实时线程已启动（先于富途连接）")
+
     from futu import OpenQuoteContext
     ctx = OpenQuoteContext(host="127.0.0.1", port=11111)
     # 先拉一次初始快照，让状态文件立即有值
@@ -501,11 +510,6 @@ def main():
     # 订阅 KLINE_1M 并启动回调线程
     ctx = subscribe_kline()
     ctx.start()
-
-    # OKX 实时 BTC（富途无 BTC 现货）
-    import threading
-    threading.Thread(target=crypto_ticker_loop, daemon=True).start()
-    print("[rt] 币安 BTC 实时线程已启动")
 
     # 主线程：每 60s 保存状态 + 重算预览指数；订阅无数据时 180s 无更新则降级轮询
     last_snapshot = time.time()
