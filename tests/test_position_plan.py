@@ -96,6 +96,31 @@ def test_already_at_cap_is_blocked():
     assert "已到单标的上限" in p["blocked"]
 
 
+def test_total_cap_limits_post_entry_size():
+    """总敞口必须约束「建仓**后**」的规模 ✓（2026-11-23 用户要求）。
+
+    🔴 原实现只做布尔判断 `leveraged_value >= total` ✗
+       实测：YINN 1596（< 上限 1597）+ SOXL 首建 639 ⇒ 总敞口 2235 > 1597 ✗
+    ⇒ 首建必须被「剩余额度」卡住 ✓
+    """
+    p = pp.build_plan(10000, "SOXL", 0.02, -100, leveraged_value=1596)
+    assert p["total_cap"] == 2000
+    assert p["total_room"] == 404
+    assert p["first"] <= 404, "首建不得突破总敞口上限 ✗"
+    assert p["first"] + 1596 <= p["total_cap"], "建仓后总敞口仍须 ≤ 上限 ✗"
+
+
+def test_total_cap_blocks_adds_when_full():
+    """总敞口已满时，**已持仓的标的也不许加仓** ✓。
+
+    🔴 原条件带 `and held <= 0` ⇒ 有持仓时完全跳过总敞口检查 ✗
+    """
+    p = pp.build_plan(10000, "YINN", 0.015, -100, held_value=500,
+                      leveraged_value=2500)
+    assert p["ok"] is False
+    assert "总敞口已满" in p["blocked"]
+
+
 def test_brief_line_is_readable():
     """简报行必须能直接读 ✓（含杠杆、金额、间距）。"""
     p = pp.build_plan(10000, "YINN", 0.015, -85)

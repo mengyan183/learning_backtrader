@@ -46,6 +46,10 @@ PLAN = {
 HIST_MIN_DAYS = 250          # 至少这么多天才算「有历史」（够跑 1 年滚动 ✓）
 NO_HISTORY_CAP = 0.12
 
+#: 最小建仓额（美元）✓ —— 总敞口只剩几美元时不给出「首建 $1」这种无意义建议 ✗
+#: （2026-11-23：`total_cap` 改成「剩余额度」后新增的边界 ✓）
+MIN_ENTRY = 100.0
+
 _HIST_CACHE = None
 
 
@@ -121,6 +125,13 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
     # ⇒ 两个值都留着，简报里说明哪个更严 ✓
     cap_risk = round(float(risk_limit), 0) if risk_limit else None
     total = float(net_value or 0) * PLAN["total_cap"]
+    lev_used = float(leveraged_value or 0)
+    # 🔴 2026-11-23 用户要求：**总敞口必须约束「建仓后」的规模** ✗
+    #   原实现只做布尔判断 `lev_used >= total` ⇒ 建仓动作本身就能突破上限 ✗
+    #   实测：YINN 1596（< 上限 1597）+ SOXL 首建 639 ⇒ 总敞口 2235 > 1597 ✗
+    #   ⇒ 改成「剩余额度」`total_room`，并**同时**约束首建与加仓 ✓
+    #   ⚠️ 原条件带 `and held <= 0` ⇒ 已持仓的标的在总敞口满时仍可加仓 ✗ 一并修掉 ✓
+    total_room = max(0.0, total - lev_used)
 
     held = float(held_value or 0)
     room = max(0.0, single - held)
@@ -145,8 +156,8 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
             float(pnl_pct), PLAN["hard_stop"] * 100)
     elif room <= 0:
         blocked = "已到单标的上限 $%.0f" % single
-    elif float(leveraged_value or 0) >= total and held <= 0:
-        blocked = "杠杆总敞口已满（上限 $%.0f）" % total
+    elif total_room <= 0:
+        blocked = "杠杆总敞口已满（上限 $%.0f，已用 $%.0f）" % (total, lev_used)
     elif float(coef) > PLAN["entry_coef"]:
         # 🔴 2026-11-13 用户要求：**加「建仓线」三个字** ✓
         #    原因：原文案「系数 -51 未达 -75」容易被读成「-75 是**减仓**门槛」✗
@@ -155,34 +166,46 @@ def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
         blocked = "系数 %.0f 未达建仓线 %.0f" % (float(coef), PLAN["entry_coef"])
 
     nv = float(net_value or 0)
-    if held <= 0:
-        first = min(nv * PLAN["first"], room)
-        ladder = [{"round": i + 1, "amount": round(min(nv * a, room - first), 0),
-                   "after_gap_pct": round(gap * (i + 1), 2) if gap else None}
-                  for i, a in enumerate(PLAN["adds"])]
-        return {"ok": blocked is None, "blocked": blocked, "symbol": symbol,
-                "leverage": lev, "mode": "建仓", "first": round(first, 0),
-                "ladder": ladder, "single_cap": round(single, 0),
-                "cap_rule": round(cap_rule, 0), "cap_risk": cap_risk,
-                "total_cap": round(total, 0), "gap_pct": None if gap is None else round(gap, 2),
-                "min_gap_days": PLAN["min_gap_days"], "room": round(room, 0)}
+    base = {"ok": blocked is None, "blocked": blocked, "symbol": symbol,
+            "leverage": lev, "single_cap": round(single, 0),
+            "cap_rule": round(cap_rule, 0), "cap_risk": cap_risk,
+            "total_cap": round(total, 0), "total_room": round(total_room, 0),
+            "gap_pct": None if gap is None else round(gap, 2),
+            "min_gap_days": PLAN["min_gap_days"], "room": round(room, 0)}
 
-    ladder = []
+    if held <= 0:
+        first = min(nv * PLAN["first"], room, total_room)
+        # 余量只剩几美元时不给出「首建 $1」这种无意义建议 ✗
+        if blocked is None and first < MIN_ENTRY:
+            base["ok"] = False
+            base["blocked"] = ("可建仓额 $%.0f 不足最小建仓额 $%.0f"
+                               "（总敞口余量 $%.0f）"
+                               % (first, MIN_ENTRY, total_room))
+        left = max(0.0, room - first)
+        left_total = max(0.0, total_room - first)
+        ladder = []
+        for i, a in enumerate(PLAN["adds"]):
+            amt = min(nv * a, left, left_total)
+            if amt <= 0:
+                break
+            ladder.append({"round": i + 1, "amount": round(amt, 0),
+                           "after_gap_pct": round(gap * (i + 1), 2) if gap else None})
+            left -= amt
+            left_total -= amt
+        return dict(base, mode="建仓", first=round(first, 0), ladder=ladder)
+
     left = room
+    left_total = total_room
+    ladder = []
     for i, a in enumerate(PLAN["adds"]):
-        amt = min(nv * a, left)
+        amt = min(nv * a, left, left_total)
         if amt <= 0:
             break
         ladder.append({"round": i + 1, "amount": round(amt, 0),
                        "after_gap_pct": round(gap * (i + 1), 2) if gap else None})
         left -= amt
-    return {"ok": blocked is None, "blocked": blocked, "symbol": symbol,
-            "leverage": lev, "mode": "加仓", "first": 0.0, "ladder": ladder,
-            "single_cap": round(single, 0),
-            "cap_rule": round(cap_rule, 0), "cap_risk": cap_risk,
-            "total_cap": round(total, 0),
-            "gap_pct": None if gap is None else round(gap, 2),
-            "min_gap_days": PLAN["min_gap_days"], "room": round(room, 0)}
+        left_total -= amt
+    return dict(base, mode="加仓", first=0.0, ladder=ladder)
 
 
 def brief_line(plan):
