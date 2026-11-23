@@ -37,17 +37,23 @@ def test_rejects_traversal_and_absolute():
         assert ok is False, p
 
 
-def test_ignores_runtime_data_dirty(monkeypatch):
-    """`Data/` 是**运行时产物**，不得挡住 renormalize ✓。
+def test_dirty_files_never_block(monkeypatch):
+    """**任何**脏文件都不得挡住 renormalize ✓。
 
-    🔴 2026-11-23 实测：Mac 上 `Data/brief_check_history.jsonl`、`Data/kb/chroma/*`
-       常态为脏 ⇒ 若纳入冲突判断，脚本**永远拒绝执行** ✗（首次执行就是这样失败的）
+    🔴 2026-11-23 实测两轮失败：
+       ① 先撞 `Data/`（简报索引 / chroma / 实时 state）
+       ② 再撞 `docs/decision-log.md` + `evolution/memory/*` + `portfolio-oos.*`
+       这些都是**每日链自动写**的 ⇒ 常态为脏 ⇒ 拒绝逻辑让脚本永远跑不了 ✗
+    ⇒ 且提交已用 **pathspec**（`git commit -m msg -- <path>`）⇒ 别的脏文件
+       本来就进不了这次提交 ⇒ 守卫纯属多余 ✗
     """
 
     # ⚠️ `_git` 返回的是 `(rc, stdout, stderr)` **三元组**（不是对象）✗
     monkeypatch.setattr(
         rn, "_git",
-        lambda *a, **k: (0, " M Data/crypto_state.json\n M Data/briefs/index.md\n", ""))
+        lambda *a, **k: (0, " M scripts/other.py\n M docs/decision-log.md\n"
+                            " M evolution/memory/2026-10-20.md\n"
+                            " M Data/crypto_state.json\n", ""))
     res = rn.main(["--dry-run"])
     assert res.get("ok") is True, res
 

@@ -98,18 +98,15 @@ def main(argv=None):
     if rc != 0:
         return {"ok": False, "error": "git status 失败：%s" % se[:200]}
     dirty = [ln[3:].strip() for ln in so.splitlines() if ln.strip()]
-    # 🔴 2026-11-23：`Data/` 是**运行时产物**（简报索引 / chroma / 实时 state）✗
-    #   它们每次跑简报都会变 ⇒ 若纳入判断，本脚本在 Mac 上**永远拒绝执行** ✗
-    #   实测：`Data/brief_check_history.jsonl` / `Data/kb/chroma/*` 常态为脏 ✗
-    #   ⇒ 只把**代码与文档**的脏文件视为冲突 ✓（与入库白名单同口径）
-    others = [d for d in dirty
-              if rel not in d and not d.startswith(("Data/", "data/"))]
+    # 🔴 2026-11-23：**不要**用「工作区有其他脏文件」来拒绝执行 ✗
+    #   ① `Data/`（简报索引 / chroma / 实时 state）与
+    #      `docs/decision-log.md`、`evolution/memory/*`、`portfolio-oos.*`
+    #      都是**每日链自动写**的 ⇒ 常态为脏 ⇒ 拒绝逻辑会让本脚本**永远跑不了** ✗
+    #      实测连续两轮都被它挡住（先撞 Data/，再撞 docs+evolution）✗
+    #   ② 更关键：本脚本的提交用 **pathspec**（`git commit -m msg -- <path>`）✓
+    #      ⇒ 别的脏文件**本来就进不了这次提交** ⇒ 守卫纯属多余 ✗
+    #   ⇒ 只记录，不拦截 ✓
     out["steps"]["dirty_before"] = dirty[:10]
-    if others:
-        return {"ok": False,
-                "error": "工作区还有其他脏的代码/文档文件，拒绝执行（先清理）：%s"
-                         % ", ".join(others[:5]),
-                "dirty": others[:10]}
 
     before = _eol_stats(rel)
     out["eol_before"] = {"bytes": before[0], "crlf": before[1], "lf": before[2]}
