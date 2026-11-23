@@ -1,0 +1,9 @@
+{
+  "id": "t-20261123-194326-restart_queue",
+  "action": "restart_queue",
+  "params": {
+    "label": "com.xingguo.fg-daily"
+  },
+  "status": "pending",
+  "created_at": "2026-11-23T19:43:26"
+}
