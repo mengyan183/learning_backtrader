@@ -32,6 +32,19 @@ def test_conflict_note_only_when_both(monkeypatch):
     assert ir._conflict_note({}, 0) == ""
 
 
+def test_futu_probe_never_raises(monkeypatch):
+    """实时探测失败必须**返回**而不是抛 ✓ —— 简报不能因为 OpenD 挂了而崩。
+
+    🔴 2026-11-23 事故：健康块读的是 `futu_preflight` 在 05:42 写的状态文件 ✗
+       13:48 的简报仍报「不可用」，而 OpenD 10:16 就恢复了 ⇒ 误导 3.5 小时 ✗
+    """
+    monkeypatch.setattr(ir, "_FUTU_PROBE", {})
+    ok, why, at = ir._futu_probe_now(timeout=1)
+    assert isinstance(ok, bool)
+    assert isinstance(why, str)
+    assert at, "必须带回探测时刻 ✗"
+
+
 def test_brief_title_carries_generation_date():
     """标题（**飞书与 markdown 共用**）必须带「（生成 MM-DD）」✓。
 

@@ -2008,6 +2008,27 @@ def position_plan_brief(snap):
         ln = pp.brief_line(plan)
         if ln:
             lines.append(ln)
+
+    # 🔴 2026-11-23 用户要求：**未持仓标的也要列** ✓
+    #    原来只遍历 `pos` ⇒ SOXL 这类「想建仓但还没持仓」的标的**永远不出现** ✗
+    #    ⇒ 读者问「SOXL 什么时候能建仓」时，简报**结构上回答不了** ✗
+    #    ⚠️ 候选池 = `config.SYMBOLS`（生产池），不遍历全市场 ✓
+    #    ⚠️ 未持仓 ⇒ 没有正股 ATR ⇒ 间距未知（`gap_pct=None`，不猜）✓
+    from fg_system import config as _cfg
+    _held = {str(r.get("symbol") or "").replace("-USDT", "") for r in pos}
+    _n_held = len(lines)
+    for _sym in getattr(_cfg, "SYMBOLS", ()):
+        if _sym in _held:
+            continue
+        _plan = pp.build_plan(
+            net, _sym, None,
+            (snap.get("shoutu") or {}).get(_sym),
+            held_value=0.0, leveraged_value=lev_total)
+        _ln = pp.brief_line(_plan)
+        if _ln:
+            lines.append(_ln)
+    _has_new = len(lines) > _n_held
+
     if not lines:
         return None
     # 2026-10-30 用户裁定措辞：不写「待回测确认」✗ ——
@@ -2032,16 +2053,22 @@ def position_plan_brief(snap):
     # 🔴 2026-10-31 精简：**全部不可操作** ⇒ 压成一行 ✓
     # 原来 5 行全是「已到单标的上限」/「禁止加仓」，占 5 行但零信息量 ✗
     # （用户实测：简报太长，且这三节在重复列同一批标的 ✗）
-    if all(("已到单标的上限" in ln) or ("禁止加仓" in ln)
-           or ("已满" in ln) or ("已无额度" in ln) for ln in lines):
+    # ⚠️ 有未持仓候选时**不折叠** ✗ —— 折叠会把 SOXL 这类标的一并藏掉，
+    #    而「什么时候能建仓」正是本节要回答的问题 ✓（2026-11-23 用户要求）
+    if (not _has_new) and all(
+            ("已到单标的上限" in ln) or ("禁止加仓" in ln)
+            or ("已满" in ln) or ("已无额度" in ln) for ln in lines):
         n_cap = sum(1 for ln in lines if "已到单标的上限" in ln)
         n_stop = sum(1 for ln in lines if "禁止加仓" in ln)
+        n_full = sum(1 for ln in lines if "已满" in ln)
         why = []
         if n_cap:
             why.append("%d 个已到单标的上限" % n_cap)
         if n_stop:
             why.append("%d 个浮亏过 %.0f%% 线禁加仓"
                        % (n_stop, abs(pp.PLAN["hard_stop"]) * 100))
+        if n_full:
+            why.append("%d 个受杠杆总敞口上限约束" % n_full)
         lines = ["· **无可操作项**：%s ⇒ 当前没有建仓/加仓空间 ✓"
                  % "、".join(why)]
     return head + "\n" + "\n".join(lines)
@@ -2159,7 +2186,9 @@ def _conflict_note(snap, zi):
     return ("\n🔎 上面说「不动是对的」，下面却要求「减仓至上限」—— 两者**不冲突**：\n"
             "   前者 = **不要因为恐慌情绪卖出**（看的是「我难受」）；\n"
             "   后者 = **敞口超过 1% 硬上限**的机械约束（看的是「仓位超了」）。\n"
-            "   ⇒ 判据不同：情绪卖出没有规则依据 ✗；机械减仓有明确数字 ✓")
+            "   ⇒ 判据不同：情绪卖出没有规则依据 ✗；机械减仓有明确数字 ✓\n"
+            "   ⚠️ **同时存在时以机械约束为准** ✗ —— 1% 规则是硬上限，\n"
+            "     情绪判断不能推翻它；反过来，机械约束也不构成「加仓」的理由 ✓")
 
 
 def _psych_section(snap):
@@ -2464,6 +2493,53 @@ def _missing_factor_count():
         return 0
 
 
+#: 实时探测结果缓存（进程内）✓ —— 简报会调用 `_data_health_block` 两次
+#: （markdown + 飞书富文本），缓存后只探一次 ✓
+_FUTU_PROBE = {}
+
+
+def _futu_probe_now(timeout=10):
+    """**实时**探测富途 OpenD ⇒ `(ok, reason, at)` ✓（2026-11-23 用户要求）。
+
+    🔴 原来读 `futu_health.read_status()` 的**状态文件** ✗
+       它由 `futu_preflight` 在 **05:42** 写 ⇒ 13:48 的简报仍报「不可用」✗
+       而 OpenD 在 10:16 就四层全过了 ⇒ 读者被误导 **3.5 小时** ✗
+    ⇒ 改成现场探测：先 TCP 探端口（2s，最便宜的硬判据），通了再做一次短超时快照 ✓
+    """
+    if "r" in _FUTU_PROBE:
+        return _FUTU_PROBE["r"]
+    import datetime as _dt
+    at = _dt.datetime.now().strftime("%H:%M")
+    res = (False, "未知", at)
+    try:
+        import socket
+        try:
+            s = socket.create_connection(("127.0.0.1", 11111), timeout=2)
+            s.close()
+        except OSError as e:
+            res = (False, "端口 11111 无响应（%s）" % type(e).__name__, at)
+            _FUTU_PROBE["r"] = res
+            return res
+        from futu import OpenQuoteContext
+        with _alarm(timeout, "快照超时"):
+            ctx = OpenQuoteContext(host="127.0.0.1", port=11111)
+            try:
+                ret, df = ctx.get_market_snapshot(["US.SPY"])
+            finally:
+                try:
+                    ctx.close()
+                except Exception:              # noqa: BLE001
+                    pass
+        if ret == 0 and df is not None and len(df):
+            res = (True, "", at)
+        else:
+            res = (False, "快照返回 ret=%s" % ret, at)
+    except Exception as e:                     # noqa: BLE001
+        res = (False, "%s: %s" % (type(e).__name__, str(e)[:80]), at)
+    _FUTU_PROBE["r"] = res
+    return res
+
+
 def _data_health_block(snap, sentiment=None, attribution=None, judge=None):
     """🔌 数据源健康：富途 + AI 三阶段 + 因子完整性 ✓（2026-10-29 扩展）。
 
@@ -2471,20 +2547,13 @@ def _data_health_block(snap, sentiment=None, attribution=None, judge=None):
     ⇒ 读者以为一切都好 ✗。**缺什么就在顶部说清楚** ✓。
     """
     lines = []
-    try:
-        sys.path.insert(0, str(REPO / "scripts"))
-        import futu_health  # noqa: PLC0415 —— 同目录脚本，延迟导入 ✓
-        st = futu_health.read_status()
-    except Exception:                                  # noqa: BLE001
-        st = None
-    if st:
-        at = str(st.get("at") or "")[:16].replace("T", " ")
-        if st.get("ok"):
-            lines.append("富途 OpenD：正常 ✓（%s 检查）" % at)
-        else:
-            lines.append("⚠️ 富途 OpenD：**不可用** —— %s（%s 检查；"
-                         "持仓/成交可能停留在上一交易日 ✗ 本简报已按现有数据生成 ✓）"
-                         % (st.get("reason") or "未知原因", at))
+    _ok, _why, _at = _futu_probe_now()
+    if _ok:
+        lines.append("富途 OpenD：正常 ✓（%s **实时探测**）" % _at)
+    else:
+        lines.append("⚠️ 富途 OpenD：**不可用** —— %s（%s **实时探测**；"
+                     "持仓/成交可能停留在上一交易日 ✗ 本简报已按现有数据生成 ✓）"
+                     % (_why, _at))
     # 🔴 2026-11-10 实测：`futu_preflight` **只探端口**就把 `ok=True` 写进状态文件 ✗
     #    ⇒ 简报写「富途正常」而**持仓其实停在 4 天前** ✗（11-10 那份就是这样）✗
     #    ⇒ 健康块必须**独立核对持仓快照日期** ✓，不能只信状态文件 ✓
