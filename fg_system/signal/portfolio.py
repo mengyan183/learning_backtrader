@@ -197,6 +197,14 @@ def combine(outputs, state):
 # ---------------------------------------------------------------- 防抖动（§6.7）
 # v2 把 clamp 统一收敛到本层，解决 v1 遗留问题 6（strategy.py 与 signal.throttle_ok
 # 两处重复实现）。
+def cooldown_gap(last, date):
+    """距上次调仓的**交易日**数（第 12.59 条）。
+
+    shortcut: 用工作日近似交易日，未排除美国假日；接入真实交易日历时替换。
+    """
+    return len(pd.bdate_range(last, date)) - 1
+
+
 def throttle_ok(state, current, target, date, extreme=False):
     """调仓阈值 / 冷却 / 单次上限三条约束（§9）。极端规则触发时全部豁免。"""
     if extreme:
@@ -207,10 +215,7 @@ def throttle_ok(state, current, target, date, extreme=False):
         return False, "未达调仓阈值 %.0fpp（偏离 %.1fpp）" % (
             config.REBALANCE_THRESHOLD * 100, abs(target - current) * 100)
     if state.last_rebalance_date:
-        # 🔴 2026-11-20（第 12.59 条）：原用 `.days`（自然日）✗ —— 纪律 5.1 要求
-        #   「≥5 个**交易日**」，5 自然日只等于 3~4 个交易日 ✗
-        #   shortcut: 用工作日近似交易日，未排除美国假日；接入真实交易日历时替换
-        gap = len(pd.bdate_range(state.last_rebalance_date, date)) - 1
+        gap = cooldown_gap(state.last_rebalance_date, date)
         if gap < config.REBALANCE_COOLDOWN:
             return False, "处于调仓冷却期（距上次 %d 个交易日 < %d）" % (
                 gap, config.REBALANCE_COOLDOWN)
