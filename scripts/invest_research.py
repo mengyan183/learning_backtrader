@@ -3072,12 +3072,25 @@ def _gen_suffix(snap):
     return "（生成 %s）" % today[5:]
 
 
+def _brief_title(snap, cont=False):
+    """简报标题正文（飞书 + markdown **共用**）✓。
+
+    🔴 2026-11-23 事故：`_gen_suffix` 只加在 markdown 的 `build_brief` 上 ✗
+       而飞书富文本是**另一处**拼标题（`📊 多智能体投研简报 …`）✗
+       ⇒ 用户看到的推送里没有「（生成 MM-DD）」✗
+       ⇒ 抽成共用函数，两条路径都走这里，避免再漏 ✓
+    """
+    return ("多智能体投研简报 %s%s%s"
+            % (_date_label(snap), _gen_suffix(snap),
+               "（续 · 分析参考）" if cont else ""))
+
+
 def build_brief(snap, sentiment, attribution, judge, news=None):
     from fg_system import fed as _fed
     _fctx = _fed.fed_context()
     _warn = _freshness_block(snap)
     lines = [
-        f"# 多智能体投研简报 {_date_label(snap)}{_gen_suffix(snap)}",
+        "# " + _brief_title(snap),
         "",
     ]
     if _warn:
@@ -3357,7 +3370,7 @@ def main():
     #    切分点：第一个「📰 情绪面」段之前 ✓
     #    理由：三段 AI 都标着「不产生动作」✗ 却占了 60% 篇幅 ⇒ 分开放 ✓
     _secs = build_brief_sections(snap, sentiment, attribution, judge, news)
-    _title = f"📊 多智能体投研简报 {_date_label(snap)}"
+    _title = "📊 " + _brief_title(snap)
     _split = len(_secs)
     for _i, _s in enumerate(_secs):
         if isinstance(_s, tuple) and _s[0].startswith("📰 情绪面"):
@@ -3368,7 +3381,7 @@ def main():
         while _p1 and _p1[-1] == "hr":       # 第 1 条末尾不留悬空分隔线
             _p1.pop()
         ok1, msg1 = push_feishu_rich(_title, _p1)
-        ok2, msg2 = push_feishu_rich(_title + "（续 · 分析参考）", _p2)
+        ok2, msg2 = push_feishu_rich("📊 " + _brief_title(snap, cont=True), _p2)
         ok, msg = (ok1 and ok2), (msg1 if not ok1 else msg2)
         print(f"飞书富文本推送: {'成功（2 条）' if ok else f'失败 {msg}'}")
     else:                                     # 找不到切分点 ⇒ 退回单条（不丢内容）

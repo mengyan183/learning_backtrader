@@ -32,6 +32,26 @@ def test_conflict_note_only_when_both(monkeypatch):
     assert ir._conflict_note({}, 0) == ""
 
 
+def test_brief_title_carries_generation_date():
+    """标题（**飞书与 markdown 共用**）必须带「（生成 MM-DD）」✓。
+
+    🔴 2026-11-23 事故：`_gen_suffix` 只加在 markdown 路径 ✗
+       飞书富文本另有一处拼标题 ⇒ 用户看到的推送里没有生成日 ✗
+    """
+    import datetime as _dt
+
+    old = (_dt.date.today() - _dt.timedelta(days=3)).isoformat()
+    t = ir._brief_title({"index_date": old})
+    assert "生成" in t and old in t
+
+    # 续篇同样要带（否则第 2 条消息看不出是哪天生成的）
+    t2 = ir._brief_title({"index_date": old}, cont=True)
+    assert "续" in t2 and "生成" in t2
+
+    today = _dt.date.today().isoformat()
+    assert "生成" not in ir._brief_title({"index_date": today})
+
+
 def test_index_lag_uses_trading_days():
     """周五数据在周一早上 = **0 个交易日**滞后 ✓（不能用自然日）。
 
