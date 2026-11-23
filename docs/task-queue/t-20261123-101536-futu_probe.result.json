@@ -1,0 +1,11 @@
+{
+  "id": "t-20261123-101536-futu_probe",
+  "action": "futu_probe",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"host\": \"127.0.0.1\", \"port\": 11111, \"steps\": {\"processes\": [\"xingguo           2174   0.7  0.7 34794672 117148   ??  S    Sun01AM  21:09.08 /Users/xingguo/.futu/opend/FutuOpenD.app/Contents/MacOS/FutuOpenD /User\", \"xingguo          22044   0.3  0.6 34776980 101176   ??  S     9:17AM   0:06.62 /Users/xingguo/learning_backtrader/.venv/bin/python -u /Users/xingguo/l\", \"xingguo           2203   0.0  0.1 34339168  12496   ??  S    Sun01AM   0:19.34 /Users/xingguo/.futu/opend/FutuOpenD.app/Contents/Frameworks/CrashRepor\", \"xingguo           2018   0.0  0.2 34568424  29224   ??  S    Sun01AM   1:06.44 /Users/xingguo/.futu/opend/FutuOpenD.app/Contents/MacOS/FutuOpenD -logi\"], \"port\": \"可连 ✓\", \"sdk\": \"OpenQuoteContext 成功 ✓\", \"snapshot\": \"ret=0 rows=1\"}, \"ok\": true, \"verdict\": \"✅ **可用**（四层全过）\"}",
+  "started_at": "2026-11-23T10:16:40",
+  "finished_at": "2026-11-23T10:16:41",
+  "duration_s": 1.1
+}
