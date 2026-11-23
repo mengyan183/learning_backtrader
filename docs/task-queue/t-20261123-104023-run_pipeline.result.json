@@ -1,0 +1,11 @@
+{
+  "id": "t-20261123-104023-run_pipeline",
+  "action": "run_pipeline",
+  "params": {},
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"stdout\": \"\", \"stderr\": \" future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\\n  chg5 = vix.pct_change(5)\\n/Users/xingguo/learning_backtrader/fg_system/factors/vix.py:16: FutureWarning: The default fill_method='pad' in Series.pct_change is deprecated and will be removed in a future version. Either fill in any non-leading NA values prior to calling pct_change or specify 'fill_method=None' to not fill NA values.\\n  chg5 = vix.pct_change(5)\\n\"}",
+  "started_at": "2026-11-23T10:41:30",
+  "finished_at": "2026-11-23T10:41:35",
+  "duration_s": 5.39
+}
