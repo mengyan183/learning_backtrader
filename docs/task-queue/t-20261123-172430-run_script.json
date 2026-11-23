@@ -1,0 +1,10 @@
+{
+  "id": "t-20261123-172430-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "vix_factor_check.py",
+    "timeout": "300"
+  },
+  "status": "pending",
+  "created_at": "2026-11-23T17:24:30"
+}
