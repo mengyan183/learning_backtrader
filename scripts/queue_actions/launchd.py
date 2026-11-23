@@ -45,6 +45,13 @@ LAUNCHD_LABELS = ("com.xingguo.fg-task-queue",
                   #   ⇒ job 大概率**没被 launchd 加载**（plist 文件在 ≠ 已 bootstrap）✗
                   #   ⇒ 加白名单，好让 `restart_queue` 能对它走 bootout+bootstrap ✓
                   "com.xingguo.fg-shoutu-refresh",
+                  # 🔴 2026-11-23：补 `fg-daily` ✓
+                  #   改 plist 后必须 bootout+bootstrap 才重读文件 ✗
+                  #   实测 `t-20261123-190045` 报「不允许的 label」✗
+                  #   而它是 `StartCalendarInterval`（无 RunAtLoad）⇒ 重载**不会**
+                  #   立刻触发全链，只在下一个 05:30 生效 ✓
+                  #   ⚠️ 若要**立即**验证全链，用 `kickstart`（见 `restart_queue` 实现）
+                  "com.xingguo.fg-daily",
                   "com.xingguo.dsh.web")
 
 
