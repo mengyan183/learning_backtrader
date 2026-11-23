@@ -22,6 +22,35 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
 PRICE_COLUMNS = ["date", "symbol", "open", "high", "low", "close", "volume"]
+
+#: **美国股市休市日**（不是联邦假日全集 ✗ —— 哥伦布日/退伍军人节照常开市）✓
+#: 2026-11-23 加：假日的 `fromdate` 是**工作日**，`weekday()` 拦不住 ✗
+#: ⇒ `fetch_symbol` 会对空表跑满 6 次重试（3 轮 × 2 assetclass）× 6 秒 ✗
+#: ⚠️ **每年更新一次**：`tests/test_fetch_weekend_skip.py` 会断言「当年已配置」✓
+US_MARKET_HOLIDAYS = frozenset({
+    # ---- 2026 ----
+    "2026-01-01",   # 元旦
+    "2026-01-19",   # 马丁·路德·金日（1 月第 3 个周一）
+    "2026-02-16",   # 总统日（2 月第 3 个周一）
+    "2026-04-03",   # 耶稣受难日（复活节 4/5 前的周五）
+    "2026-05-25",   # 阵亡将士纪念日（5 月最后一个周一）
+    "2026-06-19",   # 六月节
+    "2026-07-03",   # 独立日（7/4 是周六 ⇒ 提前到周五休市）
+    "2026-09-07",   # 劳动节（9 月第 1 个周一）
+    "2026-11-26",   # 感恩节（11 月第 4 个周四）
+    "2026-12-25",   # 圣诞
+    # ---- 2027 ----
+    "2027-01-01",   # 元旦
+    "2027-01-18",   # MLK
+    "2027-02-15",   # 总统日
+    "2027-03-26",   # 耶稣受难日（复活节 3/28）
+    "2027-05-31",   # 阵亡将士
+    "2027-06-18",   # 六月节（6/19 是周六 ⇒ 提前到周五）
+    "2027-07-05",   # 独立日（7/4 是周日 ⇒ 顺延到周一）
+    "2027-09-06",   # 劳动节
+    "2027-11-25",   # 感恩节
+    "2027-12-24",   # 圣诞（12/25 是周六 ⇒ 提前到周五）
+})
 INDEX_COLUMNS = ["date", "open", "high", "low", "close"]
 
 
@@ -339,8 +368,9 @@ def update_prices(path=None, symbols=None, sleep=1.0, max_fail=3,
         #   抛 RuntimeError ✗ ⇒ 每日链里紧跟的 `update_indices()`（写 vix.csv）
         #   **永远执行不到** ✗ ⇒ 简报连续报「六因子缺 2 个」✗
         #   ⇒ 周末起点直接跳过：这两天 Nasdaq **不可能**有新数据 ✓
-        #   ⚠️ 只跳周末，不跳法定假日（假日是工作日，仍会正常请求）✓
-        if start is not None and start.weekday() >= 5:
+        #   ⚠️ 法定假日也要跳（假日是**工作日**，weekday 判断拦不住）✗
+        if start is not None and (start.weekday() >= 5
+                                  or start.strftime("%Y-%m-%d") in US_MARKET_HOLIDAYS):
             skipped.append(sym)
             continue
         fromdate = start.strftime("%Y-%m-%d") if start is not None else "2010-01-01"
