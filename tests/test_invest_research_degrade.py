@@ -177,21 +177,24 @@ def test_llm_defaults_unchanged_without_env(monkeypatch):
     assert "127.0.0.1:8642" in m.HERMES_URL
 
 
-def test_kb_threshold_is_060():
-    """知识库相关度阈值 = **0.6** ✓（2026-10-29 用户裁定 0.7 → 0.6）。
+def test_kb_threshold_is_045():
+    """知识库相关度阈值 = **0.45** ✓（2026-11-23 用户裁定：以 0.45 为准）。
 
-    0.7 太严：实测当天命中全被过滤 ⇒ 整节变成空占位 ✗。
+    演进：0.7（2026-10-29 前）→ 0.6（10-29 裁定）→ **0.45**（11-23 确认）。
+    0.6 时实测当天命中**仍被全过滤** ⇒ 简报连续多期「本次无相关度 ≥ 0.6」✗
+    ⇒ 降到 0.45，与 `kb_evidence` 第一道 `score<0.45` 门槛对齐 ✓
+    ⚠️ 实体词过滤仍在（泛泛的交易心理进不来）✓
     """
     m = _load()
-    assert m.KB_MIN_SCORE == 0.6
+    assert m.KB_MIN_SCORE == 0.45
 
     def _hit(score):
         return {"channel": "C%d" % int(score * 100), "title": "t", "date": "NA",
                 "score": score, "snippet": "x" * 60}
 
-    txt = m._kb_brief_text([_hit(0.55), _hit(0.62)])
-    assert "C62" in txt, "0.62 应该保留 ✓"
-    assert "C55" not in txt, "0.55 应该被过滤 ✗"
+    txt = m._kb_brief_text([_hit(0.40), _hit(0.50)])
+    assert "C50" in txt, "0.50 应该保留 ✓"
+    assert "C40" not in txt, "0.40 应该被过滤 ✗"
 
 
 def test_snapshot_lines_format_numbers():

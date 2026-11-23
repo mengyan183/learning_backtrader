@@ -2316,15 +2316,67 @@ def _human30_brief():
     return "\n".join(out)
 
 
-def _freshness_block():
-    """读 Data/freshness_warning.txt（scripts/check_freshness.py 每日链写入）。
-    有风险则返回告警文本，正常返回 None。"""
+def _expected_index_date(today=None):
+    """简报 05:30 跑 ⇒ 应拿到**上一个工作日**的收盘数据（美股 T-1）✓。
+
+    shortcut: 用工作日近似交易日，未排除美国假日；接入真实交易日历时替换。
+    """
+    import datetime as _dt
+    d = (today or _dt.date.today()) - _dt.timedelta(days=1)
+    while d.weekday() >= 5:            # 周六/周日继续往前
+        d -= _dt.timedelta(days=1)
+    return d
+
+
+def _index_lag_days(index_date, today=None):
+    """指数数据日落后「应有数据日」几个**交易日** ✓（0 = 正常）。
+
+    🔴 为什么不能用自然日（2026-11-23 事故）✗：
+       周五的收盘数据在**周一早上**就是最新的 ✓
+       而自然日差 3 天 ⇒ 每个周一都会误报「停更」✗
+    """
+    import datetime as _dt
+    try:
+        d = _dt.date.fromisoformat(str(index_date)[:10])
+    except (TypeError, ValueError):
+        return None
+    exp = _expected_index_date(today)
+    if d >= exp:
+        return 0
+    n, cur = 0, d
+    while cur < exp:
+        cur += _dt.timedelta(days=1)
+        if cur.weekday() < 5:
+            n += 1
+    return n
+
+
+def _freshness_block(snap=None):
+    """数据新鲜度告警：**文件缺失**与**指数滞后**都必须显式说出来 ✓。
+
+    🔴 2026-11-23 事故：11-20~11-23 四份简报**都没有**「数据新鲜度」段 ✗
+       因为 `freshness_warning.txt` 当时不存在 ✗
+       ⇒ **沉默被读成了"一切正常"** ✗
+    ⇒ 现在：① 文件不在 ⇒ 明说「未知」；② 指数落后 ⇒ 用**交易日**算滞后 ✓
+    """
+    parts = []
+    # ① 指数数据日 vs 应有数据日（交易日口径）
+    idx = (snap or {}).get("index_date")
+    lag = _index_lag_days(idx) if idx else None
+    if lag:
+        parts.append("⚠️ **指数数据日 %s 落后 %d 个交易日**（应有 %s）"
+                     "⇒ 以下读数不是最新 ✗"
+                     % (str(idx)[:10], lag, _expected_index_date()))
+    # ② 护栏自身的产物（`check_freshness.py` 正常时写空行，异常时写告警）
     p = REPO / "Data" / "freshness_warning.txt"
-    if p.exists():
+    if not p.exists():
+        parts.append("⚠️ **新鲜度未知**：`Data/freshness_warning.txt` 不存在 "
+                     "⇒ `check_freshness.py` 未运行（沉默 ≠ 正常）✗")
+    else:
         txt = p.read_text(encoding="utf-8").strip()
         if txt and not txt.startswith("数据新鲜"):
-            return txt
-    return None
+            parts.append(txt)
+    return "\n".join(parts) if parts else None
 
 
 def _major_contradiction():
@@ -2600,7 +2652,7 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
     from fg_system import fed as _fed
     _fctx = _fed.fed_context()
     secs = []
-    _warn = _freshness_block()
+    _warn = _freshness_block(snap)
     if _warn:
         secs.append(("⚠️ 数据新鲜度", _warn))
         secs.append("hr")
@@ -3023,7 +3075,7 @@ def _gen_suffix(snap):
 def build_brief(snap, sentiment, attribution, judge, news=None):
     from fg_system import fed as _fed
     _fctx = _fed.fed_context()
-    _warn = _freshness_block()
+    _warn = _freshness_block(snap)
     lines = [
         f"# 多智能体投研简报 {_date_label(snap)}{_gen_suffix(snap)}",
         "",

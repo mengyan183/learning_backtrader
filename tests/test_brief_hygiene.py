@@ -32,6 +32,34 @@ def test_conflict_note_only_when_both(monkeypatch):
     assert ir._conflict_note({}, 0) == ""
 
 
+def test_index_lag_uses_trading_days():
+    """周五数据在周一早上 = **0 个交易日**滞后 ✓（不能用自然日）。
+
+    🔴 2026-11-23 事故：用自然日算会把每个周一都误报成「停更 3 天」✗
+       2026-11-20 是周五、11-23 是周一 ⇒ 最新可得数据就是 11-20 ✓
+    """
+    import datetime as _dt
+
+    mon = _dt.date(2026, 11, 23)
+    assert ir._index_lag_days("2026-11-20", today=mon) == 0
+    assert ir._index_lag_days("2026-11-19", today=mon) == 1
+    assert ir._index_lag_days("2026-11-17", today=mon) == 3
+    # 未来日期/脏值不得炸
+    assert ir._index_lag_days("2026-12-01", today=mon) == 0
+    assert ir._index_lag_days("not-a-date", today=mon) is None
+
+
+def test_freshness_block_warns_when_file_missing(monkeypatch, tmp_path):
+    """护栏产物缺失 ⇒ 必须说「未知」，**沉默不能等于正常** ✓。
+
+    🔴 2026-11-23 事故：四份简报都没有「数据新鲜度」段，
+       因为 `freshness_warning.txt` 不存在，而旧实现对此返回 None ✗
+    """
+    monkeypatch.setattr(ir, "REPO", tmp_path)
+    txt = ir._freshness_block({"index_date": "2026-11-20"})
+    assert txt and "新鲜度未知" in txt
+
+
 def test_gen_suffix_marks_generation_date():
     """数据日 ≠ 生成日 ⇒ 标题必须标出生成日 ✓。
 
