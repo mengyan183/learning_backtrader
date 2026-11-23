@@ -2139,6 +2139,29 @@ def _ammo_line():
                total - len(released), triggers[nxt] * 100))
 
 
+def _conflict_note(snap, zi):
+    """「恐惧档位 + 机械减仓」同时出现时，解释两者**不冲突** ✓。
+
+    🔴 2026-11-23 事故：11-20~11-23 的简报同时写了
+       「没恐慌割肉 ⇒ 不动是纪律允许的」（心理段）
+       「减仓至上限 643」（执行段，YINN 2925 → 643，即卖 78%）
+       ⇒ 读者只看到两个相反指令 ✗ 文案必须自己解释 ✗
+       根因不是逻辑错：前者管**情绪**，后者管**敞口**（1% 硬上限）✓
+    """
+    if zi > 1:
+        return ""
+    try:
+        act = action_brief_text(snap) or ""
+    except Exception:                      # noqa: BLE001
+        return ""
+    if "减仓至上限" not in act:
+        return ""
+    return ("\n🔎 上面说「不动是对的」，下面却要求「减仓至上限」—— 两者**不冲突**：\n"
+            "   前者 = **不要因为恐慌情绪卖出**（看的是「我难受」）；\n"
+            "   后者 = **敞口超过 1% 硬上限**的机械约束（看的是「仓位超了」）。\n"
+            "   ⇒ 判据不同：情绪卖出没有规则依据 ✗；机械减仓有明确数字 ✓")
+
+
 def _psych_section(snap):
     """🧘 持仓心理状态（2026-11-17 用户要求：简报加心理按摩）
 
@@ -2186,7 +2209,9 @@ def _psych_section(snap):
             "⚠️ 不是建议，不预测涨跌。你的操作符合纪律 ⇒ 不需要自责。\n"
             "   但「买杠杆 ETF」是主动决定，它是今天亏损的原因之一\n"
             "   —— 当时在信息约束下合理，现在也可以重新评估。"
-            % (fgv, zones.get(zi, "?"), dd_txt, "\n  ".join(good)))
+            "%s"
+            % (fgv, zones.get(zi, "?"), dd_txt, "\n  ".join(good),
+               _conflict_note(snap, zi)))
 
 
 def behavior_checklist(snap):
@@ -2980,12 +3005,27 @@ def _date_label(snap):
     return idx or pos
 
 
+def _gen_suffix(snap):
+    """生成日与数据日不同 ⇒ 标题补「（生成 MM-DD）」✓（2026-11-23 事故）。
+
+    🔴 四份简报（11-20~11-23）标题全是「2026-11-20」✗
+       读者在 11-23 打开会以为是最新读数 ✗
+    ⚠️ 只加在**标题末尾** —— `verify_brief` 取标题里**第一个**日期做比对 ✓
+    """
+    import datetime as _dt
+    idx = str(snap.get("index_date") or "")[:10]
+    today = _dt.date.today().isoformat()
+    if not idx or idx == today:
+        return ""
+    return "（生成 %s）" % today[5:]
+
+
 def build_brief(snap, sentiment, attribution, judge, news=None):
     from fg_system import fed as _fed
     _fctx = _fed.fed_context()
     _warn = _freshness_block()
     lines = [
-        f"# 多智能体投研简报 {_date_label(snap)}",
+        f"# 多智能体投研简报 {_date_label(snap)}{_gen_suffix(snap)}",
         "",
     ]
     if _warn:

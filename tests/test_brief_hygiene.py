@@ -11,6 +11,43 @@ sys.path.insert(0, os.path.join(REPO, "scripts"))
 import invest_research as ir  # noqa: E402
 
 
+def test_conflict_note_only_when_both(monkeypatch):
+    """「恐惧档 + 机械减仓」同时出现才解释 —— 否则是噪音 ✓。
+
+    🔴 2026-11-23 事故：简报一边说「没恐慌割肉 ⇒ 不动是对的」，
+       一边要求「YINN 2925 → 643（减仓至上限）」✗ 读者只看到矛盾 ✗
+       ⇒ 必须由文案自己解释「情绪」与「敞口」是两个判据 ✓
+    """
+    monkeypatch.setattr(ir, "action_brief_text",
+                        lambda snap: "· YINN 市值2925/上限643 → 减仓至上限643")
+    note = ir._conflict_note({}, 0)
+    assert "不冲突" in note and "1% 硬上限" in note
+
+    # 贪婪档不需要解释（那时减仓与情绪方向一致，不矛盾）
+    assert ir._conflict_note({}, 3) == ""
+
+    # 没有机械减仓 ⇒ 不需要解释
+    monkeypatch.setattr(ir, "action_brief_text",
+                        lambda snap: "· 全部**无减仓触发** ⇒ 持有观望")
+    assert ir._conflict_note({}, 0) == ""
+
+
+def test_gen_suffix_marks_generation_date():
+    """数据日 ≠ 生成日 ⇒ 标题必须标出生成日 ✓。
+
+    🔴 四份简报（11-20~11-23）标题全是「2026-11-20」✗
+       读者在 11-23 打开会以为是最新读数 ✗
+    """
+    import datetime as _dt
+
+    old = (_dt.date.today() - _dt.timedelta(days=3)).isoformat()
+    assert "生成" in ir._gen_suffix({"index_date": old})
+
+    today = _dt.date.today().isoformat()
+    assert ir._gen_suffix({"index_date": today}) == ""
+    assert ir._gen_suffix({}) == ""
+
+
 def test_strip_removes_pseudo_keys_and_selfcheck():
     """伪键名占位符 + 字数自检行必须剥掉，正文不动。"""
     raw = ("一、逐标的归因\n"
