@@ -584,6 +584,39 @@ def test_git_commit_warns_when_push_fails(monkeypatch, capsys):
     assert "推送失败" in capsys.readouterr().out
 
 
+def test_git_commit_uses_pathspec(monkeypatch):
+    """提交必须带 pathspec —— 不能提交整个索引 ✓。
+
+    🔴 2026-11-23 投递事故：`sync_1120v` 的 `portfolio.py` 留在 Mac 索引里，
+    而队列用裸 `git commit -m` ⇒ 提交的是**整个索引** ⇒ 连一个**只含任务 json**
+    的包都被门禁判「改了规则代码但 docs 无变更」（报的文件根本不在该包里）✗
+    ⇒ 必须 `git commit -m msg -- <paths>`，只提交本函数 add 过的路径 ✓
+    """
+    seen = []
+
+    class _R:
+        def __init__(self, rc, err=""):
+            self.returncode = rc
+            self.stderr = err
+
+    class _SP:
+        SubprocessError = q.subprocess.SubprocessError
+
+        @staticmethod
+        def run(cmd, **kw):
+            seen.append(list(cmd))
+            return _R(0)
+
+    monkeypatch.setattr(qc, "subprocess", _SP)
+    q._git_commit([("t1", "done")])
+    commit = [c for c in seen if len(c) > 1 and c[1] == "commit"]
+    assert commit, "没有发起 commit ✗"
+    assert "--" in commit[0], "commit 必须带 pathspec 分隔符 `--` ✗"
+    tail = commit[0][commit[0].index("--") + 1:]
+    assert "docs/task-queue" in tail, "pathspec 必须包含任务队列目录 ✗"
+    assert all(p for p in tail), "pathspec 不得为空串 ✗"
+
+
 def test_clean_sync_partial_rejects_bad_pkg():
     """包名非法必须报错 ✓ —— 不许借 `..` / `/` / `*` 越出分片目录 ✗。"""
     for bad in ("", "..", "a/b", "a b", "*"):

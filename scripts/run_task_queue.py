@@ -244,17 +244,27 @@ def _git_commit(done):
         #    `.gitignore` 拒绝（如 `Data/raw/*` ✗），git 就**整体失败** ✗
         #    ⇒ 连 `docs/task-queue` 的结果都提交不了 ✗
         #    ⇒ 改为：**逐个 add** ✓ 失败的单独报警但不中断 ✓
+        ok_paths = []
         bad = []
         for pth in paths:
             r = _run(["git", "add", "--", pth], 60)
             if r.returncode != 0:
                 bad.append((pth, (r.stderr or "").strip()[:120]))
+            else:
+                ok_paths.append(pth)
         if bad:
             print("[warn] 以下路径 add 失败（其余照常提交 ✓）：")
             for pth, err in bad:
                 print("   %s —— %s" % (pth, err))
+        if not ok_paths:
+            return
         msg = "task: %s" % "; ".join("%s=%s" % (i, s) for i, s in done)
-        r = _run(["git", "commit", "-m", msg], 120)
+        # 🔴 2026-11-23（投递事故）：原来 `git commit -m msg` 提交的是**整个索引** ✗
+        #   ⇒ 任何别的脏暂存文件（如门禁拒绝的规则代码）都会毒化队列的每一次回执 ✗
+        #   实测：`sync_1120v` 的 portfolio.py 留在索引里 ⇒ 一个**只含任务 json**
+        #   的包，门禁却报 `fg_system/signal/portfolio.py` ⇒ 任务与结果全提交不了 ✗
+        #   ⇒ 加 pathspec：只提交本函数 add 成功的路径 ✓
+        r = _run(["git", "commit", "-m", msg, "--"] + ok_paths, 120)
         if r.returncode != 0:          # 无变更可提交 ⇒ 不是错误 ✓
             return
         p = _run(["git", "push", "origin", "HEAD"], 180)
