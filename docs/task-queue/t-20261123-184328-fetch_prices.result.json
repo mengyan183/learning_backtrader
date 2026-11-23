@@ -1,0 +1,13 @@
+{
+  "id": "t-20261123-184328-fetch_prices",
+  "action": "fetch_prices",
+  "params": {
+    "indices": "1"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"stdout\": \"\", \"stderr\": \"Traceback (most recent call last):\\n  File \\\"<string>\\\", line 1, in <module>\\n  File \\\"/Users/xingguo/learning_backtrader/fg_system/data/fetch.py\\\", line 372, in update_prices\\n    raise RuntimeError(\\nRuntimeError: update_prices 提前结束（超过 180s 预算）：只更新了 5/39 个标的，其余保留本地旧数据\\n\", \"after\": {\"prices.csv\": {\"rows\": 102063, \"last\": \"2026-11-20\"}, \"vix.csv\": {\"rows\": 9319, \"last\": \"2026-11-18\"}, \"vix3m.csv\": {\"rows\": 4319, \"last\": \"2026-11-18\"}}, \"note\": \"⚠️ rc=0 但 `after` 里日期没变 ⇒ 抓取「成功但无新数据」✗\"}",
+  "started_at": "2026-11-23T18:44:30",
+  "finished_at": "2026-11-23T18:48:29",
+  "duration_s": 239.52
+}
