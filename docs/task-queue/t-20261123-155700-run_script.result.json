@@ -1,0 +1,13 @@
+{
+  "id": "t-20261123-155700-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "renormalize_eol.py"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"script\": \"renormalize_eol.py\", \"args\": [], \"stdout\": \"{\\n  \\\"ok\\\": false,\\n  \\\"error\\\": \\\"工作区还有其他脏文件，拒绝执行（先清理）：ata/brief_check_history.jsonl, Data/briefs/index.md, Data/crypto_state.json, Data/kb/chroma/00d66981-7e75-48b5-9182-2bc7c989d734/data_level0.bin, Data/kb/chroma/00d66981-7e75-48b5-9182-2bc7c989d734/header.bin\\\",\\n  \\\"dirty\\\": [\\n    \\\"ata/brief_check_history.jsonl\\\",\\n    \\\"Data/briefs/index.md\\\",\\n    \\\"Data/crypto_state.json\\\",\\n    \\\"Data/kb/chroma/00d66981-7e75-48b5-9182-2bc7c989d734/data_level0.bin\\\",\\n    \\\"Data/kb/chroma/00d66981-7e75-48b5-9182-2bc7c989d734/header.bin\\\",\\n    \\\"Data/kb/chroma/00d66981-7e75-48b5-9182-2bc7c989d734/index_metadata.pickle\\\",\\n    \\\"Data/kb/chroma/00d66981-7e75-48b5-9182-2bc7c989d734/length.bin\\\",\\n    \\\"Data/kb/chroma/00d66981-7e75-48b5-9182-2bc7c989d734/link_lists.bin\\\",\\n    \\\"Data/kb/chroma/chroma.sqlite3\\\",\\n    \\\"Data/kb/subtitles/cdsDagmrnLI.en-orig.vtt\\\"\\n  ]\\n}\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-23T15:58:38",
+  "finished_at": "2026-11-23T15:58:38",
+  "duration_s": 0.09
+}
