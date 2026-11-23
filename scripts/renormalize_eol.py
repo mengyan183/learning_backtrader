@@ -116,16 +116,36 @@ def main(argv=None):
         out["dry_run"] = True
         return out
 
-    # ② 重新规范化（只改索引里的 blob，工作区内容不动 ✓）
-    rc, so, se = _git("add", "--renormalize", "--", rel)
+    # ② **显式**把工作区文件改写成 LF ✓（不依赖 `--renormalize` 的隐式行为）
+    #    🔴 2026-11-23 实测：`git add --renormalize` 返回 rc=0 但**什么都没暂存** ✗
+    #       ⇒ 紧接着 `git commit -- <path>` 报「nothing to commit」✗
+    #       成因最可能是该文件被标记 `skip-worktree` / `assume-unchanged`
+    #       （336 KB 大文件常见做法）⇒ `git add` 直接忽略它 ✗
+    full = os.path.join(REPO, rel)
+    with open(full, "rb") as fh:
+        raw = fh.read()
+    fixed = raw.replace(b"\r\n", b"\n")
+    if fixed != raw:
+        with open(full, "wb") as fh:
+            fh.write(fixed)
+    out["steps"]["rewrite"] = {"bytes_before": len(raw),
+                               "bytes_after": len(fixed),
+                               "changed": fixed != raw}
+
+    # ③ 清掉可能存在的 assume-unchanged / skip-worktree ✓（未设置时是 no-op）
+    _git("update-index", "--no-assume-unchanged", "--no-skip-worktree", "--", rel)
+
+    rc, so, se = _git("add", "--", rel)
     out["steps"]["add"] = {"rc": rc, "stderr": se[:300]}
     if rc != 0:
-        return {"ok": False, "error": "git add --renormalize 失败：%s" % se[:300]}
+        return {"ok": False, "error": "git add 失败：%s" % se[:300]}
 
     rc, so, se = _git("diff", "--cached", "--numstat", "--", rel)
     out["steps"]["staged"] = so[:200]
     if rc != 0 or not so.strip():
-        return {"ok": False, "error": "暂存区没有变化 ⇒ 该文件已是 LF，无需规范化"}
+        return {"ok": False,
+                "error": "暂存区没有变化 ⇒ 该文件已是 LF 且无内容改动"
+                         "（若确认是 CRLF，检查 skip-worktree 标记）"}
 
     # ③ 用 **pathspec** 提交 ⇒ 不会被别的脏暂存文件毒化 ✓
     msg = ("chore(docs): 规范化 %s 行尾（CRLF→LF），"
