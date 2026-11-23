@@ -37,6 +37,24 @@ def test_rejects_traversal_and_absolute():
         assert ok is False, p
 
 
+def test_default_path_is_discipline_doc(monkeypatch):
+    """**无参数**调用必须默认规范化 `trading-discipline.md` ✓。
+
+    🔴 2026-11-23 实测：`run_script` 的 `args` **必须是数组** ✗，而
+       `dispatch_task.py --param` 只能传字符串 ⇒ 传参必然 rc=1 失败 ✗
+       ⇒ 队列只能用「无参数」方式调用，默认值必须就是目标行为 ✓
+    """
+    seen = {}
+
+    def _vp(p):
+        seen["p"] = p
+        return False, "stop-here"
+
+    monkeypatch.setattr(rn, "valid_path", _vp)
+    rn.main(["--dry-run"])
+    assert seen["p"] == "docs/trading-discipline.md", seen
+
+
 def test_rejects_missing_file():
     ok, why = rn.valid_path("docs/__not_exist__.md")
     assert ok is False and "不存在" in why, why

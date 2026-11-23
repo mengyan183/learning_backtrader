@@ -17,9 +17,17 @@
   · 推送固定 `origin HEAD:main` ✓ 不接受任意 refspec
 
 用法（Mac，经队列）：
-    python scripts/renormalize_eol.py --path docs/trading-discipline.md --push
+    python scripts/renormalize_eol.py
+    —— **不带参数**：默认规范化 `docs/trading-discipline.md` 并推送 ✓
+
+🔴 为什么默认不带参数（2026-11-23 实测）：`run_script` 的 `args` **必须是数组** ✗
+   而 `dispatch_task.py --param` 只能传字符串 ⇒ 传 `args=--path,x,--push` 会被
+   `queue_actions` 判「`args` 必须是数组」并 rc=1 失败 ✗
+   ⇒ 改成「默认值即目标行为」，队列只需 `--param script=renormalize_eol.py` ✓
+
 本地调试：
     python scripts/renormalize_eol.py --path docs/x.md --dry-run
+    python scripts/renormalize_eol.py --no-push          # 只提交不推送
 """
 from __future__ import annotations
 
@@ -69,10 +77,14 @@ def _eol_stats(path):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="规范化文档行尾并提交")
-    ap.add_argument("--path", required=True, help="仓库内相对路径（docs/*.md）")
-    ap.add_argument("--push", action="store_true", help="提交后 push origin HEAD:main")
+    # 默认值即「队列要跑的那件事」⇒ 队列无需传 args（args 只收数组 ✗）
+    ap.add_argument("--path", default="docs/trading-discipline.md",
+                    help="仓库内相对路径（docs/*.md，默认 docs/trading-discipline.md）")
+    ap.add_argument("--no-push", action="store_true",
+                    help="只提交不推送（默认**会** push origin HEAD:main）")
     ap.add_argument("--dry-run", action="store_true", help="只看会做什么，不改仓库")
     args = ap.parse_args(argv)
+    do_push = not args.no_push
 
     ok, why = valid_path(args.path)
     if not ok:
@@ -121,8 +133,8 @@ def main(argv=None):
     if rc != 0:
         return {"ok": False, "error": "commit 失败：%s" % (se or so)[:300]}
 
-    # ④ 可选推送
-    if args.push:
+    # ④ 推送（默认开；`--no-push` 关）
+    if do_push:
         rc, so, se = _git("push", "origin", "HEAD:main", timeout=300)
         out["steps"]["push"] = {"rc": rc, "out": so[-300:], "stderr": se[-300:]}
         if rc != 0:
