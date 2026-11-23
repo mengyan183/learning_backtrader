@@ -370,10 +370,22 @@ def _act_fetch_prices(params):
     """
     import pandas as _pd
 
-    code = ("from fg_system.data import fetch;"
-            "print('prices:', fetch.update_prices())")
+    # 🔴 2026-11-23 事故：原来两句用 `;` 串在一条 `-c` 里 ✗
+    #   `update_prices()` 超预算会 **raise RuntimeError** ✗
+    #   ⇒ 整条脚本中止 ⇒ `update_indices()`（写 vix.csv / vix3m.csv）**从未执行** ✗
+    #   实测 `t-20261123-184328`：prices.csv 已是 11-20 ✓，但
+    #   vix.csv / vix3m.csv 双双停在 **11-18** ✗，简报「六因子缺 2 个」因此消不掉 ✗
+    #   ⇒ 两个抓取**各自 try/except**，互不牵连 ✓
+    code = ("from fg_system.data import fetch\n"
+            "try:\n"
+            "    print('prices:', fetch.update_prices())\n"
+            "except Exception as e:\n"
+            "    print('prices-FAILED:', type(e).__name__, e)\n")
     if str(params.get("indices") or "1").lower() in ("1", "true", "yes"):
-        code += ";print('indices:', fetch.update_indices())"
+        code += ("try:\n"
+                 "    print('indices:', fetch.update_indices())\n"
+                 "except Exception as e:\n"
+                 "    print('indices-FAILED:', type(e).__name__, e)\n")
 
     try:
         r = _run([sys.executable, "-c", code], 1800)
@@ -392,7 +404,11 @@ def _act_fetch_prices(params):
         except Exception as e:              # noqa: BLE001
             after[name] = {"error": str(e)[:80]}
 
-    return {"ok": rc == 0, "rc": rc,
+    # 🔴 2026-11-23：两段各自 try/except 后 rc 恒为 0 ✗
+    #   ⇒ 必须**看 stdout 里的 FAILED 标记**，否则「一半失败」会被判成成功 ✗
+    failed = [x for x in ("prices-FAILED", "indices-FAILED") if x in so]
+    return {"ok": rc == 0 and not failed, "rc": rc,
+            "failed_steps": failed,
             "stdout": so[-2500:], "stderr": se[-2000:],
             "after": after,
             "note": "⚠️ rc=0 但 `after` 里日期没变 ⇒ 抓取「成功但无新数据」✗"}

@@ -318,6 +318,7 @@ def update_prices(path=None, symbols=None, sleep=1.0, max_fail=3,
 
     frames = []
     fails = 0
+    skipped = []
     t0 = time.time()
     aborted = None
     for sym in symbols:
@@ -331,6 +332,17 @@ def update_prices(path=None, symbols=None, sleep=1.0, max_fail=3,
             aborted = "超过 %ds 预算" % deadline_s
             break
         start, _ = missing_ranges(old, sym)
+        # 🔴 2026-11-23 事故：周一早上 `fromdate` = **周六**（本地已是周五收盘）✗
+        #   Nasdaq 对周末区间返回 **HTTP 200 + 空表** ✗
+        #   而 `fetch_symbol` 把「空表」当成**限流** ⇒ 3 轮 × 2 个 assetclass
+        #   = **6 次请求 + 退避** ⇒ 实测 **36 秒/标的** ⇒ 39 只跑满 180s 预算后
+        #   抛 RuntimeError ✗ ⇒ 每日链里紧跟的 `update_indices()`（写 vix.csv）
+        #   **永远执行不到** ✗ ⇒ 简报连续报「六因子缺 2 个」✗
+        #   ⇒ 周末起点直接跳过：这两天 Nasdaq **不可能**有新数据 ✓
+        #   ⚠️ 只跳周末，不跳法定假日（假日是工作日，仍会正常请求）✓
+        if start is not None and start.weekday() >= 5:
+            skipped.append(sym)
+            continue
         fromdate = start.strftime("%Y-%m-%d") if start is not None else "2010-01-01"
         try:
             frames.append(fetch_symbol(sym, fromdate=fromdate))
@@ -340,6 +352,10 @@ def update_prices(path=None, symbols=None, sleep=1.0, max_fail=3,
             print("[warn] %s 抓取失败（连续 %d/%d）：%s: %s"
                   % (sym, fails, max_fail, type(exc).__name__, exc))
         time.sleep(sleep)
+    if skipped:
+        print("[skip] %d 个标的的起点是周末（无新数据可抓）：%s"
+              % (len(skipped), ", ".join(skipped[:6])
+                 + (" …" if len(skipped) > 6 else "")))
 
     if aborted is None and fails >= max_fail:
         # 失败发生在**末尾**时循环是自然结束的 ⇒ 这里补一次判定 ✓
@@ -373,6 +389,27 @@ def update_prices(path=None, symbols=None, sleep=1.0, max_fail=3,
             "update_prices 提前结束（%s）：只更新了 %d/%d 个标的，"
             "其余保留本地旧数据" % (aborted, len(frames), len(symbols)))
     return merged, added
+
+
+def update_prices_and_indices():
+    """每日链 / 队列共用入口：两个抓取**互不牵连** ✓（2026-11-23）。
+
+    🔴 事故：每日链与队列都用 `-c "fetch.update_prices(); fetch.update_indices()"` ✗
+       `update_prices()` 超预算会 **raise RuntimeError** ✗
+       ⇒ 同一行里的 `update_indices()`（写 `vix.csv` / `vix3m.csv`）**永远执行不到** ✗
+       ⇒ `vix.csv` 卡在 11-18 ⇒ 简报连报「六因子缺 2 个」✗
+    ⇒ 各自 try/except，一个失败不影响另一个 ✓
+    ⇒ 返回 `{"prices": "ok" | "错误串", "indices": ...}`，便于回执判断 ✓
+    """
+    out = {}
+    for name, fn in (("prices", update_prices), ("indices", update_indices)):
+        try:
+            fn()
+            out[name] = "ok"
+        except Exception as exc:              # noqa: BLE001
+            out[name] = "%s: %s" % (type(exc).__name__, exc)
+            print("[%s-FAILED] %s: %s" % (name, type(exc).__name__, exc))
+    return out
 
 
 def fetch_vix_live(days=10):
