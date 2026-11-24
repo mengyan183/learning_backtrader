@@ -1,0 +1,13 @@
+{
+  "id": "t-20261124-093520-run_pytest",
+  "action": "run_pytest",
+  "params": {
+    "files": "tests/test_realtime_alert_gate.py,tests/test_l33_market_signal.py,tests/test_brief_hygiene.py"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"failed\": [], \"tail\": \".........................................                                [100%]\\n=============================== warnings summary ===============================\\ntests/test_brief_hygiene.py::test_futu_probe_never_raises\\n  /Users/xingguo/learning_backtrader/.venv/lib/python3.10/site-packages/futu/common/network_manager.py:185: DeprecationWarning: setDaemon() is deprecated, set the daemon attribute instead\\n    self._thread.setDaemon(True)\\n\\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\\n41 passed, 1 warning in 1.29s\"}",
+  "started_at": "2026-11-24T09:36:56",
+  "finished_at": "2026-11-24T09:36:58",
+  "duration_s": 1.79
+}
