@@ -324,8 +324,11 @@ def main(argv=None):
     #   但服务端 `stock_emotion/history` 已返回 `data: []`（源断）✗
     #   ⇒ 10-14 之后只有 fng ⇒ 本回测是**被迫混用** ⇒ 读者必须知道 ✓
     if "src" in st.columns:
-        print("## 数据来源构成（**口径混用** ✗ 必读）")
+        # 🔴 2026-11-24：标题**动态** ✓ —— 单源时写「口径混用」自相矛盾 ✗
+        #   （`--source history` 只留一个源，但标题仍写「混用必读」✗）
         src = st.groupby("src")["date"].agg(["min", "max", "count"])
+        print("## 数据来源构成%s"
+              % ("（**口径混用** ✗ 必读）" if len(src) > 1 else ""))
         for name, r in src.iterrows():
             print("  %-8s %5d 行 ｜ %s → %s"
                   % (name, int(r["count"]), str(r["min"].date()),
