@@ -1,0 +1,14 @@
+{
+  "id": "t-20261124-151152-daily_log_tail",
+  "action": "daily_log_tail",
+  "params": {
+    "which": "shoutu_history_out",
+    "lines": "40"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"which\": \"shoutu_history_out\", \"path\": \"/Users/xingguo/learning_backtrader/logs/shoutu_history_daily.out.log\", \"lines\": 0, \"tail\": \"\"}",
+  "started_at": "2026-11-24T15:12:55",
+  "finished_at": "2026-11-24T15:12:55",
+  "duration_s": 0.0
+}
