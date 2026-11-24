@@ -1,9 +1,0 @@
-{
-  "id": "t-20261124-114621-run_script",
-  "action": "run_script",
-  "params": {
-    "script": "corr_matrix.py"
-  },
-  "status": "pending",
-  "created_at": "2026-11-24T11:46:21"
-}
