@@ -1,0 +1,9 @@
+{
+  "id": "t-20261124-095718-run_pytest",
+  "action": "run_pytest",
+  "params": {
+    "files": "tests/test_evolve_review_cap.py,tests/test_evolve_review_dedup.py,tests/test_realtime_alert_gate.py,tests/test_fg_sync_ingest.py,tests/test_restore_from_base64.py"
+  },
+  "status": "pending",
+  "created_at": "2026-11-24T09:57:18"
+}
