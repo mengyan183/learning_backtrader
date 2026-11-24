@@ -1,9 +1,0 @@
-{
-  "id": "t-20261124-093547-run_script",
-  "action": "run_script",
-  "params": {
-    "script": "memory_digest.py"
-  },
-  "status": "pending",
-  "created_at": "2026-11-24T09:35:47"
-}
