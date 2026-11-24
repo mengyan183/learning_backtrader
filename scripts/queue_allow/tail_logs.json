@@ -6,5 +6,7 @@
   "realtime": "/tmp/fg_realtime.log",
   "realtime_errors": "Data/realtime_errors.log",
   "shoutu_refresh_out": "logs/shoutu-refresh.out.log",
-  "shoutu_refresh_err": "logs/shoutu-refresh.err.log"
+  "shoutu_refresh_err": "logs/shoutu-refresh.err.log",
+  "shoutu_history_out": "logs/shoutu_history_daily.out.log",
+  "shoutu_history_err": "logs/shoutu_history_daily.err.log"
 }
