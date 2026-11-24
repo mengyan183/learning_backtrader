@@ -1,0 +1,13 @@
+{
+  "id": "t-20261124-133805-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "corr_matrix.py"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"script\": \"corr_matrix.py\", \"args\": [], \"stdout\": \"prices.csv：2555 行 × 47 标的，2016-09-26 → 2026-11-23\\n\", \"stderr\": \"Traceback (most recent call last):\\n  File \\\"/Users/xingguo/learning_backtrader/scripts/corr_matrix.py\\\", line 121, in <module>\\n    sys.exit(main())\\n  File \\\"/Users/xingguo/learning_backtrader/scripts/corr_matrix.py\\\", line 101, in main\\n    c, ns, cols = _corr_pairwise(px, \\\"2026-01-01\\\", None)\\n  File \\\"/Users/xingguo/learning_backtrader/scripts/corr_matrix.py\\\", line 62, in _corr_pairwise\\n    v = s[a].corr(s[b]) if k >= min_n else float(\\\"nan\\\")\\n  File \\\"/Users/xingguo/learning_backtrader/.venv/lib/python3.10/site-packages/pandas/core/frame.py\\\", line 11078, in corr\\n    if method == \\\"pearson\\\":\\n  File \\\"/Users/xingguo/learning_backtrader/.venv/lib/python3.10/site-packages/pandas/core/generic.py\\\", line 1580, in __nonzero__\\n    raise ValueError(\\nValueError: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().\\n\"}",
+  "started_at": "2026-11-24T13:39:15",
+  "finished_at": "2026-11-24T13:39:17",
+  "duration_s": 1.21
+}
