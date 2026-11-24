@@ -32,6 +32,41 @@ STATE_PATH = os.path.join(REPO, "Data", "realtime_state.json")
 ERR_PATH = os.path.join(REPO, "Data", "realtime_errors.log")
 ALERT_PCT = float(os.environ.get("RT_ALERT_PCT", "5.0"))
 ALERT_COOLDOWN = 3600  # 每标的小时级去重
+
+#: 异动告警的**数据新鲜度上限**（秒）✓ —— 超过就不告警
+#: 🔴 2026-11-23 事故：推送里出现「2026-11-20T10:46」这种 **4 天前**的价格 ✗
+#:    根因：`check_alert` 只判「现在是不是交易时段」，不判「这条数据是不是新的」✗
+#:    订阅断掉的标的（无持仓/无行情权限）价格冻结 ⇒ 每次进交易时段都重报一次 ✗
+ALERT_MAX_STALE = int(os.environ.get("RT_ALERT_MAX_STALE", "300"))
+
+#: 持仓标的白名单缓存（30 分钟刷新一次，避免每根 K 线都读 CSV）✓
+_ALERT_SYMS = {"t": 0.0, "s": set()}
+
+
+def alert_symbols():
+    """**只对持仓标的**告警 ✓（2026-11-23 用户要求）。
+
+    `QQQ` 只用于指数预览，不在持仓里 ⇒ 不告警 ✓
+    已清仓（`qty=0`）的标的同理 ⇒ 不告警 ✓
+    """
+    now = time.time()
+    if now - _ALERT_SYMS["t"] > 1800:
+        try:
+            _ALERT_SYMS["s"] = set(holding_symbols(include_index=False))
+        except Exception as e:                    # noqa: BLE001
+            print(f"[rt] 读取持仓失败（沿用旧缓存）：{e}")
+        _ALERT_SYMS["t"] = now
+    return _ALERT_SYMS["s"]
+
+
+def _stale_sec(ts):
+    """`ts` 距今多少秒；解析失败返回 `None`（视为不可信）。"""
+    if not ts:
+        return None
+    try:
+        return (datetime.now() - datetime.fromisoformat(str(ts))).total_seconds()
+    except (TypeError, ValueError):
+        return None
 SYMBOL_CODES = {}      # {"QQQ": "US.QQQ", ...} 运行时填充
 state = {}             # 模块级共享状态（回调线程 + 主循环 + 告警）
 
@@ -160,19 +195,30 @@ def save_state(state):
     return False
 
 
-def holding_symbols():
-    """positions.csv 最新快照的美股 symbol（去 -USDT 加密；富途无 BTC 现货）。"""
+def holding_symbols(include_index=True):
+    """positions.csv 最新快照里**仍持有**（`qty > 0`）的美股 symbol ✓。
+
+    🔴 2026-11-23 事故：原来**不判数量** ✗ —— 已清仓但仍有 `qty=0` 行的标的
+       会被订阅 ⇒ 富途对它们不下发 K 线（无持仓）⇒ 价格冻结在最后一天 ✗
+       ⇒ 4 天后仍拿旧 `day_chg_pct` 触发「盘中异动」✗
+       实测：AXTX / CONL / CRCG / GDXU 早已清仓，却仍在告警名单里，
+       推送里出现「2026-11-20T10:46」这种 4 天前的时间戳 ✗
+    """
     import pandas as pd
     p = os.path.join(REPO, "Data", "positions.csv")
     syms = []
     if os.path.exists(p):
         pos = pd.read_csv(p, parse_dates=["date"])
         pos = pos[pos["date"] == pos["date"].max()]
+        if "qty" in pos.columns:
+            q = pd.to_numeric(pos["qty"], errors="coerce").fillna(0)
+            pos = pos[q > 0]
         for s in pos["symbol"]:
             s = str(s).replace("-USDT", "")
             if s not in ("BTC", "ETH"):
                 syms.append(s)
-    syms += ["QQQ"]  # 指数预览需要
+    if include_index:
+        syms += ["QQQ"]  # 指数预览需要
     return sorted(set(syms))
 
 
@@ -415,9 +461,24 @@ def _alert_kb_query(sym):
 
 
 def check_alert(sym, st):
-    """盘中异动告警。**仅交易时段判定**：盘前/盘后/周末 snapshot 的
-    day_chg 是上一交易日涨跌，不触发（2026-10-05 盘前误报根因）。"""
+    """盘中异动告警。三道闸：**交易时段** / **持仓标的** / **数据新鲜** ✓。
+
+    🔴 2026-11-23 事故（三道闸缺后两道）：
+       · 推送里出现 `2026-11-20T10:46` 的价格 —— **4 天前**的数据 ✗
+       · AXTX / CONL / CRCG / GDXU 早已清仓，仍在告警名单 ✗
+       · QQQ 只做指数预览，也被当成持仓异动推送 ✗
+       ⇒ 根因：`check_alert` 只判「现在是不是交易时段」✗
+         订阅断掉的标的（无持仓 ⇒ 富途不下发 K 线）价格冻结 ⇒
+         每次进交易时段都拿旧 `day_chg_pct` 重报一次 ✗
+    """
     if not _in_trading_hours():
+        return
+    # ① 只监控**持仓**标的（QQQ 只做指数预览；已清仓的不报）
+    if sym not in alert_symbols():
+        return
+    # ② 数据必须新鲜 —— 陈旧价格不是「当下异动」
+    age = _stale_sec(st.get("ts"))
+    if age is None or age > ALERT_MAX_STALE:
         return
     chg = st.get("day_chg_pct")
     if chg is None or abs(chg) < ALERT_PCT:
@@ -439,8 +500,10 @@ def check_alert(sym, st):
     from scripts.invest_research import push_feishu, kb_note
     kb_txt = kb_note(_alert_kb_query(sym))
     kb_line = (kb_txt + "\n") if kb_txt else ""
-    msg = (f"⚠️ 盘中异动 {sym} {chg:+.1f}%（实时价 {st.get('price')}，"
-           f"{st.get('ts', '')[:16]}）{news_txt}\n"
+    # 🔴 2026-11-23：**必须写出数据时间与延迟** ✗ —— 只写「实时价」会让人
+    #    以为价格是刚变的；实际可能已冻结（订阅断掉）✗
+    msg = (f"⚠️ 盘中异动【持仓】{sym} {chg:+.1f}%（实时价 {st.get('price')}，"
+           f"{st.get('ts', '')[:16]}，{int(age)} 秒前）{news_txt}\n"
            f"{kb_line}"
            f"数据源：富途实时订阅 · 仅供研究，不构成操作指令")
     ok, m = push_feishu(msg)

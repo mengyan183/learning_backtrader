@@ -93,6 +93,23 @@ def test_freshness_block_warns_when_file_missing(monkeypatch, tmp_path):
     assert txt and "新鲜度未知" in txt
 
 
+def test_conflict_note_covers_not_operable(monkeypatch):
+    """「不可操作 + 减仓至上限」也要解释 —— 措辞不能只适配恐惧档 ✓。
+
+    🔴 2026-11-24 实测：风控段写「**不可操作** → 未达调仓阈值 10pp」，
+       而减仓段仍写「YINN 3045/上限 656 → 减仓至上限 656」✗
+       原文案「上面说**不动是对的**」对不上场景 ⇒ 读者以为文案串了 ✗
+    """
+    monkeypatch.setattr(
+        ir, "action_brief_text",
+        lambda snap: ("· 指令：**不可操作** → 未达调仓阈值 10pp（偏离 8.0pp）\n"
+                      "· YINN 市值3045/上限656 → 减仓至上限656"))
+    note = ir._conflict_note({}, 0)
+    assert "不可操作" in note, note
+    assert "硬上限" in note, note
+    assert "不动是对的" not in note, "不可操作场景不该沿用恐惧档措辞 ✗"
+
+
 def test_gen_suffix_marks_generation_date():
     """数据日 ≠ 生成日 ⇒ 标题必须标出生成日 ✓。
 
