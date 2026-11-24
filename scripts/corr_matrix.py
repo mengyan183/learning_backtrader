@@ -41,37 +41,51 @@ def _load():
     return px
 
 
-def _corr(px, start=None, end=None, min_n=20):
+def _corr_pairwise(px, start=None, end=None, min_n=20):
+    """**逐对**算相关性 ✓ —— 不做 complete-case 丢弃。
+
+    🔴 2026-11-24 实测：原实现 `ret[cols].dropna()` 要求 10 只**同时**有值 ✗
+       2026 全年应有 ~230 个交易日，只剩 **110 个**（覆盖率 48%）✗
+       加息后窗口只剩 **10 个** ⇒ 直接判「样本不足」跳过 ✗
+       ⇒ 改成**每对各自取交集**，样本量按对记录 ✓
+    """
     sub = px.loc[start:end] if (start or end) else px
-    ret = sub.pct_change(fill_method=None).dropna(how="all")
+    ret = sub.pct_change(fill_method=None)
     cols = [c for c in WATCH if c in ret.columns]
-    ret = ret[cols].dropna()
-    if len(ret) < min_n:
-        return None, len(ret), cols
-    return ret.corr(), len(ret), cols
+    mat = pd.DataFrame(index=cols, columns=cols, dtype=float)
+    ns = pd.DataFrame(index=cols, columns=cols, dtype=int)
+    for i, a in enumerate(cols):
+        for b in cols[i:]:
+            s = ret[[a, b]].dropna()
+            k = len(s)
+            ns.loc[a, b] = ns.loc[b, a] = k
+            v = s[a].corr(s[b]) if k >= min_n else float("nan")
+            mat.loc[a, b] = mat.loc[b, a] = v
+    return mat, ns, cols
 
 
-def _report(title, corr, n, cols):
-    print("\n=== %s（%d 个交易日）===" % (title, n))
-    if corr is None:
-        print("样本不足，跳过")
-        return
+def _report(title, corr, ns, cols):
+    print("\n=== %s ===" % title)
+    nmin, nmax = int(ns.values.min()), int(ns.values.max())
+    print("每对样本：%d ~ %d 个交易日（pairwise，不再丢弃整行）" % (nmin, nmax))
     print("        " + " ".join("%6s" % c[:6] for c in cols))
     for a in cols:
-        print("%-7s " % a[:7]
-              + " ".join("%6.2f" % corr.loc[a, b] for b in cols))
-    # 统计高相关对
+        print("%-7s " % a[:7] + " ".join(
+            "   n/a" if pd.isna(corr.loc[a, b]) else "%6.2f" % corr.loc[a, b]
+            for b in cols))
     pairs = []
     for i, a in enumerate(cols):
         for b in cols[i + 1:]:
-            pairs.append((corr.loc[a, b], a, b))
+            v = corr.loc[a, b]
+            if not pd.isna(v):
+                pairs.append((float(v), a, b))
     pairs.sort(reverse=True)
     hi = [p for p in pairs if p[0] >= 0.7]
-    print("ρ ≥ 0.7 的对数：%d / %d" % (len(hi), len(pairs)))
+    print("ρ ≥ 0.7 的对数：%d / %d（有效对）" % (len(hi), len(pairs)))
     for v, a, b in pairs[:5]:
         print("  最相关：%s~%s ρ=%.2f" % (a, b, v))
-    avg = sum(p[0] for p in pairs) / len(pairs) if pairs else 0
-    print("平均两两 ρ = %.2f" % avg)
+    if pairs:
+        print("平均两两 ρ = %.2f" % (sum(p[0] for p in pairs) / len(pairs)))
 
 
 def main():
@@ -84,12 +98,12 @@ def main():
              px.index.min().date(), px.index.max().date()))
 
     # ① 全 2026 年
-    c, n, cols = _corr(px, "2026-01-01", None)
-    _report("2026 全年", c, n, cols)
+    c, ns, cols = _corr_pairwise(px, "2026-01-01", None)
+    _report("2026 全年", c, ns, cols)
 
     # ② 加息后（压力情景口径）
-    c2, n2, cols2 = _corr(px, RATE_HIKE, None)
-    _report("加息后（%s 起）" % RATE_HIKE, c2, n2, cols2)
+    c2, ns2, cols2 = _corr_pairwise(px, RATE_HIKE, None)
+    _report("加息后（%s 起）" % RATE_HIKE, c2, ns2, cols2)
 
     # ③ 各标的区间收益
     print("\n=== 区间收益（%）===")
