@@ -169,3 +169,47 @@ def test_src_stats_feeds_json():
 
     # 无 src 列 ⇒ 空 dict（向后兼容旧调用）✓
     assert bt._src_stats(st.drop(columns=["src"])) == {}
+
+
+def _mk_two_sources(tmp_path):
+    raw = tmp_path / "Data" / "raw"
+    raw.mkdir(parents=True)
+    pd.DataFrame({
+        "date": pd.to_datetime(["2026-10-13", "2026-10-14", "2026-10-15"]),
+        "symbol": ["YINN"] * 3,
+        "open": [1.0] * 3, "high": [1.0] * 3, "low": [1.0] * 3,
+        "close": [10.0, 11.0, 12.0], "volume": [1, 1, 1],
+    }).to_csv(raw / "prices.csv", index=False)
+    pd.DataFrame({
+        "date": pd.to_datetime(["2026-10-13", "2026-10-14"]),
+        "symbol": ["YINN", "YINN"],
+        "score": [-50.0, -60.0], "price": [10.0, 11.0],
+    }).to_csv(raw / "shoutu_history.csv", index=False)
+    pd.DataFrame({
+        "date": pd.to_datetime(["2026-10-14", "2026-10-15"]),
+        "symbol": ["YINN", "YINN"],
+        "value": [-70.0, -80.0], "price": [11.0, 12.0],
+    }).to_csv(raw / "shoutu_fng.csv", index=False)
+
+
+def test_load_source_filter_keeps_overlap(tmp_path, monkeypatch):
+    """`--source history` 必须**保留重叠日** ✓ —— 否则模拟不出「没有 fng 的世界」。
+
+    🔴 若在去重**之后**过滤，重叠日（10-14）已被 fng 覆盖 ⇒
+       `--source history` 会凭空少掉那天 ⇒ 对照实验的样本区间被人为截短 ✗
+    """
+    bt = _load_bt()
+    _mk_two_sources(tmp_path)
+    monkeypatch.setattr(bt, "REPO", str(tmp_path))
+
+    _px, h = bt._load("history")
+    assert set(h["src"]) == {"history"}, h["src"].tolist()
+    assert len(h) == 2, "重叠日 10-14 必须保留在 history 里 ✗"
+
+    _px, f = bt._load("fng")
+    assert set(f["src"]) == {"fng"}
+    assert len(f) == 2
+
+    _px, a = bt._load("all")
+    assert set(a["src"]) == {"history", "fng"}
+    assert len(a) == 3, "去重后应为 3 行（10-13/14/15）✗"

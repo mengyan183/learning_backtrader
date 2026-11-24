@@ -65,7 +65,7 @@ VARIANTS = {
 }
 
 
-def _load():
+def _load(source="all"):
     """读价格（长表）+ 守猪待兔系数 ✓。
 
     🔴 2026-10-30 修正（第一次回测跑空的根因 ✗）：
@@ -98,8 +98,18 @@ def _load():
     st = pd.concat(frames, ignore_index=True)
     st["symbol"] = st["symbol"].astype(str).str.replace("-USDT", "", regex=False)
     # 同 (date, symbol) 以**后出现的为准** ⇒ fng（更近的采样）覆盖 history ✓
-    st = st.dropna(subset=["value"]).drop_duplicates(
-        subset=["date", "symbol"], keep="last")
+    st = st.dropna(subset=["value"])
+    # 🔴 2026-11-24：**对照实验开关** ✓
+    #   混用两口径会让「后半段为负」这个结论无法归因 ✗
+    #   —— 是规则不行，还是 fng 采样口径导致？
+    #   ⇒ `--source history` 只保留权威日值（截到 2026-10-14）✓
+    #   ⇒ `--source fng`     只保留采样值（仅近期）✓
+    #   ⚠️ **必须在去重之前过滤** ✗ —— 否则重叠日已被 fng 覆盖，
+    #      `--source history` 会**凭空少掉**那段日期（模拟不出「没有 fng 的世界」）✗
+    if source and source != "all" and "src" in st.columns:
+        st = st[st["src"] == source].copy()
+    # 同 (date, symbol) 以**后出现的为准** ⇒ fng（更近的采样）覆盖 history ✓
+    st = st.drop_duplicates(subset=["date", "symbol"], keep="last")
     return px, st
 
 
@@ -258,13 +268,17 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", default=None, help="把完整结果写到该路径")
     ap.add_argument("--symbols", default=None, help="逗号分隔，覆盖默认 6 个")
+    # 🔴 2026-11-24：对照实验用 —— 排除口径混用对结论的污染 ✓
+    ap.add_argument("--source", default="all",
+                    choices=("all", "history", "fng"),
+                    help="只用某个来源的系数（默认 all=混用）")
     args = ap.parse_args(argv)
 
     global SYMBOLS
     if args.symbols:
         SYMBOLS = [s.strip() for s in args.symbols.split(",") if s.strip()]
 
-    px, st = _load()
+    px, st = _load(args.source)
     # 🔴 2026-10-30：区间必须取**价格 ∩ 系数**的交集 ✗ ——
     # 按价格全历史（2016 起）切段会让「前半段」落在系数数据之前 ✗
     # ⇒ 前半段收益恒为 0（实测 ✗），分段稳健性检查形同虚设 ✗。
@@ -277,8 +291,11 @@ def main(argv=None):
 
     print("# 杠杆 ETF 建仓/加仓计划回测（2026-10-30）")
     print("标的: %s" % " / ".join(SYMBOLS))
-    print("区间: %s → %s（样本外从 %s 起）\n"
+    print("区间: %s → %s（样本外从 %s 起）"
           % (str(d0.date()), str(d1.date()), str(cut.date())))
+    if args.source != "all":
+        print("系数来源: **仅 %s**（对照实验，排除口径混用影响 ✓）" % args.source)
+    print()
 
     # 🔴 2026-10-30 实测教训：第一次跑出来「10 年区间只交易 5 次、平均持仓 0.2%」✗
     # —— 原因是 `shoutu_fng.csv` 的**历史覆盖很短**（只有近几十天）✗，
@@ -334,6 +351,9 @@ def main(argv=None):
     out = {"range": [str(d0.date()), str(d1.date())],
            "oos_from": str(cut.date()), "mid": str(mid.date()),
            "symbols": SYMBOLS,
+           # 🔴 2026-11-24：**来源过滤也进 JSON** ✓ —— 否则同一份 JSON 无法区分
+           #   它是「混用」还是「只用 history」跑出来的 ✗
+           "source_filter": args.source,
            # 🔴 2026-11-24：**来源统计必须进 JSON** ✓ —— 只打 stdout 的话，
            #   结果被存成 JSON 再引用时口径信息就丢了 ✗（读者只看 JSON 会误以为同源）
            "sources": _src_stats(st),
