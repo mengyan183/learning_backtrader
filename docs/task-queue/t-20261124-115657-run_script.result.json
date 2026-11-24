@@ -1,0 +1,13 @@
+{
+  "id": "t-20261124-115657-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "evolve_review.py"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"evolve_review.py\", \"args\": [], \"stdout\": \"[evolve_review] 判重跳过（与 H-068 Jaccard=0.53）：第5列与第8列是同一底层指标的两个镜像变换，逐日变动符号在 2026-11-16\\n[evolve_review] 判重跳过（与 H-037 Jaccard=0.50）：第2列 1.0→0.0 的翻转日与第8列单日跌幅极值同步发生，翻转本身不携带第8\\n[evolve_review] 判重跳过（与 H-037 Jaccard=0.50）：第7列=True 的触发条件是同一行内第5列创窗口新高且第8列创窗口新低（双极值\\n[evolve_review] 判重跳过（与 H-045 Jaccard=0.44）：实盘快照第3列不是 BTC 纯持仓市值，而是『BTC 持仓市值 + 借入 USD\\n[evolve_review] 判重跳过（与 H-075 Jaccard=0.46）：AXTX 已在 2026-11-19 前清仓，其退出后账户日净值变动幅度均值下降\\n[evolve_review] 判重跳过（与 H-037 Jaccard=0.58）：第4列是对第5列的滞后阈值化（进入阈值 0.15、退出阈值 0.12），第5列处\\n[evolve_review] 完成（via=hermes(8642)）\\n  现象 20 条 | 极端标记 16 条\\n  新登记假说：无\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-24T11:58:02",
+  "finished_at": "2026-11-24T11:59:13",
+  "duration_s": 70.3
+}
