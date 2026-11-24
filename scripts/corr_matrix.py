@@ -56,6 +56,15 @@ def _corr_pairwise(px, start=None, end=None, min_n=20):
     ns = pd.DataFrame(index=cols, columns=cols, dtype=int)
     for i, a in enumerate(cols):
         for b in cols[i:]:
+            # 🔴 2026-11-24 实测：`a == b` 时 `ret[[a, b]]` 是**重复列** ✗
+            #   ⇒ `s[a]` 返回 DataFrame 而非 Series ⇒ `.corr()` 返回 DataFrame
+            #   ⇒ `mat.loc[a, b] = <DataFrame>` 抛
+            #   "Cannot set a DataFrame with multiple columns to the single column" ✗
+            #   ⇒ 对角线单独处理 ✓
+            if a == b:
+                mat.loc[a, a] = 1.0
+                ns.loc[a, a] = int(ret[a].notna().sum())
+                continue
             s = ret[[a, b]].dropna()
             k = len(s)
             ns.loc[a, b] = ns.loc[b, a] = k
