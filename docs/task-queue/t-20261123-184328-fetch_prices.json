@@ -1,9 +1,0 @@
-{
-  "id": "t-20261123-184328-fetch_prices",
-  "action": "fetch_prices",
-  "params": {
-    "indices": "1"
-  },
-  "status": "pending",
-  "created_at": "2026-11-23T18:43:28"
-}
