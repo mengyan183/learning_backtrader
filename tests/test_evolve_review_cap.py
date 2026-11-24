@@ -8,6 +8,23 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import evolve_review as er
 
 
+def test_llm_budget_fits_and_is_long_enough():
+    """超时预算必须**装得下**且**单次够长** ✓（2026-11-24 实测）。
+
+    🔴 事故：`90s × 2 次` 两次都超时（实测 185s）✗
+       而 `hermes_probe.py` 实测**极小 prompt 只要 1.3s** ⇒ 通道不慢 ✓
+       ⇒ 真因是**本任务 prompt 很大**（features + memory + LESSONS + 去重清单），
+         生成耗时 > 90s ⇒ 90s 两次 = 180s 全浪费，一次都没给够时间 ✗
+       ⇒ 改 `180s × 1 次`：总时长不变，单次给足 ✓
+
+    判据：① 单次 ≥ 120s（大 prompt 生成需要）
+          ② 总时长 ≤ 600s（`run_guarded.py 600` 给本步的预算）
+    """
+    assert er.LLM_TIMEOUT >= 120, "单次超时 %ss 太短 ✗" % er.LLM_TIMEOUT
+    total = er.LLM_TIMEOUT * er.LLM_RETRIES + 5 * er.LLM_RETRIES
+    assert total <= 600, "总预算 %ss 超出每日链 600s ✗" % total
+
+
 def _cand(i):
     return {
         "assumption": f"候选假设编号{i}：市场温度与持仓风险存在可观测的对应关系",
