@@ -1649,6 +1649,12 @@ def risk_brief_text(snap):
                         sum(r["mv"] - r["risk_limit"] for r in over)))
     elif pos and not legacy_syms:
         lines.append("✓ 全部标的未超 1%% 风险上限")
+    # 🔴 2026-11-24：**显式写出三条上限的层级** ✓
+    #   原来只报「超 1% 上限」，读者不知道还有「单标的 15%」「总敞口 20%」两条 ✗
+    #   也不知道谁更紧 ⇒ 容易把「15%」当成实际约束 ✗
+    lines.append("· 三条上限：**1% 规则**（单笔风险，最严）｜"
+                 "**单标的 15%**（当前参数下永不 binding）｜"
+                 "**杠杆总敞口 20%**（所有标的**合计**）")
     if legacy_syms:
         from fg_system import config as _cfg3
         lines.append("ℹ️ 存量仓过渡期（至 %s）：%d 个标的（%s）不适用 1%% 硬上限"

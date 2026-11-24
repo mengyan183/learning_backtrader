@@ -128,3 +128,28 @@ def test_brief_line_is_readable():
     assert "YINN ×3" in ln
     assert "首建 $800" in ln
     assert "5.4%" in ln, ln
+
+
+def test_brief_line_hides_dead_single_cap():
+    """`brief_line` 不得再显示「规则口径 $N」✓（2026-11-24）。
+
+    🔴 `single_cap`(15%) 在当前参数下**永远不 binding**：
+         1% 上限 = 净值 × 1% ÷ (2 × ATR20 × 杠杆)
+         `atr_pct` 有 `floor=0.03` ⇒ 止损距离 ≥ 3%×2×3 = 9%
+         ⇒ 1% 上限 ≤ 净值 × 11.11% < 15%（与净值无关，等比）
+       ⇒ 两个数字并列只会让人问「为什么不按 $868 算」✗
+       ⚠️ `single_cap` 仍保留为兜底：若 `floor` 被调低（1% ⇒ 止损 6%），
+          1% 上限变成 16.7% ⇒ 它会重新 binding ✓
+    """
+    plan = {
+        "symbol": "YINN", "leverage": 3,
+        "single_cap": 868.0, "cap_rule": 868.0, "cap_risk": 643.0,
+        # ⚠️ 不能含「上限」二字 —— 否则 `brief_line` 走 early-return 分支，
+        #    永远用不到 `cap` 变量（那条路径本来就不显示 cap）✗
+        "blocked": "杠杆总敞口已满", "mode": "持有",
+    }
+    line = pp.brief_line(plan)
+    assert line, "应有输出 ✗"
+    assert "643" in line, line
+    assert "1% 规则" in line, line
+    assert "规则口径" not in line, "死条款不该再显示 ✗：%s" % line

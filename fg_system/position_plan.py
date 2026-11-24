@@ -237,11 +237,18 @@ def brief_line(plan):
     # （简报里曾出现「BTC ×1 | 无守猪待兔系数 | 上限 $1150」✗）
     if plan["blocked"] and "无守猪待兔系数" in str(plan["blocked"]):
         return None
+    # 🔴 2026-11-24：**不再显示「规则口径 $N」** ✗
+    #   `single_cap`(15%) 在当前参数下**永远不 binding**：
+    #     1% 上限 = 净值 × 1% ÷ (2 × ATR20 × 杠杆)
+    #     `atr_pct` 有 `floor=0.03` ⇒ 止损距离 ≥ 3%×2×3 = 9%
+    #     ⇒ 1% 上限 ≤ 净值 × 11.11% < 15% ✓（与净值无关，等比）
+    #   ⇒ 两个数字并列只会让人问「为什么不按 $868 算」✗
+    #   ⚠️ `single_cap` **仍保留为兜底** —— 若哪天 `floor` 被调低
+    #      （如 1% ⇒ 止损 6% ⇒ 1% 上限 16.7%），它会重新 binding ✓
     cap = "上限 $%.0f" % plan["single_cap"]
-    # 1% 规则比规则口径更严时**说清楚** ✓（否则会被读成「15% 就是 $1065」✗）
-    cr, cru = plan.get("cap_risk"), plan.get("cap_rule")
-    if cr is not None and cru is not None and cr < cru - 1:
-        cap = "上限 $%.0f（1%% 规则更严，规则口径 $%.0f）" % (cr, cru)
+    cr = plan.get("cap_risk")
+    if cr is not None and cr < plan["single_cap"] - 1:
+        cap = "上限 $%.0f（1%% 规则）" % cr
     if plan["blocked"]:
         # 🔴 2026-10-30 实测：`blocked` 里已经带了「上限 $N」⇒ 再追加一次会重复 ✗
         # （简报里出现「已到单标的上限 $1253 | 上限 $1253」✗）
