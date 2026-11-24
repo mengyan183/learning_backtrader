@@ -83,9 +83,14 @@ def _load():
     if os.path.exists(hist_p):
         h = pd.read_csv(hist_p, parse_dates=["date"])
         h = h.rename(columns={"score": "value"})[["date", "symbol", "value"]]
+        # 🔴 2026-11-24：**记来源** ✓ —— 两个源口径不同（spec §5.4 禁止混用）✗
+        #   但服务端 `stock_emotion/history` 已返回 `data: []`（源断）✗
+        #   ⇒ 10-14 之后只能靠 fng ⇒ **被迫混用** ⇒ 必须在报告里显式告警 ✓
+        h["src"] = "history"
         frames.append(h)
     if os.path.exists(fng_p):
         f = pd.read_csv(fng_p, parse_dates=["date"])[["date", "symbol", "value"]]
+        f["src"] = "fng"
         frames.append(f)
     if not frames:
         sys.exit("✗ 缺 shoutu_history.csv / shoutu_fng.csv ⇒ 无法回测"
@@ -281,6 +286,30 @@ def main(argv=None):
     if all(n < 250 for n in cov.values()):
         print("\n🔴 **全部标的覆盖都不足 250 天 ⇒ 本次回测不构成参数依据** ✗")
         print("   （要真验证，得先把守猪待兔历史补齐 —— 见 docs/position-plan.md）\n")
+
+    # 🔴 2026-11-24：**口径混用**必须显式告警 ✓
+    #   spec 明令「history 与 fng 不要混用」✗
+    #   但服务端 `stock_emotion/history` 已返回 `data: []`（源断）✗
+    #   ⇒ 10-14 之后只有 fng ⇒ 本回测是**被迫混用** ⇒ 读者必须知道 ✓
+    if "src" in st.columns:
+        print("## 数据来源构成（**口径混用** ✗ 必读）")
+        src = st.groupby("src")["date"].agg(["min", "max", "count"])
+        for name, r in src.iterrows():
+            print("  %-8s %5d 行 ｜ %s → %s"
+                  % (name, int(r["count"]), str(r["min"].date()),
+                     str(r["max"].date())))
+        if len(src) > 1:
+            print(
+                "\n⚠️ **口径混用风险**（`docs/superpowers/specs/"
+                "2026-09-24-shoutu-history-and-price-design.md` §5.4 禁止混用，"
+                "此处为**被迫妥协**）\n"
+                "  · `history` = 服务端**权威日值**\n"
+                "  · `fng`     = 本地 **06:30 采样**（收盘前，非日终值）\n"
+                "  ⇒ 重叠区间按 `keep=\"last\"` 让 fng 覆盖 history ⇒ "
+                "**用的是采样值** ✗\n"
+                "  ⇒ 2026-11-24 起 `stock_emotion/history` 返回 `data: []`（源断）\n"
+                "     ⇒ history 冻结在 2026-10-14 ⇒ 此后**只剩 fng 一个口径** ✗\n"
+                "  ⇒ **近期样本与历史样本口径不同**，跨期比较需谨慎 ✓\n")
     print()
 
     # 2026-10-30：样本只有 2.5 年 ⇒ 除了 70/30 样本外，再加**前后两半**对照 ✓

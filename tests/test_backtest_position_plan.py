@@ -103,3 +103,46 @@ def test_variants_are_defined():
     assert "AXTX" not in bt.SYMBOLS and "CRCG" not in bt.SYMBOLS
     for v in bt.VARIANTS.values():
         assert "single_cap" in v and "first" in v and "entry" in v
+
+
+def test_load_marks_source_and_fng_wins(tmp_path, monkeypatch):
+    """`_load()` 必须**标记来源**，且重叠日 fng 覆盖 history ✓。
+
+    🔴 2026-11-24：服务端 `stock_emotion/history` 返回 `data: []`（源断）✗
+       ⇒ 10-14 之后只剩 `fng`（本地 06:30 采样）✗
+       ⇒ spec §5.4 明令「两口径不要混用」，但此处**被迫混用** ✗
+       ⇒ 必须能追溯每一行来自哪个源，报告才能显式告警 ✓
+    """
+    bt = _load_bt()
+    raw = tmp_path / "Data" / "raw"
+    raw.mkdir(parents=True)
+
+    pd.DataFrame({
+        "date": pd.to_datetime(["2026-10-13", "2026-10-14", "2026-10-15"]),
+        "symbol": ["YINN"] * 3,
+        "open": [1.0] * 3, "high": [1.0] * 3, "low": [1.0] * 3,
+        "close": [10.0, 11.0, 12.0], "volume": [1, 1, 1],
+    }).to_csv(raw / "prices.csv", index=False)
+
+    pd.DataFrame({
+        "date": pd.to_datetime(["2026-10-13", "2026-10-14"]),
+        "symbol": ["YINN", "YINN"],
+        "score": [-50.0, -60.0], "price": [10.0, 11.0],
+    }).to_csv(raw / "shoutu_history.csv", index=False)
+
+    pd.DataFrame({
+        "date": pd.to_datetime(["2026-10-14", "2026-10-15"]),
+        "symbol": ["YINN", "YINN"],
+        "value": [-70.0, -80.0], "price": [11.0, 12.0],
+    }).to_csv(raw / "shoutu_fng.csv", index=False)
+
+    monkeypatch.setattr(bt, "REPO", str(tmp_path))
+    _px, st = bt._load()
+
+    assert "src" in st.columns, "必须标记来源，否则报告无法告警 ✗"
+    got = st.set_index("date")["value"].to_dict()
+    srcs = st.set_index("date")["src"].to_dict()
+    d13, d14 = pd.Timestamp("2026-10-13"), pd.Timestamp("2026-10-14")
+    assert got[d13] == -50.0 and srcs[d13] == "history"
+    assert got[d14] == -70.0 and srcs[d14] == "fng", "重叠日必须 fng 胜 ✗"
+    assert srcs[pd.Timestamp("2026-10-15")] == "fng"
