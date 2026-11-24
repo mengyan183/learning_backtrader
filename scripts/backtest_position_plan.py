@@ -103,6 +103,21 @@ def _load():
     return px, st
 
 
+def _src_stats(st):
+    """守猪待兔系数的**来源统计** ✓（进 `--json` 输出，2026-11-24）。
+
+    🔴 为什么必须进 JSON ✗：口径混用只打在 stdout 的话，
+       结果被存成 JSON 再被别的脚本/报告引用时，**来源信息就丢了** ✗
+       ⇒ 读者看到一组数字，无法判断它是「权威日值」还是「06:30 采样」✗
+    """
+    if "src" not in st.columns:
+        return {}
+    return {name: {"rows": int(len(g)),
+                   "from": str(g["date"].min().date()),
+                   "to": str(g["date"].max().date())}
+            for name, g in st.groupby("src")}
+
+
 def _series(px, sym):
     """单标的价格序列（收盘，按日期升序）✓。"""
     d = px[px["symbol"] == sym][["date", "close"]].dropna()
@@ -318,7 +333,16 @@ def main(argv=None):
 
     out = {"range": [str(d0.date()), str(d1.date())],
            "oos_from": str(cut.date()), "mid": str(mid.date()),
-           "symbols": SYMBOLS, "runs": {}}
+           "symbols": SYMBOLS,
+           # 🔴 2026-11-24：**来源统计必须进 JSON** ✓ —— 只打 stdout 的话，
+           #   结果被存成 JSON 再引用时口径信息就丢了 ✗（读者只看 JSON 会误以为同源）
+           "sources": _src_stats(st),
+           "sources_mixed": len(_src_stats(st)) > 1,
+           "data_caveat": (
+               "口径混用：history=服务端权威日值 / fng=本地06:30采样；"
+               "重叠期按 keep=last 由 fng 覆盖 history"
+               if len(_src_stats(st)) > 1 else None),
+           "runs": {}}
     for name, v in VARIANTS.items():
         full = _run(px, st, v, label=name)
         oos = _run(px, st, v, start=cut, label=name)

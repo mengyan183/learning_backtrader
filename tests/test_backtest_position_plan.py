@@ -146,3 +146,26 @@ def test_load_marks_source_and_fng_wins(tmp_path, monkeypatch):
     assert got[d13] == -50.0 and srcs[d13] == "history"
     assert got[d14] == -70.0 and srcs[d14] == "fng", "重叠日必须 fng 胜 ✗"
     assert srcs[pd.Timestamp("2026-10-15")] == "fng"
+
+
+def test_src_stats_feeds_json():
+    """`_src_stats` 必须给出每源的行数与日期范围 ✓（进 `--json`）。
+
+    🔴 2026-11-24：口径混用若只打 stdout，JSON 被别的脚本引用时
+       来源信息就丢了 ✗ ⇒ 读者无法判断是「权威日值」还是「06:30 采样」✗
+    """
+    bt = _load_bt()
+    st = pd.DataFrame({
+        "date": pd.to_datetime(["2026-10-13", "2026-10-14", "2026-10-15"]),
+        "symbol": ["YINN"] * 3,
+        "value": [-50.0, -70.0, -80.0],
+        "src": ["history", "fng", "fng"],
+    })
+    s = bt._src_stats(st)
+    assert s["history"]["rows"] == 1
+    assert s["history"]["from"] == "2026-10-13"
+    assert s["fng"]["rows"] == 2
+    assert s["fng"]["to"] == "2026-10-15"
+
+    # 无 src 列 ⇒ 空 dict（向后兼容旧调用）✓
+    assert bt._src_stats(st.drop(columns=["src"])) == {}
