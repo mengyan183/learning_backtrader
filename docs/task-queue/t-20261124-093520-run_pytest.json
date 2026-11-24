@@ -1,0 +1,9 @@
+{
+  "id": "t-20261124-093520-run_pytest",
+  "action": "run_pytest",
+  "params": {
+    "files": "tests/test_realtime_alert_gate.py,tests/test_l33_market_signal.py,tests/test_brief_hygiene.py"
+  },
+  "status": "pending",
+  "created_at": "2026-11-24T09:35:20"
+}
