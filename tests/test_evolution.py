@@ -27,17 +27,17 @@ def _wide(days_by_symbol):
 
 def test_insufficient_history_reports_fixed_mode():
     """只有 2 天数据 ⇒ **实际生效**的是 fixed（即使配置是 percentile）。"""
-    t = evolution.shoutu_readiness(_wide({"CONL": 2}))
-    assert t.loc["CONL", "days"] == 2
-    assert t.loc["CONL", "mode"] == "fixed"
-    assert t.loc["CONL", "remaining"] == config.RANK_WINDOW - 2
+    t = evolution.shoutu_readiness(_wide({"TNA": 2}))
+    assert t.loc["TNA", "days"] == 2
+    assert t.loc["TNA", "mode"] == "fixed"
+    assert t.loc["TNA", "remaining"] == config.RANK_WINDOW - 2
 
 
 def test_enough_history_reports_percentile_mode():
     """满 `RANK_WINDOW` 天 ⇒ 实际生效 percentile。"""
-    t = evolution.shoutu_readiness(_wide({"CONL": config.RANK_WINDOW}))
-    assert t.loc["CONL", "mode"] == "percentile"
-    assert t.loc["CONL", "remaining"] == 0
+    t = evolution.shoutu_readiness(_wide({"TNA": config.RANK_WINDOW}))
+    assert t.loc["TNA", "mode"] == "percentile"
+    assert t.loc["TNA", "remaining"] == 0
 
 
 def test_mode_is_actual_not_configured():
@@ -47,8 +47,8 @@ def test_mode_is_actual_not_configured():
     把两者混为一谈，会让人误以为分位数已经在用。
     """
     assert config.SHOUTU_INDEX_MODE == "percentile"     # 配置
-    t = evolution.shoutu_readiness(_wide({"CONL": 2}))
-    assert t.loc["CONL", "mode"] == "fixed"             # 实际
+    t = evolution.shoutu_readiness(_wide({"TNA": 2}))
+    assert t.loc["TNA", "mode"] == "fixed"             # 实际
 
 
 def test_missing_symbol_reports_zero_days():
@@ -57,7 +57,7 @@ def test_missing_symbol_reports_zero_days():
     **注意用 `pd.isna` 而不是 `is None`**：`last` 是 datetime 列，
     缺值会被 pandas 强制转成 `NaT`，`is None` 拦不住。
     """
-    t = evolution.shoutu_readiness(_wide({"CONL": 5}))
+    t = evolution.shoutu_readiness(_wide({"TNA": 5}))
     assert t.loc["TQQQ", "days"] == 0
     assert t.loc["TQQQ", "mode"] == "fixed"
     assert pd.isna(t.loc["TQQQ", "last"])
@@ -76,8 +76,8 @@ def test_next_upgrade_picks_earliest():
     **必须限定 symbols**：`readiness` 默认遍历**全部**白名单标的，
     未录入的标的还差 756 天，会掩盖被测标的的排序。
     """
-    r = evolution.readiness(_wide({"CONL": 10, "TQQQ": 5}))
-    assert r["next_upgrade"][0] == "CONL"          # 10 天 > 5 天
+    r = evolution.readiness(_wide({"TNA": 10, "TQQQ": 5}))
+    assert r["next_upgrade"][0] == "TNA"          # 10 天 > 5 天
     assert r["next_upgrade"][1] == config.RANK_WINDOW - 10
 
 
@@ -87,12 +87,12 @@ def test_next_upgrade_none_when_all_ready():
     必须只传一个标的：默认白名单里的其他标的还没录入，
     它们仍会产出 `remaining > 0`，使 `next_upgrade` 非空。
     """
-    t = evolution.shoutu_readiness(_wide({"CONL": config.RANK_WINDOW}),
-                                   symbols=["CONL"])
+    t = evolution.shoutu_readiness(_wide({"TNA": config.RANK_WINDOW}),
+                                   symbols=["TNA"])
     assert (t["remaining"] == 0).all()
-    r = evolution.readiness(_wide({"CONL": config.RANK_WINDOW}))
+    r = evolution.readiness(_wide({"TNA": config.RANK_WINDOW}))
     assert r["next_upgrade"] is not None           # 其他标的仍未录入
-    assert r["next_upgrade"][0] != "CONL"          # 但 CONL 已就绪
+    assert r["next_upgrade"][0] != "TNA"          # 但 TNA 已就绪
 
 
 def test_readiness_does_not_mutate_config():
@@ -103,7 +103,7 @@ def test_readiness_does_not_mutate_config():
     """
     keys = [k for k in dir(config) if k.isupper()]
     before = {k: getattr(config, k) for k in keys}
-    evolution.readiness(_wide({"CONL": 2}))
+    evolution.readiness(_wide({"TNA": 2}))
     after = {k: getattr(config, k) for k in keys}
     assert before == after
 
@@ -161,7 +161,7 @@ def test_cli_evolution_runs(capsys, monkeypatch, tmp_path):
     """`evolution` 命令必须能跑通并给出关键结论。"""
     from fg_system import cli
     monkeypatch.setattr(loader, "load_shoutu_fng",
-                        lambda path=None: _wide({"CONL": 2, "TQQQ": 1}))
+                        lambda path=None: _wide({"TNA": 2, "TQQQ": 1}))
     cli.main(["evolution"])
     out = capsys.readouterr().out
     assert "进化就绪度" in out
