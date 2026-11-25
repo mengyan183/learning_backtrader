@@ -52,7 +52,13 @@ DATA_CHECKS = [
     ("kalshi_fed",      "Data/raw/kalshi_fed.csv",        "date", 3),
     ("funding_rate",    "Data/raw/funding_rate.csv",      "date", 3),
     ("shoutu_fng",      "Data/raw/shoutu_fng.csv",        "date", 3),
-    ("shoutu_history",  "Data/raw/shoutu_history.csv",    "date", 7),
+    # 🔴 2026-11-25 **已停用** ✗ —— 服务端 `stock_emotion/history` 对**全部标的**
+    #   返回 `data: []`（实测 2026-11-24）⇒ 文件永久停在 2026-10-14 ✗
+    #   定时任务 `com.fg.shoutu-history` 已 bootout + plist 改名 `.disabled`
+    #   ⇒ 保留检查只会每天报「停更」，是**已知且已接受**的状态 ✓
+    #   恢复方式：`scripts/disable_launchd_job.py --label com.fg.shoutu-history --apply --restore`
+    #   背景见 `docs/rules-2026-11-20.md` 第 12.66 条 ✓
+    # ("shoutu_history",  "Data/raw/shoutu_history.csv",    "date", 7),
     ("news_sentiment",  "Data/raw/news_sentiment.csv",    "date", 3),
     ("stablecoin_usage","Data/raw/stablecoin_usage.csv",  "date", 3),
     # FRED 宏观利率（列名 observation_date；工作日发布，周末/节假日/T+1 滞后，容忍 5 自然日）。
@@ -69,7 +75,9 @@ TASKS = [
     "com.xingguo.fg-kb-update",       # 每周日 03:00 知识库
     "com.xingguo.fg-shoutu-refresh",  # 每日 09/17/22 守猪待兔刷新
     "com.fg.shoutu-daily",            # 每日 06:30 守猪待兔 API
-    "com.fg.shoutu-history",          # 每日 06:35 守猪待兔历史（条件）
+    # 🔴 2026-11-25 **已停用** ✗ —— 同上方数据检查：服务端断供 + 任务已 bootout
+    #   ⇒ 保留注册检查只会每天报「未注册」，是**预期状态** ✓
+    # "com.fg.shoutu-history",          # 每日 06:35 守猪待兔历史（条件）
     "com.fg.quarterly-walkforward",   # 季度首日 08:00 重标定
     "com.xingguo.fg-evolve-verify",   # 每日 06:10 假说验证（数据过期闸门 return2 不回写）
     "com.xingguo.fg-evolve-weekly",   # 每周一 07:00 进化周报（默认不推飞书）
