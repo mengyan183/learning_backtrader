@@ -40,19 +40,19 @@ def test_covered_symbols_matches_code_suffix():
     口径必须与 `fetch_shoutu.py` 既有写法一致，不能另造一套。
     """
     df = _universe(["US.TQQQ", "HK.07226", "SZ.159919"])
-    assert shoutu.covered_symbols(df, ["TQQQ", "07226", "159919", "AXTX"]) == \
+    assert shoutu.covered_symbols(df, ["TQQQ", "07226", "159919", "FAS"]) == \
         ["TQQQ", "07226", "159919"]
 
 
 def test_missing_symbols_returns_uncovered_only():
     """**成本闸门**：分类表已覆盖的标的**一律不查**。
 
-    实测（2026-09-24）：11 张分类表覆盖 6 个标的，缺 `AXTX` / `CRCG` ——
+    实测（2026-09-24）：11 张分类表覆盖 6 个标的，缺 `FAS` / `TMF` ——
     只有这两个该去 `#/stock_scan` 发查询。
     """
-    df = _universe(["US.CONL", "US.YINN", "US.GDXU",
+    df = _universe(["US.TNA", "US.YINN", "US.GDXU",
                     "US.TQQQ", "US.SOXL", "US.UPRO"])
-    assert shoutu.missing_symbols(df) == ["AXTX", "CRCG"]
+    assert shoutu.missing_symbols(df) == ["TMF", "FAS"]
 
 
 def test_missing_symbols_empty_when_all_covered():
@@ -94,14 +94,14 @@ def test_missing_symbols_ignores_codes_outside_whitelist():
 # ================================================================ 面板解析
 
 # 2026-09-24 实测 dump（`div.scan-result` 面板，全部字段都是**字符串**）
-_SCAN = {"code": "US.AXTX", "score": "-21", "name": "2倍做多AXTI ETF-Tradr",
+_SCAN = {"code": "US.FAS", "score": "-21", "name": "2倍做多AXTI ETF-Tradr",
          "zone": "中性区间", "price": "30.53", "time": "2026-09-24 09:41:16"}
 
 
 def test_parse_scan_result_extracts_value():
     """面板字段 → 录入所需的 `{symbol, value}`（其余字段供日志与审计）。"""
     out = shoutu.parse_scan_result(_SCAN)
-    assert out["symbol"] == "AXTX"
+    assert out["symbol"] == "FAS"
     assert out["value"] == pytest.approx(-21.0)
     assert out["name"] == "2倍做多AXTI ETF-Tradr"
     assert out["zone"] == "中性区间"
@@ -126,9 +126,9 @@ def test_parse_scan_result_raises_on_error_payload():
     而 `append_records` 是覆盖语义，事后极难发现（同 `collect_scores`）。
     """
     with pytest.raises(shoutu.ShoutuError, match="NOT_IN_LIST"):
-        shoutu.parse_scan_result({"error": "NOT_IN_LIST", "code": "AXTX"})
+        shoutu.parse_scan_result({"error": "NOT_IN_LIST", "code": "FAS"})
     with pytest.raises(shoutu.ShoutuError, match="TIMEOUT"):
-        shoutu.parse_scan_result({"error": "TIMEOUT", "code": "AXTX"})
+        shoutu.parse_scan_result({"error": "TIMEOUT", "code": "FAS"})
 
 
 def test_parse_scan_result_raises_on_non_numeric_score():
@@ -136,7 +136,7 @@ def test_parse_scan_result_raises_on_non_numeric_score():
     with pytest.raises(shoutu.ShoutuError):
         shoutu.parse_scan_result(dict(_SCAN, score="**"))
     with pytest.raises(shoutu.ShoutuError):
-        shoutu.parse_scan_result({"code": "US.AXTX"})       # 缺 score
+        shoutu.parse_scan_result({"code": "US.FAS"})       # 缺 score
 
 
 def test_parse_scan_result_rejects_symbol_outside_whitelist():
@@ -185,9 +185,9 @@ def test_script_queries_only_uncovered_symbols():
     且**不得把标的写成字符串字面量**（写死就失去了成本闸门的意义：
     白名单一变，写死的那两个仍会被查询，而新缺的标的反而漏掉）。
 
-    **判据是"带引号"而不是裸词**：脚本文档里**提到** AXTX / CRCG 是必要的
+    **判据是"带引号"而不是裸词**：脚本文档里**提到** FAS / TMF 是必要的
     （说明这个视图是为什么而加的），那是散文不是代码。裸词匹配会把说明文字
-    误判成硬编码，逼着人删掉有用的文档 —— 故只查 `"AXTX"` / `'AXTX'` 这种
+    误判成硬编码，逼着人删掉有用的文档 —— 故只查 `"FAS"` / `'FAS'` 这种
     **字面量**形式。
     """
     p = os.path.join(config.ROOT, "scripts", "fetch_shoutu.py")
@@ -199,7 +199,7 @@ def test_script_queries_only_uncovered_symbols():
     assert ("fetch_scan_records" in called) or ("fetch_scan_scores" in called), \
         "脚本没有去个股贪恐视图补查分类表未覆盖的标的"
     text = open(p, encoding="utf-8").read()
-    for sym in ("AXTX", "CRCG"):
+    for sym in ("FAS", "TMF"):
         for literal in ('"%s"' % sym, "'%s'" % sym):
             assert literal not in text, \
                 "脚本把 %s 写死成了字面量 —— 应由分类表覆盖情况（missing_symbols）决定" % sym
@@ -217,12 +217,12 @@ def test_query_one_js_embeds_symbol_as_a_single_string_literal():
     """**守卫**：标的必须**恰好**被包成**一层** JS 字符串字面量。
 
     模板里已经写了引号，若再套一层 `json.dumps` 就会生成
-    `const CODE=""AXTX"";` —— **JS 语法错误**。表现是 `bsk evaluate` 返回的
+    `const CODE=""FAS"";` —— **JS 语法错误**。表现是 `bsk evaluate` 返回的
     JSON 里没有 `value` 字段，抛 `KeyError: 'value'`：
     **看起来像页面改版，实际是拼接 bug**（2026-09-24 实机踩到，误判成本很高）。
     """
-    js = _script_module().query_one_js("AXTX")
-    assert 'const CODE="AXTX";' in js
+    js = _script_module().query_one_js("FAS")
+    assert 'const CODE="FAS";' in js
     assert '""' not in js, "标的被套了两层引号 —— JS 语法错误"
     assert "__CODE__" not in js, "占位符没被替换"
 
@@ -235,7 +235,7 @@ def test_query_one_js_visibility_check_survives_fixed_positioning():
     用它做判据 ⇒ 查询**永远等不到结果**，最终报 TIMEOUT，
     **看起来像页面改版或账号失效，实际是判据选错**（2026-09-24 实机踩到）。
     """
-    js = _script_module().query_one_js("AXTX")
+    js = _script_module().query_one_js("FAS")
     assert "getClientRects" in js
     assert "offsetParent" not in js, \
         "offsetParent 对 position:fixed 的元素恒为 null，不能用作可见性判据"
@@ -249,9 +249,9 @@ def test_query_one_js_visibility_check_survives_fixed_positioning():
 
 def test_universe_values_extracts_one_value_per_symbol():
     """全市场表 → `{symbol: fg_index}`，只含表里出现过的标的。"""
-    df = _universe(["US.CONL", "US.TQQQ"])
-    assert shoutu.universe_values(df, ["TQQQ", "CONL"]) == {"TQQQ": 33.0, "CONL": 33.0}
-    assert shoutu.universe_values(df, ["AXTX"]) == {}
+    df = _universe(["US.TNA", "US.TQQQ"])
+    assert shoutu.universe_values(df, ["TQQQ", "TNA"]) == {"TQQQ": 33.0, "TNA": 33.0}
+    assert shoutu.universe_values(df, ["FAS"]) == {}
 
 
 def test_universe_values_takes_first_hit_when_categories_overlap():
@@ -261,10 +261,10 @@ def test_universe_values_takes_first_hit_when_categories_overlap():
     ⇒ 取第一条即可，且必须与 `record_universe` 的 `keep=last` 去重不冲突。
     """
     df = shoutu.parse_universe_rows([
-        "我的自选~US.CONL~两倍Coin~27~6.79~6.14",
-        "美股杠杆~US.CONL~两倍Coin~27~6.79~6.14",
+        "我的自选~US.TNA~两倍Coin~27~6.79~6.14",
+        "美股杠杆~US.TNA~两倍Coin~27~6.79~6.14",
     ])
-    assert shoutu.universe_values(df, ["CONL"]) == {"CONL": 27.0}
+    assert shoutu.universe_values(df, ["TNA"]) == {"TNA": 27.0}
 
 
 def test_coverage_and_values_partition_the_whitelist():
@@ -277,7 +277,7 @@ def test_coverage_and_values_partition_the_whitelist():
     它同时挡住"归一化不一致""某一侧漏写"这两类改法。
     """
     cases = [
-        ["US.CONL", "US.YINN"],                       # 部分覆盖
+        ["US.TNA", "US.YINN"],                       # 部分覆盖
         ["US." + s for s in config.SHOUTU_SYMBOLS],   # 全覆盖
         ["US.AAPL", "US.GDP"],                        # 全是白名单外的代码
         [],                                           # 空表
@@ -293,15 +293,15 @@ def test_coverage_and_values_partition_the_whitelist():
 def test_lowercase_codes_are_covered_and_valued_consistently():
     """**守卫**：页面若返回**小写**代码，覆盖判定与取值必须给出**一致**的结论。
 
-    2026-09-24 实机：页面返回大写（`US.AXTX`），所以这条当时不会暴露。
+    2026-09-24 实机：页面返回大写（`US.FAS`），所以这条当时不会暴露。
     但库函数归一化了、取值路径没归一化 ⇒ 一旦页面改成小写，TQQQ 会被判为
     「已覆盖」（不去查询）**同时**取不到值 ⇒ 当天静默缺失。
     """
-    df = _universe(["us.tqqq", "us.axTx"])
+    df = _universe(["us.tqqq", "us.fas"])
     assert shoutu.universe_values(df, ["TQQQ"]) == {"TQQQ": 33.0}
     assert shoutu.missing_symbols(df, ["TQQQ"]) == []
-    assert shoutu.universe_values(df, ["AXTX"]) == {"AXTX": 33.0}
-    assert shoutu.missing_symbols(df, ["AXTX"]) == []
+    assert shoutu.universe_values(df, ["FAS"]) == {"FAS": 33.0}
+    assert shoutu.missing_symbols(df, ["FAS"]) == []
 
 
 def test_covered_symbols_is_the_key_set_of_universe_values():
@@ -309,8 +309,8 @@ def test_covered_symbols_is_the_key_set_of_universe_values():
 
     两个函数不许各写一套后缀匹配 —— 那正是本次不一致的成因。
     """
-    df = _universe(["US.TQQQ", "US.CONL"])
-    for symbols in (None, ["CONL", "TQQQ", "AXTX"], ["AXTX"]):
+    df = _universe(["US.TQQQ", "US.TNA"])
+    for symbols in (None, ["TNA", "TQQQ", "FAS"], ["FAS"]):
         assert shoutu.covered_symbols(df, symbols) == \
             list(shoutu.universe_values(df, symbols))
 
@@ -321,14 +321,14 @@ def test_covered_symbols_is_the_key_set_of_universe_values():
 def test_compare_script_also_reads_the_scan_view():
     """**守卫**：对照脚本必须把**分类表未覆盖**的标的也纳入**页面侧**。
 
-    否则 AXTX / CRCG 恒为 `page_missing` ⇒ 那两个标的**从不参与对照**，
+    否则 FAS / TMF 恒为 `page_missing` ⇒ 那两个标的**从不参与对照**，
     等于放弃了「API 与页面同口径」的验证 —— 而 `emo_area` 填错（唯一会
     **静默给出错误数值**的字段）正是靠这个对照发现的。
     """
     p = os.path.join(config.ROOT, "scripts", "compare_shoutu.py")
     called = _called_names(p)
     assert "missing_symbols" in called, \
-        "对照脚本没**调用** missing_symbols —— AXTX/CRCG 会恒为 page_missing"
+        "对照脚本没**调用** missing_symbols —— FAS/TMF 会恒为 page_missing"
     assert "fetch_scan_scores" in called, \
         "对照脚本没去个股贪恐视图补取 —— 那两个标的等于没对照"
 
@@ -341,14 +341,14 @@ def test_main_writes_no_series_when_scan_query_fails(monkeypatch):
     """**守卫**：个股贪恐查询失败时，`main()` **不得**写逐标的时序。
 
     构造：6 个标的由分类表覆盖（`vals` 非空 ⇒ 不会提前 return），
-    第 7/8 个（AXTX / CRCG）由 `fetch_scan_scores` 负责，让它抛错。
+    第 7/8 个（FAS / TMF）由 `fetch_scan_scores` 负责，让它抛错。
 
     期望：异常冒泡出去（⇒ `.cmd` 非零退出 ⇒ API 兜底），
     而 `append_records` **一次都没被调用** —— 磁盘上不会出现"写一半"。
     """
     fs = _script_module()
     df = _universe(["US." + s for s in config.SHOUTU_SYMBOLS
-                    if s not in ("AXTX", "CRCG")])
+                    if s not in ("FAS", "TMF")])
     appended = []
 
     def boom(*_a, **_k):
@@ -381,20 +381,20 @@ def test_main_writes_prices_from_both_sources(monkeypatch, tmp_path):
     """
     fs = _script_module()
     df = _universe(["US." + s for s in config.SHOUTU_SYMBOLS
-                    if s not in ("AXTX", "CRCG")])
+                    if s not in ("FAS", "TMF")])
     out = tmp_path / "shoutu_fng.csv"
     monkeypatch.setattr(config, "SHOUTU_FNG_PATH", str(out))
     monkeypatch.setattr(fs, "fetch_universe", lambda date=None: (df, len(df)))
     monkeypatch.setattr(fs, "_warn_if_short", lambda *a, **k: None)
     monkeypatch.setattr(fs.shoutu, "record_universe", lambda *a, **k: (df, len(df)))
     monkeypatch.setattr(fs, "fetch_scan_records",
-                        lambda syms: {"AXTX": {"value": -21.0, "price": 30.4},
-                                      "CRCG": {"value": -70.0, "price": 15.0}})
+                        lambda syms: {"FAS": {"value": -21.0, "price": 30.4},
+                                      "TMF": {"value": -70.0, "price": 15.0}})
     monkeypatch.setattr(sys, "argv", ["fetch_shoutu.py"])
 
     assert fs.main() == 0
     raw = pd.read_csv(out)
     got = dict(zip(raw["symbol"], raw["price"]))
     assert got["TQQQ"] == pytest.approx(1.0), "分类表来源的 price 没落盘"
-    assert got["AXTX"] == pytest.approx(30.4), "查询面板来源的 price 没落盘"
-    assert got["CRCG"] == pytest.approx(15.0)
+    assert got["FAS"] == pytest.approx(30.4), "查询面板来源的 price 没落盘"
+    assert got["TMF"] == pytest.approx(15.0)

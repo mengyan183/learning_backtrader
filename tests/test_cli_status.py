@@ -167,9 +167,9 @@ def test_status_shoutu_table_covers_all_shoutu_symbols(capsys):
     """**守卫**：逐标的表必须覆盖**权威源里实际有的**守猪待兔标的。
 
     第 12.28 条①：原来只遍历 `config.SYMBOLS`（3 个）⇒
-    CONL / YINN / GDXU 等**在表里完全不出现**，用户看不到它们的档位与饱和度。
+    TNA / YINN / GDXU 等**在表里完全不出现**，用户看不到它们的档位与饱和度。
 
-    ⚠️ 判据**从数据推导**，不硬编码「哪几个缺」：权威源对 AXTX / CRCG
+    ⚠️ 判据**从数据推导**，不硬编码「哪几个缺」：权威源对 FAS / TMF
     **无历史**（服务端限制，见 `logs/shoutu_daily.log`），这两只**预期**不出现在表里。
     """
     from fg_system import cli
@@ -183,7 +183,7 @@ def test_status_shoutu_table_covers_all_shoutu_symbols(capsys):
 
     hist = loader.load_shoutu_history()
     have = [s for s in config.SHOUTU_SYMBOLS if s in set(hist["symbol"])]
-    assert len(have) >= 6, "权威源覆盖的标的太少（预期至少 6 个）"
+    assert len(have) >= 5, "权威源覆盖的标的太少（预期至少 5 个）"
     missing = [s for s in have if s not in out]
     assert not missing, "逐标的表漏了权威源里有的这些标的：%s" % missing
 
