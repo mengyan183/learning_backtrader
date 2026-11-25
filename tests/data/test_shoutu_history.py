@@ -29,44 +29,44 @@ _ROWS = [
 # ================================================================ 解析
 
 def test_parse_history_payload_basic():
-    df = shoutu.parse_history_payload(_payload(_ROWS), "CONL")
+    df = shoutu.parse_history_payload(_payload(_ROWS), "TNA")
     assert list(df.columns) == shoutu.HISTORY_COLUMNS
     assert len(df) == 2
-    assert list(df["symbol"]) == ["CONL", "CONL"]
+    assert list(df["symbol"]) == ["TNA", "TNA"]
     assert list(df["score"]) == [-75.0, -69.0]
     assert df["price"].iloc[0] == pytest.approx(35.220)
     assert df["date"].iloc[0] == pd.Timestamp("2024-08-16")
 
 
 def test_parse_history_payload_empty_data_is_not_an_error():
-    """**关键**：`data: []` 表示「服务端对该标的**没有**历史」（实测 AXTX / CRCG）。
+    """**关键**：`data: []` 表示「服务端对该标的**没有**历史」（实测 FAS / TMF）。
 
     必须返回**空表**而不是抛错 —— 抛错会让整次抓取失败，
     掩盖"其余标的是好的"这一事实。调用方据此**打印告警、不写入**。
     """
-    df = shoutu.parse_history_payload(_payload([]), "AXTX")
+    df = shoutu.parse_history_payload(_payload([]), "FAS")
     assert df.empty
     assert list(df.columns) == shoutu.HISTORY_COLUMNS
 
 
 def test_parse_history_payload_raises_on_status_error():
     with pytest.raises(shoutu.ShoutuError, match="status"):
-        shoutu.parse_history_payload(_payload(_ROWS, status=2), "CONL")
+        shoutu.parse_history_payload(_payload(_ROWS, status=2), "TNA")
 
 
 def test_parse_history_payload_raises_on_bad_score():
     """score 非数值 ⇒ 报错（**不静默变 NaN**，同 `parse_scan_result` 的原则）。"""
     bad = [{"score": "**", "price": "1", "date": "2024-08-16"}]
     with pytest.raises(shoutu.ShoutuError):
-        shoutu.parse_history_payload(_payload(bad), "CONL")
+        shoutu.parse_history_payload(_payload(bad), "TNA")
     with pytest.raises(shoutu.ShoutuError):
-        shoutu.parse_history_payload(_payload([{"price": "1", "date": "2024-08-16"}]), "CONL")
+        shoutu.parse_history_payload(_payload([{"price": "1", "date": "2024-08-16"}]), "TNA")
 
 
 def test_parse_history_payload_raises_on_bad_date():
     bad = [{"score": 1, "price": "1", "date": "not-a-date"}]
     with pytest.raises(shoutu.ShoutuError):
-        shoutu.parse_history_payload(_payload(bad), "CONL")
+        shoutu.parse_history_payload(_payload(bad), "TNA")
 
 
 def test_parse_history_payload_raises_on_out_of_range_score():
@@ -74,7 +74,7 @@ def test_parse_history_payload_raises_on_out_of_range_score():
     for bad_score in (-101, 101):
         rows = [{"score": bad_score, "price": "1", "date": "2024-08-16"}]
         with pytest.raises(shoutu.ShoutuError, match="越界"):
-            shoutu.parse_history_payload(_payload(rows), "CONL")
+            shoutu.parse_history_payload(_payload(rows), "TNA")
 
 
 def test_parse_history_payload_price_unparsable_becomes_nan():
@@ -82,7 +82,7 @@ def test_parse_history_payload_price_unparsable_becomes_nan():
     （价格源抖动不该把整次抓取搞挂）。"""
     rows = [{"score": 5, "price": "N/A", "date": "2024-08-16"},
             {"score": 6, "date": "2024-08-19"}]           # 连 price 都没有
-    df = shoutu.parse_history_payload(_payload(rows), "CONL")
+    df = shoutu.parse_history_payload(_payload(rows), "TNA")
     assert len(df) == 2
     assert df["price"].isna().all()
 
@@ -97,7 +97,7 @@ def test_parse_history_payload_unknown_symbol_raises():
 
 def test_record_history_creates_file_and_sorts(tmp_path):
     p = str(tmp_path / "h.csv")
-    df = shoutu.parse_history_payload(_payload(_ROWS), "CONL")
+    df = shoutu.parse_history_payload(_payload(_ROWS), "TNA")
     out = shoutu.record_history(df, p)
     assert os.path.exists(p)
     assert out["date"].is_monotonic_increasing
@@ -107,7 +107,7 @@ def test_record_history_creates_file_and_sorts(tmp_path):
 def test_record_history_is_idempotent(tmp_path):
     """同 `(date, symbol)` 重复抓取**覆盖**而非追加（抓取会重跑，不能越抓越多）。"""
     p = str(tmp_path / "h.csv")
-    df = shoutu.parse_history_payload(_payload(_ROWS), "CONL")
+    df = shoutu.parse_history_payload(_payload(_ROWS), "TNA")
     shoutu.record_history(df, p)
     out = shoutu.record_history(df, p)
     assert len(out) == 2
@@ -116,9 +116,9 @@ def test_record_history_is_idempotent(tmp_path):
 def test_record_history_overwrites_on_correction(tmp_path):
     """更正取**后写入的值**（服务端修订历史时应生效）。"""
     p = str(tmp_path / "h.csv")
-    shoutu.record_history(shoutu.parse_history_payload(_payload(_ROWS), "CONL"), p)
+    shoutu.record_history(shoutu.parse_history_payload(_payload(_ROWS), "TNA"), p)
     fixed = shoutu.parse_history_payload(
-        _payload([{"score": -70, "price": "35.220", "date": "2024-08-16"}]), "CONL")
+        _payload([{"score": -70, "price": "35.220", "date": "2024-08-16"}]), "TNA")
     out = shoutu.record_history(fixed, p)
     row = out[out["date"] == pd.Timestamp("2024-08-16")]
     assert row["score"].iloc[0] == -70.0
@@ -126,17 +126,17 @@ def test_record_history_overwrites_on_correction(tmp_path):
 
 def test_record_history_keeps_multiple_symbols(tmp_path):
     p = str(tmp_path / "h.csv")
-    shoutu.record_history(shoutu.parse_history_payload(_payload(_ROWS), "CONL"), p)
+    shoutu.record_history(shoutu.parse_history_payload(_payload(_ROWS), "TNA"), p)
     shoutu.record_history(shoutu.parse_history_payload(_payload(_ROWS), "TQQQ"), p)
     out = shoutu.record_history(pd.DataFrame(columns=shoutu.HISTORY_COLUMNS), p)
-    assert set(out["symbol"]) == {"CONL", "TQQQ"}
+    assert set(out["symbol"]) == {"TNA", "TQQQ"}
     assert len(out) == 4
 
 
 def test_record_history_empty_is_noop(tmp_path):
-    """空表（AXTX / CRCG）**不得**创建文件、不得报错。"""
+    """空表（FAS / TMF）**不得**创建文件、不得报错。"""
     p = str(tmp_path / "h.csv")
-    out = shoutu.record_history(shoutu.parse_history_payload(_payload([]), "AXTX"), p)
+    out = shoutu.record_history(shoutu.parse_history_payload(_payload([]), "FAS"), p)
     assert out.empty
     assert not os.path.exists(p)
 
@@ -149,7 +149,7 @@ def test_load_shoutu_history_missing_file_returns_empty(tmp_path):
 
 def test_load_shoutu_history_roundtrip(tmp_path):
     p = str(tmp_path / "h.csv")
-    shoutu.record_history(shoutu.parse_history_payload(_payload(_ROWS), "CONL"), p)
+    shoutu.record_history(shoutu.parse_history_payload(_payload(_ROWS), "TNA"), p)
     out = loader.load_shoutu_history(p)
     assert len(out) == 2
     assert out["score"].iloc[0] == -75.0

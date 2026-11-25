@@ -7,8 +7,8 @@
 **不是推断**。其中三处都曾因推断出错而被实测纠正：
 
     GDXU  曾定为 us     -> 实测 other（黄金按表单提示语属"其他"）
-    AXTX  曾推断为 coin -> 实测 us（AXTI 是半导体公司，美概）
-    CRCG  曾语义推断 coin -> 实测 other（页面「已查询」存储 + 数值证据）
+    FAS  曾推断为 coin -> 实测 us（AXTI 是半导体公司，美概）
+    TMF  曾语义推断 coin -> 实测 other（页面「已查询」存储 + 数值证据）
 
 **判据是「差 0」**（与页面表格精确吻合），不是"最接近"。
 """
@@ -53,9 +53,9 @@ def test_api_params_match_measured_values():
         "UPRO": (3, "us"),
         "GDXU": (3, "other"),   # 黄金 => 其他（表单提示语）
         "YINN": (3, "a"),       # 富时中国 => 中概
-        "CONL": (2, "coin"),    # Coinbase => 币股
-        "AXTX": (2, "us"),      # AXTI 半导体 => 美概
-        "CRCG": (2, "other"),   # 用户存储「其他」+ 数值证据
+        "TNA": (3, "us"),      # 三倍罗素 2000 小盘 => 美概
+        "FAS": (3, "us"),      # 三倍金融 => 美概
+        "TMF": (3, "other"),   # 三倍长债 => 其他
     }
     for sym, want in expected.items():
         assert shoutu.api_params(sym) == want, sym
@@ -64,7 +64,7 @@ def test_api_params_match_measured_values():
 def test_api_params_rejects_unknown_symbol():
     """**守卫**：未知标的必须报错，防录入笔误（同 append_records 的白名单）。"""
     with pytest.raises(shoutu.ShoutuError, match="未知标的"):
-        shoutu.api_params("CONLL")
+        shoutu.api_params("TNAL")
 
 
 def test_every_shoutu_symbol_has_api_params():
@@ -116,7 +116,7 @@ def test_parse_score_payload_preserves_negative_scale():
     """**关键**：量程是 −100~100，**不得做任何转换**。
 
     文档示例 `score:71` 曾让人怀疑是 0~100；实测确认与页面**同口径**
-    （TQQQ/SOXL/UPRO/YINN/CONL/GDXU 均精确吻合或差 0）。
+    （TQQQ/SOXL/UPRO/YINN/TNA/GDXU 均精确吻合或差 0）。
     若误按 0~100 处理，负数会被当异常值，或静默错判档位。
     """
     out = shoutu.parse_score_payload(_OK)
@@ -225,9 +225,9 @@ def test_collect_scores_uses_per_symbol_params():
         seen.append((symbol, lever, emo_area))
         return {"status": 1, "data": {"score": float(len(seen))}}
 
-    out = shoutu.collect_scores(["GDXU", "CONL", "YINN"], fetch_one=fake)
-    assert seen == [("GDXU", 3, "other"), ("CONL", 2, "coin"), ("YINN", 3, "a")]
-    assert out == {"GDXU": 1.0, "CONL": 2.0, "YINN": 3.0}
+    out = shoutu.collect_scores(["GDXU", "TNA", "YINN"], fetch_one=fake)
+    assert seen == [("GDXU", 3, "other"), ("TNA", 3, "us"), ("YINN", 3, "a")]
+    assert out == {"GDXU": 1.0, "TNA": 2.0, "YINN": 3.0}
 
 
 def test_collect_scores_defaults_to_whitelist():
@@ -263,8 +263,8 @@ def test_collect_scores_error_names_the_symbol():
         return {"status": 2, "msg": "参数校验失败"}
 
     with pytest.raises(shoutu.ShoutuError) as exc:
-        shoutu.collect_scores(["CRCG"], fetch_one=fake)
-    assert "CRCG" in str(exc.value)
+        shoutu.collect_scores(["TMF"], fetch_one=fake)
+    assert "TMF" in str(exc.value)
 
 
 # ================================================================ 与存储层衔接
@@ -312,12 +312,12 @@ def test_compare_beyond_tolerance_fails():
 
 
 def test_compare_marks_symbols_absent_from_page():
-    """AXTX / CRCG **不在**页面 11 个分类表内 —— 标为 page_missing，
+    """FAS / TMF **不在**页面 11 个分类表内 —— 标为 page_missing，
     且**不参与**判定（否则会误报"不一致"）。"""
     rows, ok = shoutu.compare_page_vs_api(
-        {"TQQQ": 33.0}, {"TQQQ": 33.0, "AXTX": -21.0})
+        {"TQQQ": 33.0}, {"TQQQ": 33.0, "FAS": -21.0})
     st = {r["symbol"]: r["status"] for r in rows}
-    assert st["AXTX"] == "page_missing"
+    assert st["FAS"] == "page_missing"
     assert ok is True, "表外标的不应影响判定"
 
 
@@ -330,5 +330,5 @@ def test_compare_empty_page_is_failure():
 
 def test_compare_rows_are_sorted_by_symbol():
     rows, _ = shoutu.compare_page_vs_api(
-        {"TQQQ": 1.0, "CONL": 1.0}, {"TQQQ": 1.0, "CONL": 1.0})
-    assert [r["symbol"] for r in rows] == ["CONL", "TQQQ"]
+        {"TQQQ": 1.0, "TNA": 1.0}, {"TQQQ": 1.0, "TNA": 1.0})
+    assert [r["symbol"] for r in rows] == ["TNA", "TQQQ"]
