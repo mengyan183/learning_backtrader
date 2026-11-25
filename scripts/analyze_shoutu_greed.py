@@ -167,6 +167,12 @@ def main():
                     help="只看系统在用的三个大盘标的")
     args = ap.parse_args()
 
+    # 🔴 2026-11-25 方案 C：**产出校验**（不看 rc，看数据新鲜度）✓
+    #   本脚本的全部结论都基于 `shoutu_history.csv` 的**历史窗口** ✗
+    #   而该文件已停更（服务端 `data: []`）⇒ 必须把截止日**打在最前面** ✓
+    _banner, _stale = loader.shoutu_history_banner()
+    print(_banner)
+
     hist = loader.load_shoutu_history()
     if hist.empty:
         print("没有历史数据（%s）" % config.SHOUTU_HISTORY_PATH)

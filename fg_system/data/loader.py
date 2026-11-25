@@ -332,6 +332,59 @@ def load_shoutu_records(path=None):
     return _load_shoutu_long(path, ["date", "symbol", "value"], ["price"])
 
 
+#: 守猪待兔历史数据的**停更阈值**（天）✓（2026-11-25 用户裁定）
+#: 🔴 背景：`stock_emotion/history` 端点对**全部标的**返回 `data: []`
+#:    （实测 2026-11-24）⇒ `shoutu_history.csv` 永久停在 2026-10-14 ✗
+#:    而 `fetch_shoutu_history.py` 是「无条件 return 0」+ shell「无条件 exit 0」
+#:    ⇒ **两层静默**，41 天没人发现 ✗
+#: ⇒ 改用**产出校验**（不看 rc，看数据）：超过该天数就在产物首行告警 ✓
+#:    理由：rc 会骗人，数据不会 ✓
+SHOUTU_HISTORY_STALE_DAYS = 7
+
+
+def shoutu_history_age(path=None, today=None):
+    """`shoutu_history.csv` 的**最新数据距今天数** ⇒ `(last_date, days)` ✓。
+
+    🔴 2026-11-25 用户裁定方案 C：**产出校验** ✓
+       不看抓取脚本的 rc（它恒为 0）✗，看数据本身的新鲜度 ✓
+
+    返回 `(None, None)` 表示**文件缺失或为空**（调用方应视为「更严重」）✓
+    """
+    import datetime as _dt
+    import pandas as _pd
+
+    p = path or config.SHOUTU_HISTORY_PATH
+    try:
+        df = _pd.read_csv(p, usecols=["date"])
+    except (OSError, ValueError):
+        return None, None
+    if df.empty:
+        return None, None
+    last = _pd.to_datetime(df["date"], errors="coerce").max()
+    if _pd.isna(last):
+        return None, None
+    t = _pd.Timestamp(today or _dt.date.today()).normalize()
+    return last.normalize(), int((t - last.normalize()).days)
+
+
+def shoutu_history_banner(path=None, today=None, max_days=None):
+    """产出校验的**一行横幅** ⇒ `(text, is_stale)` ✓。
+
+    调用方把它打在产物**首行**（不是日志）—— 与「口径混用」的处理方式一致：
+    **不隐瞒，写进产物** ✓
+    """
+    lim = SHOUTU_HISTORY_STALE_DAYS if max_days is None else int(max_days)
+    last, days = shoutu_history_age(path, today)
+    if last is None:
+        return ("🔴 守猪待兔历史：**文件缺失或为空** ⇒ 所有基于历史窗口的结论不可信 ✗",
+                True)
+    if days > lim:
+        return ("🔴 守猪待兔历史：数据截至 **%s**（已停更 **%d 天**，阈值 %d 天）"
+                " ⇒ 所有基于历史窗口的结论**不可信** ✗"
+                % (last.date(), days, lim), True)
+    return ("✓ 守猪待兔历史：数据截至 %s（%d 天前）" % (last.date(), days), False)
+
+
 def load_shoutu_history(path=None):
     """服务端**历史**长表（`date,symbol,score,price`）。
 

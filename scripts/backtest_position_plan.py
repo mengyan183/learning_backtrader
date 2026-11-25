@@ -278,6 +278,13 @@ def main(argv=None):
     if args.symbols:
         SYMBOLS = [s.strip() for s in args.symbols.split(",") if s.strip()]
 
+    # 🔴 2026-11-25 方案 C：**产出校验**（不看 rc，看数据新鲜度）✓
+    #   `shoutu_history.csv` 已停更（服务端 `data: []`）✗
+    #   ⇒ 回测样本的截止日必须打在**最前面**，否则读者会以为覆盖到最新 ✓
+    from fg_system.data import loader as _ld
+    _banner, _stale = _ld.shoutu_history_banner()
+    print(_banner)
+
     px, st = _load(args.source)
     # 🔴 2026-10-30：区间必须取**价格 ∩ 系数**的交集 ✗ ——
     # 按价格全历史（2016 起）切段会让「前半段」落在系数数据之前 ✗
