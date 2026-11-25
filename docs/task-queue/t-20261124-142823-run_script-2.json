@@ -1,9 +1,0 @@
-{
-  "id": "t-20261124-142823-run_script-2",
-  "action": "run_script",
-  "params": {
-    "script": "price_crosscheck.py"
-  },
-  "status": "pending",
-  "created_at": "2026-11-24T14:28:23"
-}
