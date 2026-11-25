@@ -1,0 +1,10 @@
+{
+  "id": "t-20261125-140159-daily_log_tail",
+  "action": "daily_log_tail",
+  "params": {
+    "which": "sync_watcher",
+    "lines": "50"
+  },
+  "status": "pending",
+  "created_at": "2026-11-25T14:01:59"
+}
