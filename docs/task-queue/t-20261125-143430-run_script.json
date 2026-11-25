@@ -1,0 +1,15 @@
+{
+  "id": "t-20261125-143430-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "disable_launchd_job.py",
+    "args": [
+      "--label",
+      "com.fg.shoutu-history",
+      "--apply",
+      "--remove-plist"
+    ]
+  },
+  "status": "pending",
+  "created_at": "2026-11-25T14:34:30"
+}
