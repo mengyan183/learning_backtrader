@@ -116,155 +116,24 @@ def gap_pct(symbol, atr_pct):
         return None
     return PLAN["atr_k"] * float(atr_pct) * leverage_of(symbol) * 100.0
 
-
-def build_plan(net_value, symbol, atr_pct, coef, held_value=0.0,
-               pnl_pct=None, leveraged_value=0.0, risk_limit=None):
-    """算出该标的的建仓 / 加仓计划 ✓。
-
-    :param net_value: 账户净值（美元）
-    :param symbol: 标的代码（如 ``YINN``）
-    :param atr_pct: **正股** ATR20 占现价比例（小数）；None ⇒ 间距未知
-    :param coef: 守猪待兔系数（-100~100）
-    :param held_value: 该标的当前市值
-    :param pnl_pct: 该标的浮盈亏（%，如 -21.9）
-    :param leveraged_value: 杠杆 ETF 总市值（判断总敞口）
-    :param risk_limit: 1% 规则给出的上限（美元）；None ⇒ 只用 12%
-    :returns: dict（`ok` 表示「现在能不能动手」，`blocked` 给原因）
-    """
-    lev = leverage_of(symbol)
-    # 无守猪待兔历史的标的 ⇒ 敞口打回 12% ✓（15% 对它们未经验证 ✗）
-    # 实时查历史天数 ⇒ 服务端补了历史就自动解除 ✓（不写死名单 ✗）
-    cap_ratio = PLAN["single_cap"] if has_history(symbol) else NO_HISTORY_CAP
-    cap_rule = float(net_value or 0) * cap_ratio      # 规则口径（15% / 12%）
-    single = cap_rule
-    if risk_limit:
-        single = min(single, float(risk_limit))       # 1% 规则更严 ⇒ 以它为准 ✓
-    # 🔴 2026-10-31 实测：简报里显示「上限 $1065」，但那是 **1% 规则**的限额 ✗
-    # 而规则本身写的是 15%（$1437）✗ ⇒ 看起来像「15% 就是 $1065」✗ 误导 ✗
-    # ⇒ 两个值都留着，简报里说明哪个更严 ✓
-    cap_risk = round(float(risk_limit), 0) if risk_limit else None
-    total = float(net_value or 0) * PLAN["total_cap"]
-    lev_used = float(leveraged_value or 0)
-    # 🔴 2026-11-23 用户要求：**总敞口必须约束「建仓后」的规模** ✗
-    #   原实现只做布尔判断 `lev_used >= total` ⇒ 建仓动作本身就能突破上限 ✗
-    #   实测：YINN 1596（< 上限 1597）+ SOXL 首建 639 ⇒ 总敞口 2235 > 1597 ✗
-    #   ⇒ 改成「剩余额度」`total_room`，并**同时**约束首建与加仓 ✓
-    #   ⚠️ 原条件带 `and held <= 0` ⇒ 已持仓的标的在总敞口满时仍可加仓 ✗ 一并修掉 ✓
-    total_room = max(0.0, total - lev_used)
-
-    held = float(held_value or 0)
-    room = max(0.0, single - held)
-    gap = gap_pct(symbol, atr_pct)
-
-    blocked = None
-    # 🔴 2026-11-13 用户要求：**硬约束优先** ✓
-    #    暴露过程：造场景验证建仓线文案时发现，`coef > -75` 的检查在最前面，
-    #    会**掩盖**后面更硬的原因 ✗：
-    #      `coef=-50 且浮亏 -70%` ⇒ 报「系数 -50 未达建仓线 -75」
-    #      ⇒ 读者以为「等守猪待兔跌到 -75 就能加仓」✗
-    #      ⇒ 实际是「浮亏过 -60% 线，**永久禁加仓**（直到浮亏回到线内）」✗
-    #    区分：
-    #      硬约束（不可等）—— 无系数 / 浮亏过线 / 已到上限 / 总敞口满
-    #      软约束（可等）  —— 系数未达建仓线
-    #    ⇒ 硬约束先说，软约束最后 ✓
-    if coef is None:
-        blocked = "无守猪待兔系数"
-    elif pnl_pct is not None and float(pnl_pct) <= PLAN["hard_stop"] * 100:
-        # 用户裁定：**不清仓**，但也不许加仓 ✓（回本数学，见模块 docstring）
-        blocked = "浮亏 %.0f%% 已过 %.0f%% 线：禁止加仓（不清仓）" % (
-            float(pnl_pct), PLAN["hard_stop"] * 100)
-    elif room <= 0:
-        blocked = "已到单标的上限 $%.0f" % single
-    elif total_room <= 0:
-        blocked = "杠杆总敞口已满（上限 $%.0f，已用 $%.0f）" % (total, lev_used)
-    elif float(coef) > PLAN["entry_coef"]:
-        # 🔴 2026-11-13 用户要求：**加「建仓线」三个字** ✓
-        #    原因：原文案「系数 -51 未达 -75」容易被读成「-75 是**减仓**门槛」✗
-        #    （实测 2026-11-13 简报里 YINN 到 -75 仍「无减仓触发」，就是因为
-        #      -75 只影响**建仓/加仓**，与减仓无关 ⇒ 文案必须点明 ✗）
-        blocked = "系数 %.0f 未达建仓线 %.0f" % (float(coef), PLAN["entry_coef"])
-
-    nv = float(net_value or 0)
-    base = {"ok": blocked is None, "blocked": blocked, "symbol": symbol,
-            "leverage": lev, "single_cap": round(single, 0),
-            "cap_rule": round(cap_rule, 0), "cap_risk": cap_risk,
-            "total_cap": round(total, 0), "total_room": round(total_room, 0),
-            "gap_pct": None if gap is None else round(gap, 2),
-            "min_gap_days": PLAN["min_gap_days"], "room": round(room, 0)}
-
-    if held <= 0:
-        first = min(nv * PLAN["first"], room, total_room)
-        # 余量只剩几美元时不给出「首建 $1」这种无意义建议 ✗
-        if blocked is None and first < MIN_ENTRY:
-            base["ok"] = False
-            base["blocked"] = ("可建仓额 $%.0f 不足最小建仓额 $%.0f"
-                               "（总敞口余量 $%.0f）"
-                               % (first, MIN_ENTRY, total_room))
-        left = max(0.0, room - first)
-        left_total = max(0.0, total_room - first)
-        ladder = []
-        for i, a in enumerate(PLAN["adds"]):
-            amt = min(nv * a, left, left_total)
-            if amt <= 0:
-                break
-            ladder.append({"round": i + 1, "amount": round(amt, 0),
-                           "after_gap_pct": round(gap * (i + 1), 2) if gap else None})
-            left -= amt
-            left_total -= amt
-        return dict(base, mode="建仓", first=round(first, 0), ladder=ladder)
-
-    left = room
-    left_total = total_room
-    ladder = []
-    for i, a in enumerate(PLAN["adds"]):
-        amt = min(nv * a, left, left_total)
-        if amt <= 0:
-            break
-        ladder.append({"round": i + 1, "amount": round(amt, 0),
-                       "after_gap_pct": round(gap * (i + 1), 2) if gap else None})
-        left -= amt
-        left_total -= amt
-    return dict(base, mode="加仓", first=0.0, ladder=ladder)
-
-
-def brief_line(plan):
-    """简报用的一行摘要 ✓（简洁、可执行）。"""
-    if not plan:
-        return None
-    sym = plan["symbol"]
-    # 🔴 2026-10-31：没有守猪待兔系数 ⇒ **不显示** ✗ ——
-    # 它永远触发不了建仓（没有 -75 那根线可比 ✗），列出来只会让人困惑 ✗
-    # （简报里曾出现「BTC ×1 | 无守猪待兔系数 | 上限 $1150」✗）
-    if plan["blocked"] and "无守猪待兔系数" in str(plan["blocked"]):
-        return None
-    # 🔴 2026-11-24：**不再显示「规则口径 $N」** ✗
-    #   `single_cap`(15%) 在当前参数下**永远不 binding**：
-    #     1% 上限 = 净值 × 1% ÷ (2 × ATR20 × 杠杆)
-    #     `atr_pct` 有 `floor=0.03` ⇒ 止损距离 ≥ 3%×2×3 = 9%
-    #     ⇒ 1% 上限 ≤ 净值 × 11.11% < 15% ✓（与净值无关，等比）
-    #   ⇒ 两个数字并列只会让人问「为什么不按 $868 算」✗
-    #   ⚠️ `single_cap` **仍保留为兜底** —— 若哪天 `floor` 被调低
-    #      （如 1% ⇒ 止损 6% ⇒ 1% 上限 16.7%），它会重新 binding ✓
-    cap = "上限 $%.0f" % plan["single_cap"]
-    cr = plan.get("cap_risk")
-    if cr is not None and cr < plan["single_cap"] - 1:
-        cap = "上限 $%.0f（1%% 规则）" % cr
-    if plan["blocked"]:
-        # 🔴 2026-10-30 实测：`blocked` 里已经带了「上限 $N」⇒ 再追加一次会重复 ✗
-        # （简报里出现「已到单标的上限 $1253 | 上限 $1253」✗）
-        blk = str(plan["blocked"])
-        if "上限" in blk:
-            return "· %s ×%d | %s" % (sym, plan["leverage"], blk)
-        return "· %s ×%d | %s | %s" % (sym, plan["leverage"], blk, cap)
-    if plan["mode"] == "建仓":
-        lad = "、".join(
-            "+$%.0f（正股再跌 %.1f%%）" % (x["amount"], x["after_gap_pct"])
-            for x in plan["ladder"] if x["amount"] > 0 and x["after_gap_pct"])
-        return ("· %s ×%d | 可建仓：首建 $%.0f%s | %s"
-                % (sym, plan["leverage"], plan["first"],
-                   ("，" + lad) if lad else "", cap))
-    lad = "、".join(
-        "+$%.0f（正股再跌 %.1f%%）" % (x["amount"], x["after_gap_pct"])
-        for x in plan["ladder"] if x["amount"] > 0 and x["after_gap_pct"])
-    return ("· %s ×%d | 可加仓：%s | 剩余额度 $%.0f | %s"
-            % (sym, plan["leverage"], lad or "已无额度", plan["room"], cap))
+# ============================================================================
+# 🔴 **2026-11-25 已删除**：`build_plan` / `brief_line` / `has_history` /
+#    `history_days`（约 150 行）✗
+#
+#    原因（`docs/rules-2026-11-20.md` 12.64 / 12.66）：
+#      回测 2024-04~2026-11、6 标的 ⇒ **样本外全部为负**（−0.88% ~ −2.75%）
+#      **前后半段方向全部不一致** · 平均持仓仅 **0.4~1.3%**
+#      ⇒ 收益来自「几乎空仓」，不是规则 ✗
+#
+#    删除前的状态：唯一调用方 `invest_research.position_plan_brief` 已恒返回
+#    None（2026-11-25 第一步清理）⇒ 这 4 个函数**无任何生产调用方** ✓
+#
+#    ⚠️ **规则本身没有消失** —— 可执行定义在 `scripts/backtest_position_plan.py`
+#       的 `VARIANTS`（A/B/C/D/E 五个变体）里，随时可用
+#       `python scripts/backtest_position_plan.py --source history` 重新验证 ✓
+#       ⇒ 所以「样本变长后重新验证」**不需要重写这 150 行** ✓
+#
+#    **保留**（仍被生产使用）：
+#      · `PLAN`（`atr_k` 被 `gap_pct` 用；`total_cap` 被 `risk_brief_text` 用）
+#      · `leverage_of` / `gap_pct`（`risk.py` 依赖）
+# ============================================================================

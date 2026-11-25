@@ -15,32 +15,32 @@ from fg_system.data import loader, shoutu
 
 # ---------------------------------------------------------------- 转换
 def test_mapping_to_frame_uses_today_by_default():
-    df = shoutu.mapping_to_frame({"CONL": 24})
+    df = shoutu.mapping_to_frame({"TNA": 24})
     assert list(df.columns) == shoutu.RECORD_COLUMNS
     assert df.iloc[0]["date"] == pd.Timestamp.today().normalize()
-    assert df.iloc[0]["symbol"] == "CONL"
+    assert df.iloc[0]["symbol"] == "TNA"
     assert df.iloc[0]["value"] == 24.0
 
 
 def test_mapping_to_frame_normalizes_symbol_case():
-    df = shoutu.mapping_to_frame({"conl": 1}, date="2026-09-22")
-    assert df.iloc[0]["symbol"] == "CONL"
+    df = shoutu.mapping_to_frame({"tna": 1}, date="2026-09-22")
+    assert df.iloc[0]["symbol"] == "TNA"
     assert df.iloc[0]["date"] == pd.Timestamp("2026-09-22")
 
 
 # ---------------------------------------------------------------- 幂等并入
 def test_append_creates_file_when_missing(tmp_path):
     p = str(tmp_path / "shoutu_fng.csv")
-    wide, n = shoutu.append_records(shoutu.mapping_to_frame({"CONL": 24}, "2026-09-22"), p)
+    wide, n = shoutu.append_records(shoutu.mapping_to_frame({"TNA": 24}, "2026-09-22"), p)
     assert n == 1
     assert os.path.exists(p)
-    assert wide.loc[pd.Timestamp("2026-09-22"), "CONL"] == 24.0
+    assert wide.loc[pd.Timestamp("2026-09-22"), "TNA"] == 24.0
 
 
 def test_append_is_idempotent_on_same_date_and_symbol(tmp_path):
     """同一天同一标的录两次**不得**产生两行 —— 否则分布被污染。"""
     p = str(tmp_path / "shoutu_fng.csv")
-    rec = shoutu.mapping_to_frame({"CONL": 24}, "2026-09-22")
+    rec = shoutu.mapping_to_frame({"TNA": 24}, "2026-09-22")
     shoutu.append_records(rec, p)
     shoutu.append_records(rec, p)
     raw = pd.read_csv(p)
@@ -50,24 +50,24 @@ def test_append_is_idempotent_on_same_date_and_symbol(tmp_path):
 def test_append_correction_overwrites(tmp_path):
     """补录/更正取**后写入的值**（keep=last），不是保留旧值。"""
     p = str(tmp_path / "shoutu_fng.csv")
-    shoutu.append_records(shoutu.mapping_to_frame({"CONL": 26}, "2026-09-22"), p)
-    wide, _ = shoutu.append_records(shoutu.mapping_to_frame({"CONL": 24}, "2026-09-22"), p)
-    assert wide.loc[pd.Timestamp("2026-09-22"), "CONL"] == 24.0
+    shoutu.append_records(shoutu.mapping_to_frame({"TNA": 26}, "2026-09-22"), p)
+    wide, _ = shoutu.append_records(shoutu.mapping_to_frame({"TNA": 24}, "2026-09-22"), p)
+    assert wide.loc[pd.Timestamp("2026-09-22"), "TNA"] == 24.0
 
 
 def test_append_merges_new_date_with_existing(tmp_path):
     p = str(tmp_path / "shoutu_fng.csv")
-    shoutu.append_records(shoutu.mapping_to_frame({"CONL": 24}, "2026-09-22"), p)
+    shoutu.append_records(shoutu.mapping_to_frame({"TNA": 24}, "2026-09-22"), p)
     wide, _ = shoutu.append_records(shoutu.mapping_to_frame({"YINN": -41}, "2026-09-23"), p)
     assert wide.shape == (2, 2)
     assert wide.loc[pd.Timestamp("2026-09-23"), "YINN"] == -41.0
-    assert wide.loc[pd.Timestamp("2026-09-22"), "CONL"] == 24.0
+    assert wide.loc[pd.Timestamp("2026-09-22"), "TNA"] == 24.0
 
 
 def test_append_keeps_rows_sorted(tmp_path):
     p = str(tmp_path / "shoutu_fng.csv")
     shoutu.append_records(shoutu.mapping_to_frame({"YINN": -41}, "2026-09-23"), p)
-    shoutu.append_records(shoutu.mapping_to_frame({"CONL": 24}, "2026-09-22"), p)
+    shoutu.append_records(shoutu.mapping_to_frame({"TNA": 24}, "2026-09-22"), p)
     raw = pd.read_csv(p)
     assert list(raw["date"]) == ["2026-09-22", "2026-09-23"]
     assert raw["date"].is_monotonic_increasing
@@ -77,10 +77,10 @@ def test_append_keeps_rows_sorted(tmp_path):
 def test_out_of_range_raises_and_does_not_touch_file(tmp_path):
     """越界必须**报错且不写文件** —— 静默截断会把口径错误伪装成极值信号。"""
     p = str(tmp_path / "shoutu_fng.csv")
-    shoutu.append_records(shoutu.mapping_to_frame({"CONL": 24}, "2026-09-22"), p)
+    shoutu.append_records(shoutu.mapping_to_frame({"TNA": 24}, "2026-09-22"), p)
     before = open(p, encoding="utf-8").read()
     with pytest.raises(shoutu.ShoutuError, match="越界"):
-        shoutu.append_records(shoutu.mapping_to_frame({"CONL": 101}, "2026-09-23"), p)
+        shoutu.append_records(shoutu.mapping_to_frame({"TNA": 101}, "2026-09-23"), p)
     assert open(p, encoding="utf-8").read() == before
 
 
@@ -88,7 +88,7 @@ def test_out_of_range_raises_and_does_not_touch_file(tmp_path):
 def test_out_of_range_both_directions(tmp_path, value):
     p = str(tmp_path / "shoutu_fng.csv")
     with pytest.raises(shoutu.ShoutuError, match="越界"):
-        shoutu.append_records(shoutu.mapping_to_frame({"CONL": value}, "2026-09-22"), p)
+        shoutu.append_records(shoutu.mapping_to_frame({"TNA": value}, "2026-09-22"), p)
     assert not os.path.exists(p)
 
 
@@ -96,16 +96,16 @@ def test_boundary_values_are_accepted(tmp_path):
     """±100 是**量程内**，不得被当成越界（边界条件）。"""
     p = str(tmp_path / "shoutu_fng.csv")
     wide, _ = shoutu.append_records(
-        shoutu.mapping_to_frame({"CONL": 100, "YINN": -100}, "2026-09-22"), p)
-    assert wide.loc[pd.Timestamp("2026-09-22"), "CONL"] == 100.0
+        shoutu.mapping_to_frame({"TNA": 100, "YINN": -100}, "2026-09-22"), p)
+    assert wide.loc[pd.Timestamp("2026-09-22"), "TNA"] == 100.0
     assert wide.loc[pd.Timestamp("2026-09-22"), "YINN"] == -100.0
 
 
 def test_unknown_symbol_raises(tmp_path):
-    """白名单防录入笔误：CONLL 不应被静默接受。"""
+    """白名单防录入笔误：TNAL 不应被静默接受。"""
     p = str(tmp_path / "shoutu_fng.csv")
     with pytest.raises(shoutu.ShoutuError, match="未知标的"):
-        shoutu.append_records(shoutu.mapping_to_frame({"CONLL": 24}, "2026-09-22"), p)
+        shoutu.append_records(shoutu.mapping_to_frame({"TNAL": 24}, "2026-09-22"), p)
     assert not os.path.exists(p)
 
 
@@ -117,7 +117,7 @@ def test_missing_column_raises(tmp_path):
 
 def test_unparsable_value_raises(tmp_path):
     p = str(tmp_path / "shoutu_fng.csv")
-    df = pd.DataFrame({"date": ["2026-09-22"], "symbol": ["CONL"], "value": ["abc"]})
+    df = pd.DataFrame({"date": ["2026-09-22"], "symbol": ["TNA"], "value": ["abc"]})
     with pytest.raises(shoutu.ShoutuError, match="无法解析"):
         shoutu.append_records(df, p)
 
@@ -186,7 +186,7 @@ def test_secret_paths_are_gitignored(rel, label):
 # ---------------------------------------------------------------- E1 全市场抓取解析
 def test_parse_universe_rows_basic():
     lines = ["美股杠杆~US.TQQQ~三倍纳指~33~80.750~368.85",
-             "我的自选~US.CONL~两倍Coin~27~6.790~6.14"]
+             "我的自选~US.TNA~两倍Coin~27~6.790~6.14"]
     df = shoutu.parse_universe_rows(lines, date="2026-09-23")
     assert len(df) == 2
     assert list(df.columns) == shoutu.UNIVERSE_COLUMNS
@@ -246,8 +246,8 @@ def test_record_universe_keeps_overlapping_categories(tmp_path):
     """
     p = str(tmp_path / "u.csv")
     df = shoutu.parse_universe_rows([
-        "我的自选~US.CONL~两倍Coin~27~6.79~6.14",
-        "美股杠杆~US.CONL~两倍Coin~27~6.79~6.14",
+        "我的自选~US.TNA~两倍Coin~27~6.79~6.14",
+        "美股杠杆~US.TNA~两倍Coin~27~6.79~6.14",
     ], date="2026-09-23")
     merged, _ = shoutu.record_universe(df, p)
     assert len(merged) == 2
@@ -293,18 +293,35 @@ def test_token_never_appears_in_tracked_files():
 
 
 def test_real_file_symbols_are_whitelisted():
-    """真实 CSV 里的标的必须在白名单内（防手工编辑绕过校验）。"""
+    """真实 CSV **最新一行**的标的必须在白名单内（防手工编辑绕过校验）✓。
+
+    🔴 2026-11-25 修正：原来校验**全部列** ✗
+       而第 12.65 条第 2 步移除了 `AXTX` / `CRCG` / `CONL`，
+       它们的**历史列按设计保留**（`shoutu_history` 不删）✓
+       ⇒ 校验全部列会因「历史标的」失败，与本意（防新写入绕过）无关 ✗
+       ⇒ 改成只看**最新一行**：历史可以留，但**新写进来的**必须合法 ✓
+    """
     if not os.path.exists(config.SHOUTU_FNG_PATH):
         pytest.skip("真实守猪待兔文件不存在")
     wide = loader.load_shoutu_fng()
-    assert set(wide.columns) <= set(config.SHOUTU_SYMBOLS)
+    # ⚠️ 本机副本可能停在旧日期（`Data/` 不同步）⇒ 过旧则跳过
+    import pandas as _pd
+    _d = _pd.to_datetime(wide.index, errors="coerce")
+    if _pd.isna(_d).all() or (_pd.Timestamp.today().normalize()
+                              - _d.max()).days > 7:
+        pytest.skip("本机副本已过期（%s）"
+                    % ("无日期" if _pd.isna(_d).all() else _d.max().date()))
+    last = wide.dropna(how="all").tail(1)
+    got = {c for c in last.columns if not last[c].isna().all()}
+    assert got <= set(config.SHOUTU_SYMBOLS), (
+        "最新一行含白名单外标的：%s" % sorted(got - set(config.SHOUTU_SYMBOLS)))
 
 
 def test_recorded_symbols_counts_days(tmp_path):
     p = str(tmp_path / "shoutu_fng.csv")
-    shoutu.append_records(shoutu.mapping_to_frame({"CONL": 24, "YINN": -41}, "2026-09-22"), p)
-    shoutu.append_records(shoutu.mapping_to_frame({"CONL": 30}, "2026-09-23"), p)
-    assert shoutu.recorded_symbols(p) == {"CONL": 2, "YINN": 1}
+    shoutu.append_records(shoutu.mapping_to_frame({"TNA": 24, "YINN": -41}, "2026-09-22"), p)
+    shoutu.append_records(shoutu.mapping_to_frame({"TNA": 30}, "2026-09-23"), p)
+    assert shoutu.recorded_symbols(p) == {"TNA": 2, "YINN": 1}
 
 
 def test_recorded_symbols_empty_when_missing(tmp_path):
@@ -329,9 +346,9 @@ def test_column_names_stay_disjoint_from_history(tmp_path):
     """
     fng, hist = str(tmp_path / "fng.csv"), str(tmp_path / "hist.csv")
     shoutu.append_records(
-        shoutu.mapping_to_frame({"CONL": 24}, date="2026-09-22"), path=fng)
+        shoutu.mapping_to_frame({"TNA": 24}, date="2026-09-22"), path=fng)
     shoutu.record_history(
-        pd.DataFrame([{"date": "2026-09-22", "symbol": "CONL",
+        pd.DataFrame([{"date": "2026-09-22", "symbol": "TNA",
                        "score": 24, "price": 6.79}]), path=hist)
 
     fng_cols = list(loader.load_shoutu_records(fng).columns)
@@ -342,22 +359,22 @@ def test_column_names_stay_disjoint_from_history(tmp_path):
 
 def test_mapping_to_frame_price_defaults_to_nan():
     """手动录入（`cli shoutu-record --values`）不带 price ⇒ NaN，**不报错**。"""
-    df = shoutu.mapping_to_frame({"CONL": 24}, date="2026-09-22")
+    df = shoutu.mapping_to_frame({"TNA": 24}, date="2026-09-22")
     assert list(df.columns) == shoutu.RECORD_COLUMNS
     assert df["price"].isna().all()
 
 
 def test_mapping_to_frame_accepts_prices():
-    df = shoutu.mapping_to_frame({"CONL": 24}, date="2026-09-22",
-                                 prices={"CONL": 6.79})
+    df = shoutu.mapping_to_frame({"TNA": 24}, date="2026-09-22",
+                                 prices={"TNA": 6.79})
     assert df["price"].iloc[0] == pytest.approx(6.79)
 
 
 def test_mapping_to_frame_missing_price_for_one_symbol_is_nan():
-    df = shoutu.mapping_to_frame({"CONL": 24, "YINN": -41}, date="2026-09-22",
-                                 prices={"CONL": 6.79})
+    df = shoutu.mapping_to_frame({"TNA": 24, "YINN": -41}, date="2026-09-22",
+                                 prices={"TNA": 6.79})
     got = dict(zip(df["symbol"], df["price"]))
-    assert got["CONL"] == pytest.approx(6.79)
+    assert got["TNA"] == pytest.approx(6.79)
     assert pd.isna(got["YINN"])
 
 
@@ -369,36 +386,36 @@ def test_append_records_preserves_existing_price(tmp_path):
     """
     p = str(tmp_path / "shoutu_fng.csv")
     shoutu.append_records(
-        shoutu.mapping_to_frame({"CONL": 24}, "2026-09-22", prices={"CONL": 6.79}), p)
+        shoutu.mapping_to_frame({"TNA": 24}, "2026-09-22", prices={"TNA": 6.79}), p)
     wide, _ = shoutu.append_records(
         shoutu.mapping_to_frame({"YINN": -41}, "2026-09-23", prices={"YINN": 48.5}), p)
 
     raw = pd.read_csv(p)
     got = {(str(r["date"]), r["symbol"]): r["price"] for _, r in raw.iterrows()}
-    assert got[("2026-09-22", "CONL")] == pytest.approx(6.79), "旧行的 price 被丢了"
+    assert got[("2026-09-22", "TNA")] == pytest.approx(6.79), "旧行的 price 被丢了"
     assert got[("2026-09-23", "YINN")] == pytest.approx(48.5)
-    assert wide.loc[pd.Timestamp("2026-09-22"), "CONL"] == 24.0   # 宽表契约不变
+    assert wide.loc[pd.Timestamp("2026-09-22"), "TNA"] == 24.0   # 宽表契约不变
 
 
 def test_append_records_reads_legacy_three_column_file(tmp_path):
     """**向后兼容**：现网 `shoutu_fng.csv` 只有 3 列，必须照常可读、可续写。"""
     p = str(tmp_path / "legacy.csv")
     with open(p, "w", encoding="utf-8") as fh:
-        fh.write("date,symbol,value\n2026-09-22,CONL,24.0\n")
+        fh.write("date,symbol,value\n2026-09-22,TNA,24.0\n")
     wide, _ = shoutu.append_records(
         shoutu.mapping_to_frame({"YINN": -41}, "2026-09-23", prices={"YINN": 48.5}), p)
     raw = pd.read_csv(p)
     assert list(raw.columns) == shoutu.RECORD_COLUMNS
     assert len(raw) == 2
     got = {(str(r["date"]), r["symbol"]): r["price"] for _, r in raw.iterrows()}
-    assert pd.isna(got[("2026-09-22", "CONL")])          # 旧行 price 为 NaN
+    assert pd.isna(got[("2026-09-22", "TNA")])          # 旧行 price 为 NaN
     assert got[("2026-09-23", "YINN")] == pytest.approx(48.5)
 
 
 def test_append_records_price_unparsable_becomes_nan(tmp_path):
     """price 不可解析 ⇒ 置 NaN，**不报错**（它是参考量，不是信号）。"""
     p = str(tmp_path / "shoutu_fng.csv")
-    rec = shoutu.mapping_to_frame({"CONL": 24}, "2026-09-22")
+    rec = shoutu.mapping_to_frame({"TNA": 24}, "2026-09-22")
     rec["price"] = ["abc"]
     wide, n = shoutu.append_records(rec, p)
     assert n == 1
@@ -412,7 +429,7 @@ def test_append_records_price_out_of_range_is_not_checked(tmp_path):
     """
     p = str(tmp_path / "shoutu_fng.csv")
     wide, n = shoutu.append_records(
-        shoutu.mapping_to_frame({"CONL": 24}, "2026-09-22", prices={"CONL": 300.0}), p)
+        shoutu.mapping_to_frame({"TNA": 24}, "2026-09-22", prices={"TNA": 300.0}), p)
     assert n == 1
     assert pd.read_csv(p)["price"].iloc[0] == pytest.approx(300.0)
 
@@ -422,10 +439,10 @@ def test_append_records_price_out_of_range_is_not_checked(tmp_path):
 def test_universe_prices_reads_the_universe_table():
     df = shoutu.parse_universe_rows([
         "美股杠杆~US.TQQQ~三倍纳指~33~80.750~368.85",
-        "我的自选~US.CONL~两倍Coin~27~6.790~6.14",
+        "我的自选~US.TNA~两倍Coin~27~6.790~6.14",
     ])
-    assert shoutu.universe_prices(df, ["TQQQ", "CONL"]) == \
-        {"TQQQ": pytest.approx(80.75), "CONL": pytest.approx(6.79)}
+    assert shoutu.universe_prices(df, ["TQQQ", "TNA"]) == \
+        {"TQQQ": pytest.approx(80.75), "TNA": pytest.approx(6.79)}
     assert shoutu.universe_prices(df, ["AXTX"]) == {}
 
 
