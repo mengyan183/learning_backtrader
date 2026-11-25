@@ -3,6 +3,8 @@
 import os
 import sys
 
+import pytest
+
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO not in sys.path:
     sys.path.insert(0, REPO)
@@ -402,3 +404,32 @@ def test_position_plan_brief_head_formats():
     assert r is not None, "应产出建仓计划段 ✗"
     assert "0.4~1.3%" in r, r[:120]
     assert "【已废弃】" in r
+
+
+def test_build_brief_smoke_on_real_snapshot():
+    """用**真实快照**跑一遍 `build_brief` —— 不得抛异常 ✓（2026-11-25 事故）。
+
+    🔴 事故：`head` 里 `0.4~1.3%` 后紧跟 `（` ⇒ 拼成 `%（` ✗
+       而 `head` 是**格式化字符串**（内联 `% (...)`）⇒
+       `ValueError: unsupported format character '?' (0xff08)` ✗
+       ⇒ 每日链 `invest_research.py` rc=1（24s）⇒ **当天简报没生成** ✗
+
+    ⚠️ 为什么用真实 `build_snapshot()` 而不是手搓 fixture ✗：
+       `snap` 有 11 个顶层键 + `positions` 里十几个富化字段
+       （`last_close` / `risk_limit` / `atr_pct` / `sys_fg` / `pnl` …）⇒
+       手搓必然漂移，测出来的失败是 fixture 缺字段而不是真 bug ✗
+       ⇒ 用真实数据；Windows 侧无 `Data/` 时 skip ✓
+       ⇒ 在 Mac（数据全）上**每天同步都会跑一次**，等于每天冒烟 ✓
+
+    ⚠️ `py_compile` 抓不到这类错误（字符串本身合法）✗
+       纯函数测试也抓不到（不经过 `build_brief` 的组装路径）✗
+    """
+    # ⚠️ `build_brief` 会走 `kb_search`（知识库）⇒ 依赖 `chromadb` ✗
+    #    Windows 侧未装该包 ⇒ 显式跳过（Mac 侧装了，会真跑）✓
+    pytest.importorskip("chromadb", reason="知识库依赖，Windows 侧未装")
+    try:
+        snap = ir.build_snapshot()
+    except Exception as e:                       # noqa: BLE001
+        pytest.skip("无生产数据（Data/ 不在 git 里）：%s" % type(e).__name__)
+    out = ir.build_brief(snap, "", "", "", [])
+    assert out, "build_brief 返回空 ✗"
