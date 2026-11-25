@@ -377,3 +377,28 @@ def test_instruction_line_empty_without_positions():
     snap = {"fg": {"target_position": 0.45}, "positions": [],
             "accounts": {"stock": 10000.0}}
     assert ir._instruction_line(snap, state=sig.SignalState()) == ""
+
+
+def test_position_plan_brief_head_formats():
+    """`position_plan_brief` 的 `head` 必须能正常格式化 ✓（2026-11-25 事故）。
+
+    🔴 事故：`0.4~1.3%` 后面紧跟 `（` ⇒ 拼成 `%（` ✗
+       而 `head` 是**格式化字符串**（末尾内联 `% (...)`）⇒ Python 把 `%（`
+       当格式符 ⇒ `ValueError: unsupported format character '?' (0xff08)` ✗
+       ⇒ 每日链 `invest_research.py` rc=1（24s）⇒ **当天简报没生成** ✗
+       ⇒ 字面量 `%` 必须写 `%%` ✓
+
+    ⚠️ 这条测试的价值：**语法检查抓不到这类错误**（`py_compile` 通过、
+       字符串本身合法），只有真正**执行到格式化那一行**才会炸 ✗
+    """
+    from fg_system import config as cfg
+
+    # 未持仓 + 系数齐全 ⇒ 遍历 `cfg.SYMBOLS` 的候选池会产出 `lines`，
+    # 从而真正执行到 `head` 的格式化（这是事故的触发路径）✓
+    snap = {"accounts": {"stock": 5787.0},
+            "positions": [],
+            "shoutu": {s: -89.0 for s in getattr(cfg, "SYMBOLS", ())}}
+    r = ir.position_plan_brief(snap)
+    assert r is not None, "应产出建仓计划段 ✗"
+    assert "0.4~1.3%" in r, r[:120]
+    assert "【已废弃】" in r
