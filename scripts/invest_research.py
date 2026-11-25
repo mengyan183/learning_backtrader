@@ -2007,112 +2007,21 @@ def _ene_reduce_line(snap):
 
 
 def position_plan_brief(snap):
-    """📐 建仓/加仓计划 ✓ —— 按 `fg_system.position_plan` 的口径逐标的给结论。
+    """📐 建仓/加仓计划 —— **已废弃，恒返回 None** ✓（2026-11-25 用户裁定）。
 
-    2026-10-30 用户裁定：杠杆 ETF「越跌越买」是负期望（3x 从 -50% 回本要 +100%）
-    ⇒ 必须把首建/加仓/上限写成可执行规则 ✗，且**超限时冻结加仓** ✓
-    （否则与「减仓至上限」互相打架 ✗）。
+    🔴 废弃证据（`docs/rules-2026-11-20.md` 12.63 / 12.64）：
+       · 回测 2024-04~2026-11、6 标的 ⇒ **样本外全部为负**（−0.88% ~ −2.75%）
+       · **前后半段方向全部不一致**（前半正、后半负）
+       · 平均持仓仅 **0.4~1.3%** ⇒ 收益来自「几乎空仓」，不是规则
+       · 对照实验（`--source history` 排除口径混用）差异 **<0.2pp** ⇒ 非数据问题
+
+    ⇒ 唯一仍有效的信息（杠杆总敞口 $N / 上限 $M）已搬到 `risk_brief_text` ✓
+    ⇒ 保留**函数壳**（`build_brief` / `build_brief_sections` 仍在调它）✓
+       但**函数体已删除**（2026-11-25 第一步清理，约 100 行死代码）✗
+    ⚠️ `fg_system.position_plan.build_plan` / `brief_line` 仍在
+       （第二步再删；当前只有 `tests/test_position_plan.py` 依赖）✓
     """
-    # 🔴 2026-11-25 用户裁定：**整段废弃，恒不输出** ✗
-    #   证据（`rules-2026-11-20.md` 12.63）：回测 2024-04~2026-11、6 标的
-    #     · 样本外**全部为负**（−0.88% ~ −2.75%）
-    #     · 前后半段方向**全部不一致**
-    #     · 平均持仓仅 0.4~1.3% ⇒ 收益来自「几乎空仓」，不是规则
-    #     · 对照实验（`--source history`）差异 <0.2pp ⇒ 非数据口径问题
-    #   唯一仍有效的信息（杠杆总敞口 $N / 上限 $M）已搬到 `risk_brief_text` ✓
-    #   ⇒ 函数体保留作历史参考（不删 100 行），但**恒返回 None** ✓
     return None
-    # ---- 以下为历史实现，不再执行 ----
-    from fg_system import position_plan as pp
-    net = (snap.get("accounts") or {}).get("stock")
-    if not net:
-        return None
-    pos = snap.get("positions") or []
-    lev_total = sum(float(r.get("mv") or 0) for r in pos
-                    if pp.leverage_of(r.get("symbol")) > 1)
-    lines = []
-    for r in pos:
-        sym0 = str(r.get("symbol") or "").replace("-USDT", "")
-        plan = pp.build_plan(
-            net, sym0, r.get("atr_pct_und"),   # 正股 ATR ✓（gap_pct 内部再乘杠杆）
-            (snap.get("shoutu") or {}).get(sym0),
-            held_value=float(r.get("mv") or 0),
-            pnl_pct=r.get("pnl_pct"),
-            leveraged_value=lev_total,
-            risk_limit=r.get("risk_limit"))
-        ln = pp.brief_line(plan)
-        if ln:
-            lines.append(ln)
-
-    # 🔴 2026-11-23 用户要求：**未持仓标的也要列** ✓
-    #    原来只遍历 `pos` ⇒ SOXL 这类「想建仓但还没持仓」的标的**永远不出现** ✗
-    #    ⇒ 读者问「SOXL 什么时候能建仓」时，简报**结构上回答不了** ✗
-    #    ⚠️ 候选池 = `config.SYMBOLS`（生产池），不遍历全市场 ✓
-    #    ⚠️ 未持仓 ⇒ 没有正股 ATR ⇒ 间距未知（`gap_pct=None`，不猜）✓
-    from fg_system import config as _cfg
-    _held = {str(r.get("symbol") or "").replace("-USDT", "") for r in pos}
-    _n_held = len(lines)
-    for _sym in getattr(_cfg, "SYMBOLS", ()):
-        if _sym in _held:
-            continue
-        _plan = pp.build_plan(
-            net, _sym, None,
-            (snap.get("shoutu") or {}).get(_sym),
-            held_value=0.0, leveraged_value=lev_total)
-        _ln = pp.brief_line(_plan)
-        if _ln:
-            lines.append(_ln)
-    _has_new = len(lines) > _n_held
-
-    if not lines:
-        return None
-    # 2026-10-30 用户裁定措辞：不写「待回测确认」✗ ——
-    # 现有回测**不支持**该规则（样本外全负、前后半段方向不一致 ✗），
-    # 但样本太少也不足以证伪 ⇒ 如实写「样本太少、待丰富」✓
-    # 🔴 2026-11-25 事故：`0.4~1.3%` 后面紧跟 `（` ⇒ 拼成 `%（` ✗
-    #   而 `head` 是**格式化字符串**（末尾 `% (...)`）⇒ Python 把 `%（` 当格式符 ✗
-    #   ⇒ `ValueError: unsupported format character '?' (0xff08)` ✗
-    #   ⇒ 每日链 `invest_research.py` rc=1（24s），**当天简报没生成** ✗
-    #   ⇒ 字面量 `%` 必须写 `%%` ✓
-    head = ("🔴 **【已废弃】** 样本外全负 / 前后半段不一致 / 平均持仓 0.4~1.3%%"
-            "（对照实验差异 <0.2pp，非数据问题）⇒ 仅作历史展示，勿据此建仓 ✗\n"
-            "规则（2026-10-30 定版 C）：单标的 ≤%.0f%% 净值、"
-            "杠杆总敞口 ≤%.0f%%、首建 %.0f%%、加仓 %.0f%%×%d、"
-            "间距 = %.1f×ATR20(正股)×杠杆、相邻 ≥%d 交易日；"
-            "浮亏 >%.0f%% 只禁加仓、不清仓。🟡 研究参考，实盘需人工确认。"
-            % (pp.PLAN["single_cap"] * 100, pp.PLAN["total_cap"] * 100,
-               pp.PLAN["first"] * 100, pp.PLAN["adds"][0] * 100,
-               len(pp.PLAN["adds"]), pp.PLAN["atr_k"],
-               pp.PLAN["min_gap_days"], abs(pp.PLAN["hard_stop"]) * 100))
-    # 🔴 2026-11-09：名单内标的的 1% 上限在过渡期**不参与减仓判定** ✗
-    #    但本节的逐条仍会写「上限 $1159（1% 规则更严）」⇒ 读者会当成硬约束 ✗
-    if any(_is_legacy(r.get("symbol") or "") for r in pos):
-        # 🔴 2026-11-11 瘦身 P3：只留**动作侧**信息（原 ~60 字 → ~30 字）✓
-        #    「1% 上限仅供参考」已在【风控仓位】说过 ⇒ 这里删 ✗
-        #    「加仓仍冻结」是本节独有的动作约束 ⇒ 必须留 ✓
-        head += "\n⚠️ 加仓仍冻结（第 4.6.6 条：豁免的是减仓，不是加仓）"
-    # 🔴 2026-10-31 精简：**全部不可操作** ⇒ 压成一行 ✓
-    # 原来 5 行全是「已到单标的上限」/「禁止加仓」，占 5 行但零信息量 ✗
-    # （用户实测：简报太长，且这三节在重复列同一批标的 ✗）
-    # ⚠️ 有未持仓候选时**不折叠** ✗ —— 折叠会把 SOXL 这类标的一并藏掉，
-    #    而「什么时候能建仓」正是本节要回答的问题 ✓（2026-11-23 用户要求）
-    if (not _has_new) and all(
-            ("已到单标的上限" in ln) or ("禁止加仓" in ln)
-            or ("已满" in ln) or ("已无额度" in ln) for ln in lines):
-        n_cap = sum(1 for ln in lines if "已到单标的上限" in ln)
-        n_stop = sum(1 for ln in lines if "禁止加仓" in ln)
-        n_full = sum(1 for ln in lines if "已满" in ln)
-        why = []
-        if n_cap:
-            why.append("%d 个已到单标的上限" % n_cap)
-        if n_stop:
-            why.append("%d 个浮亏过 %.0f%% 线禁加仓"
-                       % (n_stop, abs(pp.PLAN["hard_stop"]) * 100))
-        if n_full:
-            why.append("%d 个受杠杆总敞口上限约束" % n_full)
-        lines = ["· **无可操作项**：%s ⇒ 当前没有建仓/加仓空间 ✓"
-                 % "、".join(why)]
-    return head + "\n" + "\n".join(lines)
 
 
 def _zone_int(fg):
