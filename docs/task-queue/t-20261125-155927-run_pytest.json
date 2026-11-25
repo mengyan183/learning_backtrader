@@ -1,0 +1,9 @@
+{
+  "id": "t-20261125-155927-run_pytest",
+  "action": "run_pytest",
+  "params": {
+    "files": "tests/data/test_shoutu_bsk_retry.py,tests/test_evolution.py,tests/test_futu_health.py"
+  },
+  "status": "pending",
+  "created_at": "2026-11-25T15:59:27"
+}
