@@ -1,0 +1,18 @@
+{
+  "id": "t-20261125-141022-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "commit_pool_pending.py",
+    "args": [
+      "--files",
+      "fg_system/config.py,scripts/fetch_shoutu_api.py,tests/test_shoutu_variants.py,docs/rules-2026-11-20.md",
+      "--message",
+      "feat(shoutu): 监控池先加 TNA/TMF/FAS（第 12.65 条第 1 步）",
+      "--doc-note",
+      "2026-11-25 监控池第 1 步落地：TNA/TMF/FAS 已加入 config，待 dry-run 验证",
+      "--apply"
+    ]
+  },
+  "status": "pending",
+  "created_at": "2026-11-25T14:10:22"
+}
