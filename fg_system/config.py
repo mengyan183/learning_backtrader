@@ -508,17 +508,18 @@ def shoutu_lines(sym):
 # 2026-09-23 扩表：加入系统自身的三个大盘标的。依据是第 12.26 条 Q7 关闭 ——
 # 该服务**本就覆盖**它们（实测 TQQQ +33 / SOXL +3 / UPRO +24），
 # 此前只是用户未导出。用户决定「TQQQ/SOXL/UPRO 改用守猪待兔」。
-# 🔴 2026-11-25 用户裁定：**先加后减** ✓
-#   目标池（8 只）= YINN / GDXU / TQQQ / SOXL / UPRO / TNA / TMF / FAS
-#   当前**临时 11 只**：先加 TNA/TMF/FAS 验证 API 能返回，
-#   确认后再移除 AXTX / CRCG / CONL ✓
+# 🔴 2026-11-25 用户裁定：**先加后减** —— 两步都已完成 ✓
+#   第 1 步（已做）：加 TNA/TMF/FAS，`--dry-run` 实测 API **11 只全部返回** ✓
+#   第 2 步（本条）：移除 AXTX / CRCG / CONL ✓
 #   理由：三者是**单一公司**（AXTI / Circle / Coinbase），
-#         不能体现「市场风格」；新加三只分别覆盖
+#         不能体现「市场风格」；新三只分别覆盖
 #         **小盘（TNA）/ 久期（TMF）/ 价值板块（FAS）** ✓
-#   ⚠️ 一次性换会让新标的**无 `shoutu_history.csv` 历史** ⇒
-#      `position_plan` 判「无历史」⇒ 敞口打回 12% ✗（该路径已废弃，但仍会跑）
-SHOUTU_SYMBOLS = ["CONL", "YINN", "GDXU", "AXTX", "CRCG",
-                  "TQQQ", "SOXL", "UPRO",
+#   实测区分度（2026-11-25）：TQQQ/SOXL −100（极恐）vs TMF −28 / FAS −35（温和）
+#         ⇒ 风格分化可见，这是旧池（三只个股全 −97~−100）给不出的 ✓
+#   ⚠️ `AXTX/CRCG/CONL` 的**历史数据保留**（`shoutu_history.csv` 不删）✓
+#      只是不再**抓取与展示**；`SIGNAL_UNDERLYING_MAP` 的条目也保留
+#      （它们还被别的标的/研究脚本引用）✓
+SHOUTU_SYMBOLS = ["YINN", "GDXU", "TQQQ", "SOXL", "UPRO",
                   "TNA", "TMF", "FAS"]
 
 # ---------------------------------------------------------------- 研究用底层映射

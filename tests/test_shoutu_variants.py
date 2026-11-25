@@ -646,12 +646,25 @@ def test_signal_wide_adds_gdxu_blend_and_crypto_underlying():
               + w["GDXJ"] * wide[("GDXJ", "close")])
     assert out[(und, "close")].tolist() == pytest.approx(expect.tolist())
 
-    # ② CONL 的底层 COIN 只能从 crypto_prices.csv 补
-    assert ("COIN", "close") in out.columns, "没从 crypto_prices.csv 补上 COIN"
+    # ② 🔴 2026-11-25：**池子已无加密标的** ⇒ `signal_wide` 不再需要补 COIN ✓
+    #   第 12.65 条第 2 步移除了 `CONL`（底层 COIN）/`CRCG`（底层 CRCL）✗
+    #   ⇒ 原来那条 `assert ("COIN", "close") in out.columns` 必然失败 ✗
+    #   ⇒ 改成**反向断言**：池内已无加密标的，就不该出现 COIN ✓
+    #     （若将来又加回加密标的，这条会提醒「要重新补 crypto 底层」✓）
+    _pool_unds = {config.SIGNAL_UNDERLYING_MAP.get(s)
+                  for s in config.SHOUTU_SYMBOLS}
+    if not (_pool_unds & {"COIN", "CRCL", "MSTR"}):
+        assert ("COIN", "close") not in out.columns, (
+            "池内已无加密标的，不该再补 COIN ✗")
 
     # ③ 只增列，不改列
     assert ("GDX", "close") in out.columns
-    assert len(out.columns) == len(wide.columns) + 2, "应该恰好补 2 列"
+    # 🔴 2026-11-25：池内已无加密标的 ⇒ 只补 `GDXU_UND` **1 列** ✗
+    #   （原断言写死 +2：`GDXU_UND` + `COIN`）✓
+    _expect = 1 if not (_pool_unds & {"COIN", "CRCL", "MSTR"}) else 2
+    assert len(out.columns) == len(wide.columns) + _expect, (
+        "应恰好补 %d 列（GDXU_UND%s）"
+        % (_expect, "" if _expect == 1 else " + 加密底层"))
 
 
 def test_signal_wide_is_single_source_with_the_script():
