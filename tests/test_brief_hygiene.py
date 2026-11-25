@@ -102,10 +102,18 @@ def test_conflict_note_covers_not_operable(monkeypatch):
        而减仓段仍写「YINN 3045/上限 656 → 减仓至上限 656」✗
        原文案「上面说**不动是对的**」对不上场景 ⇒ 读者以为文案串了 ✗
     """
+    # 🔴 2026-11-25 修正：**两个文本必须分别 mock** ✗
+    #   「不可操作」在 `risk_brief_text`（风控段）
+    #   「减仓至上限」在 `action_brief_text`（减仓段）
+    #   上一版把两者都塞进 `action_brief_text` ⇒ **测试假通过** ✗
+    #   而生产里 `act` 根本不含「不可操作」⇒ 判定恒 False ⇒ 简报仍写
+    #   「不动是对的」✗
     monkeypatch.setattr(
         ir, "action_brief_text",
-        lambda snap: ("· 指令：**不可操作** → 未达调仓阈值 10pp（偏离 8.0pp）\n"
-                      "· YINN 市值3045/上限656 → 减仓至上限656"))
+        lambda snap: "· YINN 市值3045/上限656 → 减仓至上限656")
+    monkeypatch.setattr(
+        ir, "risk_brief_text",
+        lambda snap: "· 指令：**不可操作** → 未达调仓阈值 10pp（偏离 8.0pp）")
     note = ir._conflict_note({}, 0)
     assert "不可操作" in note, note
     assert "硬上限" in note, note
