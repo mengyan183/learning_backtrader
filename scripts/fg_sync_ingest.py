@@ -654,6 +654,24 @@ def main():
             _out = ((r.stdout or "") + (r.stderr or "")).strip()
             _one = " | ".join(x.strip() for x in _out.splitlines() if x.strip())
             print("❌ commit 失败：%s" % _one[:400])
+            # 🔴 2026-11-25：**失败即自动回滚** ✓
+            #   事故：`fix_1125e` commit 被纪律门禁拦下（缺 docs），
+            #   但**文件已写进工作区且已 `git add`** ✗
+            #   ⇒ 下次同步第一步检查工作区 ⇒ 报「与 Mac 本地未提交修改冲突，中止」✗
+            #   ⇒ **所有包都发不进去** ⇒ 自我强化的死锁 ✗
+            #     （一次门禁拦截 → 全部停摆 → 连修复脚本都发不进来）
+            #   ⇒ 失败即回滚本次写过的文件，恢复干净 ✓
+            #   ⚠️ 必须 `checkout HEAD --` ✗ —— `checkout --` 只恢复**索引**，
+            #      而新内容已在索引里 ⇒ 等于没回滚 ✗
+            _rb = sorted(set(copied) | set(applied))
+            if _rb:
+                _r = _git(args.repo, "checkout", "HEAD", "--", *_rb)
+                if _r.returncode == 0:
+                    print("↩️ 已自动回滚 %d 个文件到 HEAD（工作区恢复干净，"
+                          "可重发）" % len(_rb))
+                else:
+                    print("⚠️ 自动回滚失败（需手工 `git checkout HEAD --`）：%s"
+                          % (_r.stderr or "")[:200])
             return 3
         if r is not None:                     # 只有真提交过才推 ✓
             sha = _head_short(args.repo)

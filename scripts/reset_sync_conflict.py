@@ -81,7 +81,12 @@ def main(argv=None):
         out["note"] = "**dry-run**：未改动。确认无误后加 `--apply` ✓"
         return out
 
-    rc, so, se = _git("checkout", "--", *files)
+    # 🔴 2026-11-25 修正：**必须 `checkout HEAD --`** ✗
+    #   同步工具的流程是 `git add` → `commit`（失败）✗
+    #   ⇒ 新内容**已经在索引里** ⇒ `git checkout -- <f>` 恢复的是**索引**
+    #     （= 新内容）⇒ **等于没回滚** ✗
+    #   ⇒ 用 `checkout HEAD -- <f>`：索引与工作区**一起**回到 HEAD ✓
+    rc, so, se = _git("checkout", "HEAD", "--", *files)
     out["steps"]["checkout"] = {"rc": rc, "stderr": se[:400]}
     if rc != 0:
         return {"ok": False, "error": "git checkout 失败：%s" % se[:400],
@@ -96,4 +101,12 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(0 if main() else 1)
+    # 🔴 2026-11-25 修正：原来 `sys.exit(0 if main() else 1)` ✗
+    #   ① `main()` 返回 **dict**（恒真）⇒ 永远 exit 0 ✗
+    #   ② **没有 `print`** ⇒ `run_script` 回执的 stdout 为空 ✗
+    #      实测 `t-20261125-111601`：`ok=true` 但看不到 status_before/after，
+    #      无法核对回滚是否真发生 ✗
+    import json
+    _out = main()
+    print(json.dumps(_out, ensure_ascii=False, indent=2))
+    sys.exit(0 if isinstance(_out, dict) and _out.get("ok") else 1)
