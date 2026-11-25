@@ -1,9 +1,0 @@
-{
-  "id": "t-20261124-155558-run_script",
-  "action": "run_script",
-  "params": {
-    "script": "backtest_position_plan.py"
-  },
-  "status": "pending",
-  "created_at": "2026-11-24T15:55:58"
-}

@@ -1,0 +1,19 @@
+{
+  "id": "t-20261125-143430-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "disable_launchd_job.py",
+    "args": [
+      "--label",
+      "com.fg.shoutu-history",
+      "--apply",
+      "--remove-plist"
+    ]
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"disable_launchd_job.py\", \"args\": [\"--label\", \"com.fg.shoutu-history\", \"--apply\", \"--remove-plist\"], \"stdout\": \"{\\n  \\\"label\\\": \\\"com.fg.shoutu-history\\\",\\n  \\\"apply\\\": true,\\n  \\\"loaded_before\\\": true,\\n  \\\"plist\\\": \\\"/Users/xingguo/Library/LaunchAgents/com.fg.shoutu-history.plist\\\",\\n  \\\"steps\\\": {\\n    \\\"bootout\\\": {\\n      \\\"rc\\\": 0,\\n      \\\"stderr\\\": \\\"\\\"\\n    },\\n    \\\"plist_renamed\\\": \\\"/Users/xingguo/Library/LaunchAgents/com.fg.shoutu-history.plist.disabled\\\"\\n  },\\n  \\\"loaded_after\\\": false,\\n  \\\"ok\\\": true,\\n  \\\"note\\\": \\\"✅ 已停止（loaded=False）✓\\\",\\n  \\\"restore_hint\\\": \\\"python scripts/disable_launchd_job.py --label com.fg.shoutu-history --apply --restore\\\"\\n}\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-25T14:35:44",
+  "finished_at": "2026-11-25T14:35:44",
+  "duration_s": 0.13
+}
