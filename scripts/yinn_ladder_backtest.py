@@ -40,10 +40,19 @@ STRIDE = 10         # 每 10 个交易日一个起点
 MAX_RUNGS = 6       # 最多 6 档（1 首建 + 5 加仓）
 
 
-def _load():
+def _load(since=None):
+    """读 YINN 收盘序列。
+
+    🔴 2026-11-25 实测：`prices.csv` 的 YINN **跨拆股未复权** ✗
+       2016-09 的价格是 **368~405**，而现价 14~19 ⇒ 不可比 ✗
+       ⇒ 默认从 **2020-04-01** 起（拆股之后）✓
+       （2020-04 前的回撤分布、滚动窗口都不可信）
+    """
     p = os.path.join(ROOT, "Data", "raw", "prices.csv")
     df = pd.read_csv(p, parse_dates=["date"])
     y = df[df["symbol"] == "YINN"][["date", "close"]].dropna()
+    if since:
+        y = y[y["date"] >= pd.Timestamp(since)]
     return y.sort_values("date").reset_index(drop=True)
 
 
@@ -63,7 +72,12 @@ def _simulate(prices, step):
 
 
 def main():
-    y = _load()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--since", default="2020-04-01",
+                    help="起始日（默认拆股后，避免未复权失真）")
+    args = ap.parse_args()
+    y = _load(args.since)
     print("YINN 数据：%d 行，%s → %s"
           % (len(y), y["date"].min().date(), y["date"].max().date()))
 
