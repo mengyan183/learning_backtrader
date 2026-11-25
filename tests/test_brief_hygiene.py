@@ -403,15 +403,27 @@ def test_position_plan_brief_head_formats():
     """
     from fg_system import config as cfg
 
-    # 未持仓 + 系数齐全 ⇒ 遍历 `cfg.SYMBOLS` 的候选池会产出 `lines`，
-    # 从而真正执行到 `head` 的格式化（这是事故的触发路径）✓
+    # 🔴 2026-11-25 用户裁定：整段**废弃** ⇒ 恒返回 None ✓
+    #   依据（`rules-2026-11-20.md` 12.63）：回测样本外全负、
+    #   前后半段方向不一致、平均持仓 0.4~1.3% ⇒ 规则无效 ✗
     snap = {"accounts": {"stock": 5787.0},
             "positions": [],
             "shoutu": {s: -89.0 for s in getattr(cfg, "SYMBOLS", ())}}
-    r = ir.position_plan_brief(snap)
-    assert r is not None, "应产出建仓计划段 ✗"
-    assert "0.4~1.3%" in r, r[:120]
-    assert "【已废弃】" in r
+    assert ir.position_plan_brief(snap) is None, "建仓计划段应已废弃 ✗"
+
+
+def test_risk_brief_carries_total_cap():
+    """`risk_brief_text` 必须带上**杠杆总敞口** ✓（2026-11-25 搬迁）。
+
+    🔴 建仓计划段废弃后，「杠杆总敞口 $N / 上限 $M」这条原本**只在那一节**
+       出现 ✗ ⇒ 不搬会随废弃段一起丢掉 ⇒ 读者看不到「超了几倍」✗
+    """
+    snap = {"accounts": {"stock": 5787.0},
+            "positions": [{"symbol": "YINN", "mv": 2988.0,
+                           "risk_limit": 636.0, "risk_over": True}]}
+    txt = ir.risk_brief_text(snap) or ""
+    assert "杠杆总敞口" in txt, txt[:300]
+    assert "1157" in txt, "上限应为 5787×20%% = 1157：%s" % txt[:300]
 
 
 def test_build_brief_smoke_on_real_snapshot():

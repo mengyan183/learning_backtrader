@@ -1655,6 +1655,24 @@ def risk_brief_text(snap):
     lines.append("· 三条上限：**1% 规则**（单笔风险，最严）｜"
                  "**单标的 15%**（当前参数下永不 binding）｜"
                  "**杠杆总敞口 20%**（所有标的**合计**）")
+    # 🔴 2026-11-25：**总敞口数字搬进风控段** ✓
+    #   建仓计划段已整体废弃（`position_plan_brief` 恒返回 None）✗
+    #   而「杠杆总敞口 $N / 上限 $M」这条原本**只在那一段出现** ✗
+    #   ⇒ 不搬会随废弃段一起丢掉 ⇒ 读者看不到「超了几倍」✓
+    try:
+        from fg_system import position_plan as _pp
+        _lev_total = sum(float(r.get("mv") or 0) for r in pos
+                         if _pp.leverage_of(r.get("symbol")) > 1)
+        _net = (snap.get("accounts") or {}).get("stock")
+        if _net and _lev_total:
+            _tcap = _net * _pp.PLAN["total_cap"]
+            _x = _lev_total / _tcap if _tcap else 0
+            lines.append("· 杠杆总敞口：$%.0f / 上限 $%.0f（%s）"
+                         % (_lev_total, _tcap,
+                            "**超 %.2f 倍** ✗" % _x if _x > 1.01
+                            else "未超 ✓"))
+    except Exception:                      # noqa: BLE001
+        pass
     if legacy_syms:
         from fg_system import config as _cfg3
         lines.append("ℹ️ 存量仓过渡期（至 %s）：%d 个标的（%s）不适用 1%% 硬上限"
@@ -1995,6 +2013,16 @@ def position_plan_brief(snap):
     ⇒ 必须把首建/加仓/上限写成可执行规则 ✗，且**超限时冻结加仓** ✓
     （否则与「减仓至上限」互相打架 ✗）。
     """
+    # 🔴 2026-11-25 用户裁定：**整段废弃，恒不输出** ✗
+    #   证据（`rules-2026-11-20.md` 12.63）：回测 2024-04~2026-11、6 标的
+    #     · 样本外**全部为负**（−0.88% ~ −2.75%）
+    #     · 前后半段方向**全部不一致**
+    #     · 平均持仓仅 0.4~1.3% ⇒ 收益来自「几乎空仓」，不是规则
+    #     · 对照实验（`--source history`）差异 <0.2pp ⇒ 非数据口径问题
+    #   唯一仍有效的信息（杠杆总敞口 $N / 上限 $M）已搬到 `risk_brief_text` ✓
+    #   ⇒ 函数体保留作历史参考（不删 100 行），但**恒返回 None** ✓
+    return None
+    # ---- 以下为历史实现，不再执行 ----
     from fg_system import position_plan as pp
     net = (snap.get("accounts") or {}).get("stock")
     if not net:
@@ -2871,7 +2899,13 @@ def build_brief_sections(snap, sentiment, attribution, judge, news=None):
 _FACTOR_SOURCE = {
     "putcall": "Data/raw/putcall_daily_latest.csv",
     "vix": "Data/raw/vix_history.csv",
-    "fed": "Data/raw/fedwatch.csv",
+    # 🔴 2026-11-25：**去掉 `fed`** ✗
+    #   ① `fed` 分数来自 `config.FED_POLICY_PERIODS`（**硬编码政策表**），
+    #      不是时间序列 ⇒ 标「源文件日期」语义就是错的 ✗
+    #   ② `fedwatch.csv` 的 `date` 列是**会议/事件日期**，不是数据抓取日 ✗
+    #   ③ 后果：简报长期显示 `FED 23.0〔11-12〕` ⇒ 读者以为因子停在 11-12 ✗
+    #      实际分数自 2026-09-16 起恒为 23.0（政策期未变）✓
+    #   ⇒ 不标日期比标错日期好 ✓
 }
 
 
