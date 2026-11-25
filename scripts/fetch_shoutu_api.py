@@ -59,7 +59,17 @@ def main():
     vals = {s: r["score"] for s, r in recs.items()}
     prices = {s: r["price"] for s, r in recs.items()}     # 参考量，供价格 × 情绪对照
     print("取得 %d 个标的：" % len(vals))
+
+    # 🔴 2026-11-25：**容忍缺失标的** ✓ —— 池子扩容（先加后减）时，
+    #   新标的若 API 不返回，原来 `vals[sym]` 会 **KeyError 直接崩** ✗
+    #   ⇒ 跳过 + 明确报告，其余照常入库 ✓
+    missing = [s for s in config.SHOUTU_SYMBOLS if s not in vals]
+    if missing:
+        print("[warn] API 未返回 %d 个标的（**本次跳过**，不入 CSV）：%s"
+              % (len(missing), ", ".join(missing)))
     for sym in config.SHOUTU_SYMBOLS:
+        if sym not in vals:
+            continue
         lever, area = config.SHOUTU_API_PARAMS[sym]
         print("  %-5s lever=%s emo_area=%-6s score=%-6s price=%s"
               % (sym, lever, area, vals[sym], prices[sym]))
@@ -68,8 +78,11 @@ def main():
         print("（--dry-run：未写入）")
         return 0
 
+    # ⚠️ **只入池内标的** —— 否则 API 返回的其他标的会污染 CSV ✗
+    keep = {s: v for s, v in vals.items() if s in config.SHOUTU_SYMBOLS}
     wide, added = shoutu.append_records(
-        shoutu.mapping_to_frame(vals, date=day, prices=prices))
+        shoutu.mapping_to_frame(keep, date=day,
+                                prices={s: prices[s] for s in keep}))
     print("逐标的时序已写入：%s（本次 %d 行，累计 %d 行）"
           % (os.path.join(config.RAW_DIR, "shoutu_fng.csv"), added, len(wide)))
     print("覆盖天数：" + " / ".join(

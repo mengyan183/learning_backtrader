@@ -628,7 +628,11 @@ def test_signal_wide_adds_gdxu_blend_and_crypto_underlying():
     cols = {("GDX", "close"): [10.0, 11.0, 12.0, 13.0, 14.0],
             ("GDXJ", "close"): [20.0, 21.0, 22.0, 23.0, 24.0]}
     # 非币底层：生产 `load_wide()` 里本来就有它们 ⇒ fixture 必须同款
-    for und in ("QQQ", "SOXX", "SPY", "FXI", "AXTI", "CRCL"):
+    # 🔴 2026-11-25：池子加了 `TNA/TMF/FAS` ⇒ 底层 `IWM/TLT/XLF` 也要进 fixture ✗
+    #   否则 `signal_wide` 会去 `crypto_prices.csv` 找它们 ⇒ `ValueError` ✗
+    #   ⚠️ 以后再扩池，**这里要跟着加**（或改成从 config 派生）✗
+    for und in ("QQQ", "SOXX", "SPY", "FXI", "AXTI", "CRCL",
+                "IWM", "TLT", "XLF"):
         cols[(und, "close")] = [100.0] * 5
     wide = pd.DataFrame(cols, index=idx)
 
