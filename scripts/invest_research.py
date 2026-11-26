@@ -598,7 +598,22 @@ def snapshot_text(snap):
         lines.append(f"系统贪恐指数: {f['fg_index']} [{f['zone']}] 目标仓位: {f['target_position']} 回撤: {f['drawdown']} 熔断: {f['circuit_breaker']}")
     if snap.get("shoutu"):
         st = " ".join(f"{k}={v}" for k, v in snap["shoutu"].items())
-        lines.append(f"守猪待兔({snap['shoutu_date']}): {st}")
+        # 🔴 2026-11-26：**必须声明这是监控池，不是持仓** ✗
+        #   事故：裁判裁决写「浮亏持仓按深度×杠杆由大到小为 SOXL(-100)、
+        #   GDXU(-98)、TQQQ(-97)…八只杠杆ETF全负」✗
+        #   —— 那 8 只是 `SHOUTU_SYMBOLS` 监控池，实际持仓只有 YINN + BTC ✗
+        #   根因：喂给 AI 的这行只有「守猪待兔(日期): A=.. B=..」，
+        #   模型无从判断哪些是持仓 ⇒ 把 8 只全当成了浮亏持仓 ✗
+        #   ⇒ 显式标出「监控池·非持仓」+ 其中哪几只在持仓里 ✓
+        _held = {str(r.get("symbol") or "").replace("-USDT", "")
+                 for r in (snap.get("positions") or [])}
+        _in_pos = [k for k in snap["shoutu"] if k in _held]
+        lines.append(
+            "守猪待兔(%s)〔**监控池·非持仓**；%d 只里只有 %s 在持仓〕: %s"
+            % (snap.get("date") or snap.get("shoutu_date"),
+               len(snap["shoutu"]),
+               " / ".join(_in_pos) if _in_pos else "**无**",
+               st))
     lines.append("持仓明细:")
     # 🔴 2026-11-13 用户要求：**补「当日涨跌」** ✓
     #    暴露过程：简报里 BTC 浮盈 +10.08%（**累计**），但当日实际跌 6% ✗
@@ -1484,7 +1499,18 @@ def build_snapshot_lines(snap):
         #    实际是守猪待兔系统的**贪恐系数**（-100~+100）✓
         #      负 = 恐慌（买入区，≤ buy_line）· 正 = 贪婪（卖出区，≥ sell_line）
         #      分界 ±60（见 `attribution_check.py` 的档位判断）
-        out.append(f"守猪待兔({snap['shoutu_date']}): {pairs}")
+        # 🔴 2026-11-26：① **日期改成数据日** ✓ ② **声明监控池** ✓
+        #   ① 原来写 `shoutu_date`（本地 06:30 抓取日，比数据日晚一天）✗
+        #      ⇒ 简报里守猪待兔标 11-26、六因子标 11-25，读者以为前者更新 ✗
+        #   ② 原来不说明「这 8 只是监控池」⇒ AI 把它当成了浮亏持仓 ✗
+        _held2 = {str(r.get("symbol") or "").replace("-USDT", "")
+                  for r in (snap.get("positions") or [])}
+        _in2 = [k for k in snap["shoutu"] if k in _held2]
+        out.append(
+            "守猪待兔(%s)〔**监控池·非持仓**；%d 只里只有 %s 在持仓〕: %s"
+            % (snap.get("date") or snap.get("shoutu_date"),
+               len(snap["shoutu"]),
+               " / ".join(_in2) if _in2 else "**无**", pairs))
         out.append("（守猪待兔系数 -100~+100：负=恐慌/买入区，正=贪婪/卖出区，"
                    "**≠ 涨跌幅**）")
     out.append("持仓:")
