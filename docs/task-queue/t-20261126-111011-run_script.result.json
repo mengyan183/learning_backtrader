@@ -1,0 +1,13 @@
+{
+  "id": "t-20261126-111011-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "proxy_probe.py"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"proxy_probe.py\", \"args\": [], \"stdout\": \"=== ① TCP 127.0.0.1:7890 ===\\n  ✅ 可连接 ✓\\n\\n=== ② 经代理 → example.com ===\\n  ✅ HTTP 200, 200 bytes\\n\\n=== ③ 经代理 → Kalshi /exchange/status ===\\n  ❌ URLError: <urlopen error [Errno 54] Connection reset by peer>\\n\\n=== ④ 直连 → Kalshi /exchange/status ===\\n  ❌ URLError: <urlopen error [Errno 65] No route to host>\\n\\n判读：\\n  · ① ❌ ⇒ **ClashX 没跑或端口不对** ⇒ 打开 ClashX / 改 FG_FETCH_PROXY\\n  · ① ✅ 但 ② ❌ ⇒ 代理进程在但**不转发**（规则/订阅问题）\\n  · ② ✅ 但 ③ ❌ ⇒ **该节点屏蔽 Kalshi** ⇒ 换节点或加分流规则\\n  · ③ ❌ 且 ④ ✅ ⇒ 直连反而通 ⇒ 代理是**累赘**，把 kalshi 移出 NEEDS_PROXY\\n  · ③ ④ 都 ❌ ⇒ Kalshi 侧问题（或全网不可达）\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-26T11:11:25",
+  "finished_at": "2026-11-26T11:11:46",
+  "duration_s": 20.87
+}
