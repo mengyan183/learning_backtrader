@@ -1,0 +1,13 @@
+{
+  "id": "t-20261126-092823-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "git_push_diag.py"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"git_push_diag.py\", \"args\": [], \"stdout\": \"=== ① remote 配置 ===\\norigin\\thttps://github.com/mengyan183/learning_backtrader.git (fetch)\\norigin\\thttps://github.com/mengyan183/learning_backtrader.git (push)\\n\\n=== ② 本地 vs 远端 ===\\n  ## main...origin/main [ahead 4]\\n   M Data/brief_check_history.jsonl\\n   M Data/briefs/index.md\\n   M Data/crypto_state.json\\n   M Data/kb/chroma/00d66981-7e75-48b5-9182-2bc7c989d734/data_level0.bin\\n   M Data/kb/chroma/00d66981-7e75-48b5-9182-2bc7c989d734/header.bin\\n\\n=== ③ 代理环境变量 ===\\n  git config 代理：\\n    http.proxy     = http://127.0.0.1:7890\\n    https.proxy    = （未设）\\n\\n=== ④ push --dry-run（**不真推**）===\\n  rc = 128\\n  fatal: unable to access 'https://github.com/mengyan183/learning_backtrader.git/': LibreSSL SSL_connect: SSL_ERROR_SYSCALL in connection to github.com:443\\n\\n=== ⑤ 逐 remote 连通性（ls-remote）===\\n  ❌ origin     rc=128 fatal: unable to access 'https://github.com/mengyan183/learning_backtrader.git/': LibreSSL SSL_connect: SSL_ERROR_SYSCAL\\n\\n判读：\\n  · ④ rc≠0 且 ⑤ 全 ❌ ⇒ Mac 到 github 网络不通（需代理/换 remote）\\n  · ④ rc≠0 但 ⑤ gitee ✅ ⇒ 可临时把 origin 指向 gitee 打通链路\\n  · ② 显示 'ahead N' ⇒ 有 N 个提交**卡在 Mac 上没推出去** ✗\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-26T09:29:38",
+  "finished_at": "2026-11-26T09:29:41",
+  "duration_s": 2.47
+}
