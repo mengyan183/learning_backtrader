@@ -1,0 +1,14 @@
+{
+  "id": "t-20261126-110257-run_fetch_step",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "fetch_kalshi_fed.py",
+    "args": "--debug,--dry-run"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"script\": \"fetch_kalshi_fed.py\", \"args\": [\"--debug\", \"--dry-run\"], \"rc\": 2, \"seconds\": 5.1, \"env_extra\": {\"__proxy_injected__\": \"http://127.0.0.1:7890\"}, \"env_proxy\": {\"FG_LLM_PROXY\": \"\", \"HTTP_PROXY\": \"http://127.0.0.1:7890\", \"HTTPS_PROXY\": \"http://127.0.0.1:7890\", \"http_proxy\": \"http://127.0.0.1:7890\", \"https_proxy\": \"http://127.0.0.1:7890\", \"NO_PROXY\": \"\"}, \"has_proxy\": true, \"changed\": {}, \"unchanged\": {\"putcall_daily_latest.csv\": \"2026-11-24|67\", \"shoutu_etf_universe.csv\": \"2026-09-29|1895\", \"fred_baa10y_avail.csv\": \"2026-10-23|10203\", \"fred_DFF.csv\": \"2026-11-24|26445\", \"splits.csv\": \"2026-10-01|2\", \"stablecoin_usage.csv\": \"2026-11-25|411\", \"funding_rate.csv\": \"2026-11-26|30\", \"fred_BAA10Y.csv\": \"2026-10-23|10203\", \"vix3m.csv\": \"2026-11-25|4324\", \"sp500_pe.csv\": \"2026-10-29|1871\", \"fred_DCOILBRENTEU.csv\": \"2026-10-06|9102\", \"fred_T10Y2Y.csv\": \"2026-11-24|12617\", \"crypto_fng.csv\": \"2026-11-25|3216\", \"prices.csv\": \"2026-11-25|102180\", \"putcall_daily_1.csv\": \"2025-06-30|374\", \"sentiment.csv\": \"2026-11-24|9323\", \"putcall.csv\": \"2026-11-24|3980\", \"putcall_daily_2.csv\": \"2026-10-07|316\", \"fred_DGS10.csv\": \"2026-11-24|16209\", \"shoutu_fng.csv\": \"2026-11-26|296\", \"fng_altme.csv\": \"2026-11-25|22\", \"vix_history.csv\": \"2026-11-24|9323\", \"news_sentiment.csv\": \"2026-11-26|27\", \"kalshi_fed.csv\": \"2026-11-25|20\", \"fred_DCOILWTICO.csv\": \"2026-10-06|9517\", \"futu_fedwatch_raw.csv\": \"?|46\", \"fedwatch.csv\": \"2026-11-26|19\", \"vix.csv\": \"2026-11-25|9324\", \"crypto_underlying.csv\": \"2026-11-25|3651\", \"crypto_prices.csv\": \"2026-11-24|7692\", \"shoutu_history.csv\": \"2026-10-14|3671\", \"sp500_cape.csv\": \"2026-10-29|1870\", \"watchlist_3x.csv\": \"?|24\", \"trade_log_futu.csv\": \"2026-11-19|110\", \"trade_log.csv\": \"2026-10-01|28\", \"portfolio_features.csv\": \"2026-11-25|2556\", \"accounts.csv\": \"2026-11-25|84\", \"crypto_features.csv\": \"2026-11-25|2556\", \"trade_log_merged.csv\": \"2026-11-19|99\", \"positions.csv\": \"2026-11-25|232\", \"features.csv\": \"2026-11-25|2556\", \"trade_log_derived.csv\": \"2026-11-19|7\"}, \"verdict\": \"rc=2，更新了 0 个文件\", \"stdout\": \"[kalshi] 抓取失败: <urlopen error [Errno 54] Connection reset by peer>\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-26T11:03:52",
+  "finished_at": "2026-11-26T11:03:59",
+  "duration_s": 6.32
+}
