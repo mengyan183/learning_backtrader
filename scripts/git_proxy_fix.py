@@ -37,9 +37,29 @@ def _git(*args, timeout=60):
         return -1, "", "TIMEOUT"
 
 
-def _get(key):
-    _rc, so, _ = _git("config", "--global", "--get", key)
+def _get(key, scope=None):
+    """读配置项。`scope=None` ⇒ **不限层级**（local 优先于 global）✓
+
+    🔴 2026-11-26 踩坑：上一版只查 `--global` ✗
+       `git_push_diag` 读到 `http.proxy = 127.0.0.1:7890`，
+       而本脚本查 `--global` 得到**空** ✗
+       ⇒ 说明它配在**仓库级** `.git/config`，不是全局 ✓
+       ⇒ 读必须不限层级；写要在**同一层级**写 ✓
+    """
+    args = ["config"]
+    if scope:
+        args.append(scope)
+    args += ["--get", key]
+    _rc, so, _ = _git(*args)
     return so or ""
+
+
+def _scope_of(key):
+    """判断某个配置项配在哪一层：`local` / `global` / `""`（都没有）。"""
+    for sc in ("--local", "--global"):
+        if _get(key, sc):
+            return sc.lstrip("-")
+    return ""
 
 
 def main():
@@ -81,7 +101,11 @@ def main():
         return 0
 
     if need:
-        rc, _so, se = _git("config", "--global", "https.proxy", http_p)
+        # 🔴 在 `http.proxy` **所在的层级**写 ✓（实测它在仓库级）
+        _sc = _scope_of("http.proxy") or "global"
+        _flag = "--" + _sc
+        rc, _so, se = _git("config", _flag, "https.proxy", http_p)
+        print("\n写入层级：%s" % _flag)
         if rc != 0:
             print("\n🔴 设置失败：%s" % se[:200])
             return 1
