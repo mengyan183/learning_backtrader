@@ -1,0 +1,16 @@
+{
+  "id": "t-20261126-095909-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "git_proxy_fix.py",
+    "args": [
+      "--apply"
+    ]
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"git_proxy_fix.py\", \"args\": [\"--apply\"], \"stdout\": \"当前配置：\\n  http.proxy  = http://127.0.0.1:7890\\n  https.proxy = （未设）\\n\\n写入层级：--local\\n\\n✅ 已设 https.proxy = http://127.0.0.1:7890\\n\\n验证连通性（`ls-remote`，不 push）：\\n  ✅ 连通（1 个分支）\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-26T10:06:54",
+  "finished_at": "2026-11-26T10:06:55",
+  "duration_s": 1.0
+}
