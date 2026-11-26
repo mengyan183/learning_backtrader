@@ -144,22 +144,42 @@ def _acquire_lock():
     ⇒ 串行化：拿不到锁就明确报错，绝不并发 ✓。
     """
     os.makedirs(TEXT_DIR, exist_ok=True)
-    fd = os.open(_lock_path(), os.O_CREAT | os.O_RDWR)
-    try:
-        if os.name == "nt":
-            import msvcrt
-            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-        else:
-            import fcntl
-            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError:
-        os.close(fd)
-        raise SystemExit(
-            "❌ 另一个 `feishu_send.py` 正在发送 ⇒ 本次退出 ✓\n"
-            "   并发发送会让后启动的进程 reap 掉前一个的 bsk 会话 ✗\n"
-            "   ⇒ 前一批只发出前几片就中止（2026-10-28 实测 `--limit 2` 只发 1 片 ✗）。\n"
-            "   等它跑完再发；查进度用 `--sent-status <包>` ✓")
-    return fd
+    # 🔴 2026-11-26 用户要求：**等待前一个包完成**，而不是直接拒绝 ✓
+    #   实测：连发 `fix_1126ad` → `fix_1126ae`，后者立刻退出（DONE_RC=1）✗
+    #   ⇒ 要靠人发现「没发出去」再手工重试 ✗
+    #   ⇒ 改成轮询等待（默认 180s，每 3s 试一次）✓
+    #   ⚠️ 仍然**绝不并发**（只轮询、不抢锁）—— 并发会让后启动的 reap 掉
+    #      前一个的 bsk 会话（2026-10-28 实测 `--limit 2` 只发 1 片）✗
+    import time as _t
+    _wait_s = float(os.environ.get("FG_SEND_LOCK_WAIT", "180"))
+    _deadline = _t.time() + _wait_s
+    _waited = False
+    while True:
+        fd = os.open(_lock_path(), os.O_CREAT | os.O_RDWR)
+        try:
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            if _waited:
+                print("[lock] 等到发送锁，开始发送 ✓")
+            return fd
+        except OSError:
+            os.close(fd)
+            if _t.time() >= _deadline:
+                raise SystemExit(
+                    "❌ 等待 %.0fs 后仍未拿到发送锁 ⇒ 放弃 ✓\n"
+                    "   另一个 `feishu_send.py` 还在跑（并发会让后启动的进程\n"
+                    "   reap 掉前一个的 bsk 会话 ✗ ⇒ 前一批只发几片就中止 ✗）。\n"
+                    "   查进度用 `--sent-status <包>` ✓；\n"
+                    "   要等更久：设环境变量 `FG_SEND_LOCK_WAIT=600` ✓" % _wait_s)
+            if not _waited:
+                print("[lock] 另一个发送进程在跑 ⇒ **等待它完成**"
+                      "（最多 %.0fs，每 3s 重试）✓" % _wait_s)
+                _waited = True
+            _t.sleep(3.0)
 
 
 def _release_lock(fd):
@@ -686,10 +706,44 @@ def main():
                 bsk.run("reload", check=False)
             else:
                 print("  …等待会话列表（%d/15）" % (attempt + 1))
+        # 🔴 2026-11-26 用户要求：**bsk 会话漂移校验** ✓
+        #   实测：`fix_1126ae` 第二次发送失败，日志里列出的是
+        #     「@e71 存储空间不足怎么办？ 会议时长不够怎么办？ 试用智能会议纪要…」
+        #   —— 那是**飞书多维表格/会议纪要的帮助文案**，根本不是会话列表 ✗
+        #   ⇒ 旧逻辑只报「没找到会话 X，现有条目：…」⇒ 误导成「名字写错了」✗
+        #   ⇒ 对策：先 **reload 一次**再扫（页面漂移多半能自愈）✓
+        #      仍找不到 ⇒ 明确区分「页面漂移」与「名字写错」✓
         if not ref:
-            print("⚠️ 会话列表里没找到「%s」，现有条目：" % args.chat)
-            for r, l in BUTTON_RE.findall(vom)[:25]:
+            print("  …会话列表里没有「%s」，reload 一次重试" % args.chat)
+            bsk.run("reload", check=False)
+            import time as _t2
+            for _ in range(6):
+                _t2.sleep(2.0)
+                vom = bsk.sync()[1]
+                for r, l in BUTTON_RE.findall(vom):
+                    if args.chat in l:
+                        ref, label = r, l
+                        break
+                if ref:
+                    break
+            if ref:
+                print("  ✅ reload 后找到会话（页面漂移已自愈）✓")
+
+        if not ref:
+            _items = BUTTON_RE.findall(vom)[:25]
+            print("⚠️ reload 后仍未找到「%s」，当前页面上的条目：" % args.chat)
+            for r, l in _items:
                 print("    %s  %s" % (r, l[:50]))
+            # 判断是「页面漂移」还是「名字写错」：看条目里有没有像会话名的
+            _looks_chat = any(("存储空间" not in l and "会议时长" not in l
+                               and "多维表格" not in l and len(l) <= 20)
+                              for _r, l in _items)
+            if not _looks_chat:
+                raise SystemExit(
+                    "❌ **bsk 会话漂移**：当前页面不是飞书会话列表 ✗\n"
+                    "   （列出的都是「存储空间/会议时长/多维表格」这类帮助文案）\n"
+                    "   ⇒ 手工在 Chrome 里回到飞书「消息」页，或重跑一次\n"
+                    "     （脚本已尝试 reload，仍失败）✓")
             raise SystemExit("请用 --chat 指定正确的会话名")
         print("会话项：%s" % label[:40])
         # 🔴 2026-11-17：bsk 0.5.0 的 `click` 报
