@@ -37,7 +37,17 @@ RAW = REPO / "Data" / "raw"
 OUT = RAW / "kalshi_fed.csv"
 
 BASE = "https://external-api.kalshi.com/trade-api/v2"
-PROXY = "http://127.0.0.1:7890"
+#: 🔴 2026-11-26：**改成读环境变量** ✓（原来硬编码 `127.0.0.1:7890` ✗）
+#:   背景：本脚本已**彻底放弃自动抓取**（`external-api.kalshi.com` 经
+#:   ClashX 仍 `Connection reset`；`proxy_probe.py` 实测：代理本身正常，
+#:   是**节点屏蔽该站点**）✗
+#:   ⇒ 已从每日链移除 · `drift_monitor` 副源校验停用 · `fed.py` 兜底标注停更 ✓
+#:   ⇒ 现在只在**手动排障**时用：若换了能通的节点，设
+#:     `FG_FETCH_PROXY=http://127.0.0.1:7891` 再跑本脚本即可 ✓
+#:   优先级：`FG_FETCH_PROXY` > `FG_LLM_PROXY` > 默认 7890 ✓
+PROXY = (os.environ.get("FG_FETCH_PROXY")
+         or os.environ.get("FG_LLM_PROXY")
+         or "http://127.0.0.1:7890")
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
       "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
 P90 = 0.90          # "当前上限"置信阈值：P(≥c) ≥ 0.90
