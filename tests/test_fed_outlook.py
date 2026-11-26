@@ -57,3 +57,33 @@ def test_last_decision_advanced_past_september(monkeypatch):
     """决议日必须已推进到 10 月会议（原来停在 2026-09-16 ✗）."""
     from fg_system import config
     assert config.FED_LAST_DECISION >= "2026-10-28"
+
+
+def test_kalshi_fallback_source_is_marked_frozen():
+    """Kalshi 兜底的 `_source` 必须带**停更标记 + 数据天数** ✓（2026-11-26）。
+
+    🔴 为什么必须标 ✗：
+       `fetch_kalshi_fed.py` 已从每日链移除（`external-api.kalshi.com`
+       经 ClashX 仍 `Connection reset`，`proxy_probe.py` 实测是节点屏蔽）✗
+       ⇒ `kalshi_fed.csv` **永久停在 2026-11-26 之前** ✗
+       ⇒ 若 `fedwatch.csv` 哪天断了，`fed.py` 会静默回退到这份**冻结数据**，
+         而简报不会说「这是旧的」✗
+       ⇒ 所以 `_source` 必须自证：停更日 + 数据距今多少天 ✓
+    """
+    from fg_system import fed
+
+    # ① 有日期 ⇒ 带「已停更」+「N 天前」
+    s = fed._kalshi_src({"date": "2026-11-25"})
+    assert "已停更" in s, s
+    assert fed.KALSHI_FROZEN_SINCE in s, s
+    assert "2026-11-25" in s, s
+    assert "天前" in s, s
+
+    # ② 无日期 / 空 dict ⇒ 只带停更标记，不崩
+    for row in ({"date": None}, {}):
+        s2 = fed._kalshi_src(row)
+        assert "已停更" in s2, s2
+        assert "天前" not in s2, "无日期时不该编造天数 ✗"
+
+    # ③ 停更日是 2026-11-26（改动它要同步改注释与 plist）
+    assert fed.KALSHI_FROZEN_SINCE == "2026-11-26"

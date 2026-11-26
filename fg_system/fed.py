@@ -97,7 +97,15 @@ def _load_fedwatch():
     except (FileNotFoundError, pd.errors.EmptyDataError):
         pass
 
-    # ---- 兜底：Kalshi ✓ ----
+    # ---- 兜底：Kalshi（🔴 **已停更**，2026-11-26）----
+    #   `kalshi_fed.csv` 由 `fetch_kalshi_fed.py` 产出，而该脚本已从每日链移除 ✗
+    #   原因：`external-api.kalshi.com` 经 ClashX 代理仍 `Connection reset`
+    #     （`proxy_probe.py` 实测：代理本身正常，是**节点屏蔽该站点**）✗
+    #   ⇒ 本兜底**只会返回 2026-11-26 之前的数据** ✗
+    #   ⇒ `_source` 必须带停更标记 + 数据天数，否则读者以为是最新 ✓
+    #   ⚠️ 主源 `fedwatch.csv`（CME FedWatch）一直正常 ⇒ 正常路径不会走到这里 ✓
+    #   要恢复：把 `fetch_kalshi_fed.py` 加回 plist + 解除 `drift_monitor.SOURCES`
+    #     里 fed 组的注释 ✓
     kp = os.path.join(config.RAW_DIR, "kalshi_fed.csv")
     try:
         kdf = pd.read_csv(kp)
@@ -136,8 +144,36 @@ def _load_fedwatch():
         # Kalshi 没有的两项 ✗ ⇒ 显式 None ✓（上层会算成 None ✓ 不会崩 ✓）
         "wk_hike_pct": None,
         "m_hike_pct": None,
-        "_source": "kalshi_fed.csv（CME FedWatch 兜底 ✗ 语义为市场交易价 ✗）",
+        # 🔴 2026-11-26：**停更标记 + 数据天数** ✓
+        #   原来只写「CME FedWatch 兜底」⇒ 读者不知道这份兜底**不会再更新** ✗
+        #   ⇒ 加上「已停更」+ 数据距今多少天，让陈旧度自证 ✓
+        "_source": _kalshi_src(row),
     }
+
+
+#: 🔴 Kalshi 兜底的**停更日**（2026-11-26 起不再更新）✓
+KALSHI_FROZEN_SINCE = "2026-11-26"
+
+
+def _kalshi_src(row):
+    """构造兜底源的 `_source` 文案：**停更标记 + 数据天数** ✓（2026-11-26）。
+
+    🔴 为什么必须动态算天数 ✗：
+       停更标记是静态的，但「停了多久」会随时间变大 ✗
+       只写「已停更」⇒ 三个月后读者仍不知道它停在**哪一天** ✗
+       ⇒ 带上「数据 YYYY-MM-DD（N 天前）」⇒ 陈旧度自证 ✓
+    """
+    base = ("kalshi_fed.csv（🔴 **已停更 %s** · CME FedWatch 兜底 · "
+            "语义为市场交易价）" % KALSHI_FROZEN_SINCE)
+    raw = row.get("date")
+    if raw is None or not pd.notna(raw):
+        return base
+    try:
+        d = _parse(str(raw)[:10])
+        age = (dt.date.today() - d).days
+        return "%s · 数据 %s（**%d 天前**）" % (base, d.isoformat(), age)
+    except (ValueError, TypeError):
+        return base
 
 
 def _parse(d):
