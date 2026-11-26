@@ -1,0 +1,9 @@
+{
+  "id": "t-20261126-111011-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "proxy_probe.py"
+  },
+  "status": "pending",
+  "created_at": "2026-11-26T11:10:11"
+}
