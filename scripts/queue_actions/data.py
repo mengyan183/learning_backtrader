@@ -111,6 +111,18 @@ def _act_prune_dead_data(params):
 #: 一个拼错的任务 json 就能跑 `rm -rf` ✗
 
 
+#: 🔴 **需要走代理的抓取脚本**（2026-11-26）✓
+#: 判据：直连会 `Connection reset by peer` 或超时（被中间设备重置）
+#: 实测：`fetch_kalshi_fed.py` 5.2 秒就断，报 `[Errno 54] Connection reset`✗
+#: ⚠️ 只列**确认需要**的；不确定的不要加（会让本来能直连的脚本变慢/失败）✗
+NEEDS_PROXY = (
+    "fetch_kalshi_fed.py",
+)
+
+#: 默认代理（Mac 上 ClashX 的 HTTP 口）✓
+#: 优先级：`FG_FETCH_PROXY` > `FG_LLM_PROXY` > 本值 ✓
+DEFAULT_PROXY = "http://127.0.0.1:7890"
+
 FETCH_SCRIPTS = (
     "fetch_sentiment.py", "fetch_putcall.py", "fetch_kalshi_fed.py",
     "fetch_fred.py", "fetch_fedwatch.py", "fetch_shoutu_api.py",
@@ -284,6 +296,25 @@ def _act_run_fetch_step(params):
     run_env = dict(os.environ)
     run_env.update(extra_env)
 
+    # 🔴 2026-11-26：**给需要翻墙的抓取脚本注入代理** ✓
+    #   实测 `fetch_kalshi_fed.py`：
+    #     `[kalshi] 抓取失败: <urlopen error [Errno 54] Connection reset by peer>`
+    #     5.2 秒就断（不是超时）⇒ 被中间设备重置 ⇒ 必须走代理 ✗
+    #   而任务队列是**常驻进程**，它的 `os.environ` 里**没有任何 proxy 变量** ✗
+    #   （`env_proxy` 六项全空、`has_proxy: false`）
+    #   ⇒ 只对 `NEEDS_PROXY` 里的脚本注入，其余不动 ✓
+    #   ⚠️ 已显式设过代理的**不覆盖**（尊重调用方）✓
+    if script in NEEDS_PROXY:
+        _has = any(run_env.get(k) for k in
+                   ("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"))
+        if not _has:
+            _proxy = (os.environ.get("FG_FETCH_PROXY")
+                      or os.environ.get("FG_LLM_PROXY")
+                      or DEFAULT_PROXY)
+            for _k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+                run_env[_k] = _proxy
+            extra_env["__proxy_injected__"] = _proxy
+
     before = _snap()
     t0 = time.time()
     cmd = [sys.executable, os.path.join(ROOT, "scripts", script)] + extra
@@ -310,7 +341,10 @@ def _act_run_fetch_step(params):
     #      而任务队列是**常驻进程**（`state = running` ✗）
     #      ⇒ **新补的代理不会生效** ✗ 直到重启 ✗
     #      ⇒ 所以「重跑 fetch_*」之前**必须先确认这里有没有代理** ✗
-    env_proxy = {k: (os.environ.get(k) or "")
+    # 🔴 2026-11-26 修正：读 **`run_env`** 而不是 `os.environ` ✗
+    #   原来回显的是**队列进程自己**的环境 ⇒ 注入后的代理看不到 ✗
+    #   ⇒ 实测 `has_proxy: false` 而实际子进程已经有代理 ⇒ **回执骗人** ✗
+    env_proxy = {k: (run_env.get(k) or "")
                  for k in ("FG_LLM_PROXY", "HTTP_PROXY", "HTTPS_PROXY",
                            "http_proxy", "https_proxy", "NO_PROXY")}
 
