@@ -360,12 +360,20 @@ SOURCES = {
         "value": "close",
         "label": "VIX 双源（close）",
     },
-    "fed": {
-        "primary": os.path.join(config.RAW_DIR, "fedwatch.csv"),
-        "secondary": os.path.join(config.RAW_DIR, "kalshi_fed.csv"),
-        "value": "hike_pct",
-        "label": "fed 市场隐含加息概率（hike_pct）",
-    },
+    # 🔴 2026-11-26 用户裁定：**停用 `fed` 副源校验** ✗
+    #   副源 `kalshi_fed.csv` 由 `fetch_kalshi_fed.py` 产出，而该脚本
+    #   已从每日链移除（同日裁定 B）—— 原因：
+    #     `external-api.kalshi.com` 经 ClashX 代理仍 `Connection reset`
+    #     （`proxy_probe.py` 实测：代理本身正常，是节点屏蔽该站点）✗
+    #   主源 `fedwatch.csv`（CME FedWatch）一直正常，**简报不受影响** ✓
+    #   ⇒ 副源从今天起**不再更新** ⇒ 继续校验只会因「副源过期」报假警 ✗
+    #   ⚠️ 要恢复：把 `fetch_kalshi_fed.py` 加回 plist + 解除下面注释 ✓
+    # "fed": {
+    #     "primary": os.path.join(config.RAW_DIR, "fedwatch.csv"),
+    #     "secondary": os.path.join(config.RAW_DIR, "kalshi_fed.csv"),
+    #     "value": "hike_pct",
+    #     "label": "fed 市场隐含加息概率（hike_pct）",
+    # },
 }
 DEFAULT_SOURCE = "vix"
 

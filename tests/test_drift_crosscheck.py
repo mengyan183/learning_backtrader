@@ -13,6 +13,8 @@
 import importlib.util
 import os
 
+import pytest
+
 import pandas as pd
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -236,23 +238,27 @@ def test_crosscheck_report_missing_secondary_is_safe(tmp_path):
 #   - fed 组：主源 fedwatch.csv(hike_pct，CME FedWatch 市场隐含概率)
 #             / 副源 kalshi_fed.csv(hike_pct，Kalshi KXFED 市场隐含概率)
 # 副源缺失时**安全跳过并提示**（既有设计）。
-def test_sources_registry_has_vix_and_fed():
-    """源组注册表：至少含 vix / fed 两组，各带主副源与取值列。"""
+def test_sources_registry_has_vix_only():
+    """源组注册表：**只剩 vix 一组** ✓（2026-11-26 停用 fed 副源）。
+
+    🔴 为什么删掉 fed 组 ✗：
+       副源 `kalshi_fed.csv` 由 `fetch_kalshi_fed.py` 产出，而该脚本已从
+       每日链移除 —— `external-api.kalshi.com` 经 ClashX 仍 `Connection
+       reset`（`proxy_probe.py` 实测：代理正常，是节点屏蔽该站点）✗
+       主源 `fedwatch.csv`（CME FedWatch）一直正常 ⇒ 简报不受影响 ✓
+       ⇒ 副源不再更新，继续校验只会因「副源过期」报**假警** ✗
+    ⚠️ 要恢复：把 `fetch_kalshi_fed.py` 加回 plist + 解除 `SOURCES` 里的注释 ✓
+    """
     from fg_system import config
 
-    assert "vix" in dm.SOURCES and "fed" in dm.SOURCES
+    assert set(dm.SOURCES) == {"vix"}, "fed 组应已停用 ✗"
     vix = dm.SOURCES["vix"]
-    fed = dm.SOURCES["fed"]
-    # vix 组：双源同列 close，路径与既有默认一致（行为不变）
     assert vix["value"] == "close"
     assert vix["primary"] == os.path.join(config.RAW_DIR, "vix.csv")
     assert vix["secondary"] == os.path.join(config.RAW_DIR, "vix_alt.csv")
-    # fed 组：主源 = 原 fed 源（CME FedWatch），副源 = Kalshi KXFED；同列 hike_pct
-    assert fed["value"] == "hike_pct"
-    assert fed["primary"] == os.path.join(config.RAW_DIR, "fedwatch.csv")
-    assert fed["secondary"] == os.path.join(config.RAW_DIR, "kalshi_fed.csv")
 
 
+@pytest.mark.skip(reason="fed 副源校验已停用（2026-11-26：kalshi 不可达，见 drift_monitor.SOURCES 注释）")
 def test_crosscheck_report_selects_fed_group_by_name(tmp_path):
     """`source="fed"` ⇒ 用 fed 组：主源 fedwatch.csv / 副源 kalshi_fed.csv。"""
     p = tmp_path / "fedwatch.csv"
@@ -287,6 +293,7 @@ def test_crosscheck_report_vix_group_unchanged(tmp_path):
     assert "共同日期 2 天，超阈值 1 天" in vix_report
 
 
+@pytest.mark.skip(reason="fed 副源校验已停用（2026-11-26：kalshi 不可达，见 drift_monitor.SOURCES 注释）")
 def test_crosscheck_report_fed_missing_secondary_is_safe(tmp_path):
     """fed 组：副源（Kalshi KXFED）缺失 ⇒ 安全跳过并提示，偏差表为空但不崩。"""
     p = tmp_path / "fedwatch.csv"
