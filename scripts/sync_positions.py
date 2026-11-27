@@ -339,7 +339,11 @@ def _okx_request(creds, path):
         os.chmod(cfg, 0o600)
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write("\n".join(cfg_lines) + "\n")
-        cmd = ["curl", "-s", "-m", "30", "--config", cfg,
+        # 🔴 2026-11-27：`-s` → **`-sS`** ✗
+        #   实测 11-27：报错只有 `curl 失败: `（stderr 空）⇒ 无法定位 ✗
+        #   `-s` 把**错误信息也吞了**，只剩退出码 ✓
+        #   `-S`（--show-error）保留「只抑制进度条、不抑制错误」✓
+        cmd = ["curl", "-sS", "-m", "30", "--config", cfg,
                "https://www.okx.com" + path]
         if creds.get("proxy"):
             cmd[1:1] = ["-x", creds["proxy"]]
