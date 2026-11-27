@@ -552,10 +552,18 @@ def main():
     #   动机：OKX 失败时不能把 crypto 一起删掉（那是「静默丢失金融数据」✗）
     #   但也不能整体拒绝写盘 —— 那会连**富途的更新**一起丢掉 ✗
     #   ⇒ 只把**失败源**的旧行放回去，其余照常更新 ✓
-    _old_crypto_a = accounts[(accounts["date"] == date)
-                             & (accounts["account"] == "crypto")].copy()
-    _old_crypto_p = positions[(positions["date"] == date)
-                              & (positions["account"] == "crypto")].copy()
+    # ⚠️ 必须有 `account` 列才过滤 —— 测试 fixture 可能是最小表 ✗
+    #   （实测 `test_allow_overwrite_flag_lets_it_through` 因此 KeyError ✗）
+    if "account" in accounts.columns:
+        _old_crypto_a = accounts[(accounts["date"] == date)
+                                 & (accounts["account"] == "crypto")].copy()
+    else:
+        _old_crypto_a = accounts.iloc[0:0].copy()
+    if "account" in positions.columns:
+        _old_crypto_p = positions[(positions["date"] == date)
+                                  & (positions["account"] == "crypto")].copy()
+    else:
+        _old_crypto_p = positions.iloc[0:0].copy()
     # 当日覆盖写：同一交易日已有快照行时先剔除，避免重复追加导致下游重复计入
     accounts = accounts[accounts["date"] != date].reset_index(drop=True)
     positions = positions[positions["date"] != date].reset_index(drop=True)
