@@ -932,10 +932,24 @@ def stage_judge(nim_key, snap, sentiment, attribution):
     2026-10-07 加固：**校验三行格式，不匹配重试一次，仍失败则降级提示**。"""
     # 压缩快照：只保留关键行，控制输入长度
     lines = [f"系统贪恐指数 {snap['fg']['fg_index']} [{snap['fg']['zone']}] 目标仓位 {snap['fg']['target_position']} 回撤 {snap['fg']['drawdown']}"]
+    # 🔴 2026-11-27：**裁判用的是这份 compact，不是 `snapshot_text`** ✗
+    #   实测：在 `snapshot_text` 首行加的「只把持仓明细当持仓」约束
+    #     **管不到裁判** ⇒ 裁判仍写「SOXL、GDXU、TQQQ…三倍杠杆ETF普遍深亏」✗
+    #   根因：① 这里把「守猪待兔」和「持仓」混排、无标注 ✗
+    #         ② system prompt 还要求「必须点名**全部浮亏持仓**」✗
+    #         ⇒ 两者叠加 ⇒ AI 把 8 只监控池全当成了持仓 ✓
+    _held = {str(r.get("symbol") or "").replace("-USDT", "")
+             for r in (snap.get("positions") or [])}
     if snap.get("shoutu"):
-        lines.append("守猪待兔: " + " ".join(f"{k}={v}" for k, v in snap["shoutu"].items()))
+        _in = [k for k in snap["shoutu"] if k in _held]
+        lines.append(
+            "守猪待兔（**监控池·非持仓**，%d 只里只有 %s 在持仓）: %s"
+            % (len(snap["shoutu"]),
+               " / ".join(_in) if _in else "**无**",
+               " ".join(f"{k}={v}" for k, v in snap["shoutu"].items())))
+    lines.append("**持仓明细**（只有这些是持仓）:")
     for r in snap["positions"]:
-        lines.append(f"{r['symbol']} 盈亏{r['pnl_pct']}%")
+        lines.append(f"  {r['symbol']} 盈亏{r['pnl_pct']}%")
     compact = "\n".join(lines)
     # 报告截断到各 600 字
     sent_short = (sentiment or "（无）")[:600]
@@ -952,7 +966,13 @@ def stage_judge(nim_key, snap, sentiment, attribution):
               "【硬性约束】「理由」里**必须点名全部浮亏持仓**，"
               "按「浮亏深度 × 杠杆倍数」从大到小排列 ✗ "
               "**禁止**因「该标的权重已经很小 / 剩余市值不大」而跳过 ✗ "
-              "（权重小恰恰是深亏的结果，不是可以忽略的理由 ✗）")
+              "（权重小恰恰是深亏的结果，不是可以忽略的理由 ✗）\n"
+              # 🔴 2026-11-27 补：**必须界定「持仓」的范围** ✗
+              #   上一条「全部浮亏持仓」被 AI 理解成「守猪待兔里的 8 只」✗
+              #   ⇒ 明确：只算「**持仓明细**」段里的，监控池一律不算 ✓
+              "【范围界定】「持仓」**只指「持仓明细」段里列出的标的** ✗；"
+              "「守猪待兔」是**监控池**（情绪指标），**不是持仓** ⇒ "
+              "**不得**把它们写进「理由」的排序里，也不得建议减仓 ✓")
     user = (f"数据:\n{compact}\n\n情绪分析:\n{sent_short}\n\n归因分析:\n{attr_short}\n\n"
             "请直接输出三行裁决文本。")
     try:
