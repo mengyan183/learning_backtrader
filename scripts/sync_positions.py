@@ -114,6 +114,17 @@ def _f(x, default=0.0):
 # cash 恒 0、net_value 恒等式不成立 ⇒ 静默假数据 ✗。
 _SYNC_ERRORS = []
 
+#: 🔴 2026-11-27：**各源是否真的同步成功** ✓
+#   事故：11-26 ClashX 代理异常 ⇒ OKX `/account/balance` 请求失败
+#     ⇒ `sync_okx` 里 `except` 只 `print` 后 `return`（静默跳过）✗
+#     ⇒ 富途正常、OKX 失败 ⇒ `new_a = 1`（只有 stock 行）
+#     ⇒ 原来的 `if new_a == 0: return 1` **拦不住**（那是「两源全失败」）✗
+#     ⇒ `accounts.csv` / `positions.csv` 里 crypto 与 BTC **整个消失** ✗
+#     ⇒ 简报：净值少 2245、超配从 2.6 倍变 2.9 倍、压力测试「击穿」✗
+#     ⇒ `merge_trades` 反推出**假的** `2026-11-26|BTC-USDT|sell` ⇒ MT-63 假告警 ✗
+#   ⇒ 必须区分「真的没这个账户」和「这次没取到」✓
+_SYNC_FAILED = set()
+
 
 def _req_f(x, field, source):
     """MT-48：必需字段转 float；缺失/空/非数值 ⇒ 记录错误并返回 None（不默认 0）。"""
@@ -400,10 +411,15 @@ def sync_okx(accounts, positions, date):
     try:
         bal = _okx_request(creds, "/api/v5/account/balance")
     except Exception as e:
+        # 🔴 2026-11-27：**必须记成失败** ✗ —— 原来只 print 就 return，
+        #   上层分不清「这次没取到」和「本来就没这个账户」✗
+        #   实测后果见 `_SYNC_FAILED` 的注释（crypto 整个消失 + 假 sell）✗
         print(f"[okx] get_balance 失败: {e}")
+        _SYNC_FAILED.add("okx")
         return accounts, positions
     if bal.get("code") != "0":
         print(f"[okx] get_balance 错误: code={bal.get('code')} msg={bal.get('msg')}")
+        _SYNC_FAILED.add("okx")
         return accounts, positions
     data = (bal.get("data") or [{}])[0]
     # MT-48：totalEq 必需（缺失 ⇒ 记录错误并 return）；cash 顶层字段 OKX 确实没有
@@ -550,6 +566,28 @@ def main():
     accounts, positions = sync_okx(accounts, positions, date)
     new_a = len(accounts) - a_before
     new_p = len(positions) - p_before
+
+    # 🔴 2026-11-27：**单源失败**必须拦 ✗
+    #   实测事故（11-26）：ClashX 代理异常 ⇒ OKX 请求失败 ⇒ `sync_okx` 静默跳过
+    #   ⇒ 富途正常 ⇒ `new_a = 1` ⇒ 绕过下面的 `new_a == 0` 检查 ⇒ **静默写盘** ✗
+    #   ⇒ `accounts.csv` 的 crypto 行、`positions.csv` 的 BTC 行**整个消失** ✗
+    #   ⇒ 简报：净值少 2245 / 超配 2.6→2.9 倍 / 压力测试「击穿」✗
+    #   ⇒ `merge_trades` 反推出**假的** `2026-11-26|BTC-USDT|sell` ⇒ MT-63 假告警 ✗
+    #   ⚠️ 判据用**历史**是否出现过 crypto（不是当天）✓
+    #      —— 因为 `accounts` 此刻仍含全部历史行 ✓
+    if "okx" in _SYNC_FAILED:
+        _had_crypto = ("account" in accounts.columns
+                       and bool((accounts["account"] == "crypto").any()))
+        if _had_crypto:
+            print("⛔ OKX 同步失败，但**历史上存在 crypto 账户** ⇒ 拒绝写盘 ✗")
+            print("   继续写会「凭空删掉」加密账户与 BTC 持仓，"
+                  "并让 merge_trades 反推出假卖出 ✗")
+            print("   请先排查：① ClashX 代理是否可用 "
+                  "② ~/.okx_credentials.json 是否有效，然后重跑 ✓")
+            print("   若**确实已注销 OKX 账户**，需手工删除 accounts.csv / "
+                  "positions.csv 里的 crypto 历史行后再跑 ✓")
+            return 1
+        print("[sync] OKX 同步失败，但历史上从未有 crypto 账户 ⇒ 按「本来就没有」处理 ✓")
 
     # MT-48 ①：硬错误（必需字段缺失）⇒ 中止写盘（不默认 0）
     if _SYNC_ERRORS:

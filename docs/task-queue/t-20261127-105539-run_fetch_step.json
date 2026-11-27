@@ -1,0 +1,10 @@
+{
+  "id": "t-20261127-105539-run_fetch_step",
+  "action": "run_fetch_step",
+  "params": {
+    "script": "sync_positions.py",
+    "env": "FG_SYNC_MODE=live"
+  },
+  "status": "pending",
+  "created_at": "2026-11-27T10:55:39"
+}
