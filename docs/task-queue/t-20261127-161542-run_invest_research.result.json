@@ -1,0 +1,13 @@
+{
+  "id": "t-20261127-161542-run_invest_research",
+  "action": "run_invest_research",
+  "params": {
+    "push": "1"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"push\": true, \"stdout\": \"2026-11-27 16:17:20,810 | 39022 | 123145433874432 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7531994560057699965(1) context=<futu.quote.open_quote_context.OpenQuoteContext object at 0x7f931c43e860>\\n[news] 富途并发查询 2 个持仓标的：BTC、YINN\\n[news] 覆盖 2/2 标的；大盘有\\n2026-11-27 16:17:20,953 | 39022 | 123145502105600 | [open_context_base.py:522] on_disconnect: Disconnected: conn=0(1) reason=CallClose\\n2026-11-27 16:17:43,520 | 39022 | 140704667644352 | [open_context_base.py:411] _init_connect_sync: New connect ready: conn=7531994655311496299(2) context=<futu.quote.open_quote_context.OpenQuoteContext object at 0x7f931e345510>\\n2026-11-27 16:17:43,543 | 39022 | 123145502105600 | [open_context_base.py:522] on_disconnect: Disconnected: conn=0(2) reason=CallClose\\n简报已写入: /Users/xingguo/learning_backtrader/Data/invest_brief_2026-11-25.md\\n[verify] 简报检查: 通过 (fail=0 warn=0)\\n[decision-log] 已追加: /Users/xingguo/learning_backtrader/docs/decision-log.md\\n[archive] 归档 9 份，工作区活跃 12 份，索引 /Users/xingguo/learning_backtrader/Data/briefs/index.md\\n飞书富文本推送: 成功（2 条）\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-27T16:17:19",
+  "finished_at": "2026-11-27T16:17:49",
+  "duration_s": 29.74
+}
