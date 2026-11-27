@@ -22,6 +22,15 @@ numpy==2.2.6
 pandas==2.3.3
 # screening.py（因子筛选）用 scipy.stats.spearmanr —— 自检 pytest 必需
 scipy==1.14.1
+# 🔴 2026-11-27：NYSE 交易日历（休市日 + 半天市）✓
+#   动机：`_expected_index_date` 原来只跳周末 ⇒ 感恩节（11-26）被当成交易日
+#     ⇒ 简报误报「指数落后 1 个交易日」✗
+#   为什么不用 `pandas.tseries.holiday`（已随 pandas 装）：那是**联邦**日历 ✗
+#     · 多算 2 天（哥伦布日 10-12、退伍军人节 11-11）—— NYSE 照常开市
+#     · 漏 Good Friday（2026-04-03）—— NYSE 休市
+#     · 没有 half-day（感恩节次日/平安夜 13:00 收市）
+#   ⇒ 用 `exchange_calendars` 的 `XNYS` 日历，含历史临时休市（9/11、Sandy）✓
+exchange_calendars   # ⚠️ 版本待回填（装完用 pip show 查）
 
 # ---------------------------------------------------------------- 开发/测试
 # 483 个测试依赖它。生产运行不需要。
