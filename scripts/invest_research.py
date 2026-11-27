@@ -2378,19 +2378,13 @@ _US_MARKET_HOLIDAYS = {
 def _expected_index_date(today=None):
     """简报 05:30 跑 ⇒ 应拿到**上一个交易日**的收盘数据（美股 T-1）✓。
 
-    🔴 2026-11-27 修：**排除美国股市休市日** ✗
+    🔴 2026-11-27 修：**用真实 NYSE 日历**（`fg_system.trading_days`）✗
        原来只跳周末 ⇒ 感恩节（11-26）被当成交易日 ⇒ 误报「落后 1 个交易日」✗
-    ⚠️ 假日表只覆盖 `_US_MARKET_HOLIDAYS` 里列出的年份 ✓
-       未列年份退回「只跳周末」（旧行为，不会更差）✓
+       ⇒ 改用 `exchange_calendars` 的 XNYS（含休市日 + 半日市）✓
+       ⚠️ 未装该库时自动退回「跳周末 + 硬编码 2026 休市日」✓
     """
-    import datetime as _dt
-    d = (today or _dt.date.today()) - _dt.timedelta(days=1)
-    # 周末 + 休市日都往前推（最多推 10 天，防假日表配错导致死循环）
-    for _ in range(10):
-        if d.weekday() < 5 and d.isoformat() not in _US_MARKET_HOLIDAYS:
-            break
-        d -= _dt.timedelta(days=1)
-    return d
+    from fg_system import trading_days as _td
+    return _td.expected_index_date(today)
 
 
 def _index_lag_days(index_date, today=None):
