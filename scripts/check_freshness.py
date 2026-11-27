@@ -95,13 +95,21 @@ def main():
     pd_ = _max_date(PRICES)
     issues = []
     today = date.today()
+    # 🔴 2026-11-27：**用真实 NYSE 日历**替代「自然日容忍 3 天」✗
+    #   原来 `MAX_LAG_DAYS=3` 是自然日 ⇒ 遇到「休市 + 周末」连在一起就不够 ✗
+    #   （感恩节 11-26 + 周末 ⇒ 自然日差可达 4）✗
+    #   ⇒ 改成「尾行日 < **应有交易日**」才算 issue ✓
+    #   ⚠️ 未装 `exchange_calendars` 时自动退回硬编码 2026 休市日 ✓
+    sys.path.insert(0, REPO)
+    from fg_system import trading_days as _td
+    _exp = _td.expected_index_date(today)
     if not fd:
         issues.append("features.csv 不存在")
     else:
         d1 = date.fromisoformat(str(fd)[:10])
-        lag_today = (today - d1).days
-        if lag_today > MAX_LAG_DAYS:
-            issues.append(f"指数数据 {fd} 距今天已 {lag_today} 天未更新（正常 ≤{MAX_LAG_DAYS}）")
+        if d1 < _exp:
+            issues.append(f"指数数据 {fd} 落后应有交易日 {_exp}"
+                          f"（缺 {(_exp - d1).days} 自然日）")
     # 🔴 2026-11-03：`prices.csv` 的检查**移出 `features` 分支** ✗
     #    原来嵌在 `else:` 里 ⇒ `features.csv` 缺失时**完全不查行情** ✗
     #    ⇒ 漏报 ✗（结构性问题 ✗ 不是阈值问题 ✗）
@@ -109,13 +117,13 @@ def main():
         issues.append("prices.csv 不存在")
     else:
         d2 = date.fromisoformat(str(pd_)[:10])
-        lagp = (today - d2).days
-        if lagp > MAX_LAG_DAYS:
-            issues.append(f"行情数据 {pd_} 距今天已 {lagp} 天未更新")
+        if d2 < _exp:
+            issues.append(f"行情数据 {pd_} 落后应有交易日 {_exp}")
         if fd:
             d1b = date.fromisoformat(str(fd)[:10])
-            if (d2 - d1b).days > MAX_LAG_DAYS:
-                issues.append(f"指数落后最新行情 {pd_} 共 {(d2 - d1b).days} 天")
+            # 指数落后行情：仍按**交易日**数比（两者都是日期，同日无差）
+            if d1b < d2:
+                issues.append(f"指数落后最新行情 {pd_}（差 {(d2 - d1b).days} 自然日）")
     for label, path in EXTRA_FRESH:
         ld = _last_date(path)
         if not ld:
