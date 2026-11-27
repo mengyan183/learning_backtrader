@@ -1,0 +1,16 @@
+{
+  "id": "t-20261127-151632-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "backfill_crypto_row.py",
+    "args": [
+      "--apply"
+    ]
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"rc\": 0, \"script\": \"backfill_crypto_row.py\", \"args\": [\"--apply\"], \"stdout\": \"[\\n  {\\n    \\\"from\\\": \\\"2026-11-25\\\",\\n    \\\"to\\\": \\\"2026-11-26\\\",\\n    \\\"apply\\\": true\\n  },\\n  {\\n    \\\"file\\\": \\\"positions.csv\\\",\\n    \\\"ok\\\": true,\\n    \\\"skipped\\\": false,\\n    \\\"copied_rows\\\": 1,\\n    \\\"written\\\": true,\\n    \\\"preview\\\": [\\n      {\\n        \\\"date\\\": \\\"2026-11-26\\\",\\n        \\\"account\\\": \\\"crypto\\\",\\n        \\\"symbol\\\": \\\"BTC-USDT\\\",\\n        \\\"name\\\": \\\"BTC现货杠杆(借USDT买入)\\\",\\n        \\\"qty\\\": 0.029976,\\n        \\\"price\\\": 60350.4,\\n        \\\"cost\\\": 62500.0,\\n        \\\"market_value\\\": 1807.18,\\n        \\\"notional\\\": 1807.18,\\n        \\\"margin\\\": NaN,\\n        \\\"bucket\\\": \\\"system\\\",\\n        \\\"currency\\\": \\\"USDT\\\"\\n      }\\n    ]\\n  },\\n  {\\n    \\\"file\\\": \\\"accounts.csv\\\",\\n    \\\"ok\\\": true,\\n    \\\"skipped\\\": false,\\n    \\\"copied_rows\\\": 1,\\n    \\\"written\\\": true,\\n    \\\"preview\\\": [\\n      {\\n        \\\"date\\\": \\\"2026-11-26\\\",\\n        \\\"account\\\": \\\"crypto\\\",\\n        \\\"net_value\\\": 2245.47,\\n        \\\"securities_mv\\\": NaN,\\n        \\\"cash\\\": 2342.82,\\n        \\\"unrealized_pnl\\\": NaN,\\n        \\\"day_pnl\\\": 13.199999999999818,\\n        \\\"currency\\\": \\\"USDT\\\",\\n        \\\"note\\\": \\\"OKX 动态同步；含借币负债，净值≈USDT 余额，BTC 市值见 positions；日期口径=美东交易日 ｜ ⚠️ **推断值**：由 2026-11-25 复制（OKX 同步失败，非实际同步）\\\"\\n      }\\n    ]\\n  }\\n]\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-27T15:17:41",
+  "finished_at": "2026-11-27T15:17:41",
+  "duration_s": 0.49
+}

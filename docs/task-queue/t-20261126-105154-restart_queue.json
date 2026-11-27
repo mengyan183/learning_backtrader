@@ -1,9 +1,0 @@
-{
-  "id": "t-20261126-105154-restart_queue",
-  "action": "restart_queue",
-  "params": {
-    "label": "com.xingguo.fg-task-queue"
-  },
-  "status": "pending",
-  "created_at": "2026-11-26T10:51:54"
-}
