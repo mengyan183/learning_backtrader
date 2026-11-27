@@ -1,0 +1,13 @@
+{
+  "id": "t-20261127-151026-restart_queue",
+  "action": "restart_queue",
+  "params": {
+    "label": "com.xingguo.dsh.web"
+  },
+  "status": "done",
+  "rc": 0,
+  "output": "{\"ok\": true, \"error\": \"\", \"label\": \"com.xingguo.dsh.web\", \"target\": \"gui/501/com.xingguo.dsh.web\", \"delay_seconds\": 5, \"script\": \"dist/_restart_dsh.web.sh\", \"env_before_restart\": {\"FG_LLM_PROXY\": \"\", \"HTTP_PROXY\": \"\", \"HTTPS_PROXY\": \"\"}, \"note\": \"⚠️ 5 秒后 bootout+bootstrap 重启 ✓ —— **只有这条路会重读 plist** ✓（`kickstart` 用的是已加载的旧 job ✗）；每步 rc 见日志尾部；⚠️ 队列里正在跑的任务会被杀 ✗\"}",
+  "started_at": "2026-11-27T15:12:45",
+  "finished_at": "2026-11-27T15:12:45",
+  "duration_s": 0.01
+}
