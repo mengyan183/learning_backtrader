@@ -544,6 +544,14 @@ def main():
         print("     原因：盘后补跑会用「更晚的持仓」覆盖「已收盘日」的快照 ✗")
         print("     确实要覆盖 ⇒ 加 `--allow-overwrite`")
         return 0
+    # 🔴 2026-11-27：剔除当日旧行前**先存下 crypto 的** ✓
+    #   动机：OKX 失败时不能把 crypto 一起删掉（那是「静默丢失金融数据」✗）
+    #   但也不能整体拒绝写盘 —— 那会连**富途的更新**一起丢掉 ✗
+    #   ⇒ 只把**失败源**的旧行放回去，其余照常更新 ✓
+    _old_crypto_a = accounts[(accounts["date"] == date)
+                             & (accounts["account"] == "crypto")].copy()
+    _old_crypto_p = positions[(positions["date"] == date)
+                              & (positions["account"] == "crypto")].copy()
     # 当日覆盖写：同一交易日已有快照行时先剔除，避免重复追加导致下游重复计入
     accounts = accounts[accounts["date"] != date].reset_index(drop=True)
     positions = positions[positions["date"] != date].reset_index(drop=True)
@@ -578,16 +586,29 @@ def main():
     if "okx" in _SYNC_FAILED:
         _had_crypto = ("account" in accounts.columns
                        and bool((accounts["account"] == "crypto").any()))
-        if _had_crypto:
-            print("⛔ OKX 同步失败，但**历史上存在 crypto 账户** ⇒ 拒绝写盘 ✗")
-            print("   继续写会「凭空删掉」加密账户与 BTC 持仓，"
-                  "并让 merge_trades 反推出假卖出 ✗")
-            print("   请先排查：① ClashX 代理是否可用 "
-                  "② ~/.okx_credentials.json 是否有效，然后重跑 ✓")
-            print("   若**确实已注销 OKX 账户**，需手工删除 accounts.csv / "
-                  "positions.csv 里的 crypto 历史行后再跑 ✓")
+        if len(_old_crypto_a) or len(_old_crypto_p):
+            # 🔴 2026-11-27：**只把 crypto 的旧行放回去** ✓
+            #   比「整体拒绝写盘」好：富途的更新照常落盘 ✓
+            #   比「静默删掉」好：加密持仓保留上一次成功同步的值 ✓
+            #   ⚠️ 但这两行的数据是**上一次成功同步的**，不是今天的 ✗
+            #      ⇒ 必须显式打印，否则读者以为是新数据 ✓
+            accounts = pd.concat([accounts, _old_crypto_a],
+                                 ignore_index=True)
+            positions = pd.concat([positions, _old_crypto_p],
+                                  ignore_index=True)
+            print("⚠️ OKX 同步失败 ⇒ **保留 %s 原有的 crypto 行**"
+                  "（%d 账户 / %d 持仓，**上一次成功同步的值**）✓"
+                  % (date, len(_old_crypto_a), len(_old_crypto_p)))
+            print("   stock 侧照常更新 ✓；加密侧数据**不是今天的** ✗")
+            print("   请排查：① ClashX 代理 ② ~/.okx_credentials.json 后重跑 ✓")
+        elif _had_crypto:
+            print("⛔ OKX 同步失败，历史上存在 crypto 账户，但**当日无旧行可保留** ✗")
+            print("   ⇒ 拒绝写盘（继续写会凭空删掉加密账户，"
+                  "并让 merge_trades 反推出假卖出 ✗）")
             return 1
-        print("[sync] OKX 同步失败，但历史上从未有 crypto 账户 ⇒ 按「本来就没有」处理 ✓")
+        else:
+            print("[sync] OKX 同步失败，历史上从未有 crypto 账户 "
+                  "⇒ 按「本来就没有」处理 ✓")
 
     # MT-48 ①：硬错误（必需字段缺失）⇒ 中止写盘（不默认 0）
     if _SYNC_ERRORS:
