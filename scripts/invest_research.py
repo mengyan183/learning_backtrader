@@ -593,6 +593,16 @@ def _stock_day_pnl(acc_latest):
 def snapshot_text(snap):
     # 2026-10-29：喂给 LLM 的日期也写双日 ✓ —— 只给持仓日会让模型把指数当成旧数据 ✗
     lines = [f"数据日期: {_date_label(snap)}"]
+    # 🔴 2026-11-27：**在 prompt 首行下硬约束** ✗
+    #   事故：只在「守猪待兔」数据行里标了「监控池·非持仓」，但裁判仍写
+    #     「浮亏持仓按深度×杠杆排序为 SOXL(-100)、GDXU(-98)、TQQQ(-97)…
+    #       八只杠杆ETF全线深亏」⇒ 把监控池当成了持仓 ✗
+    #   ⇒ 数据行里的标注**不够**（模型会跳过），必须在**指令区**明确禁止 ✓
+    #   ⚠️ 放 `snapshot_text` 首行 ⇒ 情绪面/归因/裁判**三个 prompt 全覆盖** ✓
+    lines.append(
+        "⚠️ **只把「持仓明细」里列出的标的当作持仓** ✗；"
+        "「守猪待兔」是**监控池**，其中的标的**不是持仓**，"
+        "**不得**据此提出减仓/加仓/排序建议 ✓")
     if snap.get("fg"):
         f = snap["fg"]
         lines.append(f"系统贪恐指数: {f['fg_index']} [{f['zone']}] 目标仓位: {f['target_position']} 回撤: {f['drawdown']} 熔断: {f['circuit_breaker']}")
@@ -610,7 +620,7 @@ def snapshot_text(snap):
         _in_pos = [k for k in snap["shoutu"] if k in _held]
         lines.append(
             "守猪待兔(%s)〔**监控池·非持仓**；%d 只里只有 %s 在持仓〕: %s"
-            % (snap.get("date") or snap.get("shoutu_date"),
+            % (snap.get("index_date") or snap.get("date"),
                len(snap["shoutu"]),
                " / ".join(_in_pos) if _in_pos else "**无**",
                st))
@@ -1508,7 +1518,7 @@ def build_snapshot_lines(snap):
         _in2 = [k for k in snap["shoutu"] if k in _held2]
         out.append(
             "守猪待兔(%s)〔**监控池·非持仓**；%d 只里只有 %s 在持仓〕: %s"
-            % (snap.get("date") or snap.get("shoutu_date"),
+            % (snap.get("index_date") or snap.get("date"),
                len(snap["shoutu"]),
                " / ".join(_in2) if _in2 else "**无**", pairs))
         out.append("（守猪待兔系数 -100~+100：负=恐慌/买入区，正=贪婪/卖出区，"
@@ -2343,14 +2353,42 @@ def _human30_brief():
     return "\n".join(out)
 
 
-def _expected_index_date(today=None):
-    """简报 05:30 跑 ⇒ 应拿到**上一个工作日**的收盘数据（美股 T-1）✓。
+#: 🔴 **美国股市休市日**（NYSE 全天闭市，2026-11-27 补）✓
+#   为什么必须显式列出 ✗：
+#     `_expected_index_date` 原来只跳周末 ✗
+#     实测 2026-11-27（周五）：减 1 天 = 11-26（周四）⇒ 判为工作日
+#     但 11-26 是**感恩节**，美股休市 ⇒ 简报误报「指数落后 1 个交易日」✗
+#     ⇒ 每年 9~10 个休市日都会误报 ✓
+#   ⚠️ 只覆盖已列年份；未覆盖的年份**退回「只跳周末」**（保持旧行为，不会更差）✓
+_US_MARKET_HOLIDAYS = {
+    # 2026（NYSE 日历）
+    "2026-01-01",   # 元旦
+    "2026-01-19",   # 马丁·路德·金日（1 月第 3 个周一）
+    "2026-02-16",   # 总统日（2 月第 3 个周一）
+    "2026-04-03",   # 耶稣受难日（Good Friday）
+    "2026-05-25",   # 阵亡将士纪念日（5 月最后一个周一）
+    "2026-06-19",   # 六月节
+    "2026-07-03",   # 独立日（7/4 是周六 ⇒ 提前到 7/3）
+    "2026-09-07",   # 劳动节（9 月第 1 个周一）
+    "2026-11-26",   # 感恩节（11 月第 4 个周四）
+    "2026-12-25",   # 圣诞节
+}
 
-    shortcut: 用工作日近似交易日，未排除美国假日；接入真实交易日历时替换。
+
+def _expected_index_date(today=None):
+    """简报 05:30 跑 ⇒ 应拿到**上一个交易日**的收盘数据（美股 T-1）✓。
+
+    🔴 2026-11-27 修：**排除美国股市休市日** ✗
+       原来只跳周末 ⇒ 感恩节（11-26）被当成交易日 ⇒ 误报「落后 1 个交易日」✗
+    ⚠️ 假日表只覆盖 `_US_MARKET_HOLIDAYS` 里列出的年份 ✓
+       未列年份退回「只跳周末」（旧行为，不会更差）✓
     """
     import datetime as _dt
     d = (today or _dt.date.today()) - _dt.timedelta(days=1)
-    while d.weekday() >= 5:            # 周六/周日继续往前
+    # 周末 + 休市日都往前推（最多推 10 天，防假日表配错导致死循环）
+    for _ in range(10):
+        if d.weekday() < 5 and d.isoformat() not in _US_MARKET_HOLIDAYS:
+            break
         d -= _dt.timedelta(days=1)
     return d
 
@@ -2611,8 +2649,17 @@ def _data_health_block(snap, sentiment=None, attribution=None, judge=None):
         lines.append("六因子：**缺 %d 个**（源数据滞后，分项用 T-n 值 ✓）"
                      % n_miss)
     # 全都正常时压成**一行** ✓ —— 每天铺三行「正常」纯属占版面 ✗
-    if not lines or all(ln.startswith("富途 OpenD：正常") for ln in lines):
-        return "全部正常 ✓（富途 OpenD / AI 三阶段 / 六因子）"
+    # 🔴 2026-11-27 修：**`ℹ️` 说明行不该破坏压缩** ✗
+    #   实测：11-26 加了 `ℹ️ 持仓快照 ...（美东最近收盘日）` 后，
+    #     `lines` 不再「全是富途正常」⇒ 压缩不触发 ⇒ 输出只有两行：
+    #       `富途 OpenD：正常 ✓` + `ℹ️ 持仓快照 ...`
+    #     ⇒ **「六因子」三个字消失了** ✗（读者以为六因子不再检查 ✗）
+    #   ⇒ 压缩时把 `ℹ️` 行单独拎出来，附在压缩行之后 ✓
+    _info = [ln for ln in lines if ln.startswith("ℹ️")]
+    _rest = [ln for ln in lines if not ln.startswith("ℹ️")]
+    if not _rest or all(ln.startswith("富途 OpenD：正常") for ln in _rest):
+        return "\n".join(
+            ["全部正常 ✓（富途 OpenD / AI 三阶段 / 六因子）"] + _info)
     return "\n".join(lines)
 
 

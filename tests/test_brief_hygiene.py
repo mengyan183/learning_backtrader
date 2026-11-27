@@ -453,3 +453,61 @@ def test_build_brief_smoke_on_real_snapshot():
         pytest.skip("无生产数据（Data/ 不在 git 里）：%s" % type(e).__name__)
     out = ir.build_brief(snap, "", "", "", [])
     assert out, "build_brief 返回空 ✗"
+
+
+def test_expected_index_date_skips_us_market_holidays():
+    """`_expected_index_date` 必须**跳过美国股市休市日** ✓（2026-11-27 修）。
+
+    🔴 事故：11-27（周五）减 1 天 = 11-26（周四）⇒ 判为工作日
+       但 11-26 是**感恩节**，美股休市 ⇒ 简报误报「指数落后 1 个交易日」✗
+       ⇒ 每年 9~10 个休市日都会误报 ✓
+    """
+    import datetime as dt
+
+    # 感恩节（11-26）应被跳过 ⇒ 期望 11-25
+    assert ir._expected_index_date(dt.date(2026, 11, 27)) == dt.date(2026, 11, 25), \
+        "感恩节应被跳过 ✗"
+    # 普通周末仍然跳过（周一 ⇒ 上周五）
+    assert ir._expected_index_date(dt.date(2026, 11, 30)) == dt.date(2026, 11, 27)
+    # 元旦
+    assert ir._expected_index_date(dt.date(2026, 1, 2)) == dt.date(2025, 12, 31)
+
+
+def test_data_health_keeps_factor_line_when_info_present():
+    """数据源健康段：`ℹ️` 说明行**不该吞掉**「六因子」压缩行 ✓（2026-11-27 修）。
+
+    🔴 事故：11-26 加了 `ℹ️ 持仓快照 …` 后压缩不触发 ⇒ 输出只剩
+       `富途 OpenD：正常 ✓` + `ℹ️ 持仓快照 …`
+       ⇒ **「六因子」三个字消失** ✗（读者以为六因子不再检查 ✗）
+    """
+    _lines = ["富途 OpenD：正常 ✓（10:00 **实时探测**）",
+              "ℹ️ 持仓快照 **2026-11-26**（美东最近收盘日）"]
+    _info = [ln for ln in _lines if ln.startswith("ℹ️")]
+    _rest = [ln for ln in _lines if not ln.startswith("ℹ️")]
+    assert (not _rest
+            or all(ln.startswith("富途 OpenD：正常") for ln in _rest)), \
+        "ℹ️ 行不该阻止压缩 ✗"
+    out = "\n".join(["全部正常 ✓（富途 OpenD / AI 三阶段 / 六因子）"] + _info)
+    assert "六因子" in out, out
+    assert "ℹ️ 持仓快照" in out, out
+
+
+def test_snapshot_text_forbids_treating_pool_as_positions():
+    """喂 AI 的快照首部必须**明确禁止**把监控池当持仓 ✓（2026-11-27 修）。
+
+    🔴 事故：数据行里标了「监控池·非持仓」，裁判仍写
+       「浮亏持仓按深度×杠杆排序为 SOXL(-100)、GDXU(-98)…八只杠杆ETF全线深亏」✗
+       ⇒ 数据行标注不够，必须在**指令区**禁止 ✓
+    """
+    snap = {"date": "2026-11-26", "index_date": "2026-11-25",
+            "fg": {"fg_index": 13.7, "zone": "0.0", "target_position": 0.517,
+                   "drawdown": 0.1479, "circuit_breaker": False},
+            "shoutu": {"YINN": -91.0, "SOXL": -100.0},
+            "shoutu_date": "2026-11-26",
+            "positions": [{"symbol": "YINN", "name": "YINN", "qty": 157,
+                           "cost": 26.82, "last_close": 18.74, "pnl": -1268.6, "pnl_pct": -30.13,
+                           "mv": 2942.0}]}
+    txt = ir.snapshot_text(snap)
+    assert "只把「持仓明细」里列出的标的当作持仓" in txt, txt[:300]
+    assert "监控池" in txt, txt[:300]
+    assert "不得" in txt, txt[:300]
