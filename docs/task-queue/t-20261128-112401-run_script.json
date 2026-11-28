@@ -1,0 +1,9 @@
+{
+  "id": "t-20261128-112401-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "clash_rule_probe.py"
+  },
+  "status": "pending",
+  "created_at": "2026-11-28T11:24:01"
+}
