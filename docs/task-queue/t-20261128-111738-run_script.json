@@ -1,0 +1,9 @@
+{
+  "id": "t-20261128-111738-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "okx_proxy_probe2.py"
+  },
+  "status": "pending",
+  "created_at": "2026-11-28T11:17:38"
+}
