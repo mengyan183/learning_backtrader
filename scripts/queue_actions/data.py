@@ -124,6 +124,11 @@ NEEDS_PROXY = (
 DEFAULT_PROXY = "http://127.0.0.1:7890"
 
 FETCH_SCRIPTS = (
+    # 🔴 2026-11-28：代理探针 —— 每日链**第一步**，可手动重跑 ✓
+    #   动机：11-26~28 三天里 3 个步骤同时失败（sync_positions /
+    #     kalshi / stablecoin），每个都像独立 bug，实际同一个根因
+    #     （ClashX 订阅到期）⇒ 需要一条「代理挂了吗」的直接判据 ✓
+    "proxy_health.py",
     "fetch_sentiment.py", "fetch_putcall.py", "fetch_kalshi_fed.py",
     "fetch_fred.py", "fetch_fedwatch.py", "fetch_shoutu_api.py",
     "fetch_stablecoin_usage.py", "fetch_news.py", "fetch_trades_futu.py",
