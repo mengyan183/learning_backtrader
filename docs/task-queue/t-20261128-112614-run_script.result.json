@@ -1,0 +1,13 @@
+{
+  "id": "t-20261128-112614-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "clash_rule_probe2.py"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"script\": \"clash_rule_probe2.py\", \"args\": [], \"stdout\": \"=== ① 全部候选配置（按大小降序）===\\n  ~/.config/clash/config.yaml                                         663 B  规则6    组0   MATCH→MATCH,DIRECT\\n\\n=== ② 判定为**当前生效**的配置 ===\\n  /Users/xingguo/.config/clash/config.yaml\\n  规则 6 条 · 代理组 0 个 · controller=127.0.0.1:9090 · secret=（无）\\n\\n=== ③ 命中加密交易所的规则 ===\\n  ⚠️ 没有专门规则\\n  尾部 5 条：\\n    DOMAIN-KEYWORD,google,DIRECT\\n    DOMAIN,google.com,DIRECT\\n    DOMAIN-SUFFIX,ad.com,REJECT\\n    GEOIP,CN,DIRECT\\n    MATCH,DIRECT\\n\\n=== ④ Clash API 探活（http://127.0.0.1:9090）===\\n  ❌ /version 失败：HTTP Error 401: Unauthorized\\n  ⇒ controller 未开或端口不对\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-28T11:27:26",
+  "finished_at": "2026-11-28T11:27:26",
+  "duration_s": 0.11
+}
