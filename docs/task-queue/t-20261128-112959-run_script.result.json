@@ -1,0 +1,13 @@
+{
+  "id": "t-20261128-112959-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "clash_proc_probe.py"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"script\": \"clash_proc_probe.py\", \"args\": [], \"stdout\": \"=== ① 相关进程（ps aux）===\\n  xingguo          51886  24.0  0.1 34178420  14172   ??  S    11:31AM   0:00.09 /Users/xingguo/learning_backtrader/.venv/bin/python /Users/xingguo/learning_backtrader/scripts/clash_proc_probe.py\\n  xingguo           2083   4.1  0.7 40438372 109500   ??  R    Sun01AM  26:02.79 /Applications/ClashX.app/Contents/MacOS/ClashX\\n  root              2106   0.0  0.0 34261140   2608   ??  Ss   Sun01AM   0:46.44 /Library/PrivilegedHelperTools/com.west2online.ClashX.ProxyConfigHelper\\n\\n=== ② 谁在监听 9090 / 常见 controller 端口 ===\\n\\n=== ③ 候选配置（按代理组数降序）===\\n  ⚠️ 一个都没读到\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-28T11:31:12",
+  "finished_at": "2026-11-28T11:31:12",
+  "duration_s": 0.31
+}
