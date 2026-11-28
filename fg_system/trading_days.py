@@ -85,6 +85,38 @@ def expected_index_date(today=None):
     return last_session((today or dt.date.today()) - dt.timedelta(days=1))
 
 
+def session_lag(d_from, d_to):
+    """`d_from` 到 `d_to` 之间隔了**几个交易日**（`d_from` 早于 `d_to`）✓。
+
+    🔴 2026-11-28：给「因子源日期落后几天」用 ✗
+       简报原来只在「分数缺失、回退前值」时标 `(T-n)` ✗
+       而 forward fill 会让分数**看起来存在**（值是旧的）⇒ 不标 `(T-n)` ✗
+       实测：`PUT-CALL 18.2〔11-25〕` 落后 2 天，但没有任何 `(T-n)` 标记 ✗
+       ⇒ 统一用交易日差来标 ✓
+
+    返回 0 表示同日（或 `d_from` 晚于 `d_to`，视为不落后）✓
+    """
+    a = (d_from if isinstance(d_from, dt.date)
+         else dt.date.fromisoformat(str(d_from)[:10]))
+    b = (d_to if isinstance(d_to, dt.date)
+         else dt.date.fromisoformat(str(d_to)[:10]))
+    if a >= b:
+        return 0
+    cal = _cal()
+    if cal is not None:
+        try:
+            sess = cal.sessions_in_range(str(a), str(b))
+            return max(len(sess) - 1, 0)       # 含两端 ⇒ 减 1
+        except (ValueError, AttributeError):
+            pass
+    n, cur = 0, a
+    while cur < b:                             # 降级：只跳周末
+        cur += dt.timedelta(days=1)
+        if cur.weekday() < 5:
+            n += 1
+    return n
+
+
 def is_half_day(d):
     """`d` 是否为**半天市**（13:00 ET 收市）✓
 
