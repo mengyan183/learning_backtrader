@@ -1,0 +1,13 @@
+{
+  "id": "t-20261128-112401-run_script",
+  "action": "run_script",
+  "params": {
+    "script": "clash_rule_probe.py"
+  },
+  "status": "failed",
+  "rc": 1,
+  "output": "{\"ok\": false, \"rc\": 1, \"script\": \"clash_rule_probe.py\", \"args\": [], \"stdout\": \"=== 配置文件 ===\\n  /Users/xingguo/.config/clash/config.yaml\\n  external-controller: 127.0.0.1:9090   secret: （无）\\n  规则 6 条 · 代理组 0 个\\n\\n=== Q1. 命中加密交易所的规则 ===\\n  ⚠️ **没有任何针对 okx/binance/coinbase 的规则**\\n     ⇒ 它们走的是最后一条 `MATCH`（通常是默认组/REJECT）\\n\\n=== 规则尾部（MATCH 兜底）===\\n  DOMAIN-KEYWORD,google,DIRECT\\n  DOMAIN,google.com,DIRECT\\n  DOMAIN-SUFFIX,ad.com,REJECT\\n  GEOIP,CN,DIRECT\\n  MATCH,DIRECT\\n\\n=== Q2. 逐节点测 OKX（https://www.okx.com/api/v5/public/time）===\\n  ❌ 连不上 Clash API（http://127.0.0.1:9090）：HTTP Error 401: Unauthorized\\n  ⇒ 可能没开 `external-controller`，或端口不是 9090\\n\", \"stderr\": \"\"}",
+  "started_at": "2026-11-28T11:25:10",
+  "finished_at": "2026-11-28T11:25:10",
+  "duration_s": 0.11
+}
